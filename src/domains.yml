@@ -1,0 +1,32 @@
+---
+
+Domains:
+  - drug_exposure:
+      source: drug_source_concept_id
+      target: drug_concept_id
+      type: drug_type_concept_id
+      fk:
+        person: person_id, person_id
+        provider: provider_id, provider_id
+  - condition_occurrence
+      source: condition_source_concept_id
+      target: condition_concept_id
+      type: condition_type_concept_id
+  - death
+  - measurement
+  - observation
+  - procedure_occurrence
+  - visit
+
+MightInclude:
+  - care_site
+  - fact_relationship -- is this table correct?
+  - location?
+  - observation_period?
+  - payer_plan_period?
+  - person (demographics?)
+  - cost tables?
+  - provider (specialty)?
+  - visit
+
+
