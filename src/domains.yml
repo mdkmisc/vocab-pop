@@ -8,7 +8,7 @@ Domains:
       fk:
         person: person_id, person_id
         provider: provider_id, provider_id
-  - condition_occurrence
+  - condition_occurrence:
       source: condition_source_concept_id
       target: condition_concept_id
       type: condition_type_concept_id

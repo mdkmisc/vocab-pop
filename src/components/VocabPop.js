@@ -26,9 +26,9 @@ import { Button, Panel, Modal, Checkbox,
 import * as util from '../utils';
 import {commify} from '../utils';
 import DataTable from './FixedDataTableSortFilt';
-//import yaml from 'js-yaml';
+import yaml from 'js-yaml';
 //import yamlLoader from 'yaml-configuration-loader';
-import domains from '../domains.yml';
+import domainsYaml from '../domains.yml';
 
 
 export class Domains extends Component {
@@ -36,8 +36,8 @@ export class Domains extends Component {
     super(props);
   }
   componentDidMount() {
-    //let domains = yamlLoader.load('../domains.yml');
-    //var domains = require("json!yaml!./domains.yml");
+    let domains = yaml.safeLoad(domainsYaml);
+    //var domains = require("../domains.yml");
     console.log(domains);
   }
   render() {
