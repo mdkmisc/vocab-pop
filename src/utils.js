@@ -44,6 +44,7 @@ function jsonFetch(url, opts={}) {
 		});
 }
 export function cachedPostJsonFetch(url, params={}, queryName) {
+  queryName = queryName || params.queryName || 'no query name';
 	var qs = _.map(params, (v,k) => `${k}=${v}`).join('&');
 	var get = `${url.replace(/post/,'get').replace(/Post/,'Get')}?${qs}`;
 	console.log(queryName, get);
@@ -69,6 +70,9 @@ export function storageExists(key, store = sessionStorage) {
 }
 export function storageGet(key, store = sessionStorage) {
 	return JSON.parse(LZString.decompressFromBase64(store[key]));
+}
+export function storageKeys(store = sessionStorage) {
+	return Object.keys(store);
 }
 
 /* SvgLayout class

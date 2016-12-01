@@ -18,17 +18,26 @@ import React, { Component } from 'react';
 import './App.css';
 import _ from 'supergroup';
 //import * as util from './ohdsi.util';
-import { PageHeader } from 'react-bootstrap';
-import {Domains} from './components/VocabPop';
+import { PageHeader, Row, Col } from 'react-bootstrap';
+import {Domains, ConceptsContainer} from './components/VocabPop';
 
 class App extends Component {
   render() {
     return (
       <div>
-        <PageHeader>Drug Utilization Viz
-          <small></small>
+        <PageHeader>
+          <small>
+            Vocab Population Browser
+          </small>
         </PageHeader>
-        <Domains/>
+        <Row>
+          <Col md={4} mdOffset={4} >
+            <ConceptsContainer/>
+          </Col>
+        </Row>
+        <Row>
+          <Domains/>
+        </Row>
       </div>
     );
   }

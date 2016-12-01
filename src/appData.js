@@ -2,6 +2,49 @@ var d3 = require('d3');
 import _ from 'supergroup';
 import * as util from './utils';
 
+const cdmSchema = 'cdm2';
+const resultsSchema = 'results2';
+const apiRoot = 'http://localhost:3000/api/cdms';
+
+export function conceptCount(params={}, queryName="conceptCount") {
+  params = _.clone(params);
+  let apiCall = 'concepts';
+  params.resultsSchema = resultsSchema;
+  params.cdmSchema = cdmSchema;
+  params.queryName = queryName;
+
+  return (util.cachedPostJsonFetch(
+          `${apiRoot}/${apiCall}Post`, params)
+          .then(function(json) {
+            if (json.error)
+              console.error(json.error.message, json.error.queryName, json.error.url);
+            if (json.length !== 1)
+              console.error('unexpect result count', json, json.queryName, json.url);
+            return parseInt(json[0].count, 10);
+          }));
+}
+export function conceptStats(params={}, queryName="conceptStats") {
+  params = _.clone(params);
+  let apiCall = 'concepts';
+  params.resultsSchema = resultsSchema;
+  params.cdmSchema = cdmSchema;
+  params.queryName = queryName;
+  return (util.cachedPostJsonFetch(
+          `${apiRoot}/${apiCall}Post`, params)
+          .then(function(json) {
+            if (json.error)
+              console.error(json.error.message, json.error.queryName, json.error.url);
+
+            json.forEach(rec=>{
+              rec.count = parseInt(rec.count, 10);
+              rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+            })
+
+            return json;
+          }));
+}
+
+
 export function recsfetch(params, queryName) {
   params = _.clone(params);
   let {concept_id, bundle, maxgap, person_id} = params;
