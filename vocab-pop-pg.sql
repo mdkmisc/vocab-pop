@@ -46,7 +46,7 @@ CREATE OR REPLACE
       '       %s as concept_id, ' ||
       '       count(*) as count ' ||
       'from %s t ' ||
-      'where %s > 0 ' ||
+      --'where %s > 0 ' ||
       'group by 1,2,3'
       , target_table, _tbl, _col, _col, _tbl, _col);
   END;
@@ -94,6 +94,56 @@ select get_concept_id_counts(
 
 alter table :results.concept_id_occurrence add primary key (table_name, column_name, concept_id);
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
+
+create or replace view :results.concept_info as
+  select  cio.*, 
+          concept_name,
+          invalid_reason, 
+          standard_concept, 
+          domain_id, 
+          vocabulary_id, 
+          concept_class_id 
+  from :results.concept_id_occurrence cio 
+  join :cdm.concept c on cio.concept_id = c.concept_id;
+
+create or replace view :results.concept_info_narrow as
+  select  cio.*, 
+          substr(concept_name, 0, 31) as concept_name_30_chars,
+          invalid_reason as ir,
+          standard_concept as sc,
+          domain_id,
+          vocabulary_id,
+          concept_class_id
+  from :results.concept_id_occurrence cio
+  join :cdm.concept c on cio.concept_id = c.concept_id;
+
+
+
+drop materialized view if exists :results.class_hierarichy;
+create materialized view :results.class_hierarichy as
+select
+        c1.vocabulary_id vocab_1,
+        c1.concept_class_id as class_1,
+        c1.standard_concept as sc1,
+        r.relationship_name,
+        c2.vocabulary_id vocab_2,
+        c2.concept_class_id as class_2,
+        c2.standard_concept as sc2,
+        count(distinct c1.concept_id) as c1_ids,
+        count(distinct c2.concept_id) as c2_ids,
+        count(*) c
+from :cdm.concept_relationship cr
+join :cdm.concept c1 on cr.concept_id_1 = c1.concept_id and c1.invalid_reason is null
+join :cdm.concept c2 on cr.concept_id_2 = c2.concept_id and c2.invalid_reason is null
+join :cdm.relationship r on cr.relationship_id = r.relationship_id
+where r.is_hierarchical = '1'
+  --and c1.vocabulary_id = c2.vocabulary_id
+group by 1,2,3,4,5,6,7
+having count(distinct c1.concept_id) <= count(distinct c2.concept_id)
+   and count(distinct c2.concept_id) >  count(distinct c1.concept_id)
+
+
+
 
 /*  drug_exposure
 select c.domain_id, count(*) from concept c join drug_exposure de on c.concept_id = de.drug_concept_id where concept_id != 0 group by 1;

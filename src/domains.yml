@@ -1,6 +1,15 @@
 ---
 
-Domains:
+conceptAttributes:
+  - table_name
+  - column_name
+    #- invalid_reason
+  - standard_concept
+  - domain_id
+  - vocabulary_id
+  - concept_class_id
+
+domains:
   - drug_exposure:
       source: drug_source_concept_id
       target: drug_concept_id
@@ -18,7 +27,7 @@ Domains:
   - procedure_occurrence
   - visit
 
-MightInclude:
+mightInclude:
   - care_site
   - fact_relationship -- is this table correct?
   - location?

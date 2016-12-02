@@ -64,6 +64,10 @@ export function cachedPostJsonFetch(url, params={}, queryName) {
 }
 export function storagePut(key, val, store = sessionStorage) {
 	store[key] = LZString.compressToBase64(JSON.stringify(val));
+  //let json = JSON.stringify(val);
+  //let compressed = LZString.compressToBase64(json);
+  //alert([json.length, compressed.length]);
+  //console.log(`recs: ${val.length}, json: ${json.length}, compressed: ${compressed.length}`);
 }
 export function storageExists(key, store = sessionStorage) {
 	return _.has(store, key);

@@ -32,6 +32,7 @@ var handleCompile;
 
 // You can safely remove this after ejecting.
 // We only use this block for testing of Create React App itself:
+/*
 var isSmokeTest = process.argv.some(arg => arg.indexOf('--smoke-test') > -1);
 if (isSmokeTest) {
   handleCompile = function (err, stats) {
@@ -42,6 +43,7 @@ if (isSmokeTest) {
     }
   };
 }
+*/
 
 function setupCompiler(host, port, protocol) {
   // "Compiler" is a low-level interface to Webpack.

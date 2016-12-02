@@ -13,34 +13,72 @@ Copyright 2016 Sigfried Gold
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+
 import React, { Component } from 'react';
+
+import { Route, RouteHandler, Link } from 'react-router';
+import { Button, Nav, Navbar, NavDropdown, MenuItem, NavItem,
+            Row, Col, Panel,
+        } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
+
 //import logo from './logo.svg';
 import './App.css';
 import _ from 'supergroup';
 //import * as util from './ohdsi.util';
-import { PageHeader, Row, Col } from 'react-bootstrap';
-import {Domains, ConceptsContainer} from './components/VocabPop';
 
-class App extends Component {
+export default class App extends Component {
   render() {
     return (
       <div>
-        <PageHeader>
-          <small>
-            Vocab Population Browser
-          </small>
-        </PageHeader>
+        <Navbar fluid={true} fixedTop={false}>
+          <Navbar.Header>
+            <Navbar.Brand>
+              <NavLink to="/" onlyActiveOnIndex>
+                Vocab Population Browser
+              </NavLink>
+            </Navbar.Brand>
+          </Navbar.Header>
+          <Nav >
+            <LinkContainer to="/concepts">
+              <NavItem eventKey={2}>Concepts</NavItem>
+            </LinkContainer>
+            <NavDropdown eventKey={3} title="Domains" id="basic-nav-dropdown">
+              <LinkContainer to="/domains">
+                <MenuItem eventKey={3.1}>Domains</MenuItem>    
+              </LinkContainer>      
+            </NavDropdown>  
+          </Nav>
+        </Navbar>
         <Row>
-          <Col md={4} mdOffset={4} >
-            <ConceptsContainer/>
+          <Col md={12}>
           </Col>
         </Row>
         <Row>
-          <Domains/>
+          <Col md={12}>
+            {this.props.children}
+          </Col>
         </Row>
       </div>
     );
   }
 }
-
-export default App;
+/*
+        <Row>
+          <Col md={4} mdOffset={4} >
+            <ConceptsContainer
+              settings={settings}
+            />
+          </Col>
+        </Row>
+        <Row>
+          <Domains
+            settings={settings}
+          />
+        </Row>
+*/
+class NavLink extends Component {
+  render() {
+    return <Link {...this.props} activeClassName="active"/>
+  }
+}

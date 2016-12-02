@@ -1,4 +1,3 @@
-var d3 = require('d3');
 import _ from 'supergroup';
 import * as util from './utils';
 
@@ -36,8 +35,8 @@ export function conceptStats(params={}, queryName="conceptStats") {
               console.error(json.error.message, json.error.queryName, json.error.url);
 
             json.forEach(rec=>{
-              rec.count = parseInt(rec.count, 10);
-              rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+              //rec.count = parseInt(rec.count, 10);
+              //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
             })
 
             return json;
@@ -47,7 +46,7 @@ export function conceptStats(params={}, queryName="conceptStats") {
 
 export function recsfetch(params, queryName) {
   params = _.clone(params);
-  let {concept_id, bundle, maxgap, person_id} = params;
+  let {concept_id, maxgap, } = params;
   if (!_.isNumber(concept_id)) throw new Error("need concept_id param, number");
   if (typeof maxgap !== "undefined") {
     params.maxgap = parseInt(maxgap, 10);
@@ -77,7 +76,7 @@ export function recsfetch(params, queryName) {
 }
 export function distfetch(params, queryName) {
   params = _.clone(params);
-  let {ntiles, concept_id, bundle, maxgap} = params;
+  let {ntiles, concept_id, maxgap} = params;
   if (!_.isNumber(ntiles)) throw new Error("need ntiles param, number");
   if (!_.isNumber(concept_id)) throw new Error("need concept_id param, number");
   if (typeof maxgap !== "undefined") {
