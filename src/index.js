@@ -1,8 +1,8 @@
 import React from 'react'
 import { render } from 'react-dom'
 import { Router, Route, browserHistory, IndexRoute } from 'react-router'
-import App from './App';
-import {ConceptsContainer, Domains, Home} from './components/VocabPop'
+import {App, SettingsDump} from './App';
+import {ConceptsContainer, Domains, Home, Vocabularies} from './components/VocabPop'
 import './index.css';
 
 
@@ -19,8 +19,12 @@ render((
       <IndexRoute component={Home}/>
       <Route path="/concepts" component={ConceptsContainer} />
       <Route path="/domains" component={Domains} >
-        <Route path="/domains/:userName/:repoName" component={Domains}/>
+        <Route path=":domain" component={Domains}/>
       </Route>
+      <Route path="/vocabs" component={Vocabularies} >
+        <Route path=":vocab" component={Vocabularies}/>
+      </Route>
+      <Route path="/settings" component={SettingsDump} />
     </Route>
   </Router>
 ), document.getElementById('root'))

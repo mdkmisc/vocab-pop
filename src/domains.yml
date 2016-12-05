@@ -1,5 +1,9 @@
 ---
 
+cdmSchema: cdm2
+resultsSchema: results2
+apiRoot: http://localhost:3000/api/cdms
+
 conceptAttributes:
   - table_name
   - column_name
@@ -10,22 +14,26 @@ conceptAttributes:
   - concept_class_id
 
 domains:
-  - drug_exposure:
-      source: drug_source_concept_id
-      target: drug_concept_id
-      type: drug_type_concept_id
-      fk:
-        person: person_id, person_id
-        provider: provider_id, provider_id
-  - condition_occurrence:
+  Drugs:
+    tableName: drug_exposure
+    enabled: true
+    source: drug_source_concept_id
+    target: drug_concept_id
+    type: drug_type_concept_id
+    fk:
+      person: person_id, person_id
+      provider: provider_id, provider_id
+  Conditions:
+      tableName: condition_occurrence
+      enabled: true
       source: condition_source_concept_id
       target: condition_concept_id
       type: condition_type_concept_id
-  - death
-  - measurement
-  - observation
-  - procedure_occurrence
-  - visit
+  death:
+  measurement:
+  observation:
+  procedure_occurrence:
+  visit:
 
 mightInclude:
   - care_site

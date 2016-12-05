@@ -1,9 +1,55 @@
 import _ from 'supergroup';
 import * as util from './utils';
+import settings from './Settings';
 
-const cdmSchema = 'cdm2';
-const resultsSchema = 'results2';
-const apiRoot = 'http://localhost:3000/api/cdms';
+const { cdmSchema, resultsSchema, apiRoot, } = settings;
+
+export var appData = {};
+
+// fetch on load
+(function() {
+  appData.conceptCount = conceptCount();
+  appData.conceptStats = conceptStats();
+
+  let attrQueries = settings.conceptAttributes.map(
+    (attr) => {
+      return (
+        conceptStats({attr})
+        .then((counts) => {
+          counts.forEach(count=>{
+            if (attr === 'table_name') {
+              count.table_name = count.table_name.replace(/^[^\.]+\./, '');
+            }
+          });
+          //console.log(`doing breakdown for ${attr}`);
+          let sg = _.supergroup(counts, attr);
+          //console.log(sg+'');
+          return sg;
+        })
+      );
+    });
+  let breakdowns = {};
+  appData.breakdowns = 
+    Promise.all(attrQueries)
+      .then((attrs) => {
+        attrs.forEach(attr => {
+          breakdowns[attr.dim] = attr;
+        })
+        return breakdowns;
+      });
+})();
+export function dataToStateWhenReady(component, items) {
+  // items is an array of appData keys, or, if empty, gets all
+  if (!items) {
+    items = _.keys(appData);
+  }
+  items.forEach(
+    (item) => {
+      appData[item].then(
+        (data) => component.setState({[item]: data})
+      );
+    });
+}
 
 export function conceptCount(params={}, queryName="conceptCount") {
   params = _.clone(params);
@@ -35,6 +81,8 @@ export function conceptStats(params={}, queryName="conceptStats") {
               console.error(json.error.message, json.error.queryName, json.error.url);
 
             json.forEach(rec=>{
+              rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+              rec.dbrecs = parseInt(rec.dbrecs, 10);
               //rec.count = parseInt(rec.count, 10);
               //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
             })

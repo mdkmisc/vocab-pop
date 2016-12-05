@@ -29,13 +29,34 @@ import { Panel, } from 'react-bootstrap';
 import {commify} from '../utils';
 //import DataTable from './FixedDataTableSortFilt';
 //import yamlLoader from 'yaml-configuration-loader';
-import {conceptCount, conceptStats} from '../appData';
+import {appData, dataToStateWhenReady} from '../AppData';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 require('./VocabPop.css');
 import settings from '../Settings';
 
 
+export class Vocabularies extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      breakdowns: {},
+    };
+  }
+  componentDidMount() {
+    dataToStateWhenReady(this);
+  }
+  render() {
+    const vocabs = this.state.breakdowns.vocabulary_id;
+    
+    if (!vocabs)
+      return <h3>no vocabs</h3>;
+    console.log(this.state);
+    return <pre>
+            {vocabs+''}
+           </pre>;
+  }
+}
 export class Domains extends Component {
   constructor(props) {
     super(props);
@@ -43,15 +64,18 @@ export class Domains extends Component {
     };
   }
   componentDidMount() {
-    //let domains = yaml.safeLoad(domainsYaml);
-    //this.setState({domains});
+    dataToStateWhenReady(this);
   }
   render() {
+    let {domain} = this.props.params;
     let {domains} = settings;
     if (!domains)
       return <h3>nothing</h3>;
-    return <ul>
-            {
+    console.log(this.state);
+    return <pre>
+            {JSON.stringify(domains[domain],null,2)}
+           </pre>;
+           /*
               domains.map((domain,i)=>{
                 return <li key={i}>
                           <pre>
@@ -59,8 +83,7 @@ export class Domains extends Component {
                           </pre>
                         </li>
               })
-            }
-           </ul>
+              */
   }
 }
 export class ConceptsContainer extends Component {
@@ -77,43 +100,24 @@ export class ConceptsContainer extends Component {
     this.fetchConceptStats(nextProps);
   }
   fetchConceptStats(props) {
-    conceptCount()
-      .then((conceptCount) => {
-        this.setState({conceptCount});
-      });
-    let attrQueries = settings.conceptAttributes.map(
-      (attr) => {
-        return (
-          conceptStats({attr})
-          .then((counts) => {
-            counts.forEach(count=>{
-              count.conceptrecs = parseInt(count.conceptrecs, 10);
-              count.dbrecs = parseInt(count.dbrecs, 10);
-              if (attr === 'table_name') {
-                count.table_name = count.table_name.replace(/^[^\.]+\./, '');
-              }
-            });
-            //console.log(`doing breakdown for ${attr}`);
-            let sg = _.supergroup(counts, attr);
-            //console.log(sg+'');
-            return sg;
-          })
-        );
-      });
-    let breakdowns = _.clone(this.state.breakdowns);
-    Promise.all(attrQueries)
-      .then((attrs) => {
-        attrs.forEach(attr => {
-          breakdowns[attr.dim] = attr;
-        })
-        this.setState({breakdowns});
-      });
+    dataToStateWhenReady(this);
+    /*
+    let {conceptCount, conceptStats, breakdowns } = appData;
+    conceptCount.then(
+      cc => this.setState({conceptCount: cc}));
+    conceptStats.then(
+      cs => this.setState({conceptStats: cs}));
+    breakdowns.then(
+      bd => this.setState({breakdowns: bd}));
+    */
   }
+
   render() {
     const {conceptStats, conceptCount, breakdowns} = this.state;
     if (breakdowns && typeof conceptCount !== 'undefined') {
       return <Concepts  
                 conceptCount={conceptCount} 
+                conceptStats={conceptStats} 
                 breakdowns={breakdowns} 
               />;
     } else {
@@ -134,7 +138,7 @@ export class Home extends Component {
 }
 export class Concepts extends Component {
   render() {
-    const {conceptCount, breakdowns} = this.props;
+    const {conceptCount, breakdowns, conceptStats} = this.props;
     //{commify(conceptStats.length)} used in database<br/>
                           //{bd.aggregate(_.sum, 'conceptrecs')} concepts, {' '}
                           //{bd.aggregate(_.sum, 'dbrecs')} database records {' '}
@@ -151,6 +155,9 @@ export class Concepts extends Component {
                       </li>);
                   })}
               </ul>
+              <pre>
+                {JSON.stringify(conceptStats, null, 2)}
+              </pre>
             </Panel>;
   }
 }

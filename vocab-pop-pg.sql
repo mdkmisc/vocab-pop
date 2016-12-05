@@ -27,7 +27,7 @@ create type :results.concept_id_occurrence_rec as (
 
 
 CREATE OR REPLACE 
-  FUNCTION get_concept_id_counts(_tbl regclass, _col text, target_table regclass) 
+  FUNCTION store_concept_id_counts(_tbl regclass, _col text, target_table regclass) 
   RETURNS TABLE(
                   table_name text,
                   column_name text,
@@ -79,7 +79,7 @@ CREATE FUNCTION concept_id_counts(_sno integer, _eid integer, _sd date, _ed date
   COST 100;
 */
   
-select get_concept_id_counts(
+select store_concept_id_counts(
           tbl, col,
           current_setting('my.vars.results')||'.concept_id_occurrence'
 ) from (
@@ -142,6 +142,21 @@ group by 1,2,3,4,5,6,7
 having count(distinct c1.concept_id) <= count(distinct c2.concept_id)
    and count(distinct c2.concept_id) >  count(distinct c1.concept_id)
 
+
+drop materialized view if exists :results.concept_info_stats;
+create materialized view :results.concept_info_stats as
+  select  replace( cio.table_name, current_setting('my.vars.cdm')||'.', '') as table_name,
+          cio.column_name,
+          case when invalid_reason is null then true else false end as invalid,
+          standard_concept as sc,
+          domain_id,
+          vocabulary_id,
+          concept_class_id,
+          count(*) as conceptrecs,
+          sum(count) as dbrecs
+  from :cdm.concept c 
+  left outer join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
+  group by 1,2,3,4,5,6,7;
 
 
 
