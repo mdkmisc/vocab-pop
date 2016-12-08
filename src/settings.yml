@@ -13,27 +13,36 @@ conceptAttributes:
   - vocabulary_id
   - concept_class_id
 
-domains:
-  Drugs:
+tables:
+  drug_exposure:
+    rank: 1
     tableName: drug_exposure
+    niceName: Drug Exposure
     enabled: true
-    source: drug_source_concept_id
-    target: drug_concept_id
-    type: drug_type_concept_id
+    target_col: drug_concept_id
+    source_col: drug_source_concept_id
+    type_col: drug_type_concept_id
     fk:
       person: person_id, person_id
       provider: provider_id, provider_id
-  Conditions:
-      tableName: condition_occurrence
-      enabled: true
-      source: condition_source_concept_id
-      target: condition_concept_id
-      type: condition_type_concept_id
+  condition_occurrence:
+    rank: 2
+    tableName: condition_occurrence
+    niceName: Condition Occurrence
+    enabled: true
+    source: condition_source_concept_id
+    target: condition_concept_id
+    type: condition_type_concept_id
   death:
+    rank: 30
   measurement:
+    rank: 30
   observation:
+    rank: 30
   procedure_occurrence:
-  visit:
+    rank: 30
+  visit_occurrence:
+    rank: 30
 
 mightInclude:
   - care_site

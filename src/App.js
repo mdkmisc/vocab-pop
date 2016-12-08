@@ -33,7 +33,7 @@ import {appData, dataToStateWhenReady} from './AppData';
 export class App extends Component {
   render() {
     let NavBar;
-    if (this.props.router.isActive('/domains'))
+    if (this.props.router.isActive('/tables'))
       NavBar = DomainNavBar 
     else if (this.props.router.isActive('/vocabs'))
       NavBar = VocabNavBar 
@@ -43,7 +43,7 @@ export class App extends Component {
       <div>
         <NavBar />
         <Row>
-          <Col md={12}>
+          <Col md={10} mdOffset={1}>
             {this.props.children}
           </Col>
         </Row>
@@ -66,8 +66,8 @@ class DefaultNavBar extends Component {
             <LinkContainer to="/concepts">
               <NavItem eventKey={2}>Concepts</NavItem>
             </LinkContainer>
-            <LinkContainer to="/domains">
-              <NavItem eventKey={3}>Domains</NavItem>
+            <LinkContainer to="/tables">
+              <NavItem eventKey={3}>Tables</NavItem>
             </LinkContainer>
             <LinkContainer to="/vocabs">
               <NavItem eventKey={4}>Vocabularies</NavItem>
@@ -83,12 +83,12 @@ class DefaultNavBar extends Component {
   /*
                     <LinkContainer 
                         to={{
-                          pathname: `/domains/${dname}`,
-                          //query: _.merge({}, query, {domain: dname})
+                          pathname: `/tables/${tname}`,
+                          //query: _.merge({}, query, {domain: tname})
                         }}
-                        key={dname}
+                        key={tname}
                       >
-                        <MenuItem eventKey={3.1}>{dname}</MenuItem>    
+                        <MenuItem eventKey={3.1}>{tname}</MenuItem>    
                     </LinkContainer>      
   */
 class VocabNavBar extends Component {
@@ -142,15 +142,15 @@ class VocabNavBar extends Component {
 class DomainNavBar extends Component {
   constructor(props) {
     super(props);
-    let {domains} = settings;
+    let {tables} = settings;
     //let {query} = props.location;
-    let domainLinks = _.chain(domains)
+    let domainLinks = _.chain(tables)
           .toPairs()
           .filter(d=>d[1] && d[1].enabled)
           .map(d => {
-            let [dname, dconf] = d;
-            return  <LinkContainer key={dname} to={`/domains/${dname}`}>
-                      <NavItem eventKey={2}>{dname}</NavItem>
+            let [tname, dconf] = d;
+            return  <LinkContainer key={tname} to={`/tables/${tname}`}>
+                      <NavItem eventKey={2}>{tname}</NavItem>
                     </LinkContainer>
           })
           .value();
@@ -165,7 +165,7 @@ class DomainNavBar extends Component {
           <Navbar.Header>
             <Navbar.Brand>
               <NavLink to="/" onlyActiveOnIndex>
-                Vocab Population Browser / Domains
+                Vocab Population Browser / Tables
               </NavLink>
             </Navbar.Brand>
           </Navbar.Header>
@@ -177,7 +177,7 @@ class DomainNavBar extends Component {
   }
 }
 /*
-            <NavDropdown eventKey={3} title="Domains" id="basic-nav-dropdown">
+            <NavDropdown eventKey={3} title="Tables" id="basic-nav-dropdown">
               {domainLinks}
             </NavDropdown>  
 */

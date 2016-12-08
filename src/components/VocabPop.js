@@ -21,7 +21,7 @@ if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 
 import React, { Component } from 'react';
-import { Panel, } from 'react-bootstrap';
+import { Panel, Label, Accordion, } from 'react-bootstrap';
 //import { Button, Panel, Modal, Checkbox, 
 //          OverlayTrigger, Tooltip,
 //          FormGroup, Radio } from 'react-bootstrap';
@@ -29,12 +29,11 @@ import { Panel, } from 'react-bootstrap';
 import {commify} from '../utils';
 //import DataTable from './FixedDataTableSortFilt';
 //import yamlLoader from 'yaml-configuration-loader';
-import {appData, dataToStateWhenReady} from '../AppData';
+import settings, { moreTables } from '../Settings';
+import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 require('./VocabPop.css');
-import settings from '../Settings';
-
 
 export class Vocabularies extends Component {
   constructor(props) {
@@ -57,33 +56,128 @@ export class Vocabularies extends Component {
            </pre>;
   }
 }
-export class Domains extends Component {
+export class TreeWalker extends Component {
   constructor(props) {
     super(props);
-    this.state = {
-    };
+    this.state = { drill: null };
+  }
+  render() {
+    let {kidTitle, nodeVal, kids, kidContent, childConfig, level=1 } = this.props;
+    return (
+        <Accordion className='treewalker'>
+          {
+            kids(nodeVal).map(kid => {
+              let drill = '';
+              /*
+              if (this.state.drill === val && childConfig) {
+                drill = <TreeWalker nodeVal={val} {...childConfig} />;
+              }
+              */
+              if (childConfig) {
+                drill = <TreeWalker nodeVal={kid} level={level+1} {...childConfig} />;
+              }
+              return <Panel 
+                          header={kidTitle(kid)}
+                          eventKey={kid.toString()}
+                          key={kid.toString()}
+                          onMouseOver={()=>this.setState({drill:kid})}
+                      >
+                        {kidContent(kid)}
+                        {drill}
+                    </Panel>
+            })
+          }
+        </Accordion>
+    );
+  }
+}
+export class Tables extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
   }
   componentDidMount() {
-    dataToStateWhenReady(this);
+    conceptStats.subscribe(
+      cs => {
+        let {tableList} = settings;
+        console.log(cs);
+        let statsByTable = _.supergroup(cs, 
+          ['table_name','column_name','domain_id','vocabulary_id']);
+        moreTables(statsByTable.map(String));
+        console.log(tableList);
+        statsByTable = tableList.map(
+          tableConfig => {
+            let stats = statsByTable.lookup(tableConfig.tableName);
+            if (!stats)
+              console.error(`conceptStats missing tableName ${tableConfig.tableName}`);
+            stats.tableConfig = tableConfig;
+            return stats;
+          });
+        _.addSupergroupMethods(statsByTable);
+        this.setState({statsByTable});
+    });
   }
   render() {
     let {domain} = this.props.params;
-    let {domains} = settings;
-    if (!domains)
+    let {statsByTable, } = this.state;
+    let {tables} = settings;
+    if (!tables)
       return <h3>nothing</h3>;
-    console.log(this.state);
-    return <pre>
-            {JSON.stringify(domains[domain],null,2)}
-           </pre>;
-           /*
-              domains.map((domain,i)=>{
-                return <li key={i}>
-                          <pre>
-                            {JSON.stringify(domain,null,2)}
-                          </pre>
-                        </li>
-              })
-              */
+    if (domain) {
+      return <pre>
+              {JSON.stringify(tables[domain],null,2)}
+            </pre>;
+    }
+    if (!statsByTable) 
+      return <h4>waiting for table stats</h4>;
+
+    let rootVal = statsByTable.asRootVal('');
+    let fsScale = d3.scaleLinear().domain([0,6]).range([120,60]);
+    let treeWalkerConfig = {
+      nodeVal: rootVal,
+      kids: root=>root.children,
+      kidTitle: (table) => {
+        let fontSize = fsScale(table.tableConfig.headerLevel) + '%';
+        return <div style={{fontSize}}><span style={{fontSize:'-15%'}}>{table.toString()} columns with concept_ids</span>{table.children.join(', ')}</div>
+        //return <div><H>{table.toString()} columns with concept_ids</H>{table.children.join(', ')}</div>,
+      },
+      kidContent: table=><p>
+                          <strong>{table.toString()}</strong> {' '}
+                            - {commify(table.aggregate(_.sum, 'conceptrecs'))} concepts,
+                            - {commify(table.aggregate(_.sum, 'dbrecs'))} database records
+                        </p>,
+      childConfig: {
+        kids: table=>table.children,
+        kidTitle: column => <div><h3>{column.toString()} concept domains</h3>{column.children.join(', ')}</div>,
+        kidContent: column=><p>
+                            <strong>{column.toString()}</strong> {' '}
+                              - {commify(column.aggregate(_.sum, 'conceptrecs'))} concepts,
+                              - {commify(column.aggregate(_.sum, 'dbrecs'))} database records
+                          </p>,
+        childConfig: {
+          kids: column=>column.children,
+          kidTitle: domain => <div><h3>{domain.toString()} vocabularies</h3>{domain.children.join(', ')}</div>,
+          kidContent: domain=><p>
+                              <strong>{domain.toString()}</strong> {' '}
+                                - {commify(domain.aggregate(_.sum, 'conceptrecs'))} concepts,
+                                - {commify(domain.aggregate(_.sum, 'dbrecs'))} database records
+                            </p>,
+          childConfig: {
+            kids: domain=>domain.children,
+            kidTitle: vocab => <div><h3>{vocab.toString()}</h3>{vocab.children.join(', ')}</div>,
+            kidContent: vocab=><p>
+                                <strong>{vocab.toString()}</strong> {' '}
+                                  - {commify(vocab.aggregate(_.sum, 'conceptrecs'))} concepts,
+                                  - {commify(vocab.aggregate(_.sum, 'dbrecs'))} database records
+                              </p>,
+          }
+        }
+      }
+    }
+    let title = <div><h3>CDM Tables with concept_ids</h3>{rootVal.children.join(', ')}</div>;
+    return  <Panel header={title} >
+              <TreeWalker {...treeWalkerConfig} />
+            </Panel>
   }
 }
 export class ConceptsContainer extends Component {

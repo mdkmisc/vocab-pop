@@ -1,29 +1,55 @@
+const DEBUG = true;
+
 import _ from 'supergroup';
 import * as util from './utils';
 import settings from './Settings';
+import EventEmitter from 'wolfy87-eventemitter';
+export var appDataEE = new EventEmitter();
+import Rx from 'rxjs/Rx';
+
 
 const { cdmSchema, resultsSchema, apiRoot, } = settings;
 
 export var appData = {};
 
+export var appDataResolved = {};
+
+if (DEBUG) window.appData = appData;
+if (DEBUG) window.appDataResolved = appDataResolved;
+
+export var conceptStats = Rx.Observable.fromPromise(_conceptStats());
+
 // fetch on load
 (function() {
   appData.conceptCount = conceptCount();
-  appData.conceptStats = conceptStats();
 
+
+  //conceptStatsResult.subscribe(x => console.log(x), e => console.error(e));
+
+
+  /*
+  appData.conceptStats = 
+    conceptStats()
+    .then(cs => {
+      appDataEE.emitEvent('conceptStats', [cs]);
+      return cs;
+    });
+  */
+  appData.classRelations = classRelations();
+
+  /*
   let attrQueries = settings.conceptAttributes.map(
     (attr) => {
       return (
-        conceptStats({attr})
+        _conceptStats({attr})
         .then((counts) => {
           counts.forEach(count=>{
             if (attr === 'table_name') {
               count.table_name = count.table_name.replace(/^[^\.]+\./, '');
             }
           });
-          //console.log(`doing breakdown for ${attr}`);
           let sg = _.supergroup(counts, attr);
-          //console.log(sg+'');
+          appDataEE.emitEvent(`conceptStats/${attr}`, [sg]);
           return sg;
         })
       );
@@ -37,20 +63,57 @@ export var appData = {};
         })
         return breakdowns;
       });
+  */
 })();
+
 export function dataToStateWhenReady(component, items) {
+  // this doesn't work very well. switching to event broadcast
+
+
+
   // items is an array of appData keys, or, if empty, gets all
   if (!items) {
     items = _.keys(appData);
   }
-  items.forEach(
+  let promises = items.map(
     (item) => {
-      appData[item].then(
-        (data) => component.setState({[item]: data})
+      return appData[item].then(
+              (data) => {
+                component.setState({[item]: data})
+                if (DEBUG) appDataResolved[item] = data;
+              }
       );
     });
+  let allp = Promise.all(promises);
+  window.allp = allp;
+  console.log('all p', allp);
+  return allp;
 }
 
+export function classRelations(params={}, queryName="classRelations") {
+  params = _.clone(params);
+  let apiCall = 'concepts';
+  params.resultsSchema = resultsSchema;
+  params.cdmSchema = cdmSchema;
+  params.queryName = queryName;
+
+  return (util.cachedPostJsonFetch(
+          `${apiRoot}/${apiCall}Post`, params)
+          .then(function(json) {
+            if (json.error)
+              console.error(json.error.message, json.error.queryName, json.error.url);
+
+            json.forEach(rec=>{
+              rec.is_hierarchical = !!parseInt(rec.is_hierarchical, 10);
+              rec.defines_ancestry = !!parseInt(rec.defines_ancestry, 10);
+              rec.c1_ids = parseInt(rec.c1_ids, 10);
+              rec.c2_ids = parseInt(rec.c2_ids, 10);
+              rec.c= parseInt(rec.c, 10);
+            })
+
+            return json;
+          }));
+}
 export function conceptCount(params={}, queryName="conceptCount") {
   params = _.clone(params);
   let apiCall = 'concepts';
@@ -68,7 +131,7 @@ export function conceptCount(params={}, queryName="conceptCount") {
             return parseInt(json[0].count, 10);
           }));
 }
-export function conceptStats(params={}, queryName="conceptStats") {
+function _conceptStats(params={}, queryName="conceptStats") {
   params = _.clone(params);
   let apiCall = 'concepts';
   params.resultsSchema = resultsSchema;
