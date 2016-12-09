@@ -4,6 +4,32 @@ cdmSchema: cdm2
 resultsSchema: results2
 apiRoot: http://localhost:3000/api/cdms
 
+use cases:
+  - define a cohort or phenotype
+  - explore the whole vocabulary
+  - explore a specific domain
+  - explore my popupaltion:
+    - overall
+    - in terms of some domain
+    - defining a subpopulation (same as 1)
+    - intersecion of subpopulations
+  - >-
+    translate existing phenotype definition (e.g., set of 
+    ICD-9 codes for some condition) from a source vocabulary
+    into a target vocabulary
+  
+attributes of use:
+  - exclude concept_id=0, No matching concept
+  - incllude only primary target columns (e.g., drug_concept_id)
+  - incllude only primary source columns (e.g., drug_source_concept_id)
+
+paths:
+  drug_exposure:
+    target: 
+      class:
+        blah
+        foo
+
 conceptAttributes:
   - table_name
   - column_name
@@ -34,14 +60,19 @@ tables:
     target: condition_concept_id
     type: condition_type_concept_id
   death:
+    hidden: true
     rank: 30
   measurement:
+    hidden: true
     rank: 30
   observation:
+    hidden: true
     rank: 30
   procedure_occurrence:
+    hidden: true
     rank: 30
   visit_occurrence:
+    hidden: true
     rank: 30
 
 mightInclude:

@@ -13,6 +13,8 @@ Copyright 2016 Sigfried Gold
    See the License for the specific language governing permissions and
    limitations under the License.
 */
+// @flow
+// npm run-script flow
 const DEBUG = true;
 var d3 = require('d3');
 import * as util from '../utils';
@@ -27,6 +29,12 @@ import { Panel, Label, Accordion, } from 'react-bootstrap';
 //          FormGroup, Radio } from 'react-bootstrap';
 
 import {commify} from '../utils';
+
+import {Grid} from 'ag-grid/main';
+import {AgGridReact} from 'ag-grid-react';
+import 'ag-grid/dist/styles/ag-grid.css';
+import 'ag-grid/dist/styles/theme-fresh.css';
+
 //import DataTable from './FixedDataTableSortFilt';
 //import yamlLoader from 'yaml-configuration-loader';
 import settings, { moreTables } from '../Settings';
@@ -35,6 +43,144 @@ import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 require('./VocabPop.css');
 
+export class Search extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { };
+  }
+  componentDidMount() {
+    conceptStats.subscribe( conceptStats => this.setState({conceptStats}) );
+  }
+  render() {
+    let {conceptStats} = this.state;
+    if (!conceptStats)
+      return <Waiting>Waiting for concept stats...</Waiting>;
+
+    const tableProps = {
+      rowHeight: 25,
+      headerHeight: 55,
+      width: 1200,
+      height: 700,
+    };
+    const coldefs = [
+      {
+        headerName: 'CDM Table',
+        name: 'table_name',
+        valueGetter: ({data:d}={}) => (d.table_name || <span style={{fontWeight:'lighter',fontSize:'90%',fontStyle:'italic'}}>does not appear in CDM data</span>),
+        colProps: {fixed:true, width:70,flexGrow:2},
+        searchable: true, 
+        sortable: true,
+        //defaultSortDir: 'DESC',
+      },
+      {
+        headerName: 'CDM Column',
+        name: 'column_name',
+        valueGetter: ({data:d}={}) => d.column_name,
+        colProps: {fixed:true, width:90,align:'left',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+      {
+        headerName: 'Domain',
+        name: 'domain_id',
+        valueGetter: ({data:d}={}) => d.domain_id,
+        colProps: {fixed:true, width:50,align:'left',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+      {
+        headerName: 'Vocabulary',
+        name: 'vocabulary_id',
+        valueGetter: ({data:d}={}) => d.vocabulary_id,
+        colProps: {fixed:true, width:50,align:'left',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+      {
+        headerName: 'Concept Class',
+        name: 'concept_class_id',
+        valueGetter: ({data:d}={}) => d.concept_class_id,
+        colProps: {fixed:true, width:50,align:'left',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+      {
+        headerName: 'Standard Concept',
+        name: 'sc',
+        valueGetter: ({data:d}={}) => d.sc,
+        colProps: {fixed:true, width:20,align:'left',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+      {
+        headerName: 'Concept Invalid',
+        name: 'invalid',
+        valueGetter: ({data:d}={}) => d.invalid,
+        colProps: {fixed:true, width:20,align:'left',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+      {
+        headerName: 'Distinct Concepts',
+        name: 'conceptrecs',
+        valueGetter: ({data:d}={}) => isNaN(d.conceptrecs) ? Infinity : d.conceptrecs,
+        fmtAccessor: ({data:d}={}) => isNaN(d.conceptrecs) ? '' : commify(d.conceptrecs),
+        colProps: {fixed:true, width:30,align:'right',flexGrow:1},
+        sortable: true,
+      },
+      {
+        headerName: 'CDM Occurrences',
+        name: 'dbrecs',
+        valueGetter: ({data:d}={}) => isNaN(d.dbrecs) ? Infinity : d.dbrecs,
+        fmtAccessor: ({data:d}={}) => isNaN(d.dbrecs) ? '' : commify(d.dbrecs),
+        colProps: {fixed:true, width:30,align:'right',flexGrow:1},
+        searchable: true, 
+        sortable: true,
+      },
+    ];
+    return (
+            <Panel>
+              <h3>Concept Search</h3>
+              <div style={{height:500, width:'100%'}} className="ag-fresh">
+                <AgGridReact
+                  columnDefs={coldefs}
+                  rowData={conceptStats}
+                  rowHeight="22"
+                />
+              </div>
+            </Panel>);
+  }
+}
+                       /*
+              <DataTable  
+                      //_key={rollup.toString()}
+                      data={conceptStats}
+                      coldefs={coldefs}
+                      tableProps={tableProps}
+                      searchWidth={500}
+                      tableHeadFunc={
+                        (datalist) => {
+                          return <span>{datalist.getSize()} rows</span>;
+                      }}
+                      _rowClassNameGetter={
+                        rec => {
+                          switch (rec.sc) {
+                            case 'S':
+                              return 'standard-concept';
+                            case 'C':
+                              return 'classification-concept';
+                            default:
+                              return '';
+                          }
+                      }}
+                      _onRowClick={
+                        (evt, idx, obj, datalist)=>{
+                          let concept = datalist.getObjectAt(idx);
+                          let concept_id = concept.records[0].rollupConceptId;
+                          this.setState({concept, concept_id});
+                        }}
+                />
+                        */ 
 export class Vocabularies extends Component {
   constructor(props) {
     super(props);
@@ -135,7 +281,7 @@ export class Tables extends Component {
     let fsScale = d3.scaleLinear().domain([0,6]).range([120,60]);
     let treeWalkerConfig = {
       nodeVal: rootVal,
-      kids: root=>root.children,
+      kids: root=>root.children.filter(c=>!(c.tableConfig||{}).hidden),
       kidTitle: (table) => {
         let fontSize = fsScale(table.tableConfig.headerLevel) + '%';
         return <div style={{fontSize}}><span style={{fontSize:'-15%'}}>{table.toString()} columns with concept_ids</span>{table.children.join(', ')}</div>
@@ -147,7 +293,7 @@ export class Tables extends Component {
                             - {commify(table.aggregate(_.sum, 'dbrecs'))} database records
                         </p>,
       childConfig: {
-        kids: table=>table.children,
+        kids: table=>table.children.filter(c=>!(c.tableConfig||{}).hidden),
         kidTitle: column => <div><h3>{column.toString()} concept domains</h3>{column.children.join(', ')}</div>,
         kidContent: column=><p>
                             <strong>{column.toString()}</strong> {' '}
@@ -155,7 +301,7 @@ export class Tables extends Component {
                               - {commify(column.aggregate(_.sum, 'dbrecs'))} database records
                           </p>,
         childConfig: {
-          kids: column=>column.children,
+          kids: column=>column.children.filter(c=>!(c.tableConfig||{}).hidden),
           kidTitle: domain => <div><h3>{domain.toString()} vocabularies</h3>{domain.children.join(', ')}</div>,
           kidContent: domain=><p>
                               <strong>{domain.toString()}</strong> {' '}
@@ -163,7 +309,7 @@ export class Tables extends Component {
                                 - {commify(domain.aggregate(_.sum, 'dbrecs'))} database records
                             </p>,
           childConfig: {
-            kids: domain=>domain.children,
+            kids: domain=>domain.children.filter(c=>!(c.tableConfig||{}).hidden),
             kidTitle: vocab => <div><h3>{vocab.toString()}</h3>{vocab.children.join(', ')}</div>,
             kidContent: vocab=><p>
                                 <strong>{vocab.toString()}</strong> {' '}

@@ -14,7 +14,7 @@ create table :results.concept_id_occurrence (
 );
 
 CREATE OR REPLACE 
-  FUNCTION store_concept_id_counts(_tbl regclass, _col text, target_table regclass) 
+  FUNCTION store_concept_id_counts(_qtbl regclass, _tbl, _col text, target_table regclass) 
   RETURNS TABLE(
                   table_name text,
                   column_name text,
@@ -34,7 +34,7 @@ CREATE OR REPLACE
       'from %s t ' ||
       --'where %s > 0 ' ||
       'group by 1,2,3'
-      , target_table, _tbl, _col, _col, _tbl, _col);
+      , target_table, _tbl, _col, _col, _qtbl);
   END;
   $func$ LANGUAGE plpgsql;
   
@@ -42,7 +42,10 @@ select store_concept_id_counts(
           tbl, col,
           current_setting('my.vars.results')||'.concept_id_occurrence'
 ) from (
-  select (table_schema||'.'||table_name)::regclass as tbl, column_name::text as col
+  /* select (table_schema||'.'||table_name)::regclass as tbl, column_name::text as col */
+  select (table_schema||'.'||table_name)::regclass as tbl, 
+            table_name,
+            column_name::text as col
   from information_schema.columns 
   where table_schema = current_setting('my.vars.cdm') 
     and table_name not like '%concept%' 
@@ -120,7 +123,8 @@ group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
 /* should be view or materialzed view */
 drop table if exists :results.concept_info_stats;
 create table :results.concept_info_stats as
-  select  replace( cio.table_name, current_setting('my.vars.cdm')||'.', '') as table_name,
+  /* select  replace( cio.table_name, current_setting('my.vars.cdm')||'.', '') as table_name, */
+  select  cio.table_name,
           cio.column_name,
           c.domain_id,
           c.vocabulary_id,

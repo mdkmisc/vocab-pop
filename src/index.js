@@ -2,7 +2,7 @@ import React from 'react'
 import { render } from 'react-dom'
 import { Router, Route, browserHistory, IndexRoute } from 'react-router'
 import {App, SettingsDump} from './App';
-import {ConceptsContainer, Tables, Home, Vocabularies} from './components/VocabPop'
+import {ConceptsContainer, Tables, Home, Vocabularies, Search} from './components/VocabPop'
 import './index.css';
 
 
@@ -17,6 +17,7 @@ render((
   <Router history={browserHistory}>
     <Route path="/" component={App}>
       <IndexRoute component={Home}/>
+      <Route path="/search" component={Search} />
       <Route path="/concepts" component={ConceptsContainer} />
       <Route path="/tables" component={Tables} >
         <Route path=":table" component={Tables}/>

@@ -1,9 +1,12 @@
+const DEBUG = true;
 import yaml from 'js-yaml';
 import _ from 'supergroup'; // lodash would be fine here
 
 import settingsYaml from './settings.yml';
 let settings = yaml.safeLoad(settingsYaml);
 tableSetup();
+if (DEBUG)
+  window.settings = settings;
 
 //import Rx from 'rxjs/Rx';
 //var currentSettings = Rx.Observable(settings);
@@ -23,6 +26,8 @@ function tableSetup() {
             table.tableName = table.tableName || tableName;
             table.rank = table.rank || 300;
             table.headerLevel = (table.rank).toString().length - 1;
+            if (table.headerLevel > 1) 
+              table.hidden = true;
             return table;
           });
   settings.tableList = _.sortBy(settings.tableList, ['rank','tableName']);

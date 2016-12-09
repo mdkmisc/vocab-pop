@@ -16,11 +16,18 @@ Copyright 2016 Sigfried Gold
 import React, { Component } from 'react';
 import _ from 'lodash';
 var d3 = require('d3');
+
+import {Grid} from 'ag-grid/main';
+import {AgGridReact} from 'ag-grid-react';
+import 'ag-grid/dist/styles/ag-grid.css';
+import 'ag-grid/dist/styles/theme-fresh.css';
+
 var FixedDataTable = require('fixed-data-table');
+require('fixed-data-table/dist/fixed-data-table.css');
 const {Table, Column, Cell} = FixedDataTable;
 
 const AccCell = ({rowIndex, data, col, cellProps, ...props}) => (
-  <Cell {...cellProps}>
+  <Cell {...cellProps} style={{width:'100%'}}>
     {
       ((props.fmtAccessor && props.fmtAccessor.bind(props))
         ||props.accessor
@@ -74,7 +81,7 @@ export default class FixedDataTableSortFilt extends Component {
       (row, searchText) =>
         // searchText already lowercase
         _.some(searchColIdxs.map(
-          idx => coldefs[idx].accessor(row).toLowerCase()
+          idx => (coldefs[idx].accessor(row)||'').toString().toLowerCase()
                     .indexOf(searchText) !== -1
         ));
 
@@ -95,9 +102,9 @@ export default class FixedDataTableSortFilt extends Component {
     return `col_${i}`;
   }
   render() {
-    const {data, coldefs, tableProps, 
-      tableHeadFunc, _onRowClick,
-      _key} = this.props;
+    let {data, coldefs, tableProps, 
+      tableHeadFunc, _onRowClick, _rowClassNameGetter,
+      _key, searchWidth} = this.props;
     let {searchCaption} = this.props;
     var {filteredDataList, searchColIdxs } = this.state;
     var {sortedDataList, colSortDirs} = this.state;
@@ -146,21 +153,42 @@ export default class FixedDataTableSortFilt extends Component {
             return d.name || d.title || this.colKey(d,idx);
           }).join(', ')}`;
     
+
     return (
-      <div key={_key}>
-        <input
+      <div key={_key} className="ag-fresh">
+        <input style={{width:searchWidth||100}}
           onChange={this._onFilterChange}
           placeholder={searchCaption}
         />{' '}
         {tableHeadFunc ? tableHeadFunc(sortFiltDataList) : ''}
+
+        <hr/>
+
+        <AgGridReact
+            columnDefs={columns}
+            rowData={data}
+        />
+
+
+        <hr/>
+
+      </div>
+    );
+    /*
         <Table
           rowsCount={sortFiltDataList.getSize()}
-          onRowClick={((evt,idx,obj)=>_onRowClick(evt,idx,obj,sortFiltDataList))||(()=>{})}
+          onRowClick={_onRowClick
+                        ? ((evt,idx,obj)=>_onRowClick(evt,idx,obj,sortFiltDataList))||(()=>{})
+                        : (()=>{}) }
+          rowClassNameGetter={
+            idx => {
+              return (_rowClassNameGetter||(()=>''))(sortFiltDataList.getObjectAt(idx));
+            }
+          }
           {...tableProps}>
           {columns}
         </Table>
-      </div>
-    );
+    */
   }
 
   _onSortChange(coldef, columnKey, sortDir) {

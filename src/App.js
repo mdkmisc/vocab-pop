@@ -63,6 +63,9 @@ class DefaultNavBar extends Component {
             </Navbar.Brand>
           </Navbar.Header>
           <Nav >
+            <LinkContainer to="/search">
+              <NavItem eventKey={1}>Search</NavItem>
+            </LinkContainer>
             <LinkContainer to="/concepts">
               <NavItem eventKey={2}>Concepts</NavItem>
             </LinkContainer>

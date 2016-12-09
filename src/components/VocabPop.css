@@ -33,3 +33,10 @@
  0% { opacity: 1; }
  100% { opacity: 0.15; }
 }
+
+.standard-concept {
+  background-color: lightgreen;
+}
+.classification-concept {
+  background-color: lightblue;
+}

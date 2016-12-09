@@ -68,10 +68,8 @@ export var conceptStats = Rx.Observable.fromPromise(_conceptStats());
 
 export function dataToStateWhenReady(component, items) {
   // this doesn't work very well. switching to event broadcast
+  // get rid of
 
-
-
-  // items is an array of appData keys, or, if empty, gets all
   if (!items) {
     items = _.keys(appData);
   }
@@ -90,6 +88,30 @@ export function dataToStateWhenReady(component, items) {
   return allp;
 }
 
+/*
+function concepts(params={}, queryName="conceptStats") {
+  params = _.clone(params);
+  let apiCall = 'concepts';
+  params.resultsSchema = resultsSchema;
+  params.cdmSchema = cdmSchema;
+  params.queryName = queryName;
+  return (util.cachedPostJsonFetch(
+          `${apiRoot}/${apiCall}Post`, params)
+          .then(function(json) {
+            if (json.error)
+              console.error(json.error.message, json.error.queryName, json.error.url);
+
+            json.forEach(rec=>{
+              rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+              rec.dbrecs = parseInt(rec.dbrecs, 10);
+              //rec.count = parseInt(rec.count, 10);
+              //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+            })
+
+            return json;
+          }));
+}
+*/
 export function classRelations(params={}, queryName="classRelations") {
   params = _.clone(params);
   let apiCall = 'concepts';
@@ -153,7 +175,6 @@ function _conceptStats(params={}, queryName="conceptStats") {
             return json;
           }));
 }
-
 
 export function recsfetch(params, queryName) {
   params = _.clone(params);
