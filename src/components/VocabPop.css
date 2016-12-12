@@ -40,3 +40,14 @@
 .classification-concept {
   background-color: lightblue;
 }
+.ag-row {
+  border-bottom: 1px solid lightgray;
+}
+.ag-row-odd {
+}
+span.aside {
+  font-weight: lighter;
+  font-size: 90%;
+  font-style: italic;
+  padding-left: 10px;
+}

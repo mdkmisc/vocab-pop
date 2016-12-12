@@ -56,86 +56,69 @@ export class Search extends Component {
     if (!conceptStats)
       return <Waiting>Waiting for concept stats...</Waiting>;
 
-    const tableProps = {
-      rowHeight: 25,
-      headerHeight: 55,
-      width: 1200,
-      height: 700,
-    };
     const coldefs = [
       {
         headerName: 'CDM Table',
         name: 'table_name',
-        valueGetter: ({data:d}={}) => (d.table_name || <span style={{fontWeight:'lighter',fontSize:'90%',fontStyle:'italic'}}>does not appear in CDM data</span>),
-        colProps: {fixed:true, width:70,flexGrow:2},
-        searchable: true, 
-        sortable: true,
-        //defaultSortDir: 'DESC',
+        //field: 'table_name',
+        cellRenderer: ({data:d}={}) => (
+          d.table_name
+            ? `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:${d.table_name}">${d.table_name}</a>`
+            : `<span class="aside">does not appear in CDM data</span>`),
       },
       {
         headerName: 'CDM Column',
         name: 'column_name',
         valueGetter: ({data:d}={}) => d.column_name,
-        colProps: {fixed:true, width:90,align:'left',flexGrow:1},
-        searchable: true, 
-        sortable: true,
       },
       {
         headerName: 'Domain',
         name: 'domain_id',
+        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:domain">Domain</a>`,
         valueGetter: ({data:d}={}) => d.domain_id,
-        colProps: {fixed:true, width:50,align:'left',flexGrow:1},
-        searchable: true, 
-        sortable: true,
       },
       {
         headerName: 'Vocabulary',
         name: 'vocabulary_id',
+        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:vocabulary">Vocabulary</a>`,
         valueGetter: ({data:d}={}) => d.vocabulary_id,
-        colProps: {fixed:true, width:50,align:'left',flexGrow:1},
-        searchable: true, 
-        sortable: true,
       },
       {
         headerName: 'Concept Class',
+        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept_class">Concept Class</a>`,
         name: 'concept_class_id',
         valueGetter: ({data:d}={}) => d.concept_class_id,
-        colProps: {fixed:true, width:50,align:'left',flexGrow:1},
-        searchable: true, 
-        sortable: true,
       },
       {
         headerName: 'Standard Concept',
         name: 'sc',
+        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept">Standard Concept</a>`,
         valueGetter: ({data:d}={}) => d.sc,
-        colProps: {fixed:true, width:20,align:'left',flexGrow:1},
-        searchable: true, 
-        sortable: true,
       },
       {
         headerName: 'Concept Invalid',
         name: 'invalid',
         valueGetter: ({data:d}={}) => d.invalid,
-        colProps: {fixed:true, width:20,align:'left',flexGrow:1},
-        searchable: true, 
-        sortable: true,
+        sortingOrder: ['desc','asc']
       },
       {
         headerName: 'Distinct Concepts',
         name: 'conceptrecs',
-        valueGetter: ({data:d}={}) => isNaN(d.conceptrecs) ? Infinity : d.conceptrecs,
-        fmtAccessor: ({data:d}={}) => isNaN(d.conceptrecs) ? '' : commify(d.conceptrecs),
-        colProps: {fixed:true, width:30,align:'right',flexGrow:1},
-        sortable: true,
+        field: 'conceptrecs',
+        cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
+        sortingOrder: ['desc','asc']
       },
       {
         headerName: 'CDM Occurrences',
         name: 'dbrecs',
-        valueGetter: ({data:d}={}) => isNaN(d.dbrecs) ? Infinity : d.dbrecs,
-        fmtAccessor: ({data:d}={}) => isNaN(d.dbrecs) ? '' : commify(d.dbrecs),
-        colProps: {fixed:true, width:30,align:'right',flexGrow:1},
-        searchable: true, 
-        sortable: true,
+        field: 'dbrecs',
+        comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
+          let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
+          return isNaN(ret) ? 0 : ret;
+        },
+        cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
+        sort: 'desc',
+        sortingOrder: ['desc','asc']
       },
     ];
     return (
@@ -146,12 +129,42 @@ export class Search extends Component {
                   columnDefs={coldefs}
                   rowData={conceptStats}
                   rowHeight="22"
+                  enableFilter={true}
+                  enableSorting={true}
+                  sortingOrder={['asc','desc']}
+                  animateRows={true}
+                  getRowStyle={
+                    (params) => params.data.sc === 'S' ? {backgroundColor:'rgba(143, 188, 143, 0.46)'}
+                              : params.data.sc === 'C' ? {backgroundColor:'rgba(177, 224, 231, 0.51)'}
+                              : {backgroundColor:'rgba(255, 160, 122, 0.41)'}
+                  }
+                  onColumnMoved={
+                    p => {
+                      console.log(`moved ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
+                      console.log(p);
+                    }
+                  }
+                  onColumnVisible={
+                    p => {
+                      console.log(`Visible ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
+                      console.log(p);
+                    }
+                  }
+                  headerCellRenderer={
+                    p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
+                  }
                 />
               </div>
             </Panel>);
   }
 }
                        /*
+    const tableProps = {
+      rowHeight: 25,
+      headerHeight: 55,
+      width: 1200,
+      height: 700,
+    };
               <DataTable  
                       //_key={rollup.toString()}
                       data={conceptStats}
