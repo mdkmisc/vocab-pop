@@ -26,10 +26,11 @@ export function cachedJsonFetch(url, opts={}) {
 		if (!storageExists(key, cache)) {
 			jsonFetch(url, opts)
 			.then(function(json) {
-					storagePut(key, json, cache);
-					//console.log('caching', key);
-					resolve(json);
-				});
+        if (json.error) console.error(json);
+        storagePut(key, json, cache);
+        //console.log('caching', key);
+        resolve(json);
+      });
 		} else {
 			var results = storageGet(key, cache);
 			//console.log('already cached', key, results);

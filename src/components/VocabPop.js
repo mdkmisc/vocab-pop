@@ -59,7 +59,8 @@ export class Search extends Component {
     const coldefs = [
       {
         headerName: 'CDM Table',
-        name: 'table_name',
+        colId: 'table_name',
+        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:standardized_clinical_data_tables">CDM Table</a>`,
         //field: 'table_name',
         cellRenderer: ({data:d}={}) => (
           d.table_name
@@ -68,49 +69,49 @@ export class Search extends Component {
       },
       {
         headerName: 'CDM Column',
-        name: 'column_name',
+        colId: 'column_name',
         valueGetter: ({data:d}={}) => d.column_name,
       },
       {
         headerName: 'Domain',
-        name: 'domain_id',
+        colId: 'domain_id',
         headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:domain">Domain</a>`,
         valueGetter: ({data:d}={}) => d.domain_id,
       },
       {
         headerName: 'Vocabulary',
-        name: 'vocabulary_id',
+        colId: 'vocabulary_id',
         headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:vocabulary">Vocabulary</a>`,
         valueGetter: ({data:d}={}) => d.vocabulary_id,
       },
       {
         headerName: 'Concept Class',
         headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept_class">Concept Class</a>`,
-        name: 'concept_class_id',
+        colId: 'concept_class_id',
         valueGetter: ({data:d}={}) => d.concept_class_id,
       },
       {
         headerName: 'Standard Concept',
-        name: 'sc',
+        colId: 'sc',
         headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept">Standard Concept</a>`,
         valueGetter: ({data:d}={}) => d.sc,
       },
       {
         headerName: 'Concept Invalid',
-        name: 'invalid',
+        colId: 'invalid',
         valueGetter: ({data:d}={}) => d.invalid,
         sortingOrder: ['desc','asc']
       },
       {
         headerName: 'Distinct Concepts',
-        name: 'conceptrecs',
+        colId: 'conceptrecs',
         field: 'conceptrecs',
         cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
         sortingOrder: ['desc','asc']
       },
       {
         headerName: 'CDM Occurrences',
-        name: 'dbrecs',
+        colId: 'dbrecs',
         field: 'dbrecs',
         comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
           let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
@@ -126,6 +127,7 @@ export class Search extends Component {
               <h3>Concept Search</h3>
               <div style={{height:500, width:'100%'}} className="ag-fresh">
                 <AgGridReact
+                  onGridReady={this.onGridReady.bind(this)}
                   columnDefs={coldefs}
                   rowData={conceptStats}
                   rowHeight="22"
@@ -141,13 +143,13 @@ export class Search extends Component {
                   onColumnMoved={
                     p => {
                       console.log(`moved ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
-                      console.log(p);
+                      console.log(this.grid.columnApi.getColumnState());
                     }
                   }
                   onColumnVisible={
                     p => {
                       console.log(`Visible ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
-                      console.log(p);
+                      console.log(this.grid.columnApi.getColumnState());
                     }
                   }
                   headerCellRenderer={
@@ -156,6 +158,10 @@ export class Search extends Component {
                 />
               </div>
             </Panel>);
+  }
+  onGridReady(grid) {
+    this.grid = grid;
+    console.log(grid);
   }
 }
                        /*
