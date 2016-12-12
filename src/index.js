@@ -1,8 +1,9 @@
 import React from 'react'
 import { render } from 'react-dom'
 import { Router, Route, browserHistory, IndexRoute } from 'react-router'
-import {App, SettingsDump} from './App';
-import {ConceptsContainer, Tables, Home, Vocabularies, Search} from './components/VocabPop'
+import {App} from './App';
+import {AppStateDump} from './AppState';
+import {ConceptsContainer, Tables, Home, Search} from './components/VocabPop'
 import './index.css';
 
 
@@ -22,10 +23,12 @@ render((
       <Route path="/tables" component={Tables} >
         <Route path=":table" component={Tables}/>
       </Route>
+      {/*
       <Route path="/vocabs" component={Vocabularies} >
         <Route path=":vocab" component={Vocabularies}/>
       </Route>
-      <Route path="/settings" component={SettingsDump} />
+      */}
+      <Route path="/appstate" component={AppStateDump} />
     </Route>
   </Router>
 ), document.getElementById('root'))

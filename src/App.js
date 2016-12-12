@@ -16,41 +16,20 @@ Copyright 2016 Sigfried Gold
 
 import React, { Component } from 'react';
 
-import { Route, RouteHandler, Link } from 'react-router';
-import { Button, Nav, Navbar, NavDropdown, MenuItem, NavItem,
-            Row, Col, Panel,
-        } from 'react-bootstrap';
+import { /*Route, RouteHandler, */ Link } from 'react-router';
+import { Nav, Navbar, 
+         NavItem,
+         Row, Col, 
+         // NavDropdown, MenuItem, Panel, Button, 
+          } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
 
 //import logo from './logo.svg';
 //import './App.css';
 import _ from 'supergroup';
-import settings from './Settings';
+import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
-import {appData, dataToStateWhenReady} from './AppData';
 
-
-export class App extends Component {
-  render() {
-    let NavBar;
-    if (this.props.router.isActive('/tables'))
-      NavBar = DomainNavBar 
-    else if (this.props.router.isActive('/vocabs'))
-      NavBar = VocabNavBar 
-    else
-      NavBar = DefaultNavBar;
-    return (
-      <div>
-        <NavBar />
-        <Row>
-          <Col md={10} mdOffset={1}>
-            {this.props.children}
-          </Col>
-        </Row>
-      </div>
-    );
-  }
-}
 class DefaultNavBar extends Component {
   render() {
     return (
@@ -72,14 +51,79 @@ class DefaultNavBar extends Component {
             <LinkContainer to="/tables">
               <NavItem eventKey={3}>Tables</NavItem>
             </LinkContainer>
+            {/*
             <LinkContainer to="/vocabs">
               <NavItem eventKey={4}>Vocabularies</NavItem>
             </LinkContainer>
-            <LinkContainer to="/settings">
-              <NavItem eventKey={5}>Settings</NavItem>
+            */}
+            <LinkContainer to="/appstate">
+              <NavItem eventKey={5}>App State</NavItem>
             </LinkContainer>
           </Nav>
         </Navbar>
+    );
+  }
+}
+class DomainNavBar extends Component {
+  constructor(props) {
+    super(props);
+    let tables = AppState.getTableConfig();
+    //let {query} = props.location;
+    let domainLinks = _.chain(tables)
+          .toPairs()
+          .filter(d=>d[1] && d[1].enabled)
+          .map(d => {
+            // eslint-disable-next-line
+            let [tname, dconf] = d;
+            return  <LinkContainer key={tname} to={`/tables/${tname}`}>
+                      <NavItem eventKey={2}>{tname}</NavItem>
+                    </LinkContainer>
+          })
+          .value();
+    this.state = {
+      domainLinks,
+    };
+  }
+  render() {
+    const {domainLinks} = this.state;
+    return (
+        <Navbar fluid={true} fixedTop={false}>
+          <Navbar.Header>
+            <Navbar.Brand>
+              <NavLink to="/" onlyActiveOnIndex>
+                Vocab Population Browser / Tables
+              </NavLink>
+            </Navbar.Brand>
+          </Navbar.Header>
+          <Nav >
+            {domainLinks}
+          </Nav>
+        </Navbar>
+    );
+  }
+}
+class NavLink extends Component {
+  render() {
+    return <Link {...this.props} activeClassName="active"/>
+  }
+}
+export class App extends Component {
+  render() {
+    let NavBar;
+    if (this.props.router.isActive('/tables'))
+      NavBar = DomainNavBar 
+    //else if (this.props.router.isActive('/vocabs')) NavBar = VocabNavBar 
+    else
+      NavBar = DefaultNavBar;
+    return (
+      <div>
+        <NavBar />
+        <Row>
+          <Col md={10} mdOffset={1}>
+            {this.props.children}
+          </Col>
+        </Row>
+      </div>
     );
   }
 }
@@ -94,6 +138,12 @@ class DefaultNavBar extends Component {
                         <MenuItem eventKey={3.1}>{tname}</MenuItem>    
                     </LinkContainer>      
   */
+/*
+            <NavDropdown eventKey={3} title="Tables" id="basic-nav-dropdown">
+              {domainLinks}
+            </NavDropdown>  
+*/
+/*
 class VocabNavBar extends Component {
   componentDidMount() {
     dataToStateWhenReady(this, ['breakdowns']); // need breakdowns.vocabulary_id
@@ -142,55 +192,4 @@ class VocabNavBar extends Component {
     );
   }
 }
-class DomainNavBar extends Component {
-  constructor(props) {
-    super(props);
-    let {tables} = settings;
-    //let {query} = props.location;
-    let domainLinks = _.chain(tables)
-          .toPairs()
-          .filter(d=>d[1] && d[1].enabled)
-          .map(d => {
-            let [tname, dconf] = d;
-            return  <LinkContainer key={tname} to={`/tables/${tname}`}>
-                      <NavItem eventKey={2}>{tname}</NavItem>
-                    </LinkContainer>
-          })
-          .value();
-    this.state = {
-      domainLinks,
-    };
-  }
-  render() {
-    const {domainLinks} = this.state;
-    return (
-        <Navbar fluid={true} fixedTop={false}>
-          <Navbar.Header>
-            <Navbar.Brand>
-              <NavLink to="/" onlyActiveOnIndex>
-                Vocab Population Browser / Tables
-              </NavLink>
-            </Navbar.Brand>
-          </Navbar.Header>
-          <Nav >
-            {domainLinks}
-          </Nav>
-        </Navbar>
-    );
-  }
-}
-/*
-            <NavDropdown eventKey={3} title="Tables" id="basic-nav-dropdown">
-              {domainLinks}
-            </NavDropdown>  
 */
-class NavLink extends Component {
-  render() {
-    return <Link {...this.props} activeClassName="active"/>
-  }
-}
-export class SettingsDump extends Component {
-  render() {
-    return <pre>{JSON.stringify(settings, null, 2)}</pre>;
-  }
-}

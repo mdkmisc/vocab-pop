@@ -23,22 +23,19 @@ if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 
 import React, { Component } from 'react';
-import { Panel, Label, Accordion, } from 'react-bootstrap';
-//import { Button, Panel, Modal, Checkbox, 
-//          OverlayTrigger, Tooltip,
-//          FormGroup, Radio } from 'react-bootstrap';
+import { Panel, Accordion, 
+          //Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio
+                    } from 'react-bootstrap';
 
 import {commify} from '../utils';
 
-import {Grid} from 'ag-grid/main';
+//import {Grid} from 'ag-grid/main';
 import {AgGridReact} from 'ag-grid-react';
 import 'ag-grid/dist/styles/ag-grid.css';
 import 'ag-grid/dist/styles/theme-fresh.css';
 
-//import DataTable from './FixedDataTableSortFilt';
-//import yamlLoader from 'yaml-configuration-loader';
-import settings, { moreTables } from '../Settings';
-import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
+import * as AppState from '../AppState';
+//import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 require('./VocabPop.css');
@@ -49,7 +46,7 @@ export class Search extends Component {
     this.state = { };
   }
   componentDidMount() {
-    conceptStats.subscribe( conceptStats => this.setState({conceptStats}) );
+    AppState.subscribe('conceptStats')( conceptStats => this.setState({conceptStats}) );
   }
   render() {
     let {conceptStats} = this.state;
@@ -200,27 +197,6 @@ export class Search extends Component {
                         }}
                 />
                         */ 
-export class Vocabularies extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      breakdowns: {},
-    };
-  }
-  componentDidMount() {
-    dataToStateWhenReady(this);
-  }
-  render() {
-    const vocabs = this.state.breakdowns.vocabulary_id;
-    
-    if (!vocabs)
-      return <h3>no vocabs</h3>;
-    console.log(this.state);
-    return <pre>
-            {vocabs+''}
-           </pre>;
-  }
-}
 export class TreeWalker extends Component {
   constructor(props) {
     super(props);
@@ -262,13 +238,13 @@ export class Tables extends Component {
     this.state = {};
   }
   componentDidMount() {
-    conceptStats.subscribe(
+    AppState.subscribe('conceptStats')(
       cs => {
-        let {tableList} = settings;
+        let {tableList} = AppState.appSettings;
         console.log(cs);
         let statsByTable = _.supergroup(cs, 
           ['table_name','column_name','domain_id','vocabulary_id']);
-        moreTables(statsByTable.map(String));
+        AppState.moreTables(statsByTable.map(String));
         console.log(tableList);
         statsByTable = tableList.map(
           tableConfig => {
@@ -285,7 +261,7 @@ export class Tables extends Component {
   render() {
     let {domain} = this.props.params;
     let {statsByTable, } = this.state;
-    let {tables} = settings;
+    let {tables} = AppState.appSettings;
     if (!tables)
       return <h3>nothing</h3>;
     if (domain) {
@@ -359,7 +335,10 @@ export class ConceptsContainer extends Component {
     this.fetchConceptStats(nextProps);
   }
   fetchConceptStats(props) {
-    dataToStateWhenReady(this);
+    AppState.subscribe('conceptStats')(conceptStats => this.setState({conceptStats}));
+    AppState.subscribe('conceptCount')(conceptCount => this.setState({conceptCount}));
+    //console.error("FIX");
+    //dataToStateWhenReady(this);
     /*
     let {conceptCount, conceptStats, breakdowns } = appData;
     conceptCount.then(
@@ -390,7 +369,7 @@ export class Home extends Component {
     return <div>
               <h3>Home!</h3>
               <pre>
-                {JSON.stringify(settings, null, 2)}
+                {JSON.stringify(AppState.appSettings, null, 2)}
               </pre>
            </div>
   }
@@ -435,3 +414,28 @@ export class Waiting extends Component {
             </Panel>;
   }
 }
+/*
+export class Vocabularies extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      breakdowns: {},
+    };
+  }
+  componentDidMount() {
+    console.error("FIX");
+    //dataToStateWhenReady(this);
+    AppState.subscribe('conceptStats')(conceptStats => this.setState({conceptStats}));
+  }
+  render() {
+    const vocabs = this.state.breakdowns.vocabulary_id;
+    
+    if (!vocabs)
+      return <h3>no vocabs</h3>;
+    console.log(this.state);
+    return <pre>
+            {vocabs+''}
+           </pre>;
+  }
+}
+*/
