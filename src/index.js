@@ -1,9 +1,10 @@
 import React from 'react'
 import { render } from 'react-dom'
-import { Router, Route, browserHistory, IndexRoute } from 'react-router'
+import { Router, Route, browserHistory, useRouterHistory, IndexRoute } from 'react-router'
+import { createHistory } from 'history';
 import {App} from './App';
-import {AppStateDump} from './AppState';
-import {ConceptsContainer, Tables, Home, Search} from './components/VocabPop'
+import * as AppState from './AppState';
+import {ConceptsContainer, Tables, Search} from './components/VocabPop'
 import './index.css';
 
 
@@ -14,10 +15,12 @@ app.get('*', function (req, res) {
 })
 */
 
+AppState.history = useRouterHistory(createHistory)();
+
 render((
-  <Router history={browserHistory}>
+  <Router history={AppState.history}>
     <Route path="/" component={App}>
-      <IndexRoute component={Home}/>
+      <IndexRoute component={AppState.AppState}/>
       <Route path="/search" component={Search} />
       <Route path="/concepts" component={ConceptsContainer} />
       <Route path="/tables" component={Tables} >
@@ -28,7 +31,7 @@ render((
         <Route path=":vocab" component={Vocabularies}/>
       </Route>
       */}
-      <Route path="/appstate" component={AppStateDump} />
+      <Route path="/appstate" component={AppState.AppState} />
     </Route>
   </Router>
 ), document.getElementById('root'))

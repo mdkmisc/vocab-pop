@@ -1,4 +1,6 @@
 import React, { Component } from 'react';
+import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
+
 import Rx from 'rxjs/Rx';
 import _ from 'supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
@@ -7,25 +9,66 @@ import yaml from 'js-yaml';
 import settingsYaml from './appSettings.yml';
 import _AppData from './AppData'; // can't import till appSettings loaded
 
-// default app settings:
-export var appSettings = yaml.safeLoad(settingsYaml);
+var _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
+const AppData = _AppData(_appSettings);
 
 
-let completeState = {appSettings};
-export function subscribe(req) {
-  if (! _.has(completeState, req))
-    console.error(`can't find ${req} in state`);
-  var obs = Rx.Observable.fromPromise(completeState[req]);
-  return obs.subscribe.bind(obs);
+// exported streams
+//          BehaviorSubject means subscribers get latest
+//          value and get called when value changes
+export var tableConfig = new Rx.BehaviorSubject({});
+export var statsByTable = new Rx.BehaviorSubject([]);
+export var conceptCount = new Rx.BehaviorSubject(0);
+export var conceptStats = new Rx.BehaviorSubject([]);
+export var classRelations = new Rx.BehaviorSubject([]);
+export var userSettings = new Rx.BehaviorSubject({});
+
+
+export var history;
+
+
+tableConfig.next(_appSettings.tables);
+
+AppData.classRelations().then(d=>classRelations.next(d));
+
+AppData.conceptCount().then(d=>conceptCount.next(d));
+AppData.conceptStats().then(d=>conceptStats.next(d));
+conceptStats.subscribe(
+  cs => {
+    var sbt = _.supergroup(cs, ['table_name','column_name','domain_id','vocabulary_id']);
+    statsByTable.next(sbt);
+  });
+
+export function saveState(key, val) {
+  var change = typeof val === 'undefined' ? key : {[key]: val};
+  var current = userSettings.getValue();
+  var newState = _.merge(current, change);
+  userSettings.next(newState);
 }
 
+/*
+  Rx.Observable.combineLatest(appSettings, statsByTable)
+              .scan((acc, [as, ts] = []) => {
+                debugger;
+                return _.merge({}, 
+                               _.fromPairs(ts.map(t=>[t.toString(),{}])),
+                               as.tables,
+                               acc);
+              }, {})
+              .subscribe(tc=>{
+                console.log(tc);
+              })
+*/
+
+
+/*
+conceptStats.subscribe(
+  conceptStats => {
+    tableNames.forEach(tableName =>(tables[tableName] = tables[tableName] || {}));
+  });
+*/
 // fetch on load
 (function() {
-  const AppData = _AppData(appSettings);
-  completeState.conceptCount = AppData.conceptCount();
-  completeState.classRelations = AppData.classRelations();
-  completeState.conceptStats = AppData.conceptStats();
-  tableSetup();
   /*
   let attrQueries = settings.conceptAttributes.map(
     (attr) => {
@@ -55,17 +98,43 @@ export function subscribe(req) {
   */
 })();
 
+export class AppState extends Component {
+  constructor(props) {
+    const {location, params, route, router, routeParams, children} = props;
+    super(props);
+    this.state = {};
 
-export function getTableConfig() {
-  return appSettings.tables;
-}
-
-export class AppStateDump extends Component {
+    tableSetup();
+  }
+  componentDidMount() {
+    console.log('mounting AppState');
+    this.statsByTable = statsByTable
+          .subscribe(statsByTable=>this.setState({statsByTable}));
+    this.tableConfig = tableConfig
+          .subscribe(tableConfig=>this.setState({tableConfig}));
+    this.classRelations = classRelations
+          .subscribe(classRelations=>this.setState({classRelations}));
+    this.userSettings = userSettings
+          .subscribe(userSettings=>this.setState({userSettings}));
+  }
+  componentWillUnmount() {
+    console.log('unmounting AppState');
+    this.statsByTable.unsubscribe();
+    this.tableConfig.unsubscribe();
+    this.classRelations.unsubscribe();
+    this.userSettings.unsubscribe();
+  }
   render() {
-    let data = completeState;
-    return <Inspector data={ data } />;
+    console.log('AppState', this.state);
+    const {location, params, route, router, routeParams, children} = this.props;
+    return <Inspector data={ this.state } />;
   }
 }
+
+export function getTableConfig() {
+  return _appSettings.tables;
+}
+
 
 //import Rx from 'rxjs/Rx';
 //var currentSettings = Rx.Observable(settings);
@@ -73,18 +142,19 @@ export class AppStateDump extends Component {
 // yaml settings have info about how to display tables and some
 // other random stuff not using most of. this function merges
 // that data with table data from database
+/*
 export function moreTables(tableNames) {
-  tableNames.forEach(
-    tableName => {
-      appSettings.tables[tableName] = appSettings.tables[tableName] || {};
-    });
+  var tables = _.clone(tables);
+  tableNames.forEach(tableName =>(tables[tableName] = tables[tableName] || {}));
   tableSetup();
+  appSettings.next(_.merge({}, 
 }
+*/
 
 // sets up table list for Tables component
 function tableSetup() {
-  appSettings.tableList = 
-    _.map(appSettings.tables, 
+  _appSettings.tableList = 
+    _.map(_appSettings.tables, 
           (table, tableName) => {
             table.tableName = table.tableName || tableName;
             table.rank = table.rank || 300;
@@ -93,7 +163,7 @@ function tableSetup() {
               table.hidden = true;
             return table;
           });
-  appSettings.tableList = _.sortBy(appSettings.tableList, ['rank','tableName']);
+  _appSettings.tableList = _.sortBy(_appSettings.tableList, ['rank','tableName']);
 }
 
 

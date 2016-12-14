@@ -107,8 +107,58 @@ class NavLink extends Component {
     return <Link {...this.props} activeClassName="active"/>
   }
 }
+function queryParse(query) {
+  let obj = {};
+  _.each(query, (v,k) => {
+                  obj[k] = JSON.parse(v);
+                });
+  return obj;
+}
 export class App extends Component {
+  constructor(props) {
+    super(props);
+    if (props.router.location.search.length) {
+      AppState.saveState(queryParse(props.router.location.query));
+    }
+  }
+  componentDidMount() {
+    var {history} = AppState;
+    
+    this.statsByTable = AppState.statsByTable
+          .subscribe(statsByTable=>this.setState({statsByTable}));
+    this.tableConfig = AppState.tableConfig
+          .subscribe(tableConfig=>this.setState({tableConfig}));
+    this.classRelations = AppState.classRelations
+          .subscribe(classRelations=>this.setState({classRelations}));
+    this.userSettings = AppState.userSettings.subscribe(
+      (userSettings => 
+       {
+          var loc = history.getCurrentLocation();
+          var curQuery = queryParse(loc.query);
+          if (_.isEqual(userSettings, curQuery))
+            return;
+
+          var query = {};
+          _.each(userSettings,
+            (v,k) => {
+              query[k] = JSON.stringify(v);
+            });
+          setTimeout(()=>{
+            history.push({pathname: loc.pathname, query});
+          }, 200);
+          //this.props.router.location.query = query;
+          //this.props.router.push(this.props.router.location);
+          //this.props.router.push({query});
+      }).bind(this));
+  }
+  componentWillUnmount() {
+    this.statsByTable.unsubscribe();
+    this.tableConfig.unsubscribe();
+    this.classRelations.unsubscribe();
+    this.userSettings.unsubscribe();
+  }
   render() {
+    console.log('App', this.state);
     let NavBar;
     if (this.props.router.isActive('/tables'))
       NavBar = DomainNavBar 

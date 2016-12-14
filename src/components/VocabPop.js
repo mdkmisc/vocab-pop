@@ -46,12 +46,34 @@ export class Search extends Component {
     this.state = { };
   }
   componentDidMount() {
-    AppState.subscribe('conceptStats')( conceptStats => this.setState({conceptStats}) );
+    console.log('mounting Search');
+    this.conceptStats = AppState.conceptStats
+          .subscribe(conceptStats => this.setState({conceptStats}));
+  }
+  onGridReady(grid) {
+    this.grid = grid;
+    /*
+    this.userSettings = AppState.userSettings.subscribe(
+      userSettings => {
+        this.grid.columnApi.setColumnState(userSettings.agGrid.columnState);
+        //this.setState({userSettings});
+      });
+    */
+  }
+  componentWillUnmount() {
+    console.log('unmounting Search');
+    this.conceptStats.unsubscribe();
+    this.userSettings.unsubscribe();
+  }
+  componentDidUpdate() {
+    var gridSettings = AppState.userSettings.getValue().agGrid.columnState;
+    console.log('applying col settings', gridSettings);
+    this.grid.columnApi.setColumnState(gridSettings);
   }
   render() {
-    let {conceptStats} = this.state;
-    if (!conceptStats)
-      return <Waiting>Waiting for concept stats...</Waiting>;
+    console.log('rendering Search');
+    let {conceptStats, userSettings} = this.state;
+    //if (!conceptStats) return <Waiting>Waiting for concept stats...</Waiting>;
 
     const coldefs = [
       {
@@ -139,14 +161,20 @@ export class Search extends Component {
                   }
                   onColumnMoved={
                     p => {
-                      console.log(`moved ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
-                      console.log(this.grid.columnApi.getColumnState());
+                      //console.log(`moved ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
+                      //console.log(this.grid.columnApi.getColumnState());
                     }
                   }
                   onColumnVisible={
                     p => {
-                      console.log(`Visible ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
-                      console.log(this.grid.columnApi.getColumnState());
+                      var gridState = {
+                        columnState: this.grid.columnApi.getColumnState(),
+                        sortModel: this.grid.api.getSortModel(),
+                        filterModel: this.grid.api.getFilterModel(),
+                      };
+                      AppState.saveState('agGrid', gridState);
+                      //console.log(`Visible ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
+                      //console.log(this.grid.columnApi.getColumnState());
                     }
                   }
                   headerCellRenderer={
@@ -155,10 +183,6 @@ export class Search extends Component {
                 />
               </div>
             </Panel>);
-  }
-  onGridReady(grid) {
-    this.grid = grid;
-    console.log(grid);
   }
 }
                        /*
@@ -238,35 +262,23 @@ export class Tables extends Component {
     this.state = {};
   }
   componentDidMount() {
-    AppState.subscribe('conceptStats')(
-      cs => {
-        let {tableList} = AppState.appSettings;
-        console.log(cs);
-        let statsByTable = _.supergroup(cs, 
-          ['table_name','column_name','domain_id','vocabulary_id']);
-        AppState.moreTables(statsByTable.map(String));
-        console.log(tableList);
-        statsByTable = tableList.map(
-          tableConfig => {
-            let stats = statsByTable.lookup(tableConfig.tableName);
-            if (!stats)
-              console.error(`conceptStats missing tableName ${tableConfig.tableName}`);
-            stats.tableConfig = tableConfig;
-            return stats;
-          });
-        _.addSupergroupMethods(statsByTable);
-        this.setState({statsByTable});
-    });
+    this.statsByTable = AppState.statsByTable
+          .subscribe(statsByTable=>this.setState({statsByTable}));
+    this.tableConfig = AppState.tableConfig
+          .subscribe(tableConfig=>this.setState({tableConfig}));
+  }
+  componentWillUnmount() {
+    this.statsByTable.unsubscribe();
+    this.tableConfig.unsubscribe();
   }
   render() {
-    let {domain} = this.props.params;
-    let {statsByTable, } = this.state;
-    let {tables} = AppState.appSettings;
-    if (!tables)
+    let {table} = this.props.params;
+    let {statsByTable, tableConfig } = this.state;
+    if (!statsByTable)
       return <h3>nothing</h3>;
-    if (domain) {
+    if (table) {
       return <pre>
-              {JSON.stringify(tables[domain],null,2)}
+              {JSON.stringify(tableConfig[table],null,2)}
             </pre>;
     }
     if (!statsByTable) 
@@ -276,9 +288,9 @@ export class Tables extends Component {
     let fsScale = d3.scaleLinear().domain([0,6]).range([120,60]);
     let treeWalkerConfig = {
       nodeVal: rootVal,
-      kids: root=>root.children.filter(c=>!(c.tableConfig||{}).hidden),
+      kids: root=>root.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
       kidTitle: (table) => {
-        let fontSize = fsScale(table.tableConfig.headerLevel) + '%';
+        let fontSize = fsScale((tableConfig[table]||{}).headerLevel) + '%';
         return <div style={{fontSize}}><span style={{fontSize:'-15%'}}>{table.toString()} columns with concept_ids</span>{table.children.join(', ')}</div>
         //return <div><H>{table.toString()} columns with concept_ids</H>{table.children.join(', ')}</div>,
       },
@@ -288,7 +300,7 @@ export class Tables extends Component {
                             - {commify(table.aggregate(_.sum, 'dbrecs'))} database records
                         </p>,
       childConfig: {
-        kids: table=>table.children.filter(c=>!(c.tableConfig||{}).hidden),
+        kids: table=>table.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
         kidTitle: column => <div><h3>{column.toString()} concept domains</h3>{column.children.join(', ')}</div>,
         kidContent: column=><p>
                             <strong>{column.toString()}</strong> {' '}
@@ -296,7 +308,7 @@ export class Tables extends Component {
                               - {commify(column.aggregate(_.sum, 'dbrecs'))} database records
                           </p>,
         childConfig: {
-          kids: column=>column.children.filter(c=>!(c.tableConfig||{}).hidden),
+          kids: column=>column.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
           kidTitle: domain => <div><h3>{domain.toString()} vocabularies</h3>{domain.children.join(', ')}</div>,
           kidContent: domain=><p>
                               <strong>{domain.toString()}</strong> {' '}
@@ -304,7 +316,7 @@ export class Tables extends Component {
                                 - {commify(domain.aggregate(_.sum, 'dbrecs'))} database records
                             </p>,
           childConfig: {
-            kids: domain=>domain.children.filter(c=>!(c.tableConfig||{}).hidden),
+            kids: domain=>domain.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
             kidTitle: vocab => <div><h3>{vocab.toString()}</h3>{vocab.children.join(', ')}</div>,
             kidContent: vocab=><p>
                                 <strong>{vocab.toString()}</strong> {' '}
@@ -335,8 +347,8 @@ export class ConceptsContainer extends Component {
     this.fetchConceptStats(nextProps);
   }
   fetchConceptStats(props) {
-    AppState.subscribe('conceptStats')(conceptStats => this.setState({conceptStats}));
-    AppState.subscribe('conceptCount')(conceptCount => this.setState({conceptCount}));
+    AppState.subscribe('appData.conceptStats')(conceptStats => this.setState({conceptStats}));
+    AppState.subscribe('appData.conceptCount')(conceptCount => this.setState({conceptCount}));
     //console.error("FIX");
     //dataToStateWhenReady(this);
     /*
@@ -364,16 +376,6 @@ export class ConceptsContainer extends Component {
   }
 }
  
-export class Home extends Component {
-  render() {
-    return <div>
-              <h3>Home!</h3>
-              <pre>
-                {JSON.stringify(AppState.appSettings, null, 2)}
-              </pre>
-           </div>
-  }
-}
 export class Concepts extends Component {
   render() {
     const {conceptCount, breakdowns, conceptStats} = this.props;
