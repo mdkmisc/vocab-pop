@@ -30,33 +30,36 @@ import _ from 'supergroup';
 import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
 
+function locPath(pathname) {
+  return Object.assign({}, location, {pathname});
+}
 class DefaultNavBar extends Component {
   render() {
     return (
         <Navbar fluid={true} fixedTop={false}>
           <Navbar.Header>
             <Navbar.Brand>
-              <NavLink to="/" onlyActiveOnIndex>
+              <NavLink to={locPath('/')} onlyActiveOnIndex>
                 Vocab Population Browser
               </NavLink>
             </Navbar.Brand>
           </Navbar.Header>
           <Nav >
-            <LinkContainer to="/search">
+            <LinkContainer to={locPath('/search')}>
               <NavItem eventKey={1}>Search</NavItem>
             </LinkContainer>
-            <LinkContainer to="/concepts">
+            <LinkContainer to={locPath('/concepts')}>
               <NavItem eventKey={2}>Concepts</NavItem>
             </LinkContainer>
-            <LinkContainer to="/tables">
+            <LinkContainer to={locPath('/tables')}>
               <NavItem eventKey={3}>Tables</NavItem>
             </LinkContainer>
             {/*
-            <LinkContainer to="/vocabs">
+            <LinkContainer to={locPath('/vocabs')}>
               <NavItem eventKey={4}>Vocabularies</NavItem>
             </LinkContainer>
             */}
-            <LinkContainer to="/appstate">
+            <LinkContainer to={locPath('/appstate')}>
               <NavItem eventKey={5}>App State</NavItem>
             </LinkContainer>
           </Nav>
@@ -90,7 +93,7 @@ class DomainNavBar extends Component {
         <Navbar fluid={true} fixedTop={false}>
           <Navbar.Header>
             <Navbar.Brand>
-              <NavLink to="/" onlyActiveOnIndex>
+              <NavLink to={locPath('/')} onlyActiveOnIndex>
                 Vocab Population Browser / Tables
               </NavLink>
             </Navbar.Brand>
@@ -143,9 +146,9 @@ export class App extends Component {
             (v,k) => {
               query[k] = JSON.stringify(v);
             });
-          setTimeout(()=>{
-            history.push({pathname: loc.pathname, query});
-          }, 200);
+          //setTimeout(()=>{
+          history.push({pathname: loc.pathname, query});
+          //}, 200);
           //this.props.router.location.query = query;
           //this.props.router.push(this.props.router.location);
           //this.props.router.push({query});
@@ -230,7 +233,7 @@ class VocabNavBar extends Component {
         <Navbar fluid={true} fixedTop={false}>
           <Navbar.Header>
             <Navbar.Brand>
-              <NavLink to="/" onlyActiveOnIndex>
+              <NavLink to={locPath('/')} onlyActiveOnIndex>
                 Vocab Population Browser / Vocabularies
               </NavLink>
             </Navbar.Brand>

@@ -63,12 +63,13 @@ export class Search extends Component {
   componentWillUnmount() {
     console.log('unmounting Search');
     this.conceptStats.unsubscribe();
-    this.userSettings.unsubscribe();
+    this.userSettings && this.userSettings.unsubscribe();
   }
   componentDidUpdate() {
-    var gridSettings = AppState.userSettings.getValue().agGrid.columnState;
-    console.log('applying col settings', gridSettings);
-    this.grid.columnApi.setColumnState(gridSettings);
+    var userSettings = AppState.userSettings.getValue();
+    var gridSettings = userSettings.agGrid && userSettings.agGrid.columnState;
+    //console.log('applying col settings', gridSettings);
+    gridSettings && this.grid.columnApi.setColumnState(gridSettings);
   }
   render() {
     console.log('rendering Search');
@@ -159,30 +160,26 @@ export class Search extends Component {
                               : params.data.sc === 'C' ? {backgroundColor:'rgba(177, 224, 231, 0.51)'}
                               : {backgroundColor:'rgba(255, 160, 122, 0.41)'}
                   }
-                  onColumnMoved={
-                    p => {
-                      //console.log(`moved ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
-                      //console.log(this.grid.columnApi.getColumnState());
-                    }
-                  }
-                  onColumnVisible={
-                    p => {
-                      var gridState = {
-                        columnState: this.grid.columnApi.getColumnState(),
-                        sortModel: this.grid.api.getSortModel(),
-                        filterModel: this.grid.api.getFilterModel(),
-                      };
-                      AppState.saveState('agGrid', gridState);
-                      //console.log(`Visible ${p.column.colDef.headerName} to ${p.toIndex}, ${p.columns.length} columns`);
-                      //console.log(this.grid.columnApi.getColumnState());
-                    }
-                  }
                   headerCellRenderer={
                     p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
                   }
+                  onColumnMoved={this.saveGridState.bind(this)}
+                  onColumnVisible={this.saveGridState.bind(this)}
+                  //onColumnEverythingChanged={this.saveGridState.bind(this)}
+                  onSortChanged={this.saveGridState.bind(this)}
+                  onFilterChanged={this.saveGridState.bind(this)}
                 />
               </div>
             </Panel>);
+  }
+  saveGridState() {
+    if (!this.grid) return;
+    var gridState = {
+      columnState: this.grid.columnApi.getColumnState(),
+      sortModel: this.grid.api.getSortModel(),
+      filterModel: this.grid.api.getFilterModel(),
+    };
+    AppState.saveState('agGrid', gridState);
   }
 }
                        /*
