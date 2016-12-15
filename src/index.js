@@ -5,7 +5,7 @@ import { createHistory } from 'history';
 import {App, Sidebar} from './App';
 import * as AppState from './AppState';
 import {
-          Drug, Search
+          Drug, Search, Home
           /*ConceptsContainer, Tables, */
         } from './components/VocabPop'
 import './index.css';
@@ -23,10 +23,10 @@ AppState.history = useRouterHistory(createHistory)();
 render((
   <Router history={AppState.history}>
     <Route path="/" component={App}>
-      <IndexRoute component={{main:AppState.AppState, sidebar:Sidebar}}/>
-      <Route path="/drug" component={{main:Drug, sidebar:Sidebar}} />
-      <Route path="/search" component={{main:Search, sidebar:Sidebar}} />
-      <Route path="/appstate" component={{main:AppState.AppState, sidebar:Sidebar}} />
+      <Route path="search" components={{main:Search, sidebar:Sidebar}} />
+      <Route path="drug" components={{main:Drug, sidebar:Sidebar}} />
+      <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
+      <IndexRoute components={{main:Home, sidebar:Sidebar}}/>
       {/*
       <Route path="/concepts" component={ConceptsContainer} />
       <Route path="/tables" component={Tables} >

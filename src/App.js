@@ -17,8 +17,8 @@ Copyright 2016 Sigfried Gold
 import React, { Component } from 'react';
 
 import { /*Route, RouteHandler, */ Link } from 'react-router';
-import { Nav, Navbar, 
-         NavItem,
+import { Nav, Navbar, Modal,
+         NavItem, Button,
          Row, Col, 
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
@@ -85,31 +85,86 @@ function queryParse(query) {
                 });
   return obj;
 }
+const ModalWrapper = ({children, title, closeFunc}) => {
+  return (
+      <Modal bsSize="lg"
+          dialogClassName="sidebar-modal"
+          show={true} 
+          onHide={closeFunc}
+          >
+        <Modal.Header closeButton>
+          <Modal.Title>{title}</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          {children}
+        </Modal.Body>
+        <Modal.Footer>
+          <Button onClick={closeFunc}>Close</Button>
+        </Modal.Footer>
+      </Modal>
+  );
+};
+const Settings = ({props}) => <h4>Settings</h4>;
+const Filters = ({props}) => <h4>Filters</h4>;
+const History = ({props}) => <h4>History</h4>;
+const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
 export class Sidebar extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      showModal: false,
+      component: <h4>nothing loaded</h4>,
+      title: 'waiting for content',
+    };
+  }
+  closeModal() {
+    this.setState({ showModal: false });
+  }
+  openModal(componentName) {
+    this.setState({ 
+      showModal: true,
+      component: ({
+                    settings: <Settings/>,
+                    filters: <Filters/>,
+                    history: <History/>,
+                    dataLoaded: <DataLoaded/>,
+                  })[componentName],
+      title: componentName,
+    });
+  }
   render() {
+    const {showModal, component, title} = this.state;
+    let content = '';
+    if (showModal) {
+      content = <ModalWrapper 
+                      title={title}
+                      closeFunc={this.closeModal.bind(this)}>
+                  {component}
+                </ModalWrapper>;
+    }
     return (
-      <Nav stacked activeKey={1} >
-        <LinkContainer to={locPath('/settings')}>
-          <NavItem eventKey={1}>Settings</NavItem>
-        </LinkContainer>
-        <LinkContainer to={locPath('/filters')}>
-          <NavItem eventKey={1}>Filters</NavItem>
-        </LinkContainer>
-        <LinkContainer to={locPath('/history')}>
-          <NavItem eventKey={1}>History</NavItem>
-        </LinkContainer>
-        <LinkContainer to={locPath('/Data loaded')}>
-          <NavItem eventKey={5}>Data loaded</NavItem>
-        </LinkContainer>
-        {/*
-        */}
-      </Nav>
+      <div>
+        {content}
+        <Nav stacked activeKey={1} onSelect={this.openModal.bind(this)} >
+            <NavItem eventKey={'settings'}>Settings</NavItem>
+            <NavItem eventKey={'filters'}>Filters</NavItem>
+            <NavItem eventKey={'history'}>History</NavItem>
+            <NavItem eventKey={'dataLoaded'}>Data loaded</NavItem>
+          {/*
+          */}
+        </Nav>
+      </div>
     );
   }
+  showModal(which) {
+  }
 }
+
 export class App extends Component {
   constructor(props) {
     super(props);
+    this.state = {
+    }
     if (props.router.location.search.length) {
       AppState.saveState(queryParse(props.router.location.query));
     }
@@ -151,7 +206,7 @@ export class App extends Component {
     this.userSettings.unsubscribe();
   }
   render() {
-    const {main, sidebar} = this.props;
+    const {main, sidebar, overlay} = this.props;
     console.log('App', this.state);
     let NavBar = DefaultNavBar;
     /*
