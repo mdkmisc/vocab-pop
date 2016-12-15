@@ -4,6 +4,31 @@ cdmSchema: cdm2
 resultsSchema: results2
 apiRoot: http://localhost:3000/api/cdms
 
+filters:
+  - invalid: true   # filter out where invalid === true
+  - sc: S, C        # standard concept === S or C. but what about source concepts?
+  - concept_id:
+    - not: 0        # exclude 'No matching concept'
+
+
+
+menu items:
+  - Home:
+    - Explore concepts/vocabularies independently
+    - Explore concepts referenced in your CDM
+  - Drug:
+    - type: group, filter, ignore
+    - class: group, filter, ignore
+    - column: drug_concept_id, drug_source_concept_id
+  - Condition
+  - Search
+
+left navbar:
+  - Settings
+  - Filters
+  - History
+  - Data loaded
+
 use cases:
   - define a cohort or phenotype
   - explore the whole vocabulary
@@ -20,8 +45,8 @@ use cases:
   
 attributes of use:
   - exclude concept_id=0, No matching concept
-  - incllude only primary target columns (e.g., drug_concept_id)
-  - incllude only primary source columns (e.g., drug_source_concept_id)
+  - include only primary target columns (e.g., drug_concept_id)
+  - include only primary source columns (e.g., drug_source_concept_id)
 
 paths:
   drug_exposure:

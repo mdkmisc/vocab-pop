@@ -98,13 +98,13 @@ select
         c1.vocabulary_id as vocab_1,
         c1.concept_class_id as class_1,
         c1.standard_concept as sc_1,
-        case when c1.invalid_reason is null then true else false end as invalid_1,
+        case when c1.invalid_reason is null then false else true end as invalid_1,
 
         c2.domain_id as domain_id_2,
         c2.vocabulary_id as vocab_2,
         c2.concept_class_id as class_2,
         c2.standard_concept as sc_2,
-        case when c2.invalid_reason is null then true else false end as invalid_2,
+        case when c2.invalid_reason is null then false else true end as invalid_2,
 
         count(distinct c1.concept_id) as c1_ids,
         count(distinct c2.concept_id) as c2_ids,
@@ -130,7 +130,7 @@ create table :results.concept_info_stats as
           c.vocabulary_id,
           c.concept_class_id,
           c.standard_concept as sc,
-          case when c.invalid_reason is null then true else false end as invalid,
+          case when c.invalid_reason is null then false else true end as invalid,
           count(*) as conceptrecs,
           sum(cio.count) as dbrecs
   from :cdm.concept c 
