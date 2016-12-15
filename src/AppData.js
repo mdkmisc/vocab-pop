@@ -2,54 +2,6 @@ import _ from 'supergroup';
 import * as util from './utils';
 
 export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
-
-  /*
-  export function dataToStateWhenReady(component, items) {
-    console.error("GET RID OF");
-    // this doesn't work very well. switching to event broadcast
-    // get rid of
-
-    if (!items) {
-      items = _.keys(appData);
-    }
-    let promises = items.map(
-      (item) => {
-        return appData[item].then(
-                (data) => {
-                  component.setState({[item]: data})
-                  if (DEBUG) appDataResolved[item] = data;
-                }
-        );
-      });
-    let allp = Promise.all(promises);
-    window.allp = allp;
-    console.log('all p', allp);
-    return allp;
-  }
-
-  function concepts(params={}, queryName="conceptStats") {
-    params = _.clone(params);
-    let apiCall = 'concepts';
-    params.resultsSchema = resultsSchema;
-    params.cdmSchema = cdmSchema;
-    params.queryName = queryName;
-    return (util.cachedPostJsonFetch(
-            `${apiRoot}/${apiCall}Post`, params)
-            .then(function(json) {
-              if (json.error)
-                console.error(json.error.message, json.error.queryName, json.error.url);
-
-              json.forEach(rec=>{
-                rec.conceptrecs = parseInt(rec.conceptrecs, 10);
-                rec.dbrecs = parseInt(rec.dbrecs, 10);
-                //rec.count = parseInt(rec.count, 10);
-                //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
-              })
-
-              return json;
-            }));
-  }
-  */
   function classRelations(params={}, queryName="classRelations") {
     params = _.clone(params);
     let apiCall = 'concepts';
@@ -113,6 +65,8 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
               return json;
             }));
   }
+  return {conceptCount, classRelations, conceptStats};
+}
   /* from drug explorer app
   function recsfetch(params, queryName) {
     params = _.clone(params);
@@ -210,5 +164,50 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
             }));
   }
   */
-  return {conceptCount, classRelations, conceptStats};
-}
+  /*
+  export function dataToStateWhenReady(component, items) {
+    console.error("GET RID OF");
+    // this doesn't work very well. switching to event broadcast
+    // get rid of
+
+    if (!items) {
+      items = _.keys(appData);
+    }
+    let promises = items.map(
+      (item) => {
+        return appData[item].then(
+                (data) => {
+                  component.setState({[item]: data})
+                  if (DEBUG) appDataResolved[item] = data;
+                }
+        );
+      });
+    let allp = Promise.all(promises);
+    window.allp = allp;
+    console.log('all p', allp);
+    return allp;
+  }
+
+  function concepts(params={}, queryName="conceptStats") {
+    params = _.clone(params);
+    let apiCall = 'concepts';
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    params.queryName = queryName;
+    return (util.cachedPostJsonFetch(
+            `${apiRoot}/${apiCall}Post`, params)
+            .then(function(json) {
+              if (json.error)
+                console.error(json.error.message, json.error.queryName, json.error.url);
+
+              json.forEach(rec=>{
+                rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+                rec.dbrecs = parseInt(rec.dbrecs, 10);
+                //rec.count = parseInt(rec.count, 10);
+                //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+              })
+
+              return json;
+            }));
+  }
+  */
