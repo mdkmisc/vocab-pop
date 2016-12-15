@@ -40,6 +40,11 @@ import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 require('./VocabPop.css');
 
+export class Drug extends Component {
+  render() {
+    return <h4>drugs</h4>;
+  }
+}
 export class Search extends Component {
   constructor(props) {
     super(props);

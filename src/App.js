@@ -45,61 +45,29 @@ class DefaultNavBar extends Component {
             </Navbar.Brand>
           </Navbar.Header>
           <Nav >
+            <LinkContainer to={locPath('/drug')}>
+              <NavItem eventKey={1}>Drug</NavItem>
+            </LinkContainer>
+            <LinkContainer to={locPath('/condition')}>
+              <NavItem eventKey={1}>Condition</NavItem>
+            </LinkContainer>
             <LinkContainer to={locPath('/search')}>
               <NavItem eventKey={1}>Search</NavItem>
+            </LinkContainer>
+            <LinkContainer to={locPath('/appstate')}>
+              <NavItem eventKey={5}>App State</NavItem>
+            </LinkContainer>
+            {/*
+            <LinkContainer to={locPath('/tables')}>
+              <NavItem eventKey={3}>Tables</NavItem>
             </LinkContainer>
             <LinkContainer to={locPath('/concepts')}>
               <NavItem eventKey={2}>Concepts</NavItem>
             </LinkContainer>
-            <LinkContainer to={locPath('/tables')}>
-              <NavItem eventKey={3}>Tables</NavItem>
-            </LinkContainer>
-            {/*
             <LinkContainer to={locPath('/vocabs')}>
               <NavItem eventKey={4}>Vocabularies</NavItem>
             </LinkContainer>
             */}
-            <LinkContainer to={locPath('/appstate')}>
-              <NavItem eventKey={5}>App State</NavItem>
-            </LinkContainer>
-          </Nav>
-        </Navbar>
-    );
-  }
-}
-class DomainNavBar extends Component {
-  constructor(props) {
-    super(props);
-    let tables = AppState.getTableConfig();
-    //let {query} = props.location;
-    let domainLinks = _.chain(tables)
-          .toPairs()
-          .filter(d=>d[1] && d[1].enabled)
-          .map(d => {
-            // eslint-disable-next-line
-            let [tname, dconf] = d;
-            return  <LinkContainer key={tname} to={`/tables/${tname}`}>
-                      <NavItem eventKey={2}>{tname}</NavItem>
-                    </LinkContainer>
-          })
-          .value();
-    this.state = {
-      domainLinks,
-    };
-  }
-  render() {
-    const {domainLinks} = this.state;
-    return (
-        <Navbar fluid={true} fixedTop={false}>
-          <Navbar.Header>
-            <Navbar.Brand>
-              <NavLink to={locPath('/')} onlyActiveOnIndex>
-                Vocab Population Browser / Tables
-              </NavLink>
-            </Navbar.Brand>
-          </Navbar.Header>
-          <Nav >
-            {domainLinks}
           </Nav>
         </Navbar>
     );
@@ -116,6 +84,28 @@ function queryParse(query) {
                   obj[k] = JSON.parse(v);
                 });
   return obj;
+}
+export class Sidebar extends Component {
+  render() {
+    return (
+      <Nav stacked activeKey={1} >
+        <LinkContainer to={locPath('/settings')}>
+          <NavItem eventKey={1}>Settings</NavItem>
+        </LinkContainer>
+        <LinkContainer to={locPath('/filters')}>
+          <NavItem eventKey={1}>Filters</NavItem>
+        </LinkContainer>
+        <LinkContainer to={locPath('/history')}>
+          <NavItem eventKey={1}>History</NavItem>
+        </LinkContainer>
+        <LinkContainer to={locPath('/Data loaded')}>
+          <NavItem eventKey={5}>Data loaded</NavItem>
+        </LinkContainer>
+        {/*
+        */}
+      </Nav>
+    );
+  }
 }
 export class App extends Component {
   constructor(props) {
@@ -161,25 +151,30 @@ export class App extends Component {
     this.userSettings.unsubscribe();
   }
   render() {
+    const {main, sidebar} = this.props;
     console.log('App', this.state);
-    let NavBar;
+    let NavBar = DefaultNavBar;
+    /*
     if (this.props.router.isActive('/tables'))
       NavBar = DomainNavBar 
     //else if (this.props.router.isActive('/vocabs')) NavBar = VocabNavBar 
-    else
-      NavBar = DefaultNavBar;
+    */
     return (
       <div>
         <NavBar />
         <Row>
-          <Col md={10} mdOffset={1}>
-            {this.props.children}
+          <Col md={2}>
+            {sidebar}
+          </Col>
+          <Col md={10}>
+            {main}
           </Col>
         </Row>
       </div>
     );
   }
 }
+
   /*
                     <LinkContainer 
                         to={{
@@ -240,6 +235,44 @@ class VocabNavBar extends Component {
           </Navbar.Header>
           <Nav >
             {vocabLinks}
+          </Nav>
+        </Navbar>
+    );
+  }
+}
+class DomainNavBar extends Component {
+  constructor(props) {
+    super(props);
+    let tables = AppState.getTableConfig();
+    //let {query} = props.location;
+    let domainLinks = _.chain(tables)
+          .toPairs()
+          .filter(d=>d[1] && d[1].enabled)
+          .map(d => {
+            // eslint-disable-next-line
+            let [tname, dconf] = d;
+            return  <LinkContainer key={tname} to={`/tables/${tname}`}>
+                      <NavItem eventKey={2}>{tname}</NavItem>
+                    </LinkContainer>
+          })
+          .value();
+    this.state = {
+      domainLinks,
+    };
+  }
+  render() {
+    const {domainLinks} = this.state;
+    return (
+        <Navbar fluid={true} fixedTop={false}>
+          <Navbar.Header>
+            <Navbar.Brand>
+              <NavLink to={locPath('/')} onlyActiveOnIndex>
+                Vocab Population Browser / Tables
+              </NavLink>
+            </Navbar.Brand>
+          </Navbar.Header>
+          <Nav >
+            {domainLinks}
           </Nav>
         </Navbar>
     );
