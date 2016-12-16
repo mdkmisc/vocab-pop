@@ -58,3 +58,47 @@ span.aside {
   font-size: 16px;
   /* font-weight: lighter; */
 }
+
+.react-draggable, .cursor {
+  cursor: move;
+}
+.no-cursor {
+  cursor: auto;
+}
+.cursor-y {
+  cursor: ns-resize;
+}
+.cursor-x {
+  cursor: ew-resize;
+}
+.react-draggable .handle {
+  background: #ddd;
+  border: 1px solid #999;
+  border-radius: 3px;
+  display: block;
+  margin-bottom: 7px;
+  padding: 3px 5px;
+  text-align: center;
+}
+/*
+.vocab-app .sidebar {
+  z-index: 25;
+}
+.vocab-app .main-content {
+  z-index: 1;
+}
+*/
+.box {
+  z-index: 100;
+  box-sizing: border-box;
+  background: #fff;
+  border: 1px solid #999;
+  border-radius: 3px;
+  margin: 10px;
+  padding: 4px;
+  position: absolute;
+  width: 300px;
+}
+.handle {
+
+}

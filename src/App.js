@@ -19,16 +19,19 @@ import React, { Component } from 'react';
 import { /*Route, RouteHandler, */ Link } from 'react-router';
 import { Nav, Navbar, Modal,
          NavItem, Button,
-         Row, Col, 
+         Row, Col, Glyphicon,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
+import Draggable from 'react-draggable'; // The default
+
 
 //import logo from './logo.svg';
 //import './App.css';
+import './components/VocabPop.css';
 import _ from 'supergroup';
 import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
@@ -100,6 +103,78 @@ const ModalWrapper = ({children, title, closeFunc}) => {
       </Modal>
   );
 };
+class DraggableWrapper extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+                    activeDrags: 0,
+                    deltaPosition: {
+                      x: 0, y: 0
+                    },
+                };
+    console.log(this.state);
+  }
+  handleDrag(e, ui) {
+    console.log(this.state);
+    const {x, y} = this.state.deltaPosition;
+    this.setState({
+      deltaPosition: {
+        x: x + ui.deltaX,
+        y: y + ui.deltaY,
+      }
+    });
+  }
+  handleStart() {
+    this.setState({activeDrags: ++this.state.activeDrags});
+  }
+  handleStop() {
+    this.setState({activeDrags: --this.state.activeDrags});
+  }
+
+  render() {
+    const {children, title, closeFunc} = this.props;
+    return <Draggable 
+                    handle=".handle"
+                    defaultPosition={{x: 400, y: 200}}
+                    position={null}
+                    //grid={[25, 25]}
+                    //zIndex={99999}
+                    onStart={this.handleStart.bind(this)}
+                    onDrag={this.handleDrag.bind(this)}
+                    onStop={this.handleStop.bind(this)}>
+                  <div className="box no-cursor">
+                    <div className="cursor handle">
+                      <span>
+                        {title}
+                      </span>
+                      <span style={{float:'right', cursor:'pointer'}}>
+                        <Glyphicon glyph="remove" 
+                          onClick={closeFunc}
+                        />
+                      </span>
+                    </div>
+                    {children}
+                  </div>
+                </Draggable>;
+    return (
+        <Modal bsSize="lg"
+            dialogClassName="sidebar-modal"
+            show={true} 
+            onHide={closeFunc}
+            >
+          <Modal.Header closeButton>
+            <Modal.Title>{title}</Modal.Title>
+          </Modal.Header>
+          <Modal.Body>
+            {children}
+          </Modal.Body>
+          <Modal.Footer>
+            <Button onClick={closeFunc}>Close</Button>
+          </Modal.Footer>
+        </Modal>
+    );
+  }
+};
 const Settings = ({props}) => <h4>Settings</h4>;
 const History = ({props}) => <h4>History</h4>;
 const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
@@ -134,16 +209,38 @@ export class Sidebar extends Component {
     const {showModal, component, title} = this.state;
     let content = '';
     if (showModal) {
+      /*
+      content = <Draggable 
+                    handle=".handle"
+                    defaultPosition={{x: 300, y: 0}}
+                    position={null}
+                    grid={[25, 25]}
+                    zIndex={100}
+                    onStart={this.handleStart}
+                    onDrag={this.handleDrag}
+                    onStop={this.handleStop}>
+                  <div>
+                    <div className="handle">{title}</div>
+                      {component}
+                  </div>
+                </Draggable>;
       content = <ModalWrapper 
                       title={title}
                       closeFunc={this.closeModal.bind(this)}>
                   {component}
                 </ModalWrapper>;
+      */
+      content = <DraggableWrapper 
+                      title={title}
+                      closeFunc={this.closeModal.bind(this)}>
+                  {component}
+                </DraggableWrapper>;
     }
     return (
       <div>
         {content}
-        <Nav stacked activeKey={1} onSelect={this.openModal.bind(this)} >
+        <Nav
+            stacked activeKey={1} onSelect={this.openModal.bind(this)} >
             <NavItem eventKey={'settings'}>Settings</NavItem>
             <NavItem eventKey={'filters'}>Filters</NavItem>
             <NavItem eventKey={'history'}>History</NavItem>
@@ -199,7 +296,7 @@ export class App extends Component {
   }
   */
   render() {
-    const {main, sidebar, overlay} = this.props;
+    const {main, sidebar} = this.props;
     let NavBar = DefaultNavBar;
     /*
     if (this.props.router.isActive('/tables'))
@@ -207,13 +304,13 @@ export class App extends Component {
     //else if (this.props.router.isActive('/vocabs')) NavBar = VocabNavBar 
     */
     return (
-      <div>
+      <div className="vocab-app">
         <NavBar />
         <Row>
-          <Col md={2}>
+          <Col md={2} className="sidebar">
             {sidebar}
           </Col>
-          <Col md={10}>
+          <Col md={10} className="main-content">
             {main}
           </Col>
         </Row>
