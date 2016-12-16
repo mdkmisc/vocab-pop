@@ -164,16 +164,17 @@ export class App extends Component {
     this.state = {
     }
   }
+  /* 
   componentDidMount() {
-    var {history} = AppState; // global history object
     
+    var {history} = AppState; // global history object
     this.statsByTable = AppState.statsByTable
           .subscribe(statsByTable=>this.setState({statsByTable}));
     this.tableConfig = AppState.tableConfig
           .subscribe(tableConfig=>this.setState({tableConfig}));
     this.classRelations = AppState.classRelations
           .subscribe(classRelations=>this.setState({classRelations}));
-    /* moving to AppState
+    //moving to AppState
     this.userSettings = AppState.userSettings.subscribe(
       (userSettings => 
        {
@@ -189,7 +190,6 @@ export class App extends Component {
             });
           history.push({pathname: loc.pathname, query});
       }));
-    */
   }
   componentWillUnmount() {
     this.statsByTable.unsubscribe();
@@ -197,9 +197,9 @@ export class App extends Component {
     this.classRelations.unsubscribe();
     this.userSettings.unsubscribe();
   }
+  */
   render() {
     const {main, sidebar, overlay} = this.props;
-    console.log('App', this.state);
     let NavBar = DefaultNavBar;
     /*
     if (this.props.router.isActive('/tables'))

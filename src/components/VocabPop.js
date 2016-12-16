@@ -38,11 +38,39 @@ import * as AppState from '../AppState';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
+import Inspector from 'react-json-inspector';
+import 'react-json-inspector/json-inspector.css';
 require('./VocabPop.css');
 
 export class Home extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
+    AppState.subscribe(this, 'statsByTable');
+    AppState.subscribe(this, 'tableConfig');
+    AppState.subscribe(this, 'classRelations');
+    AppState.subscribe(this, 'userSettings');
+    AppState.subscribe(this, 'conceptCount');
+  }
+  componentWillUnmount() {
+    AppState.unsubscribe(this, 'statsByTable');
+    AppState.unsubscribe(this, 'tableConfig');
+    AppState.unsubscribe(this, 'classRelations');
+    AppState.unsubscribe(this, 'userSettings');
+    AppState.unsubscribe(this, 'conceptCount');
+  }
   render() {
-    return <h4>home</h4>;
+    var filterInfo = this.state.userSettings
+          ? <Inspector data={ this.state.userSettings.filters } />
+          : '';
+    var conceptCount = this.state.conceptCount || 0;
+    return  <div>
+              Filters: {filterInfo}
+              <br/>
+              Current concepts: { commify(conceptCount) }
+            </div>;
   }
 }
 export class Drug extends Component {

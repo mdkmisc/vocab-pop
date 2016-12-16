@@ -28,6 +28,15 @@ export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({});
 export var stateChange = new Rx.Subject({});
 
+var streams = {
+                  tableConfig,
+                  statsByTable,
+                  conceptCount,
+                  conceptStats,
+                  classRelations,
+                  userSettings,
+                  stateChange,
+};
 function fetchData() {
   console.log("FETCHING DATA");
   AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
@@ -86,6 +95,17 @@ export function initialize({history:_history}) {
   //AppData.cacheDirty().then(fetchData)
 }
 
+export function subscribe(component, stream) {
+  // major side effects, just for convenience
+  component._subscriptions = component._subscriptions || {};
+  component._subscriptions[stream] =
+    streams[stream].subscribe(
+      str => component.setState({[stream]: str}));
+}
+export function unsubscribe(component, stream) {
+  component._subscriptions[stream] &&
+    component._subscriptions[stream].unsubscribe();
+}
 function queryParse(query) {
   let obj = {};
   _.each(query, (v,k) => {
@@ -156,25 +176,18 @@ export class AppState extends Component {
     tableSetup();
   }
   componentDidMount() {
-    console.log('mounting AppState');
-    this.statsByTable = statsByTable
-          .subscribe(statsByTable=>this.setState({statsByTable}));
-    this.tableConfig = tableConfig
-          .subscribe(tableConfig=>this.setState({tableConfig}));
-    this.classRelations = classRelations
-          .subscribe(classRelations=>this.setState({classRelations}));
-    this.userSettings = userSettings
-          .subscribe(userSettings=>this.setState({userSettings}));
-    this.conceptCount = conceptCount
-          .subscribe(conceptCount=>this.setState({conceptCount}));
+    subscribe(this, 'statsByTable');
+    subscribe(this, 'tableConfig');
+    subscribe(this, 'classRelations');
+    subscribe(this, 'userSettings');
+    subscribe(this, 'conceptCount');
   }
   componentWillUnmount() {
-    console.log('unmounting AppState');
-    this.statsByTable.unsubscribe();
-    this.tableConfig.unsubscribe();
-    this.classRelations.unsubscribe();
-    this.userSettings.unsubscribe();
-    this.conceptCount.unsubscribe();
+    unsubscribe(this, 'statsByTable');
+    unsubscribe(this, 'tableConfig');
+    unsubscribe(this, 'classRelations');
+    unsubscribe(this, 'userSettings');
+    unsubscribe(this, 'conceptCount');
   }
   render() {
     console.log('AppState', this.state);
