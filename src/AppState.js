@@ -12,6 +12,8 @@ import _AppData from './AppData'; // can't import till appSettings loaded
 var _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
 const AppData = _AppData(_appSettings);
 
+// thought i might do more with appSettings, but nothing now
+export var appSettings = _appSettings; 
 
 // exported streams
 //          BehaviorSubject means subscribers get latest
@@ -21,7 +23,9 @@ export var statsByTable = new Rx.BehaviorSubject([]);
 export var conceptCount = new Rx.BehaviorSubject(0);
 export var conceptStats = new Rx.BehaviorSubject([]);
 export var classRelations = new Rx.BehaviorSubject([]);
-export var userSettings = new Rx.BehaviorSubject({});
+export var userSettings = new Rx.BehaviorSubject({
+  filters: _appSettings.filters,
+});
 
 
 export var history;

@@ -23,6 +23,9 @@ import { Nav, Navbar, Modal,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
+import Inspector from 'react-json-inspector';
+import 'react-json-inspector/json-inspector.css';
+import {FilterForm} from './components/Filters';
 
 //import logo from './logo.svg';
 //import './App.css';
@@ -105,9 +108,11 @@ const ModalWrapper = ({children, title, closeFunc}) => {
   );
 };
 const Settings = ({props}) => <h4>Settings</h4>;
-const Filters = ({props}) => <h4>Filters</h4>;
 const History = ({props}) => <h4>History</h4>;
 const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
+
+  
+
 export class Sidebar extends Component {
   constructor(props) {
     super(props);
@@ -125,7 +130,7 @@ export class Sidebar extends Component {
       showModal: true,
       component: ({
                     settings: <Settings/>,
-                    filters: <Filters/>,
+                    filters: <FilterForm/>,
                     history: <History/>,
                     dataLoaded: <DataLoaded/>,
                   })[componentName],

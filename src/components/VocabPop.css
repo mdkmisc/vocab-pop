@@ -51,3 +51,10 @@ span.aside {
   font-style: italic;
   padding-left: 10px;
 }
+.field.nest-level-1 .form-group {
+  padding-left: 20px;
+}
+.field.nest-level-1 legend {
+  font-size: 16px;
+  /* font-weight: lighter; */
+}
