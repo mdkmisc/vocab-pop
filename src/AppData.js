@@ -2,6 +2,23 @@ import _ from 'supergroup';
 import * as util from './utils';
 
 export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
+
+  function cacheDirty() {
+    return fetch(`${apiRoot}/cacheDirty`)
+      .then(response => {
+        return response.json()
+          .then(
+            results => {
+              if (results) {
+                console.log('sessionStorage cache is dirty, emptying it');
+                sessionStorage.clear();
+              } else {
+                console.warn(`${_.keys(sessionStorage).length} items in sessionStorage`);
+              }
+              return results;
+            })
+      });
+  }
   function classRelations(params={}, queryName="classRelations") {
     params = _.clone(params);
     let apiCall = 'concepts';
@@ -65,7 +82,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
               return json;
             }));
   }
-  return {conceptCount, classRelations, conceptStats};
+  return {conceptCount, classRelations, conceptStats, cacheDirty};
 }
   /* from drug explorer app
   function recsfetch(params, queryName) {

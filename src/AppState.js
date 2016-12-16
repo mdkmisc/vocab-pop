@@ -15,6 +15,8 @@ const AppData = _AppData(_appSettings);
 // thought i might do more with appSettings, but nothing now
 export var appSettings = _appSettings; 
 
+export var history; /* global history object set in index.js */
+
 // exported streams
 //          BehaviorSubject means subscribers get latest
 //          value and get called when value changes
@@ -23,31 +25,73 @@ export var statsByTable = new Rx.BehaviorSubject([]);
 export var conceptCount = new Rx.BehaviorSubject(0);
 export var conceptStats = new Rx.BehaviorSubject([]);
 export var classRelations = new Rx.BehaviorSubject([]);
-export var userSettings = new Rx.BehaviorSubject({
-  filters: _appSettings.filters,
-});
+export var userSettings = new Rx.BehaviorSubject({});
+export var stateChange = new Rx.Subject({});
 
-
-export var history;
-
-
-tableConfig.next(_appSettings.tables);
-
-AppData.classRelations().then(d=>classRelations.next(d));
-
-AppData.conceptCount().then(d=>conceptCount.next(d));
-AppData.conceptStats().then(d=>conceptStats.next(d));
-conceptStats.subscribe(
-  cs => {
-    var sbt = _.supergroup(cs, ['table_name','column_name','domain_id','vocabulary_id']);
-    statsByTable.next(sbt);
-  });
+function fetchData() {
+  console.log("FETCHING DATA");
+  AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
+  AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
+  AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
+}
 
 export function saveState(key, val) {
   var change = typeof val === 'undefined' ? key : {[key]: val};
   var current = userSettings.getValue();
   var newState = _.merge(current, change);
   userSettings.next(newState);
+  stateChange.next(change);
+}
+
+export function initialize({history:_history}) {
+  history = _history;
+  tableConfig.next(_appSettings.tables);
+
+  conceptStats.subscribe(
+    cs => {
+      var sbt = _.supergroup(cs, ['table_name','column_name','domain_id','vocabulary_id']);
+      statsByTable.next(sbt);
+    });
+
+  stateChange.subscribe(
+    change => {
+      if (_.has(change, 'filters')) {
+        fetchData();
+      }
+    }
+  );
+
+  var initialState = _.merge(
+    { filters: _appSettings.filters, },
+    queryParse(history.getCurrentLocation().query)
+  );
+  saveState(initialState);
+
+  // userSettings stored on route querystring
+  userSettings.subscribe(userSettings => {
+        var loc = history.getCurrentLocation();
+        var curQuery = queryParse(loc.query);
+        if (_.isEqual(userSettings, curQuery))
+          return;
+
+        var query = {};
+        _.each(userSettings,
+          (v,k) => {
+            query[k] = JSON.stringify(v);
+          });
+        history.push({pathname: loc.pathname, query});
+    });
+  // don't need to do initial data fetch because setting
+  // state on load will do it
+  //AppData.cacheDirty().then(fetchData)
+}
+
+function queryParse(query) {
+  let obj = {};
+  _.each(query, (v,k) => {
+                  obj[k] = JSON.parse(v);
+                });
+  return obj;
 }
 
 /*
@@ -102,6 +146,7 @@ conceptStats.subscribe(
   */
 })();
 
+// this component is just for debugging, it shows current AppState
 export class AppState extends Component {
   constructor(props) {
     const {location, params, route, router, routeParams, children} = props;
@@ -120,6 +165,8 @@ export class AppState extends Component {
           .subscribe(classRelations=>this.setState({classRelations}));
     this.userSettings = userSettings
           .subscribe(userSettings=>this.setState({userSettings}));
+    this.conceptCount = conceptCount
+          .subscribe(conceptCount=>this.setState({conceptCount}));
   }
   componentWillUnmount() {
     console.log('unmounting AppState');
@@ -127,6 +174,7 @@ export class AppState extends Component {
     this.tableConfig.unsubscribe();
     this.classRelations.unsubscribe();
     this.userSettings.unsubscribe();
+    this.conceptCount.unsubscribe();
   }
   render() {
     console.log('AppState', this.state);
@@ -136,6 +184,7 @@ export class AppState extends Component {
 }
 
 export function getTableConfig() {
+  // is this still being used? shouldn't be
   return _appSettings.tables;
 }
 

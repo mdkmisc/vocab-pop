@@ -94,6 +94,10 @@ select
         r.defines_ancestry,
         r.reverse_relationship_id,
 
+          /*
+            thought i should include No Matching Concept indicator since concept_id
+            isn't included, but you can get it by testing vocab_1 = 'None'
+          */
         c1.domain_id as domain_id_1,
         c1.vocabulary_id as vocab_1,
         c1.concept_class_id as class_1,

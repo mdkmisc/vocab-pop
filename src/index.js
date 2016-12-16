@@ -18,7 +18,7 @@ app.get('*', function (req, res) {
 })
 */
 
-AppState.history = useRouterHistory(createHistory)();
+AppState.initialize({history:useRouterHistory(createHistory)()}); // set global history object
 
 render((
   <Router history={AppState.history}>

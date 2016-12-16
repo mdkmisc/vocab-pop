@@ -81,13 +81,6 @@ class NavLink extends Component {
     return <Link {...this.props} activeClassName="active"/>
   }
 }
-function queryParse(query) {
-  let obj = {};
-  _.each(query, (v,k) => {
-                  obj[k] = JSON.parse(v);
-                });
-  return obj;
-}
 const ModalWrapper = ({children, title, closeFunc}) => {
   return (
       <Modal bsSize="lg"
@@ -170,12 +163,9 @@ export class App extends Component {
     super(props);
     this.state = {
     }
-    if (props.router.location.search.length) {
-      AppState.saveState(queryParse(props.router.location.query));
-    }
   }
   componentDidMount() {
-    var {history} = AppState;
+    var {history} = AppState; // global history object
     
     this.statsByTable = AppState.statsByTable
           .subscribe(statsByTable=>this.setState({statsByTable}));
@@ -183,6 +173,7 @@ export class App extends Component {
           .subscribe(tableConfig=>this.setState({tableConfig}));
     this.classRelations = AppState.classRelations
           .subscribe(classRelations=>this.setState({classRelations}));
+    /* moving to AppState
     this.userSettings = AppState.userSettings.subscribe(
       (userSettings => 
        {
@@ -196,13 +187,9 @@ export class App extends Component {
             (v,k) => {
               query[k] = JSON.stringify(v);
             });
-          //setTimeout(()=>{
           history.push({pathname: loc.pathname, query});
-          //}, 200);
-          //this.props.router.location.query = query;
-          //this.props.router.push(this.props.router.location);
-          //this.props.router.push({query});
-      }).bind(this));
+      }));
+    */
   }
   componentWillUnmount() {
     this.statsByTable.unsubscribe();

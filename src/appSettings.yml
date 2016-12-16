@@ -5,40 +5,40 @@ resultsSchema: results2
 apiRoot: http://localhost:3000/api/cdms
 
 filters:
-  invalid: true   # filter out where invalid === true
-  sc:             # standard concept === S or C. but what about source concepts?
-    S: true
-    C: true
-    null: false
-  excludeNoMatchingConcept: true
+  excludeInvalidConcepts: true
+  excludeNoMatchingConcepts: true
+  excludeNonStandardConcepts: false
 
 filterFormSchema:
   #title: Filters
   type: object
   properties:
-    invalid:
+    excludeInvalidConcepts:
       title: Exclude Invalid Concepts
       type: boolean
-    sc: 
-      title: Include Standard Concept Types
-      type: object
-      properties:
-        S:
-          title: Standard
-          type: boolean
-        C:
-          title: Classification
-          type: boolean
-        null:
-          title: No Matching Concept
-          type: boolean
-    excludeNoMatchingConcept:
-      title: Exclude No Matching Concept
+    excludeNoMatchingConcepts:
+      title: Exclude No Matching Concepts
       type: boolean
+    excludeNonStandardConcepts:
+      title: Exclude Non-Standard Concepts
+      type: boolean
+#    sc: 
+#      title: Include Standard Concept Types
+#      type: object
+#      properties:
+#        S:
+#          title: Standard
+#          type: boolean
+#        C:
+#          title: Classification
+#          type: boolean
+#        null:
+#          title: Non-Standard Concept
+#          type: boolean
 
-filterFormUISchema:
-  sc: 
-    classNames: nest-level-1
+#filterFormUISchema:
+#  sc: 
+#    classNames: nest-level-1
 
 menu items:
   - Home:
