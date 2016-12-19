@@ -73,11 +73,16 @@ export class Home extends Component {
             </div>;
   }
 }
+export class DrugContainer extends Component {
+  render() {
+    return <Drug/>;
+  }
+}
 export class Drug extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      userSettings: {},
+      userSettings: {filters:{}},
       counts: {},
     };
   }
@@ -91,10 +96,8 @@ export class Drug extends Component {
   shouldComponentUpdate(nextProps, nextState) {
     //let equal = _.isEqual(this.state.counts, nextState.counts);
     let equal = _.isEqual(this.state, nextState);
-    console.log(this.state, nextState, equal, 'state');
-    equal = _.isEqual(this.props, nextProps);
-    console.log(this.props, nextProps, equal, 'props');
-    return false;
+    console.log(this.state, nextState, 
+                equal ? 'no update' : 'yes update');
     return !equal;
   }
   fetchData() {
@@ -105,10 +108,6 @@ export class Drug extends Component {
         excludeNoMatchingConcepts: false,
         excludeNonStandardConcepts: false,
       });
-    this.countSub(
-      'With current filters', 
-      this.state.userSettings.filters || {}
-    );
     this.countSub(
       'Invalid', 
       {
@@ -128,32 +127,40 @@ export class Drug extends Component {
         includeNonStandardConcepts: true,
       });
     const {filters} = this.state.userSettings
+    const curName = 'With current filters';
+    const curStreamName = AppState.makeStream({
+        apiCall: 'drugConceptCounts', 
+        params: {...filters, queryName:curName}, 
+        singleValue: true,
+      });
+    const curStream = AppState.subscribe(this, curStreamName, curName);
+    this.setState({[curName]: curStream.getValue()});
   }
   componentWillUnmount() {
-    AppState.unsubscribe(this, 'userSettings');
+    AppState.unsubscribe(this);
   }
-  countSub(name, filters) {
-    AppState.subscribe( // returns streamName
-      this, 
-      AppState.makeStream({
+  countSub(displayName, filters) {
+    let streamName = AppState.makeStream({
         apiCall: 'drugConceptCounts', 
-        params: {...filters, queryName:name}, 
+        params: {...filters, queryName:displayName}, 
         singleValue: true,
         transformResults:
           dcc => {
             return {
               counts: {
-                [name]: {
+                [displayName]: {
                   'Drug exposures': commify(parseInt(dcc.exposure_count,10)),
                   'Drug concepts': commify(parseInt(dcc.concept_count,10)),
                 }
               }
             };
           }
-      }),
-      false // no subscription name, use transform callback instead
-      //'drugConceptCounts'
+      });
+    let stream = AppState.subscribe(
+      this, streamName,
+      false // don't setState using name, use transform callback instead
     );
+    return stream; // not using return anywhere
   }
   render() {
     const {counts} = this.state;

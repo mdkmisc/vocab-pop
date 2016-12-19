@@ -25,7 +25,7 @@ export var statsByTable = new Rx.BehaviorSubject([]);
 export var conceptCount = new Rx.BehaviorSubject(0);
 export var conceptStats = new Rx.BehaviorSubject([]);
 export var classRelations = new Rx.BehaviorSubject([]);
-export var userSettings = new Rx.BehaviorSubject({});
+export var userSettings = new Rx.BehaviorSubject({filters:{}});
 export var stateChange = new Rx.Subject({});
 export var apiCalls = new Rx.Subject({});
 
@@ -89,6 +89,7 @@ export function makeStream({apiCall,
  *      // setState with results (results must be singleValue object, not array)
  * has major side effects, just for convenience.
  * makes api call and subscribes component state to results
+ *  @returns streamName string
  */
 export function subscribe(component, streamName, subName) {
   let getNamesFromResults = false;
@@ -97,30 +98,49 @@ export function subscribe(component, streamName, subName) {
   }
   subName = subName || streamName;
   component._subscriptions = component._subscriptions || {};
+
   component._subscriptions[subName] =
+    component._subscriptions[subName] ||
     streams[streamName].subscribe(
       results => {
-        console.log(component.constructor.name, 
-                    'has new value for', streamName);
-        if (getNamesFromResults) {
-          component.setState(
-            _.merge({},component.state, results));
-        } else {
-          component.setState({[subName]: results});
-        }
+        setTimeout(
+          () => {
+            console.log(component.constructor.name, 
+                        'has new value for', streamName);
+            if (getNamesFromResults) {
+              component.setState(
+                _.merge({},component.state, results));
+            } else {
+              component.setState({[subName]: results});
+            }
+          }, 100);
       });
+  return component._subscriptions[subName];
 }
-export function unsubscribe(component, subName) {
-  component._subscriptions[subName] &&
-    component._subscriptions[subName].unsubscribe();
+export function unsubscribe(component) {
+  _.each(component._subscriptions, sub => sub.unsubscribe());
 }
 
+var currentState = {};
 export function saveState(key, val) {
   var change = typeof val === 'undefined' ? key : {[key]: val};
-  var current = userSettings.getValue();
-  var newState = _.merge(current, change);
-  userSettings.next(newState);
+  currentState = _.merge({}, currentState, change);
   stateChange.next(change);
+}
+function saveStateToUrl() {
+  var loc = history.getCurrentLocation();
+  var curQuery = queryParse(loc.query);
+  if (_.isEqual(currentState, curQuery))
+    return;
+
+  var query = {};
+  _.each(currentState,
+    (v,k) => {
+      query[k] = JSON.stringify(v);
+    });
+  console.log('new history item', query);
+  history.push({pathname: loc.pathname, query});
+  userSettings.next(currentState);
 }
 
 export function initialize({history:_history}) {
@@ -135,6 +155,7 @@ export function initialize({history:_history}) {
 
   stateChange.subscribe(
     change => {
+      saveStateToUrl();
       if (_.has(change, 'filters')) {
         fetchData();
       }
@@ -146,25 +167,6 @@ export function initialize({history:_history}) {
     queryParse(history.getCurrentLocation().query)
   );
   saveState(initialState);
-
-  // userSettings stored on route querystring
-  userSettings.subscribe(userSettings => {
-        var loc = history.getCurrentLocation();
-        var curQuery = queryParse(loc.query);
-        if (_.isEqual(userSettings, curQuery))
-          return;
-
-        var query = {};
-        _.each(userSettings,
-          (v,k) => {
-            query[k] = JSON.stringify(v);
-          });
-        console.log('new history item', query);
-        history.push({pathname: loc.pathname, query});
-    });
-  // don't need to do initial data fetch because setting
-  // state on load will do it
-  //AppData.cacheDirty().then(fetchData)
 }
 
 function queryParse(query) {
