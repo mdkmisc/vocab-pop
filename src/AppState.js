@@ -27,6 +27,7 @@ export var conceptStats = new Rx.BehaviorSubject([]);
 export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({});
 export var stateChange = new Rx.Subject({});
+export var apiCalls = new Rx.Subject({});
 
 var streams = {
                   tableConfig,
@@ -42,6 +43,13 @@ function fetchData() {
   AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
   AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
   AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
+}
+export function apiCall(params, apiCall) {
+  AppData.apiCall(params, apiCall)
+  .then(results => {
+    apiCalls.next({params, apiCall, results});
+    return results;
+  })
 }
 
 export function saveState(key, val) {

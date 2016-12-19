@@ -74,8 +74,42 @@ export class Home extends Component {
   }
 }
 export class Drug extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
+    AppState.subscribe(this, 'userSettings');
+    AppState.subscribe(this, 'conceptCount');
+  }
+  componentWillUnmount() {
+    AppState.unsubscribe(this, 'userSettings');
+    AppState.unsubscribe(this, 'conceptCount');
+  }
   render() {
-    return <h4>drugs</h4>;
+    var filterInfo = this.state.userSettings
+          ? <Inspector data={ this.state.userSettings.filters } />
+          : '';
+    var conceptCount = this.state.conceptCount || 0;
+    return  <div>
+              <p>
+                want to see:<br/>
+                  source/target<br/>
+                  drug type<br/>
+                  drug class<br/>
+                  standard concept (color)<br/>
+                  <br/>
+                  <br/>
+                  relationships:<br/>
+                  hierarchical/not<br/>
+                  to domain<br/>
+                  counts<br/>
+                  samples<br/>
+              </p>
+              Filters: {filterInfo}
+              <br/>
+              Current concepts: { commify(conceptCount) }
+            </div>;
   }
 }
 export class Search extends Component {

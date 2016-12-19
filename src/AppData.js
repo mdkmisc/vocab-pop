@@ -82,7 +82,25 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
               return json;
             }));
   }
-  return {conceptCount, classRelations, conceptStats, cacheDirty};
+  function apiCall(params={}, apiCall="conceptStats") {
+    params = _.clone(params);
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    return (util.cachedPostJsonFetch(
+            `${apiRoot}/${apiCall}Post`, params)
+            .then(function(json) {
+              if (json.error)
+                console.error(json.error.message, json.error.queryName, json.error.url);
+              json.forEach(rec=>{
+                //rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+                //rec.dbrecs = parseInt(rec.dbrecs, 10);
+                //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+              })
+              return json;
+            }));
+  }
+  return {conceptCount, classRelations, apiCall,
+          conceptStats, cacheDirty};
 }
   /* from drug explorer app
   function recsfetch(params, queryName) {
