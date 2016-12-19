@@ -82,24 +82,34 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
               return json;
             }));
   }
-  function apiCall(params={}, apiCall="conceptStats") {
-    params = _.clone(params);
+  function apiCallBaseUrl(apiCall) {
+    return `${apiRoot}/${apiCall}`;
+  }
+  function apiGetUrl(apiCall, params) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
-    return (util.cachedPostJsonFetch(
-            `${apiRoot}/${apiCall}Post`, params)
-            .then(function(json) {
-              if (json.error)
-                console.error(json.error.message, json.error.queryName, json.error.url);
-              json.forEach(rec=>{
-                //rec.conceptrecs = parseInt(rec.conceptrecs, 10);
-                //rec.dbrecs = parseInt(rec.dbrecs, 10);
-                //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
-              })
-              return json;
-            }));
+    return util.getUrl(apiCallBaseUrl(apiCall), params);
+  }
+  function apiCall(apiCall, params={}) {
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    return (
+      util.cachedPostJsonFetch(
+            apiCallBaseUrl(apiCall), params
+      )
+        .then(function(json) {
+          if (json.error)
+            console.error(json.error.message, json.error.queryName, json.error.url);
+          json.forEach(rec=>{
+            //rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+            //rec.dbrecs = parseInt(rec.dbrecs, 10);
+            //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+          })
+          return json;
+        }));
   }
   return {conceptCount, classRelations, apiCall,
+          apiGetUrl,
           conceptStats, cacheDirty};
 }
   /* from drug explorer app

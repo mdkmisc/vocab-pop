@@ -63,7 +63,7 @@ export class Home extends Component {
   }
   render() {
     var filterInfo = this.state.userSettings
-          ? <Inspector data={ this.state.userSettings.filters } />
+          ? <Inspector search={false} data={ this.state.userSettings.filters } />
           : '';
     var conceptCount = this.state.conceptCount || 0;
     return  <div>
@@ -76,24 +76,113 @@ export class Home extends Component {
 export class Drug extends Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = {
+      userSettings: {},
+      counts: {},
+    };
   }
   componentDidMount() {
     AppState.subscribe(this, 'userSettings');
-    AppState.subscribe(this, 'conceptCount');
+    this.fetchData();
+  }
+  componentDidUpdate() {
+    this.fetchData();
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    //let equal = _.isEqual(this.state.counts, nextState.counts);
+    let equal = _.isEqual(this.state, nextState);
+    console.log(this.state, nextState, equal, 'state');
+    equal = _.isEqual(this.props, nextProps);
+    console.log(this.props, nextProps, equal, 'props');
+    return false;
+    return !equal;
+  }
+  fetchData() {
+    this.countSub(
+      'All', 
+      {
+        excludeInvalidConcepts: false,
+        excludeNoMatchingConcepts: false,
+        excludeNonStandardConcepts: false,
+      });
+    this.countSub(
+      'With current filters', 
+      this.state.userSettings.filters || {}
+    );
+    this.countSub(
+      'Invalid', 
+      {
+        includeFiltersOnly: true,
+        includeInvalidConcepts: true,
+      });
+    this.countSub(
+      'No matching concept', 
+      {
+        includeFiltersOnly: true,
+        includeNoMatchingConcepts: true,
+      });
+    this.countSub(
+      'Non-standard concepts', 
+      {
+        includeFiltersOnly: true,
+        includeNonStandardConcepts: true,
+      });
+    const {filters} = this.state.userSettings
   }
   componentWillUnmount() {
     AppState.unsubscribe(this, 'userSettings');
-    AppState.unsubscribe(this, 'conceptCount');
+  }
+  countSub(name, filters) {
+    AppState.subscribe( // returns streamName
+      this, 
+      AppState.makeStream({
+        apiCall: 'drugConceptCounts', 
+        params: {...filters, queryName:name}, 
+        singleValue: true,
+        transformResults:
+          dcc => {
+            return {
+              counts: {
+                [name]: {
+                  'Drug exposures': commify(parseInt(dcc.exposure_count,10)),
+                  'Drug concepts': commify(parseInt(dcc.concept_count,10)),
+                }
+              }
+            };
+          }
+      }),
+      false // no subscription name, use transform callback instead
+      //'drugConceptCounts'
+    );
   }
   render() {
-    var filterInfo = this.state.userSettings
-          ? <Inspector data={ this.state.userSettings.filters } />
+    const {counts} = this.state;
+    var filterInfo = this.state.userSettings.filters
+          ? <Inspector search={false} data={ this.state.userSettings.filters } />
           : '';
-    var conceptCount = this.state.conceptCount || 0;
     return  <div>
+              <ul>
+                {
+                  _.map(counts,
+                    (cat, catName) => (
+                      <li key={catName}>{catName}
+                        <ul>
+                          {
+                            _.map(cat, 
+                              (count, countName) => (
+                                <li key={countName}>
+                                  {countName}: {count}
+                                </li>
+                            ))
+                          }
+                        </ul>
+                      </li>
+                    ))
+                }
+              </ul>
               <p>
                 want to see:<br/>
+                  counts with/without filters<br/>
                   source/target<br/>
                   drug type<br/>
                   drug class<br/>
@@ -108,7 +197,7 @@ export class Drug extends Component {
               </p>
               Filters: {filterInfo}
               <br/>
-              Current concepts: { commify(conceptCount) }
+              <Inspector search={false} data={this.state} />
             </div>;
   }
 }
@@ -118,7 +207,7 @@ export class Search extends Component {
     this.state = { };
   }
   componentDidMount() {
-    console.log('mounting Search');
+    //console.log('mounting Search');
     this.conceptStats = AppState.conceptStats
           .subscribe(conceptStats => this.setState({conceptStats}));
   }
@@ -133,7 +222,7 @@ export class Search extends Component {
     */
   }
   componentWillUnmount() {
-    console.log('unmounting Search');
+    //console.log('unmounting Search');
     this.conceptStats.unsubscribe();
     this.userSettings && this.userSettings.unsubscribe();
   }
@@ -144,7 +233,7 @@ export class Search extends Component {
     gridSettings && this.grid.columnApi.setColumnState(gridSettings);
   }
   render() {
-    console.log('rendering Search');
+    //console.log('rendering Search');
     let {conceptStats, userSettings} = this.state;
     //if (!conceptStats) return <Waiting>Waiting for concept stats...</Waiting>;
 

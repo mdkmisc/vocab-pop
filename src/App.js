@@ -112,10 +112,10 @@ class DraggableWrapper extends Component {
                       x: 0, y: 0
                     },
                 };
-    console.log(this.state);
+    //console.log(this.state);
   }
   handleDrag(e, ui) {
-    console.log(this.state);
+    //console.log(this.state);
     const {x, y} = this.state.deltaPosition;
     this.setState({
       deltaPosition: {

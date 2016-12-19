@@ -13,6 +13,10 @@ var ALLOW_CACHING = [
 //var cache = {}; // only save till reload
 //var cache = localStorage; // save indefinitely
 var cache = sessionStorage; // save for session
+export function fetchKey(url, opts={}) {
+	var key = `${url}:${JSON.stringify(opts)}`;
+  return key;
+}
 export function cachedJsonFetch(url, opts={}) {	
 	var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
 	if (allowed) {
@@ -21,7 +25,7 @@ export function cachedJsonFetch(url, opts={}) {
 		//console.log(`not caching ${url}. add to ohdsi.util.ALLOW_CACHING to enable caching for it`);
 		return jsonFetch(url, opts);
 	}
-	var key = `${url}:${JSON.stringify(opts)}`;
+	var key = fetchKey(url, opts);
 	return new Promise(function(resolve, reject) {
 		if (!storageExists(key, cache)) {
 			jsonFetch(url, opts)
@@ -48,11 +52,29 @@ function jsonFetch(url, opts={}) {
 			return results.json();
 		});
 }
-export function cachedPostJsonFetch(url, params={}, queryName) {
-  queryName = queryName || params.queryName || 'no query name';
+export function getUrl(url, params={}) {
+  if (url.match(/(post|get)/i)) {
+    console.warn('quit using post/get in api names');
+    url = url.replace(/post/,'get').replace(/Post/,'Get');
+  }
+
 	var qs = _.map(params, (v,k) => `${k}=${v}`).join('&');
-	var get = `${url.replace(/post/,'get').replace(/Post/,'Get')}?${qs}`;
-	console.log(queryName, get);
+	return `${url}?${qs}`;
+}
+
+/* IMPORTANT!!!
+ *
+ * using map and JSON.stringify to make keys that get compared to other
+ * things assuming equal values => equal keys, but property order is not guarranteed.
+ * need to fix!!!!!
+ */
+export function cachedPostJsonFetch(url, params={}, queryName) { // stop using queryName...put it in params in the first place
+  if (queryName) {
+    console.warn('quit using separate queryName arg in cachedPostJsonFetch calls');
+  }
+  queryName = queryName || params.queryName || 'no query name';
+  var get = getUrl(url, params);
+	//console.log(queryName, get);
 	return cachedJsonFetch(url, {
 						method: 'post',
 						headers: { 'Content-Type': 'application/json' },

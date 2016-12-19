@@ -40,16 +40,79 @@ var streams = {
 };
 function fetchData() {
   console.log("FETCHING DATA");
-  AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
-  AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
-  AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
-}
-export function apiCall(params, apiCall) {
-  AppData.apiCall(params, apiCall)
-  .then(results => {
-    apiCalls.next({params, apiCall, results});
-    return results;
+  AppData.cacheDirty().then(() => {
+    AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
+    AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
+    AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
   })
+}
+
+/* @function makeStream
+ *  @param opts object
+ *  @param opts.apiCall string   // name of api call
+ *  @param opts.params [object]  // apiCall params
+ *  @param opts.singleValue [boolean]  // whether to return a single value instead of array
+ *  @param opts.transformResults [function]  // callback on results returning object to call setState with
+ *  @returns string // streamKey, which is valid get url, though stream is based on post url
+ */
+export function makeStream({apiCall, 
+                            params, 
+                            singleValue = false,
+                            transformResults
+                          }) {
+
+  let streamKey = AppData.apiGetUrl(apiCall, params);
+
+  if (_.has(streams, streamKey))
+    return streamKey;
+
+  let stream = streams[streamKey] = new Rx.BehaviorSubject([]);
+
+  AppData.apiCall(apiCall, params)
+          .then(results => {
+            if (singleValue)
+              results = results[0];
+            if (transformResults)
+              results = transformResults(results);
+            stream.next(results);
+            return results;
+          });
+  return streamKey;
+}
+
+
+/* @function subscribe
+ *  @param component ReactComponent
+ *  @param streamName string // name of existing stream
+ *  @param subName [string|boolean]  
+ *      // name of state property or false to call 
+ *      // setState with results (results must be singleValue object, not array)
+ * has major side effects, just for convenience.
+ * makes api call and subscribes component state to results
+ */
+export function subscribe(component, streamName, subName) {
+  let getNamesFromResults = false;
+  if (subName === false) {
+    getNamesFromResults = true;
+  }
+  subName = subName || streamName;
+  component._subscriptions = component._subscriptions || {};
+  component._subscriptions[subName] =
+    streams[streamName].subscribe(
+      results => {
+        console.log(component.constructor.name, 
+                    'has new value for', streamName);
+        if (getNamesFromResults) {
+          component.setState(
+            _.merge({},component.state, results));
+        } else {
+          component.setState({[subName]: results});
+        }
+      });
+}
+export function unsubscribe(component, subName) {
+  component._subscriptions[subName] &&
+    component._subscriptions[subName].unsubscribe();
 }
 
 export function saveState(key, val) {
@@ -96,6 +159,7 @@ export function initialize({history:_history}) {
           (v,k) => {
             query[k] = JSON.stringify(v);
           });
+        console.log('new history item', query);
         history.push({pathname: loc.pathname, query});
     });
   // don't need to do initial data fetch because setting
@@ -103,17 +167,6 @@ export function initialize({history:_history}) {
   //AppData.cacheDirty().then(fetchData)
 }
 
-export function subscribe(component, stream) {
-  // major side effects, just for convenience
-  component._subscriptions = component._subscriptions || {};
-  component._subscriptions[stream] =
-    streams[stream].subscribe(
-      str => component.setState({[stream]: str}));
-}
-export function unsubscribe(component, stream) {
-  component._subscriptions[stream] &&
-    component._subscriptions[stream].unsubscribe();
-}
 function queryParse(query) {
   let obj = {};
   _.each(query, (v,k) => {
@@ -199,6 +252,7 @@ export class AppState extends Component {
   }
   render() {
     console.log('AppState', this.state);
+    debugger;
     const {location, params, route, router, routeParams, children} = this.props;
     return <Inspector data={ this.state } />;
   }
