@@ -101,7 +101,7 @@ export function subscribe(component, streamName, subName) {
 
   component._subscriptions[subName] =
     component._subscriptions[subName] ||
-    streams[streamName].subscribe(
+    getStream(streamName).subscribe(
       results => {
         setTimeout(
           () => {
@@ -116,6 +116,9 @@ export function subscribe(component, streamName, subName) {
           }, 100);
       });
   return component._subscriptions[subName];
+}
+export function getStream(streamName) {
+  return streams[streamName];
 }
 export function unsubscribe(component) {
   _.each(component._subscriptions, sub => sub.unsubscribe());

@@ -133,8 +133,18 @@ export class Drug extends Component {
         params: {...filters, queryName:curName}, 
         singleValue: true,
       });
-    const curStream = AppState.subscribe(this, curStreamName, curName);
-    this.setState({[curName]: curStream.getValue()});
+    AppState.subscribe(this, curStreamName, curName);
+    const curStream = AppState.getStream(curStreamName);
+    let counts = _.clone(this.state.counts);
+    const ccounts = curStream.getValue();
+    counts[curName] = 
+      _.isEmpty(ccounts)
+        ? { 'Waiting for results':'' }
+        : {
+            'Drug exposures': commify(parseInt(ccounts.exposure_count,10)),
+            'Drug concepts': commify(parseInt(ccounts.concept_count,10)),
+          };
+    this.setState({counts});
   }
   componentWillUnmount() {
     AppState.unsubscribe(this);
@@ -156,11 +166,11 @@ export class Drug extends Component {
             };
           }
       });
-    let stream = AppState.subscribe(
+    let subscription = AppState.subscribe(
       this, streamName,
       false // don't setState using name, use transform callback instead
     );
-    return stream; // not using return anywhere
+    return subscription; // not using return anywhere
   }
   render() {
     const {counts} = this.state;

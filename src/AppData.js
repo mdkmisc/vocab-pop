@@ -88,6 +88,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
   function apiGetUrl(apiCall, params) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
+    console.log(util.getUrl(apiCallBaseUrl(apiCall), params));
     return util.getUrl(apiCallBaseUrl(apiCall), params);
   }
   function apiCall(apiCall, params={}) {

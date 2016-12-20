@@ -59,7 +59,7 @@ export function getUrl(url, params={}) {
   }
 
 	var qs = _.map(params, (v,k) => `${k}=${v}`).join('&');
-	return `${url}?${qs}`;
+	return encodeURI(`${url}?${qs}`);
 }
 
 /* IMPORTANT!!!
