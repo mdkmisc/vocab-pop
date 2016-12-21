@@ -75,58 +75,91 @@ export class Home extends Component {
 }
 export class DrugContainer extends Component {
   render() {
-    return <Drug/>;
+    let {filters} = AppState.getState();
+    console.log('CONTAINER', filters);
+    return <Drug filters={filters}/>;
   }
 }
 export class Drug extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      userSettings: {filters:{}},
+      //userSettings: {filters:{}},
       counts: {},
     };
+    this.streamsRequested = [];
+    this.streamsToWatch = {};
+  }
+  streamsCallback(streams) {
+    console.log('Drug streamsSubscriber', streams);
+    let state = _.merge({}, this.state);
+    streams.forEach(stream => {
+      _.set(state, stream.meta.statePath, stream.results);
+    })
+    this.setState(state);
   }
   componentDidMount() {
-    AppState.subscribe(this, 'userSettings');
+    //AppState.subscribe(this, 'userSettings');
+    this.countSub( 'All', {
+        excludeInvalidConcepts: false,
+        excludeNoMatchingConcepts: false,
+        excludeNonStandardConcepts: false, });
+      this.countSub( 'Invalid', {
+          includeFiltersOnly: true,
+          includeInvalidConcepts: true, });
+      this.countSub( 'No matching concept', {
+          includeFiltersOnly: true,
+          includeNoMatchingConcepts: true, });
+      this.countSub( 'Non-standard concepts', {
+          includeFiltersOnly: true,
+          includeNonStandardConcepts: true, });
+    this.streamsSubscriber = 
+      new AppState.StreamsSubscriber(this.streamsCallback.bind(this));
     this.fetchData();
+  }
+  streamFilter(stream) {
+    return _.includes(
+              _.values(this.streamsToWatch),
+              stream);
   }
   componentDidUpdate() {
     this.fetchData();
   }
   shouldComponentUpdate(nextProps, nextState) {
     //let equal = _.isEqual(this.state.counts, nextState.counts);
-    let equal = _.isEqual(this.state, nextState);
-    console.log(this.state, nextState, 
-                equal ? 'no update' : 'yes update');
-    return !equal;
+    let stateChange = !_.isEqual(this.state, nextState);
+    let propsChange = !_.isEqual(this.props, nextProps);
+    console.log(this.state, nextState, 'stateChange', stateChange);
+    console.log(this.props, nextProps, 'propsChange', propsChange);
+    return stateChange || propsChange;
+  }
+  componentWillUnmount() {
+    AppState.unsubscribe(this);
+  }
+  countSub(displayName, filters) {
+    let stream = new AppState.ApiStream({
+        apiCall: 'drugConceptCounts', 
+        params: {...filters, queryName:displayName}, 
+        singleValue: true,
+        transformResults: 
+          (results) => Drug.formatCounts(results, displayName),
+        meta: {
+          statePath: `counts.${displayName}`,
+        }
+      });
+    this.streamsToWatch[displayName] = stream;
+    if (stream.newInstance)
+      this.streamsRequested.push(stream);
   }
   fetchData() {
-    this.countSub(
-      'All', 
-      {
-        excludeInvalidConcepts: false,
-        excludeNoMatchingConcepts: false,
-        excludeNonStandardConcepts: false,
-      });
-    this.countSub(
-      'Invalid', 
-      {
-        includeFiltersOnly: true,
-        includeInvalidConcepts: true,
-      });
-    this.countSub(
-      'No matching concept', 
-      {
-        includeFiltersOnly: true,
-        includeNoMatchingConcepts: true,
-      });
-    this.countSub(
-      'Non-standard concepts', 
-      {
-        includeFiltersOnly: true,
-        includeNonStandardConcepts: true,
-      });
-    const {filters} = this.state.userSettings
+    const {filters} = this.props;
+    //const {filters} = this.state.userSettings
+    console.log('in Drug.fetchData with filters', filters);
+    this.countSub('With current filters', filters);
+
+    this.streamsSubscriber.filter(this.streamFilter.bind(this));
+
+    return;
     const curName = 'With current filters';
     const curStreamName = AppState.makeStream({
         apiCall: 'drugConceptCounts', 
@@ -146,36 +179,17 @@ export class Drug extends Component {
           };
     this.setState({counts});
   }
-  componentWillUnmount() {
-    AppState.unsubscribe(this);
-  }
-  countSub(displayName, filters) {
-    let streamName = AppState.makeStream({
-        apiCall: 'drugConceptCounts', 
-        params: {...filters, queryName:displayName}, 
-        singleValue: true,
-        transformResults:
-          dcc => {
-            return {
-              counts: {
-                [displayName]: {
-                  'Drug exposures': commify(parseInt(dcc.exposure_count,10)),
-                  'Drug concepts': commify(parseInt(dcc.concept_count,10)),
-                }
-              }
-            };
-          }
-      });
-    let subscription = AppState.subscribe(
-      this, streamName,
-      false // don't setState using name, use transform callback instead
-    );
-    return subscription; // not using return anywhere
+  static formatCounts(dcc, displayName) {
+    return {
+          'Drug exposures': commify(parseInt(dcc.exposure_count,10)),
+          'Drug concepts': commify(parseInt(dcc.concept_count,10)),
+    };
   }
   render() {
+    const {filters} = this.props;
     const {counts} = this.state;
-    var filterInfo = this.state.userSettings.filters
-          ? <Inspector search={false} data={ this.state.userSettings.filters } />
+    var filterInfo = filters
+          ? <Inspector search={false} data={ filters } />
           : '';
     return  <div>
               <ul>

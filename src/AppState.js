@@ -7,13 +7,43 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import yaml from 'js-yaml';
 import settingsYaml from './appSettings.yml';
-import _AppData from './AppData'; // can't import till appSettings loaded
+import qs from 'qs';
 
-var _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
+
+/* initialization flow
+ *
+ * 1) index.js imports this (AppState)
+ * 2) appSettings.yml is loaded, parsed and exported
+ *    as AppState.appSettings, which is immediately
+ *    available to any component that imports AppState
+ */
+let _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
+export var appSettings = _appSettings; 
+/* 3) import AppData, but it's not usable until it's
+ *    been initialized with appSettings which provides
+ *    values for {cdmSchema, resultsSchema, apiRoot}
+ */
+import _AppData from './AppData';
 const AppData = _AppData(_appSettings);
 
-// thought i might do more with appSettings, but nothing now
-export var appSettings = _appSettings; 
+let apiStreams = {};
+
+
+/* makeStream should only make api calls once
+ *  (does that already)
+ * a component should only need one subscription
+ *  for all the api calls (and user settings?)
+ *  it wants to track.
+ *
+ */
+
+//var apiStreams = new Rx.BehaviorSubject({});
+/*
+ *  calls initialize with a router history object
+ */
+
+
+
 
 export var history; /* global history object set in index.js */
 
@@ -26,7 +56,7 @@ export var conceptCount = new Rx.BehaviorSubject(0);
 export var conceptStats = new Rx.BehaviorSubject([]);
 export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({filters:{}});
-export var stateChange = new Rx.Subject({});
+//export var stateChange = new Rx.Subject({});
 export var apiCalls = new Rx.Subject({});
 
 var streams = {
@@ -36,7 +66,7 @@ var streams = {
                   conceptStats,
                   classRelations,
                   userSettings,
-                  stateChange,
+                  //stateChange,
 };
 function fetchData() {
   console.log("FETCHING DATA");
@@ -45,6 +75,57 @@ function fetchData() {
     AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
     AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
   })
+}
+/* @class ApiStream
+ *  @param opts object
+ *  @param opts.apiCall string   // name of api call
+ *  @param opts.params [object]  // apiCall params
+ *  @param opts.singleValue [boolean]  // whether to return a single value instead of array
+ *  @param opts.transformResults [function]  // callback on results returning object to call setState with
+ *  @returns string // streamKey, which is valid get url, though stream is based on post url
+ */
+export class ApiStream extends AppData.ApiFetcher {
+  // instances are unique (or re-used if they wouldn't be)
+  // and stored in ApiStream.instances (as a result
+  // of inheriting from util.JsonFetcher)
+  constructor({apiCall, params, meta, transformResults, singleValue}) {
+    super({apiCall, params, meta, });
+    this.behaviorSubj = new Rx.BehaviorSubject(this);
+    this.jsonPromise.then(
+      results=>{
+        if (results.error) {
+          this.behaviorSubj.error(results.error);
+          return;
+        }
+        if (singleValue) results = results[0];
+        if (transformResults)
+          results = transformResults(results);
+        this.results = results;
+        this.behaviorSubj.next(this);
+        //this.behaviorSubj.complete();
+      });
+  }
+  /* subscribe(cb) { return this.behaviorSubj.subscribe(cb); } */
+}
+export class StreamsSubscriber {
+  constructor(callback) {
+    this.callback = callback;
+  }
+  filter(filter) {
+    //this.subscription.unsubscribe();
+    if (this.subscription) this.subscription.unsubscribe();
+    this.streams = _.filter(ApiStream.instances, filter);
+    this.latest = 
+      Rx.Observable.combineLatest(
+        this.streams.map(d=>d.behaviorSubj));
+    //this.subscription = this.latest.subscribe(this.stream);
+    if (this.subscription) 
+      this.subscription.unsubscribe();
+    return this.subscription = this.latest.subscribe(this.callback);
+  }
+  setCallback(cb) {
+    this.callback = cb;
+  }
 }
 
 /* @function makeStream
@@ -124,30 +205,40 @@ export function unsubscribe(component) {
   _.each(component._subscriptions, sub => sub.unsubscribe());
 }
 
-var currentState = {};
 export function saveState(key, val) {
-  var change = typeof val === 'undefined' ? key : {[key]: val};
-  currentState = _.merge({}, currentState, change);
-  stateChange.next(change);
-}
-function saveStateToUrl() {
-  var loc = history.getCurrentLocation();
-  var curQuery = queryParse(loc.query);
-  if (_.isEqual(currentState, curQuery))
-    return;
+  let change = typeof val === 'undefined' ? key : {[key]: val};
+  let loc = history.getCurrentLocation();
+  let oldState = qs.parse(loc.search.substr(1));
+  let newState = _.merge({}, oldState, change);
+  if (_.isEqual(oldState, newState)) return;
 
-  var query = {};
-  _.each(currentState,
-    (v,k) => {
-      query[k] = JSON.stringify(v);
-    });
-  console.log('new history item', query);
-  history.push({pathname: loc.pathname, query});
-  userSettings.next(currentState);
+  let newLoc = {  pathname: loc.pathname, 
+                  search: '?' + qs.stringify(newState),
+                };
+  console.log('new location', newLoc);
+  history.push(newLoc);
+  console.warn('get rid of userSettings');
+  userSettings.next(newState);
+  //stateChange.next(change);
+  if (_.has(change, 'filters')) {
+    console.warn("quit fetching data on filter change like this");
+    fetchData();
+  }
+}
+export function getState(path) {
+  var loc = history.getCurrentLocation();
+  var state = qs.parse(loc.search.substr(1));
+  if (typeof path === 'undefined') return state;
+  return _.get(state, path);
 }
 
 export function initialize({history:_history}) {
   history = _history;
+  let urlStateOnLoadingPage = getState();
+  let appDefaults = { filters: _appSettings.filters, };
+  saveState(appDefaults);
+  saveState(urlStateOnLoadingPage);
+
   tableConfig.next(_appSettings.tables);
 
   conceptStats.subscribe(
@@ -155,29 +246,6 @@ export function initialize({history:_history}) {
       var sbt = _.supergroup(cs, ['table_name','column_name','domain_id','vocabulary_id']);
       statsByTable.next(sbt);
     });
-
-  stateChange.subscribe(
-    change => {
-      saveStateToUrl();
-      if (_.has(change, 'filters')) {
-        fetchData();
-      }
-    }
-  );
-
-  var initialState = _.merge(
-    { filters: _appSettings.filters, },
-    queryParse(history.getCurrentLocation().query)
-  );
-  saveState(initialState);
-}
-
-function queryParse(query) {
-  let obj = {};
-  _.each(query, (v,k) => {
-                  obj[k] = JSON.parse(v);
-                });
-  return obj;
 }
 
 /*

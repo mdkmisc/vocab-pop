@@ -14,8 +14,10 @@ var ALLOW_CACHING = [
 //var cache = localStorage; // save indefinitely
 var cache = sessionStorage; // save for session
 export function fetchKey(url, opts={}) {
-	var key = `${url}:${JSON.stringify(opts)}`;
-  return key;
+  // switch to using the getUrl
+	// var key = `${url}:${JSON.stringify(opts)}`;
+  // return key;
+  return getUrl(url, opts);
 }
 export function cachedJsonFetch(url, opts={}) {	
 	var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
@@ -58,16 +60,16 @@ export function getUrl(url, params={}) {
     url = url.replace(/post/,'get').replace(/Post/,'Get');
   }
 
-	var qs = _.map(params, (v,k) => `${k}=${v}`).join('&');
-	return encodeURI(`${url}?${qs}`);
+  if (_.isEmpty(params))
+    return url;
+
+  return encodeURI(
+          url + '?' + _.keys(params)
+                        .sort()
+                        .map( key => `${key}=${params[key]}`)
+                        .join('&'));
 }
 
-/* IMPORTANT!!!
- *
- * using map and JSON.stringify to make keys that get compared to other
- * things assuming equal values => equal keys, but property order is not guarranteed.
- * need to fix!!!!!
- */
 export function cachedPostJsonFetch(url, params={}, queryName) { // stop using queryName...put it in params in the first place
   if (queryName) {
     console.warn('quit using separate queryName arg in cachedPostJsonFetch calls');
@@ -89,6 +91,59 @@ export function cachedPostJsonFetch(url, params={}, queryName) { // stop using q
             return json;
           })
 }
+export function cachedGetJsonFetch(url, params={}) {
+  let get = getUrl(url, params);
+  let queryName = params.queryName || 'no query name';
+	return (cachedJsonFetch(get)
+            .then(function(json) {
+              if (json.error) {
+                json.error.url = get;
+                json.error.queryName = queryName;
+              }
+              json.url = get;
+              json.queryName = queryName;
+              return json;
+            })
+        );
+}
+export function jsonFetchMeta(url, params={}, meta={}) {
+  // so you get back not just the promise, but also the getUrl,
+  // which is a unique key for the fetch and a key into storage,
+  // and you also get back meta data if you send any (which might
+  // be useful)
+  let key = getUrl(url, params);
+  let promise = cachedGetJsonFetch(url, params);
+  return {key, promise, meta};
+}
+export class JsonFetcher { // this.url is the unique key
+  constructor(baseUrl, params, meta) {
+    this.baseUrl = baseUrl;
+    this.params = params;
+    this.meta = meta;
+    this.url = getUrl(baseUrl, params);
+    if (_.has(JsonFetcher.instances, this.url)) {
+      console.warn('JsonFetcher already exists. promises probably done already', this.url);
+      let instance = JsonFetcher.instances[this.url];
+      instance.newInstance = false;
+      return instance;
+    }
+    this.queryName = params.queryName || 'no query name';
+    this.fetchPromise = cachedJsonFetch(this.url);
+    this.jsonPromise = this.fetchPromise.then(
+                          json => {
+                                if (json.error) {
+                                  debugger;  // not sure what to do
+                                  //json.error.url = get;
+                                  //json.error.queryName = queryName;
+                                }
+                                return this.json=json
+                          });
+    this.newInstance = true;
+    JsonFetcher.instances[this.url] = this;
+  }
+}
+JsonFetcher.instances = {};
+
 export function storagePut(key, val, store = sessionStorage) {
 	store[key] = LZString.compressToBase64(JSON.stringify(val));
   //let json = JSON.stringify(val);

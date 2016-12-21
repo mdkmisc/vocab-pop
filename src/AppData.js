@@ -3,6 +3,9 @@ import * as util from './utils';
 
 export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
 
+  // api calls return promises, except apiCallMeta
+  // which returns a promise wrapped in some metadata
+
   function cacheDirty() {
     return fetch(`${apiRoot}/cacheDirty`)
       .then(response => {
@@ -19,6 +22,26 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
             })
       });
   }
+  class ApiFetcher extends util.JsonFetcher {
+    constructor({apiCall, params, meta, transformResults}) {
+      params = _.merge({}, params, {cdmSchema, resultsSchema});
+      let baseUrl = apiCallBaseUrl(apiCall);
+      super(baseUrl, params, meta);
+      // AppState.ApiStream should do it's own transforming
+      // so it can better control (run singleValue first)
+      if (transformResults) {
+        this.jsonPromise = this.jsonPromise.then(transformResults);
+      }
+    }
+  }
+  function apiCallBaseUrl(apiCall) {
+    return `${apiRoot}/${apiCall}`;
+  }
+  function apiCallMeta(apiCall, params={}, meta) {
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    return new util.JsonFetcher(apiCallBaseUrl(apiCall), params);
+  }
   function classRelations(params={}, queryName="classRelations") {
     params = _.clone(params);
     let apiCall = 'concepts';
@@ -26,7 +49,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
     params.cdmSchema = cdmSchema;
     params.queryName = queryName;
 
-    return (util.cachedPostJsonFetch(
+    return (util.cachedGetJsonFetch(
             `${apiRoot}/${apiCall}Post`, params)
             .then(function(json) {
               if (json.error)
@@ -50,7 +73,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
     params.cdmSchema = cdmSchema;
     params.queryName = queryName;
 
-    return (util.cachedPostJsonFetch(
+    return (util.cachedGetJsonFetch(
             `${apiRoot}/${apiCall}Post`, params)
             .then(function(json) {
               if (json.error)
@@ -66,7 +89,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
     params.queryName = queryName;
-    return (util.cachedPostJsonFetch(
+    return (util.cachedGetJsonFetch(
             `${apiRoot}/${apiCall}Post`, params)
             .then(function(json) {
               if (json.error)
@@ -82,9 +105,6 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
               return json;
             }));
   }
-  function apiCallBaseUrl(apiCall) {
-    return `${apiRoot}/${apiCall}`;
-  }
   function apiGetUrl(apiCall, params) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
@@ -95,7 +115,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
     return (
-      util.cachedPostJsonFetch(
+      util.cachedGetJsonFetch(
             apiCallBaseUrl(apiCall), params
       )
         .then(function(json) {
@@ -110,7 +130,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
         }));
   }
   return {conceptCount, classRelations, apiCall,
-          apiGetUrl,
+          apiGetUrl, ApiFetcher,
           conceptStats, cacheDirty};
 }
   /* from drug explorer app
