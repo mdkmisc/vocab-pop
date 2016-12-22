@@ -33,19 +33,20 @@ export class FilterForm extends Component {
   constructor(props) {
     super(props);
     this.state = { 
-      userSettings: {},
     };
   }
   componentDidMount() {
-    this.userSettings = AppState.userSettings.subscribe(
-      userSettings => this.setState({userSettings}));
+    this.filtSub = AppState.subscribeState(
+      'filters', filters => {
+        this.setState({filters});
+      });
   }
   componentWillUnmount() {
-    this.userSettings && this.userSettings.unsubscribe();
+    this.filtSub && this.filtSub.unsubscribe();
   }
   render() {
     const {filterFormSchema, filterFormUISchema} = AppState.appSettings;
-    const filterSettings = this.state.userSettings.filters || {};
+    const filterSettings = this.state.filters || {};
     return <Form schema={filterFormSchema}
                   uiSchema={filterFormUISchema}
                   onChange={this.formChange.bind(this)}

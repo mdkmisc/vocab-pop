@@ -23,8 +23,8 @@ if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 
 import React, { Component } from 'react';
-import { Panel, Accordion, 
-          //Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio
+import { Panel, Accordion, Label
+          //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio
                     } from 'react-bootstrap';
 
 import {commify} from '../utils';
@@ -42,32 +42,139 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 require('./VocabPop.css');
 
+const coldefs = [
+  {
+    headerName: 'CDM Table',
+    colId: 'table_name',
+    //unSortIcon: true,
+    //headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:standardized_clinical_data_tables">CDM Table</a>`,
+    field: 'table_name',
+    cellRenderer: ({data:d}={}) => (
+      d.table_name
+        ? `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:${d.table_name}">${d.table_name}</a>`
+        : `<span class="aside">does not appear in CDM data</span>`),
+  },
+  {
+    headerName: 'CDM Column',
+    colId: 'column_name',
+    valueGetter: ({data:d}={}) => d.column_name,
+  },
+  {
+    headerName: 'Domain',
+    colId: 'domain_id',
+    headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:domain">Domain</a>`,
+    valueGetter: ({data:d}={}) => d.domain_id,
+  },
+  {
+    headerName: 'Vocabulary',
+    colId: 'vocabulary_id',
+    headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:vocabulary">Vocabulary</a>`,
+    valueGetter: ({data:d}={}) => d.vocabulary_id,
+  },
+  {
+    headerName: 'Concept Class',
+    headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept_class">Concept Class</a>`,
+    colId: 'concept_class_id',
+    valueGetter: ({data:d}={}) => d.concept_class_id,
+  },
+  {
+    headerName: 'Standard Concept',
+    colId: 'sc',
+    headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept">Standard Concept</a>`,
+    valueGetter: ({data:d}={}) => d.sc,
+  },
+  {
+    headerName: 'Concept Invalid',
+    colId: 'invalid',
+    valueGetter: ({data:d}={}) => d.invalid,
+    //sortingOrder: ['desc','asc']
+  },
+  {
+    headerName: 'Distinct Concepts',
+    colId: 'conceptrecs',
+    field: 'conceptrecs',
+    cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
+    //sortingOrder: ['desc','asc']
+  },
+  {
+    headerName: 'CDM Occurrences',
+    colId: 'dbrecs',
+    field: 'dbrecs',
+    /*
+    comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
+      let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
+      return isNaN(ret) ? 0 : ret;
+    },
+    */
+    cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
+    //sort: 'desc',
+    //sortingOrder: ['desc','asc']
+  },
+  {
+    headerName: 'Type',
+    colId: 'type_concept_name',
+    valueGetter: ({data:d}={}) => d.type_concept_name,
+  },
+  {
+    headerName: 'Invalid',
+    colId: 'invalid_reason',
+    valueGetter: ({data:d}={}) => d.invalid_reason,
+  },
+  {
+    headerName: 'Standard Concept',
+    colId: 'standard_concept',
+    valueGetter: ({data:d}={}) => d.standard_concept,
+  },
+  {
+    headerName: 'Distinct Concepts',
+    colId: 'concept_count',
+    field: 'concept_count',
+    cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
+    //sortingOrder: ['desc','asc']
+  },
+  {
+    headerName: 'CDM Occurrences',
+    colId: 'exposure_count',
+    field: 'exposure_count',
+    /*
+    comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
+      let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
+      return isNaN(ret) ? 0 : ret;
+    },
+    */
+    cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
+    //sort: 'desc',
+    //sortingOrder: ['desc','asc']
+  },
+];
+
 export class Home extends Component {
   constructor(props) {
     super(props);
     this.state = {};
   }
   componentDidMount() {
-    AppState.subscribe(this, 'statsByTable');
-    AppState.subscribe(this, 'tableConfig');
-    AppState.subscribe(this, 'classRelations');
-    AppState.subscribe(this, 'userSettings');
-    AppState.subscribe(this, 'conceptCount');
+    this.stateSub = AppState.subscribeState('',
+        state => this.setState(state));
+    //AppState.subscribe(this, 'statsByTable');
+    //AppState.subscribe(this, 'tableConfig');
+    //AppState.subscribe(this, 'classRelations');
+    //AppState.subscribe(this, 'userSettings');
+    //AppState.subscribe(this, 'conceptCount');
   }
   componentWillUnmount() {
-    AppState.unsubscribe(this, 'statsByTable');
-    AppState.unsubscribe(this, 'tableConfig');
-    AppState.unsubscribe(this, 'classRelations');
-    AppState.unsubscribe(this, 'userSettings');
-    AppState.unsubscribe(this, 'conceptCount');
+    this.stateSub.unsubscribe();
+    //AppState.unsubscribe(this, 'statsByTable');
+    //AppState.unsubscribe(this, 'tableConfig');
+    //AppState.unsubscribe(this, 'classRelations');
+    //AppState.unsubscribe(this, 'userSettings');
+    //AppState.unsubscribe(this, 'conceptCount');
   }
   render() {
-    var filterInfo = this.state.userSettings
-          ? <Inspector search={false} data={ this.state.userSettings.filters } />
-          : '';
     var conceptCount = this.state.conceptCount || 0;
     return  <div>
-              Filters: {filterInfo}
+              <Inspector search={false} 
+                data={ AppState.getState() } />
               <br/>
               Current concepts: { commify(conceptCount) }
             </div>;
@@ -84,35 +191,26 @@ export class Drug extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      //userSettings: {filters:{}},
       counts: {},
+      drugagg: [],
     };
     this.streamsRequested = [];
     this.streamsToWatch = {};
   }
-  streamsCallback(streams) {
-    console.log('Drug streamsSubscriber', streams);
-    let state = _.merge({}, this.state);
-    streams.forEach(stream => {
-      _.set(state, stream.meta.statePath, stream.results);
-    })
-    this.setState(state);
-  }
   componentDidMount() {
-    //AppState.subscribe(this, 'userSettings');
     this.countSub( 'All', {
         excludeInvalidConcepts: false,
         excludeNoMatchingConcepts: false,
         excludeNonStandardConcepts: false, });
-      this.countSub( 'Invalid', {
-          includeFiltersOnly: true,
-          includeInvalidConcepts: true, });
-      this.countSub( 'No matching concept', {
-          includeFiltersOnly: true,
-          includeNoMatchingConcepts: true, });
-      this.countSub( 'Non-standard concepts', {
-          includeFiltersOnly: true,
-          includeNonStandardConcepts: true, });
+    this.countSub( 'Invalid', {
+        includeFiltersOnly: true,
+        includeInvalidConcepts: true, });
+    this.countSub( 'No matching concept', {
+        includeFiltersOnly: true,
+        includeNoMatchingConcepts: true, });
+    this.countSub( 'Non-standard concepts', {
+        includeFiltersOnly: true,
+        includeNonStandardConcepts: true, });
     this.streamsSubscriber = 
       new AppState.StreamsSubscriber(this.streamsCallback.bind(this));
     this.fetchData();
@@ -153,31 +251,32 @@ export class Drug extends Component {
   }
   fetchData() {
     const {filters} = this.props;
-    //const {filters} = this.state.userSettings
     console.log('in Drug.fetchData with filters', filters);
     this.countSub('With current filters', filters);
 
-    this.streamsSubscriber.filter(this.streamFilter.bind(this));
 
-    return;
-    const curName = 'With current filters';
-    const curStreamName = AppState.makeStream({
-        apiCall: 'drugConceptCounts', 
-        params: {...filters, queryName:curName}, 
-        singleValue: true,
+    let stream = new AppState.ApiStream({
+        apiCall: 'drugConceptAgg', 
+        params: {...filters, queryName:'drugagg'}, 
+        meta: {
+          statePath: `drugagg`,
+        }
       });
-    AppState.subscribe(this, curStreamName, curName);
-    const curStream = AppState.getStream(curStreamName);
-    let counts = _.clone(this.state.counts);
-    const ccounts = curStream.getValue();
-    counts[curName] = 
-      _.isEmpty(ccounts)
-        ? { 'Waiting for results':'' }
-        : {
-            'Drug exposures': commify(parseInt(ccounts.exposure_count,10)),
-            'Drug concepts': commify(parseInt(ccounts.concept_count,10)),
-          };
-    this.setState({counts});
+    this.streamsToWatch.drugagg = stream;
+    if (stream.newInstance)
+      this.streamsRequested.push(stream);
+
+
+    this.streamsSubscriber.filter(
+      str => stream === str);
+  }
+  streamsCallback(streams) {
+    console.log('Drug streamsSubscriber', streams);
+    let state = _.merge({}, this.state);
+    streams.forEach(stream => {
+      _.set(state, stream.meta.statePath, stream.results);
+    })
+    this.setState(state);
   }
   static formatCounts(dcc, displayName) {
     return {
@@ -187,11 +286,23 @@ export class Drug extends Component {
   }
   render() {
     const {filters} = this.props;
-    const {counts} = this.state;
+    const {counts, drugagg} = this.state;
     var filterInfo = filters
           ? <Inspector search={false} data={ filters } />
           : '';
+
+
+    let cols = coldefs.filter(
+      col => _.includes([ 
+        'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
+        'standard_concept', 'concept_count', 'exposure_count', ], col.colId));
+
+
     return  <div>
+              <AgTable coldefs={cols} data={drugagg}
+                      width={800} height={200}
+                      id="DrugAgg"
+              />
               <ul>
                 {
                   _.map(counts,
@@ -235,181 +346,62 @@ export class Drug extends Component {
 export class Search extends Component {
   constructor(props) {
     super(props);
-    this.state = { };
+    this.state = { filters:{} };
   }
   componentDidMount() {
-    //console.log('mounting Search');
-    this.conceptStats = AppState.conceptStats
-          .subscribe(conceptStats => this.setState({conceptStats}));
-  }
-  onGridReady(grid) {
-    this.grid = grid;
-    /*
-    this.userSettings = AppState.userSettings.subscribe(
-      userSettings => {
-        this.grid.columnApi.setColumnState(userSettings.agGrid.columnState);
-        //this.setState({userSettings});
+    this.filtSub = AppState.subscribeState(
+      'filters', filters => {
+        console.log('new search filters', filters);
+        this.setState({filters});
       });
-    */
+    this.fetchData();
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (!_.isEqual(prevState.filters, this.state.filters)) {
+      this.fetchData(this.state.filters);
+    }
   }
   componentWillUnmount() {
-    //console.log('unmounting Search');
-    this.conceptStats.unsubscribe();
-    this.userSettings && this.userSettings.unsubscribe();
+    this.filtSub.unsubscribe();
   }
-  componentDidUpdate() {
-    var userSettings = AppState.userSettings.getValue();
-    var gridSettings = userSettings.agGrid && userSettings.agGrid.columnState;
-    //console.log('applying col settings', gridSettings);
-    gridSettings && this.grid.columnApi.setColumnState(gridSettings);
+  fetchData(filters={}) {
+    let stream = new AppState.ApiStream({
+        apiCall: 'concepts', 
+        params: {...filters, 
+                      query:'conceptStats'
+                    }, 
+        transformResults: 
+          (results) => {
+            let recs = results.map(rec=>{
+              return _.merge({}, rec, {
+                conceptrecs: parseInt(rec.conceptrecs, 10),
+                dbrecs: parseInt(rec.dbrecs, 10),
+              });
+            });
+            console.log('new search results for', filters);
+            return recs;
+            //let sbt = _.supergroup(recs, ['table_name','column_name','domain_id','vocabulary_id']);
+            //return sbt;
+          },
+        //cb: statsByTable => { this.setState({statsByTable}); }
+        cb: conceptStats => { this.setState({conceptStats}); }
+      });
   }
   render() {
-    //console.log('rendering Search');
-    let {conceptStats, userSettings} = this.state;
-    //if (!conceptStats) return <Waiting>Waiting for concept stats...</Waiting>;
+    let {conceptStats} = this.state;
+    let cols = coldefs.filter(
+      col => _.includes([ 'table_name', 'column_name',
+        'domain_id', 'vocabulary_id', 'concept_class_id',
+        'sc', 'invalid', 'conceptrecs', 'dbrecs', ], col.colId));
 
-    const coldefs = [
-      {
-        headerName: 'CDM Table',
-        colId: 'table_name',
-        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:standardized_clinical_data_tables">CDM Table</a>`,
-        //field: 'table_name',
-        cellRenderer: ({data:d}={}) => (
-          d.table_name
-            ? `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:${d.table_name}">${d.table_name}</a>`
-            : `<span class="aside">does not appear in CDM data</span>`),
-      },
-      {
-        headerName: 'CDM Column',
-        colId: 'column_name',
-        valueGetter: ({data:d}={}) => d.column_name,
-      },
-      {
-        headerName: 'Domain',
-        colId: 'domain_id',
-        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:domain">Domain</a>`,
-        valueGetter: ({data:d}={}) => d.domain_id,
-      },
-      {
-        headerName: 'Vocabulary',
-        colId: 'vocabulary_id',
-        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:vocabulary">Vocabulary</a>`,
-        valueGetter: ({data:d}={}) => d.vocabulary_id,
-      },
-      {
-        headerName: 'Concept Class',
-        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept_class">Concept Class</a>`,
-        colId: 'concept_class_id',
-        valueGetter: ({data:d}={}) => d.concept_class_id,
-      },
-      {
-        headerName: 'Standard Concept',
-        colId: 'sc',
-        headerRenderer: () => `<a target="_blank" href="http://www.ohdsi.org/web/wiki/doku.php?id=documentation:cdm:concept">Standard Concept</a>`,
-        valueGetter: ({data:d}={}) => d.sc,
-      },
-      {
-        headerName: 'Concept Invalid',
-        colId: 'invalid',
-        valueGetter: ({data:d}={}) => d.invalid,
-        sortingOrder: ['desc','asc']
-      },
-      {
-        headerName: 'Distinct Concepts',
-        colId: 'conceptrecs',
-        field: 'conceptrecs',
-        cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
-        sortingOrder: ['desc','asc']
-      },
-      {
-        headerName: 'CDM Occurrences',
-        colId: 'dbrecs',
-        field: 'dbrecs',
-        comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
-          let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
-          return isNaN(ret) ? 0 : ret;
-        },
-        cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
-        sort: 'desc',
-        sortingOrder: ['desc','asc']
-      },
-    ];
     return (
-            <Panel>
-              <h3>Concept Search</h3>
-              <div style={{height:500, width:'100%'}} className="ag-fresh">
-                <AgGridReact
-                  onGridReady={this.onGridReady.bind(this)}
-                  columnDefs={coldefs}
-                  rowData={conceptStats}
-                  rowHeight="22"
-                  enableFilter={true}
-                  enableSorting={true}
-                  sortingOrder={['asc','desc']}
-                  animateRows={true}
-                  getRowStyle={
-                    (params) => params.data.sc === 'S' ? {backgroundColor:'rgba(143, 188, 143, 0.46)'}
-                              : params.data.sc === 'C' ? {backgroundColor:'rgba(177, 224, 231, 0.51)'}
-                              : {backgroundColor:'rgba(255, 160, 122, 0.41)'}
-                  }
-                  headerCellRenderer={
-                    p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
-                  }
-                  onColumnMoved={this.saveGridState.bind(this)}
-                  onColumnVisible={this.saveGridState.bind(this)}
-                  //onColumnEverythingChanged={this.saveGridState.bind(this)}
-                  onSortChanged={this.saveGridState.bind(this)}
-                  onFilterChanged={this.saveGridState.bind(this)}
-                />
-              </div>
-            </Panel>);
-  }
-  saveGridState() {
-    if (!this.grid) return;
-    var gridState = {
-      columnState: this.grid.columnApi.getColumnState(),
-      sortModel: this.grid.api.getSortModel(),
-      filterModel: this.grid.api.getFilterModel(),
-    };
-    AppState.saveState('agGrid', gridState);
+              <AgTable coldefs={cols} data={conceptStats}
+                      width={"100%"} height={550}
+                      id="Search"
+              />
+    );
   }
 }
-                       /*
-    const tableProps = {
-      rowHeight: 25,
-      headerHeight: 55,
-      width: 1200,
-      height: 700,
-    };
-              <DataTable  
-                      //_key={rollup.toString()}
-                      data={conceptStats}
-                      coldefs={coldefs}
-                      tableProps={tableProps}
-                      searchWidth={500}
-                      tableHeadFunc={
-                        (datalist) => {
-                          return <span>{datalist.getSize()} rows</span>;
-                      }}
-                      _rowClassNameGetter={
-                        rec => {
-                          switch (rec.sc) {
-                            case 'S':
-                              return 'standard-concept';
-                            case 'C':
-                              return 'classification-concept';
-                            default:
-                              return '';
-                          }
-                      }}
-                      _onRowClick={
-                        (evt, idx, obj, datalist)=>{
-                          let concept = datalist.getObjectAt(idx);
-                          let concept_id = concept.records[0].rollupConceptId;
-                          this.setState({concept, concept_id});
-                        }}
-                />
-                        */ 
 export class TreeWalker extends Component {
   constructor(props) {
     super(props);
@@ -524,6 +516,7 @@ export class Tables extends Component {
 }
 export class ConceptsContainer extends Component {
   constructor(props) {
+    throw new Error("haven't tried this for a while");
     super(props);
     this.state = { 
       breakdowns: {},
@@ -567,6 +560,7 @@ export class ConceptsContainer extends Component {
  
 export class Concepts extends Component {
   render() {
+    throw new Error("haven't tried this for a while");
     const {conceptCount, breakdowns, conceptStats} = this.props;
     //{commify(conceptStats.length)} used in database<br/>
                           //{bd.aggregate(_.sum, 'conceptrecs')} concepts, {' '}
@@ -605,6 +599,138 @@ export class Waiting extends Component {
             </Panel>;
   }
 }
+export class AgTable extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { 
+      status: 'initializing' 
+    };
+    const {id} = props;
+    if (_.has(AgTable.instances, id)) {
+      console.error(`agGrid.${id} AgTable already exists`, id);
+      let instance = AgTable.instances[id];
+      return instance;
+    }
+  }
+  saveGridState(arg) { // for dealing with user changes
+                       // but also gets called during init
+    if (!this.grid) return;
+    const {id} = this.props;
+    console.log('in saveGridState', this.state, this.grid.api.getSortModel());
+    if (this.state.status !== 'initialized') return true;
+    var gridState = {
+      columnState: this.grid.columnApi.getColumnState(),
+      sortModel: this.grid.api.getSortModel(),
+      filterModel: this.grid.api.getFilterModel(),
+    };
+    let state = AppState.getState(`agGrid.${id}`) || {sortModel:[{}]};
+    //console.log('old', state.sortModel[0], 'new', gridState.sortModel[0]);
+    //this.grid.api.setSortModel(gridState.sortModel);
+    AppState.saveState(`agGrid.${id}`, gridState);
+  }
+  componentWillUnmount() {
+    const {id} = this.props;
+    delete AgTable.instances[id];
+  }
+  initializeGridState(urlGridState) {
+    if (!(this.props.data && this.props.data.length)) {
+      console.log('waiting for data, have to run initializeGridState again');
+      //setTimeout(()=>this.initializeGridState(urlGridState), 500);
+      return;
+    }
+    //AppState.saveState({test:this.grid.columnApi.getColumnState()[1]});
+    
+    var currentGridState = {};
+    if (urlGridState.columnState) {
+      this.grid.columnApi.setColumnState(urlGridState.columnState);
+    }
+    if (urlGridState.sortModel)
+      this.grid.api.setSortModel(urlGridState.sortModel);
+    if (urlGridState.filterModel)
+      this.grid.api.setFilterModel(urlGridState.filterModel);
+
+    setTimeout(()=>this.setState({status: 'initialized'}),500);
+    /*
+    if (urlGridState.sortModel)
+      currentGridState.sortModel = this.grid.api.getSortModel();
+    if (urlGridState.filterModel)
+      currentGridState.filterModel = this.grid.api.getFilterModel();
+
+    if (_.isEqual(currentGridState, urlGridState)) {
+      this.setState({status: 'initialized'});
+    } else {
+      if (this.props.data && this.props.data.length) {
+        //urlGridState.columnState && this.grid.columnApi.setColumnState(urlGridState.columnState);
+        urlGridState.sortModel && this.grid.api.setSortModel(urlGridState.sortModel);
+        urlGridState.filterModel && this.grid.api.setFilterModel(urlGridState.filterModel);
+      }
+      // sometimes it doesn't work, so try again
+    }
+    */
+  }
+  onGridReady(grid) {
+    const {id} = this.props;
+    this.grid = grid;
+    let urlGridState = AppState.getState(`agGrid.${id}`);
+    if (urlGridState)
+      this.initializeGridState(urlGridState);
+    else
+      this.setState({status: 'initialized'});
+    window.grid = this.grid;
+  }
+  componentDidUpdate() {
+    const {columnSettings} = this.props;
+    if (columnSettings)
+      this.grid.columnApi.setColumnState(columnSettings);
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    //if (this.state.status !== 'ready') return false;
+    let stateChange = !_.isEqual(this.state, nextState);
+    let propsChange = !_.isEqual(this.props, nextProps);
+    //console.log(this.state, nextState, 'stateChange', stateChange);
+    //console.log(this.props, nextProps, 'propsChange', propsChange);
+    return stateChange || propsChange;
+  }
+  render() {
+    const {coldefs, data=[], height=400, width='100%'} = this.props;
+    return (
+            <Panel>
+              <Label>
+                {data.length} rows
+              </Label>
+              <br/>
+              <div style={{height, width}} className="ag-fresh">
+                <AgGridReact
+                  onGridReady={this.onGridReady.bind(this)}
+                  columnDefs={coldefs}
+                  rowData={data}
+                  rowHeight="22"
+                  enableFilter={true}
+                  enableSorting={true}
+                  //sortingOrder={['asc','desc']}
+                  animateRows={true}
+                  getRowStyle={
+                    (params) => params.data.sc === 'S' ? {backgroundColor:'rgba(143, 188, 143, 0.46)'}
+                              : params.data.sc === 'C' ? {backgroundColor:'rgba(177, 224, 231, 0.51)'}
+                              : {backgroundColor:'rgba(255, 160, 122, 0.41)'}
+                  }
+                  headerCellRenderer={
+                    p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
+                  }
+                  onColumnMoved={this.saveGridState.bind(this)}
+                  onColumnVisible={this.saveGridState.bind(this)}
+                  //onColumnEverythingChanged={this.saveGridState.bind(this)}
+                  //onSortChanged={this.saveGridState.bind(this)}
+                  onFilterChanged={this.saveGridState.bind(this)}
+                />
+              </div>
+            </Panel>);
+  }
+}
+AgTable.propTypes = {
+  id: React.PropTypes.string.isRequired,
+}
+AgTable.instances = {};
 /*
 export class Vocabularies extends Component {
   constructor(props) {

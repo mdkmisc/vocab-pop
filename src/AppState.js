@@ -1,3 +1,4 @@
+const DEBUG = true;
 import React, { Component } from 'react';
 import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
 
@@ -7,7 +8,13 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import yaml from 'js-yaml';
 import settingsYaml from './appSettings.yml';
-import qs from 'qs';
+//import qs from 'qs';
+//var qs = require('qs');
+//if (DEBUG) window.qs = qs;
+var myqs = {
+  stringify: obj=>encodeURI(JSON.stringify(obj)),
+  parse: json=>JSON.parse(decodeURI(json||'{}'))
+}
 
 
 /* initialization flow
@@ -56,7 +63,6 @@ export var conceptCount = new Rx.BehaviorSubject(0);
 export var conceptStats = new Rx.BehaviorSubject([]);
 export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({filters:{}});
-//export var stateChange = new Rx.Subject({});
 export var apiCalls = new Rx.Subject({});
 
 var streams = {
@@ -68,8 +74,82 @@ var streams = {
                   userSettings,
                   //stateChange,
 };
+var stateChange = new Rx.BehaviorSubject();
+export function saveState(key, val) {
+  let change;
+  if (typeof val === 'undefined') {
+    // no key/val, received entire change object
+    change = _.merge({}, key);
+  } else {
+    change = _.set({}, key, val);
+  }
+  let loc = history.getCurrentLocation();
+  //let oldState = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
+  let oldState = myqs.parse(loc.search.substr(1));
+  let newState = _.merge({}, oldState, change);
+  if (typeof stateChange.getValue() === 'undefined') {
+    stateChange.next(newState); // make sure there's an initial state change
+    return;
+  }
+  if (_.isEqual(oldState, newState)) return;
+
+  let newLoc = {  pathname: loc.pathname, 
+                  //search: '?' + qs.stringify(newState,{ strictNullHandling: true }),
+                  search: '?' + myqs.stringify(newState),
+                };
+  //console.log('new location', newLoc);
+  history.push(newLoc);
+  console.log('state change', change);
+  console.warn('get rid of userSettings');
+  userSettings.next(newState);
+  stateChange.next(change);
+  if (_.has(change, 'filters')) {
+    console.warn("quit fetching data on filter change like this");
+    fetchData();
+  }
+}
+_.mixin({
+  getPath: (obj,path) => (_.isEmpty(path) 
+                            ? obj
+                            : _.get(obj, path))
+  });
+window.getState = getState;
+window.saveState = saveState;
+export function getState(path) {
+  var loc = history.getCurrentLocation();
+  //var state = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
+  var state = myqs.parse(loc.search.substr(1));
+  return _.getPath(state, path);
+}
+export function subscribeState(path, cb) {
+  return (
+    stateChange
+        .filter(change => _.getPath(change, path))
+        .map(change => _.getPath(change, path))
+        .subscribe(cb));
+}
+
+export function initialize({history:_history}) {
+  history = _history;
+  let urlStateOnLoadingPage = getState();
+  let appDefaults = { filters: _appSettings.filters, };
+  saveState(_.merge({}, appDefaults, urlStateOnLoadingPage));
+
+  tableConfig.next(_appSettings.tables);
+
+  /*
+  conceptStats.subscribe(
+    cs => {
+      var sbt = _.supergroup(cs, ['table_name','column_name','domain_id','vocabulary_id']);
+      statsByTable.next(sbt);
+    });
+  */
+}
+
 function fetchData() {
-  console.log("FETCHING DATA");
+  console.log("NOT FETCHING DATA");
+  return;
+
   AppData.cacheDirty().then(() => {
     AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
     AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
@@ -88,7 +168,8 @@ export class ApiStream extends AppData.ApiFetcher {
   // instances are unique (or re-used if they wouldn't be)
   // and stored in ApiStream.instances (as a result
   // of inheriting from util.JsonFetcher)
-  constructor({apiCall, params, meta, transformResults, singleValue}) {
+  constructor({apiCall, params, meta, transformResults, 
+              singleValue, cb}) {
     super({apiCall, params, meta, });
     this.behaviorSubj = new Rx.BehaviorSubject(this);
     this.jsonPromise.then(
@@ -102,6 +183,10 @@ export class ApiStream extends AppData.ApiFetcher {
           results = transformResults(results);
         this.results = results;
         this.behaviorSubj.next(this);
+        if (cb) {
+          cb(this.results);
+        }
+        return this.results;
         //this.behaviorSubj.complete();
       });
   }
@@ -205,49 +290,6 @@ export function unsubscribe(component) {
   _.each(component._subscriptions, sub => sub.unsubscribe());
 }
 
-export function saveState(key, val) {
-  let change = typeof val === 'undefined' ? key : {[key]: val};
-  let loc = history.getCurrentLocation();
-  let oldState = qs.parse(loc.search.substr(1));
-  let newState = _.merge({}, oldState, change);
-  if (_.isEqual(oldState, newState)) return;
-
-  let newLoc = {  pathname: loc.pathname, 
-                  search: '?' + qs.stringify(newState),
-                };
-  console.log('new location', newLoc);
-  history.push(newLoc);
-  console.warn('get rid of userSettings');
-  userSettings.next(newState);
-  //stateChange.next(change);
-  if (_.has(change, 'filters')) {
-    console.warn("quit fetching data on filter change like this");
-    fetchData();
-  }
-}
-export function getState(path) {
-  var loc = history.getCurrentLocation();
-  var state = qs.parse(loc.search.substr(1));
-  if (typeof path === 'undefined') return state;
-  return _.get(state, path);
-}
-
-export function initialize({history:_history}) {
-  history = _history;
-  let urlStateOnLoadingPage = getState();
-  let appDefaults = { filters: _appSettings.filters, };
-  saveState(appDefaults);
-  saveState(urlStateOnLoadingPage);
-
-  tableConfig.next(_appSettings.tables);
-
-  conceptStats.subscribe(
-    cs => {
-      var sbt = _.supergroup(cs, ['table_name','column_name','domain_id','vocabulary_id']);
-      statsByTable.next(sbt);
-    });
-}
-
 /*
   Rx.Observable.combineLatest(appSettings, statsByTable)
               .scan((acc, [as, ts] = []) => {
@@ -325,7 +367,6 @@ export class AppState extends Component {
   }
   render() {
     console.log('AppState', this.state);
-    debugger;
     const {location, params, route, router, routeParams, children} = this.props;
     return <Inspector data={ this.state } />;
   }
