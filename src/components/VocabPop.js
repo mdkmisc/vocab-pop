@@ -41,6 +41,7 @@ import Spinner from 'react-spinner';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 require('./VocabPop.css');
+require('./fileBrowser.css');
 
 const coldefs = [
   {
@@ -183,11 +184,12 @@ export class Home extends Component {
 export class DrugContainer extends Component {
   render() {
     let {filters} = AppState.getState();
-    //console.log('CONTAINER', filters);
-    return <Drug filters={filters}/>;
+    // don't want updates when router changes,
+    // so add level of indirection -- better way?
+    return <DrugContainerNoRouter filters={filters}/>;
   }
 }
-export class Drug extends Component {
+export class DrugContainerNoRouter extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -244,7 +246,7 @@ export class Drug extends Component {
         params: {...filters, queryName:displayName}, 
         singleValue: true,
         transformResults: 
-          (results) => Drug.formatCounts(results, displayName),
+          (results) => DrugContainerNoRouter.formatCounts(results, displayName),
         meta: {
           statePath: `counts.${displayName}`,
         }
@@ -265,7 +267,14 @@ export class Drug extends Component {
         params: {...filters, queryName:'drugagg'}, 
         meta: {
           statePath: `drugagg`,
-        }
+        },
+        transformResults: 
+          results => results.map(
+            rec => {
+              rec.exposure_count = parseInt(rec.exposure_count,10);
+              rec.concept_count = parseInt(rec.concept_count,10);
+              return rec;
+            }),
       });
     if (this.aggStream !== aggStream) {
       this.aggStream = aggStream;
@@ -291,22 +300,31 @@ export class Drug extends Component {
   render() {
     const {filters} = this.props;
     const {counts, drugagg} = this.state;
-    var filterInfo = filters
-          ? <Inspector search={false} data={ filters } />
-          : '';
-
-
     let cols = coldefs.filter(
       col => _.includes([ 
         'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'exposure_count', ], col.colId));
+    return <Drug filters={filters}
+                  counts={counts}
+                  drugagg={drugagg}
+                  cols={cols} >
+              <div>
+                <Label bsStyle="warning">Debug stuff</Label>
+                <Inspector search={false} data={this.state} />
+              </div>
+            </Drug>;
+  }
+}
 
-
+class Drug extends Component {
+  render() {
+    const {children, counts, drugagg, cols} = this.props;
     return  <div>
               <AgTable coldefs={cols} data={drugagg}
                       width={800} height={200}
                       id="DrugAgg"
               />
+              <DrugTree drugagg={drugagg} />
               <ul>
                 {
                   _.map(counts,
@@ -326,8 +344,9 @@ export class Drug extends Component {
                     ))
                 }
               </ul>
+              {children}
               <p>
-                want to see:<br/>
+                notes:<br/>
                   counts with/without filters<br/>
                   source/target<br/>
                   drug type<br/>
@@ -341,11 +360,157 @@ export class Drug extends Component {
                   counts<br/>
                   samples<br/>
               </p>
-              Filters: {filterInfo}
-              <br/>
-              <Inspector search={false} data={this.state} />
             </div>;
   }
+}
+class DrugTree extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+    };
+  }
+  componentWillReceiveProps(nextProps) {
+    if (!_.isEqual(this.props.drugagg, nextProps.drugagg)) {
+      let tree = _.supergroup(nextProps.drugagg,
+            ['domain_id','vocabulary_id',
+              'standard_concept','invalid_reason',
+              'type_concept_name',
+              'concept_class_id']);
+      this.setState({tree});
+    }
+  }
+  render() {
+    const {selectCb=d=>console.log('drugtree selection',d)} = this.props;
+    const {tree} = this.state;
+    //let rootVal = tree.length === 1 ? tree[0] : tree.asRootVal('');
+    function innerCellRenderer(params) {
+      let str;
+      if (params.node.group) {
+        str = `${params.data.dim}: <strong>${params.data.toString()}</strong>`;
+      } else {
+        str = `${params.data.dim}: <strong>${params.data.toString()}</strong>`;
+      }
+      return str;
+    }
+    var coldefs = [
+        {headerName: "Attributes", field: "node", width: 450,
+            cellRenderer: 'group',
+            cellRendererParams: {
+                innerRenderer: innerCellRenderer
+            }
+        },
+        {
+          headerName: "Concept Count", field: "concept_count", width: 130,
+          cellRenderer: params => commify(params.data.aggregate(_.sum, 'concept_count')),
+          cellStyle: {'text-align': 'right'},
+        },
+        {
+          headerName: "Exposure Count", field: "exposure_count", width: 130,
+          cellRenderer: params => commify(params.data.aggregate(_.sum, 'exposure_count')),
+          cellStyle: {'text-align': 'right'},
+        },
+        /*
+        {headerName: "Size", field: "size", width: 70, cellStyle: sizeCellStyle},
+        {headerName: "Type", field: "type", width: 150},
+        {headerName: "Date Modified", field: "dateModified", width: 150}
+        */
+    ];
+    return (
+      <AgSgTreeBrowser
+              tree={tree}
+              coldefs={coldefs}
+              rowSelect={node => selectCb(node)}
+      />
+    );
+    //return <h2>nothing here yet</h2>;
+  }
+}
+export class AgSgTreeBrowser extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      gridOptions: {
+        rowSelection: 'multiple',
+        enableColResize: true,
+        enableSorting: true,
+        animateRows: true,
+        rowHeight: 30,
+        getNodeChildDetails: function(sgVal) {
+            if (sgVal.children) {
+                return {
+                    group: true,
+                    children: sgVal.children,
+                    expanded: typeof sgVal.open === 'undefined' ? true : false,
+                };
+            } else {
+                return null;
+            }
+        },
+        onRowClicked: this.rowClicked.bind(this),
+      },
+      nodeSelected: null,
+    };
+  }
+  rowClicked(params) {
+    const {rowSelect, rowSelectWholeParams=false} = this.props;
+    this.setState({nodeSelected: params.node});
+    if (rowSelect) {
+      if (rowSelectWholeParams)
+        rowSelect(params)
+      else
+        rowSelect(params.data);
+    }
+
+  }
+  render() {
+    const {
+            //rowSelect, 
+            coldefs, tree, 
+            height=400, width='100%'
+           } = this.props;
+    if (!tree || !tree.length)
+      return <Label bsStyle="warning">No data yet</Label>;
+    const {gridOptions, nodeSelected} = this.state;
+    return (
+            <Panel>
+              <Label>
+                {tree.records.length} records
+                <br/>
+                {nodeSelected ? nodeSelected.data.namePath(' - ') : ''}
+              </Label>
+              <br/>
+              <div style={{height, width}} className="ag-fresh">
+                
+                <AgGridReact
+                  {...gridOptions}
+                  //onGridReady={this.onGridReady.bind(this)}
+                  columnDefs={coldefs}
+                  rowData={tree}
+                  /*
+                  rowHeight="22"
+                  enableFilter={true}
+                  enableSorting={true}
+                  //sortingOrder={['asc','desc']}
+                  animateRows={true}
+                  getRowStyle={
+                    (params) => params.data.sc === 'S' ? {backgroundColor:'rgba(143, 188, 143, 0.46)'}
+                              : params.data.sc === 'C' ? {backgroundColor:'rgba(177, 224, 231, 0.51)'}
+                              : {backgroundColor:'rgba(255, 160, 122, 0.41)'}
+                  }
+                  headerCellRenderer={
+                    p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
+                  }
+                  onColumnMoved={this.saveGridState.bind(this)}
+                  onColumnVisible={this.saveGridState.bind(this)}
+                  //onColumnEverythingChanged={this.saveGridState.bind(this)}
+                  //onSortChanged={this.saveGridState.bind(this)}
+                  onFilterChanged={this.saveGridState.bind(this)}
+                  */
+                />
+              </div>
+            </Panel>);
+  }
+  
 }
 export class Search extends Component {
   constructor(props) {
@@ -355,7 +520,7 @@ export class Search extends Component {
   componentDidMount() {
     this.filtSub = AppState.subscribeState(
       'filters', filters => {
-        console.log('new search filters', filters);
+        //console.log('new search filters', filters);
         this.setState({filters});
       });
     this.fetchData();
@@ -645,7 +810,7 @@ export class AgTable extends Component {
   initializeGridState(urlGridState) {
     if (!(this.props.data && this.props.data.length)) {
       console.log('waiting for data, have to run initializeGridState again');
-      //setTimeout(()=>this.initializeGridState(urlGridState), 500);
+      setTimeout(()=>this.initializeGridState(urlGridState), 500);
       return;
     }
     //AppState.saveState({test:this.grid.columnApi.getColumnState()[1]});
@@ -730,7 +895,7 @@ export class AgTable extends Component {
                   onColumnMoved={this.saveGridState.bind(this)}
                   onColumnVisible={this.saveGridState.bind(this)}
                   //onColumnEverythingChanged={this.saveGridState.bind(this)}
-                  //onSortChanged={this.saveGridState.bind(this)}
+                  onSortChanged={this.saveGridState.bind(this)}
                   onFilterChanged={this.saveGridState.bind(this)}
                 />
               </div>
