@@ -1,7 +1,6 @@
-const DEBUG = true;
+//const DEBUG = true;
 import React, { Component } from 'react';
-import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
-
+//import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
 import Rx from 'rxjs/Rx';
 import _ from 'supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
@@ -33,7 +32,7 @@ export var appSettings = _appSettings;
 import _AppData from './AppData';
 const AppData = _AppData(_appSettings);
 
-let apiStreams = {};
+//let apiStreams = {};
 
 
 /* makeStream should only make api calls once
@@ -100,13 +99,15 @@ export function saveState(key, val) {
   //console.log('new location', newLoc);
   history.push(newLoc);
   console.log('state change', change);
+  stateChange.next(change);
+  /*
   console.warn('get rid of userSettings');
   userSettings.next(newState);
-  stateChange.next(change);
   if (_.has(change, 'filters')) {
     console.warn("quit fetching data on filter change like this");
     fetchData();
   }
+  */
 }
 _.mixin({
   getPath: (obj,path) => (_.isEmpty(path) 
@@ -146,16 +147,16 @@ export function initialize({history:_history}) {
   */
 }
 
+/*
 function fetchData() {
   console.log("NOT FETCHING DATA");
-  return;
-
   AppData.cacheDirty().then(() => {
     AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
     AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
     AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
   })
 }
+*/
 /* @class ApiStream
  *  @param opts object
  *  @param opts.apiCall string   // name of api call
@@ -196,20 +197,27 @@ export class StreamsSubscriber {
   constructor(callback) {
     this.callback = callback;
   }
-  filter(filter) {
-    //this.subscription.unsubscribe();
+  /* picks the streams and subscribes the callback
+   * if existing subscription, unsubscribe
+   */
+  filter(filtFunc) { 
+    this.filtFunc = filtFunc;
     if (this.subscription) this.subscription.unsubscribe();
-    this.streams = _.filter(ApiStream.instances, filter);
-    this.latest = 
-      Rx.Observable.combineLatest(
+    this.streams = _.filter(ApiStream.instances, filtFunc);
+    this.latest = Rx.Observable.combineLatest(
         this.streams.map(d=>d.behaviorSubj));
-    //this.subscription = this.latest.subscribe(this.stream);
     if (this.subscription) 
       this.subscription.unsubscribe();
-    return this.subscription = this.latest.subscribe(this.callback);
+    return (this.subscription = 
+              this.latest.debounceTime(20)
+                  .subscribe(this.callback));
   }
   setCallback(cb) {
     this.callback = cb;
+  }
+  unsubscribe() {
+    if (this.subscription) 
+      this.subscription.unsubscribe();
   }
 }
 
@@ -345,7 +353,7 @@ conceptStats.subscribe(
 // this component is just for debugging, it shows current AppState
 export class AppState extends Component {
   constructor(props) {
-    const {location, params, route, router, routeParams, children} = props;
+    //const {location, params, route, router, routeParams, children} = props;
     super(props);
     this.state = {};
 
@@ -367,7 +375,7 @@ export class AppState extends Component {
   }
   render() {
     console.log('AppState', this.state);
-    const {location, params, route, router, routeParams, children} = this.props;
+    //const {location, params, route, router, routeParams, children} = this.props;
     return <Inspector data={ this.state } />;
   }
 }

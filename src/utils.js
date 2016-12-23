@@ -122,8 +122,11 @@ export class JsonFetcher { // this.url is the unique key
     this.meta = meta;
     this.url = getUrl(baseUrl, params);
     if (_.has(JsonFetcher.instances, this.url)) {
-      console.warn('JsonFetcher already exists. promises probably done already', this.url);
+      //console.warn('JsonFetcher already exists. promises probably done already', this.url);
       let instance = JsonFetcher.instances[this.url];
+      if (!_.isEqual(this.meta, instance.meta)) {
+        throw new Error("treating Fetchers with different meta objs as the same, probably don't want to");
+      }
       instance.newInstance = false;
       return instance;
     }

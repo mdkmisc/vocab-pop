@@ -16,19 +16,19 @@ Copyright 2016 Sigfried Gold
 
 import React, { Component } from 'react';
 
-import { Nav, Navbar, Modal,
-         NavItem, Button,
-         Row, Col, 
+import { //Nav, Navbar, Modal,
+         //NavItem, Button,
+         //Row, Col, 
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
+//import { LinkContainer } from 'react-router-bootstrap';
+//import Inspector from 'react-json-inspector';
+//import 'react-json-inspector/json-inspector.css';
 import _ from 'supergroup';
 import * as AppState from '../AppState';
 import Form from "react-jsonschema-form";
 
-const log = (type) => console.log.bind(console, type);
+//const log = (type) => console.log.bind(console, type);
 export class FilterForm extends Component {
   constructor(props) {
     super(props);

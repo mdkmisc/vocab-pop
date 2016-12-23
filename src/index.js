@@ -1,6 +1,8 @@
 import React from 'react'
 import { render } from 'react-dom'
-import { Router, Route, browserHistory, useRouterHistory, IndexRoute } from 'react-router'
+import {  Router, Route, 
+          //browserHistory, 
+          useRouterHistory, IndexRoute } from 'react-router'
 import { createHistory } from 'history';
 import {App, Sidebar} from './App';
 import * as AppState from './AppState';

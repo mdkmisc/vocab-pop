@@ -17,14 +17,14 @@ Copyright 2016 Sigfried Gold
 import React, { Component } from 'react';
 
 import { /*Route, RouteHandler, */ Link } from 'react-router';
-import { Nav, Navbar, Modal,
-         NavItem, Button,
+import { Nav, Navbar, //Modal,
+         NavItem, //Button,
          Row, Col, Glyphicon,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
+//import Inspector from 'react-json-inspector';
+//import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
 
@@ -33,7 +33,7 @@ import Draggable from 'react-draggable'; // The default
 //import './App.css';
 import './components/VocabPop.css';
 import _ from 'supergroup';
-import * as AppState from './AppState';
+//import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
 
 function locPath(pathname) {
@@ -84,6 +84,7 @@ class NavLink extends Component {
     return <Link {...this.props} activeClassName="active"/>
   }
 }
+/*
 const ModalWrapper = ({children, title, closeFunc}) => {
   return (
       <Modal bsSize="lg"
@@ -103,6 +104,7 @@ const ModalWrapper = ({children, title, closeFunc}) => {
       </Modal>
   );
 };
+*/
 class DraggableWrapper extends Component {
   constructor(props) {
     super(props);
@@ -156,6 +158,7 @@ class DraggableWrapper extends Component {
                     {children}
                   </div>
                 </Draggable>;
+    /*
     return (
         <Modal bsSize="lg"
             dialogClassName="sidebar-modal"
@@ -173,6 +176,7 @@ class DraggableWrapper extends Component {
           </Modal.Footer>
         </Modal>
     );
+    */
   }
 };
 const Settings = ({props}) => <h4>Settings</h4>;

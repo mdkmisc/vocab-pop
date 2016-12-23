@@ -183,7 +183,7 @@ export class Home extends Component {
 export class DrugContainer extends Component {
   render() {
     let {filters} = AppState.getState();
-    console.log('CONTAINER', filters);
+    //console.log('CONTAINER', filters);
     return <Drug filters={filters}/>;
   }
 }
@@ -194,8 +194,9 @@ export class Drug extends Component {
       counts: {},
       drugagg: [],
     };
-    this.streamsRequested = [];
-    this.streamsToWatch = {};
+    //this.streamsRequested = [];
+    this.countStreamsToWatch = {}; 
+    // All,Inv,NoMatch,NonStd, and ONLY current With filt
   }
   componentDidMount() {
     this.countSub( 'All', {
@@ -211,28 +212,31 @@ export class Drug extends Component {
     this.countSub( 'Non-standard concepts', {
         includeFiltersOnly: true,
         includeNonStandardConcepts: true, });
-    this.streamsSubscriber = 
-      new AppState.StreamsSubscriber(this.streamsCallback.bind(this));
+
+    this.countsSubscriber = new AppState.StreamsSubscriber(
+      streams=>this.streamsCallback(streams,'counts'));
+    this.aggSubscriber = new AppState.StreamsSubscriber(
+      streams=>this.streamsCallback(streams,'agg'));
     this.fetchData();
   }
-  streamFilter(stream) {
-    return _.includes(
-              _.values(this.streamsToWatch),
-              stream);
-  }
-  componentDidUpdate() {
-    this.fetchData();
+  componentDidUpdate(prevProps, prevState) {
+    // should only need to fetch data if filters change, right?
+    if (!_.isEqual(prevProps.filters, this.props.filters)) {
+      this.fetchData();
+    }
   }
   shouldComponentUpdate(nextProps, nextState) {
     //let equal = _.isEqual(this.state.counts, nextState.counts);
     let stateChange = !_.isEqual(this.state, nextState);
     let propsChange = !_.isEqual(this.props, nextProps);
-    console.log(this.state, nextState, 'stateChange', stateChange);
-    console.log(this.props, nextProps, 'propsChange', propsChange);
+    //console.log(this.state, nextState, 'stateChange', stateChange);
+    //console.log(this.props, nextProps, 'propsChange', propsChange);
     return stateChange || propsChange;
   }
   componentWillUnmount() {
-    AppState.unsubscribe(this);
+    //AppState.unsubscribe(this);
+    this.countsSubscriber.unsubscribe();
+    this.aggSubscriber.unsubscribe();
   }
   countSub(displayName, filters) {
     let stream = new AppState.ApiStream({
@@ -245,33 +249,33 @@ export class Drug extends Component {
           statePath: `counts.${displayName}`,
         }
       });
-    this.streamsToWatch[displayName] = stream;
-    if (stream.newInstance)
-      this.streamsRequested.push(stream);
+    this.countStreamsToWatch[displayName] = stream;
+    //if (stream.newInstance) this.streamsRequested.push(stream);
   }
   fetchData() {
     const {filters} = this.props;
-    console.log('in Drug.fetchData with filters', filters);
+    //console.log('in Drug.fetchData with filters', filters);
     this.countSub('With current filters', filters);
+    this.countsSubscriber.filter( stream => 
+        _.includes( _.values(this.countStreamsToWatch), 
+                   stream));
 
-
-    let stream = new AppState.ApiStream({
+    let aggStream = new AppState.ApiStream({
         apiCall: 'drugConceptAgg', 
         params: {...filters, queryName:'drugagg'}, 
         meta: {
           statePath: `drugagg`,
         }
       });
-    this.streamsToWatch.drugagg = stream;
-    if (stream.newInstance)
-      this.streamsRequested.push(stream);
-
-
-    this.streamsSubscriber.filter(
-      str => stream === str);
+    if (this.aggStream !== aggStream) {
+      this.aggStream = aggStream;
+      this.aggSubscriber.filter(stream => aggStream === stream);
+    } else {
+      console.log('created same aggStream');
+    }
   }
-  streamsCallback(streams) {
-    console.log('Drug streamsSubscriber', streams);
+  streamsCallback(streams, subName) {
+    console.log(`Drug ${subName} streamsSubscriber`, streams);
     let state = _.merge({}, this.state);
     streams.forEach(stream => {
       _.set(state, stream.meta.statePath, stream.results);
@@ -365,7 +369,8 @@ export class Search extends Component {
     this.filtSub.unsubscribe();
   }
   fetchData(filters={}) {
-    let stream = new AppState.ApiStream({
+    //let stream = 
+    new AppState.ApiStream({
         apiCall: 'concepts', 
         params: {...filters, 
                       query:'conceptStats'
@@ -516,11 +521,13 @@ export class Tables extends Component {
 }
 export class ConceptsContainer extends Component {
   constructor(props) {
-    throw new Error("haven't tried this for a while");
     super(props);
+    throw new Error("haven't tried this for a while");
+    /*
     this.state = { 
       breakdowns: {},
     };
+    */
   }
   componentDidMount() {
     this.fetchConceptStats(this.props);
@@ -560,7 +567,9 @@ export class ConceptsContainer extends Component {
  
 export class Concepts extends Component {
   render() {
+    if (false) return null; // avoid lint warning
     throw new Error("haven't tried this for a while");
+    /*
     const {conceptCount, breakdowns, conceptStats} = this.props;
     //{commify(conceptStats.length)} used in database<br/>
                           //{bd.aggregate(_.sum, 'conceptrecs')} concepts, {' '}
@@ -582,6 +591,7 @@ export class Concepts extends Component {
                 {JSON.stringify(conceptStats, null, 2)}
               </pre>
             </Panel>;
+    */
   }
 }
 export class Waiting extends Component {
@@ -623,7 +633,7 @@ export class AgTable extends Component {
       sortModel: this.grid.api.getSortModel(),
       filterModel: this.grid.api.getFilterModel(),
     };
-    let state = AppState.getState(`agGrid.${id}`) || {sortModel:[{}]};
+    //let state = AppState.getState(`agGrid.${id}`) || {sortModel:[{}]};
     //console.log('old', state.sortModel[0], 'new', gridState.sortModel[0]);
     //this.grid.api.setSortModel(gridState.sortModel);
     AppState.saveState(`agGrid.${id}`, gridState);
@@ -640,7 +650,7 @@ export class AgTable extends Component {
     }
     //AppState.saveState({test:this.grid.columnApi.getColumnState()[1]});
     
-    var currentGridState = {};
+    //var currentGridState = {};
     if (urlGridState.columnState) {
       this.grid.columnApi.setColumnState(urlGridState.columnState);
     }

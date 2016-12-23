@@ -37,11 +37,13 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
   function apiCallBaseUrl(apiCall) {
     return `${apiRoot}/${apiCall}`;
   }
+  /*
   function apiCallMeta(apiCall, params={}, meta) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
     return new util.JsonFetcher(apiCallBaseUrl(apiCall), params);
   }
+  */
   function classRelations(params={}, queryName="classRelations") {
     params = _.clone(params);
     let apiCall = 'concepts';
