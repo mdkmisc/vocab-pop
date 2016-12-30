@@ -138,6 +138,8 @@ export function initialize({history:_history}) {
 
   tableConfig.next(_appSettings.tables);
 
+  return AppData.cacheDirty();
+
   /*
   conceptStats.subscribe(
     cs => {
@@ -229,7 +231,7 @@ export class StreamsSubscriber {
  *  @param opts.transformResults [function]  // callback on results returning object to call setState with
  *  @returns string // streamKey, which is valid get url, though stream is based on post url
  */
-export function makeStream({apiCall, 
+export function makeStreamOBSOLETE({apiCall, 
                             params, 
                             singleValue = false,
                             transformResults

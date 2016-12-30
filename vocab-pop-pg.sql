@@ -28,14 +28,27 @@ create or replace view :results.concept_cols_by_table as
         select table_name,
                 array_agg(col) as cols
         from concept_cols cc
+        where
+          col not like 'qualifier%' and
+          col not like 'value%' and
+          col not like 'modifier%' and
+          col not like 'operator%' and
+          col not like 'range%' and
+          col not like 'priority%' and
+          col not like 'dose_unit%' and
+          col not like 'route%' and
+          col not like 'unit%' and
+          col != 'specimen_source_value' and
+          col != 'eff_drug_dose_source_value' and
+          col not like 'death_impute%'
         group by table_name
       )
       select  table_name,
-              (select array_agg(type_cols) from unnest(cols) as type_cols where type_cols like '%type%') as type_cols,
-              (select array_agg(source_cols) from unnest(cols) as source_cols where source_cols like '%source%' and source_cols not like '%source_value') as source_cols,
-              (select array_agg(source_value_cols) from unnest(cols) as source_value_cols where source_value_cols like '%source_value') as source_value_cols,
+              (select array_agg(col) from unnest(cols) as col where col not like '%type%' and col not like '%source%') as target_cols,
+              (select array_agg(col) from unnest(cols) as col where col like '%type%') as type_cols,
+              (select array_agg(col) from unnest(cols) as col where col like '%source%' and col not like '%source_value') as source_cols,
+              (select array_agg(col) from unnest(cols) as col where col like '%source_value') as source_value_cols
               /*(select array_to_string(array_agg(other_cols), E'\n') from unnest(cols) as other_cols where other_cols not like '%type%') as other_cols_str,*/
-              (select array_agg(other_cols) from unnest(cols) as other_cols where other_cols not like '%type%' and other_cols not like '%source%') as target_cols
               /*array_to_string(cols, E'\n') || E'\n' cols*/
       from table_cols
       group by table_name, cols
@@ -52,18 +65,6 @@ create or replace view :results.concept_cols_by_table as
   where type_col is not null
     and source_col is not null
     and target_col is not null
-    and (
-          target_col not like 'qualifier%' and
-          target_col not like 'value%' and
-          target_col not like 'modifier%' and
-          target_col not like 'operator%' and
-          target_col not like 'range%' and
-          target_col not like 'priority%' and
-          target_col not like 'dose_unit%' and
-          target_col not like 'route%' and
-          target_col not like 'unit%' and
-          target_col not like 'death_impute%'
-    )
   ;
 
 
@@ -112,11 +113,12 @@ CREATE OR REPLACE
   $func$
   declare sql text;
   BEGIN
-
     RAISE NOTICE 'getting concept_ids for %', _tbl;
     sql := format(
       'INSERT INTO %s.%s ' ||
-      'SELECT ''%s'' as table_name, ' ||
+      'SELECT ' ||
+      '       ''%s'' as schema, ' ||
+      '       ''%s'' as table_name, ' ||
       '       ''%s'' as target_column_name, ' ||
       '       ''%s'' as type_column_name, ' ||
       '       ''%s'' as source_column_name, ' ||
@@ -124,12 +126,14 @@ CREATE OR REPLACE
       '       %s as target_concept_id, ' ||
       '       %s as type_concept_id, ' ||
       '       %s as source_concept_id, ' ||
-      '       ''%s'' as source_value, ' ||
+      '       %s as source_value, ' ||
       '       count(*) as count ' ||
-      'from %s.%s t ' ||
+      'from (select * from %s.%s) t ' ||
+      --'from (select * from %s.%s limit 5) t ' ||
       --'where %s > 0 ' ||
-      'group by 1,2,3,4,5,6,7,8,9',
+      'group by 1,2,3,4,5,6,7,8,9,10',
         target_schema, target_table, 
+        _schema, 
         _tbl, 
 
         _target_col, 
@@ -149,15 +153,26 @@ CREATE OR REPLACE
   END;
   $func$ LANGUAGE plpgsql;
   
-select store_concept_id_counts(x.*) from
-  (select 'cdm2'::text, 
+--select store_concept_id_counts('cdm2','drug_exposure','drug_concept_id','drug_type_concept_id','drug_source_concept_id','drug_source_value','results2','concept_id_occurrence');
+
+select store_concept_id_counts(
+          schema::text,
           table_name::text,
           target_col::text,
           type_col::text,
           source_col::text,
           source_value_col::text,
-          current_setting('my.vars.results')::text, 
-          'concept_id_occurrence'::text
+          target_schema::text,
+          target_table::text
+) from
+  (select 'cdm2' as schema,
+          table_name,
+          target_col,
+          type_col,
+          source_col,
+          source_value_col,
+          current_setting('my.vars.results')::text target_schema, 
+          'concept_id_occurrence'::text target_table
     from concept_cols_by_table cct) x;
 
 
@@ -205,7 +220,7 @@ create or replace view :results.concept_info_narrow as
   join :cdm.concept c on cio.concept_id = c.concept_id;
 
 
-/* should be view or materialzed view */
+/* should be view or materialzed view */  -- OBSOLETE
 drop table if exists :results.concept_info_stats;
 create table :results.concept_info_stats as
   /* select  replace( cio.table_name, current_setting('my.vars.cdm')||'.', '') as table_name, */

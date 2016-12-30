@@ -92,15 +92,15 @@ const coldefs = [
   },
   {
     headerName: 'Distinct Concepts',
-    colId: 'conceptrecs',
-    field: 'conceptrecs',
+    colId: 'concept_count',
+    field: 'concept_count',
     cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
     //sortingOrder: ['desc','asc']
   },
   {
     headerName: 'CDM Occurrences',
-    colId: 'dbrecs',
-    field: 'dbrecs',
+    colId: 'record_count',
+    field: 'record_count',
     /*
     comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
       let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
@@ -110,6 +110,11 @@ const coldefs = [
     cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
     //sort: 'desc',
     //sortingOrder: ['desc','asc']
+  },
+  {
+    headerName: 'Concept',
+    colId: 'targetorsource',
+    valueGetter: ({data:d}={}) => d.targetorsource,
   },
   {
     headerName: 'Type',
@@ -125,27 +130,6 @@ const coldefs = [
     headerName: 'Standard Concept',
     colId: 'standard_concept',
     valueGetter: ({data:d}={}) => d.standard_concept,
-  },
-  {
-    headerName: 'Distinct Concepts',
-    colId: 'concept_count',
-    field: 'concept_count',
-    cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
-    //sortingOrder: ['desc','asc']
-  },
-  {
-    headerName: 'CDM Occurrences',
-    colId: 'exposure_count',
-    field: 'exposure_count',
-    /*
-    comparator: function (valueA, valueB, nodeA, nodeB, isInverted) {
-      let ret = (isNaN(valueA) ? -Infinity : valueA) - (isNaN(valueB) ? -Infinity: valueB);
-      return isNaN(ret) ? 0 : ret;
-    },
-    */
-    cellFormatter: ({value}={}) => isNaN(value) ? '' : commify(value),
-    //sort: 'desc',
-    //sortingOrder: ['desc','asc']
   },
 ];
 
@@ -242,8 +226,11 @@ export class DrugContainerNoRouter extends Component {
   }
   countSub(displayName, filters) {
     let stream = new AppState.ApiStream({
-        apiCall: 'drugConceptCounts', 
-        params: {...filters, queryName:displayName}, 
+        apiCall: 'conceptCounts', 
+        params: {...filters, queryName:displayName,
+                  dataRequested: 'counts',
+                  domain_id: 'Drug',
+                }, 
         singleValue: true,
         transformResults: 
           (results) => DrugContainerNoRouter.formatCounts(results, displayName),
@@ -263,15 +250,19 @@ export class DrugContainerNoRouter extends Component {
                    stream));
 
     let aggStream = new AppState.ApiStream({
-        apiCall: 'drugConceptAgg', 
-        params: {...filters, queryName:'drugagg'}, 
+        apiCall: 'conceptCounts', 
+        params: {...filters, queryName: 'drugagg',
+                  dataRequested: 'agg',
+                  targetOrSource: 'both',
+                  domain_id: 'Drug',
+                }, 
         meta: {
           statePath: `drugagg`,
         },
         transformResults: 
           results => results.map(
             rec => {
-              rec.exposure_count = parseInt(rec.exposure_count,10);
+              rec.record_count = parseInt(rec.record_count,10);
               rec.concept_count = parseInt(rec.concept_count,10);
               return rec;
             }),
@@ -293,17 +284,17 @@ export class DrugContainerNoRouter extends Component {
   }
   static formatCounts(dcc, displayName) {
     return {
-          'Drug exposures': commify(parseInt(dcc.exposure_count,10)),
+          'Drug exposures': commify(parseInt(dcc.record_count,10)),
           'Drug concepts': commify(parseInt(dcc.concept_count,10)),
     };
   }
   render() {
     const {filters} = this.props;
     const {counts, drugagg} = this.state;
-    let cols = coldefs.filter(
-      col => _.includes([ 
-        'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
-        'standard_concept', 'concept_count', 'exposure_count', ], col.colId));
+    let cols = [
+        'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
+        'standard_concept', 'concept_count', 'record_count', 
+      ].map(c => _.find(coldefs, {colId: c}));
     return <Drug filters={filters}
                   counts={counts}
                   drugagg={drugagg}
@@ -405,8 +396,8 @@ class DrugTree extends Component {
           cellStyle: {'text-align': 'right'},
         },
         {
-          headerName: "Exposure Count", field: "exposure_count", width: 130,
-          cellRenderer: params => commify(params.data.aggregate(_.sum, 'exposure_count')),
+          headerName: "Exposure Count", field: "record_count", width: 130,
+          cellRenderer: params => commify(params.data.aggregate(_.sum, 'record_count')),
           cellStyle: {'text-align': 'right'},
         },
         /*
@@ -515,7 +506,13 @@ export class AgSgTreeBrowser extends Component {
 export class Search extends Component {
   constructor(props) {
     super(props);
-    this.state = { filters:{} };
+    let cols = [
+       'table_name', 'column_name','targetorsource',
+       'type_concept_name',
+        'domain_id', 'vocabulary_id', 'concept_class_id',
+        'standard_concept', 'invalid_reason', 'concept_count', 'record_count', 
+      ].map(c => _.find(coldefs, {colId: c}));
+    this.state = { filters:{}, cols };
   }
   componentDidMount() {
     this.filtSub = AppState.subscribeState(
@@ -536,16 +533,18 @@ export class Search extends Component {
   fetchData(filters={}) {
     //let stream = 
     new AppState.ApiStream({
-        apiCall: 'concepts', 
+        apiCall: 'conceptCounts', 
         params: {...filters, 
-                      query:'conceptStats'
+                      //query:'conceptStats',
+                      targetOrSource: 'both',
+                      dataRequested: 'agg',
                     }, 
         transformResults: 
           (results) => {
             let recs = results.map(rec=>{
               return _.merge({}, rec, {
-                conceptrecs: parseInt(rec.conceptrecs, 10),
-                dbrecs: parseInt(rec.dbrecs, 10),
+                concept_count: parseInt(rec.concept_count, 10),
+                record_count: parseInt(rec.record_count, 10),
               });
             });
             console.log('new search results for', filters);
@@ -558,12 +557,8 @@ export class Search extends Component {
       });
   }
   render() {
-    let {conceptStats} = this.state;
-    let cols = coldefs.filter(
-      col => _.includes([ 'table_name', 'column_name',
-        'domain_id', 'vocabulary_id', 'concept_class_id',
-        'sc', 'invalid', 'conceptrecs', 'dbrecs', ], col.colId));
-
+    let {conceptStats, cols} = this.state;
+    console.log(conceptStats, cols);
     return (
               <AgTable coldefs={cols} data={conceptStats}
                       width={"100%"} height={550}
@@ -647,32 +642,32 @@ export class Tables extends Component {
       },
       kidContent: table=><p>
                           <strong>{table.toString()}</strong> {' '}
-                            - {commify(table.aggregate(_.sum, 'conceptrecs'))} concepts,
-                            - {commify(table.aggregate(_.sum, 'dbrecs'))} database records
+                            - {commify(table.aggregate(_.sum, 'concept_count'))} concepts,
+                            - {commify(table.aggregate(_.sum, 'record_count'))} database records
                         </p>,
       childConfig: {
         kids: table=>table.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
         kidTitle: column => <div><h3>{column.toString()} concept domains</h3>{column.children.join(', ')}</div>,
         kidContent: column=><p>
                             <strong>{column.toString()}</strong> {' '}
-                              - {commify(column.aggregate(_.sum, 'conceptrecs'))} concepts,
-                              - {commify(column.aggregate(_.sum, 'dbrecs'))} database records
+                              - {commify(column.aggregate(_.sum, 'concept_count'))} concepts,
+                              - {commify(column.aggregate(_.sum, 'record_count'))} database records
                           </p>,
         childConfig: {
           kids: column=>column.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
           kidTitle: domain => <div><h3>{domain.toString()} vocabularies</h3>{domain.children.join(', ')}</div>,
           kidContent: domain=><p>
                               <strong>{domain.toString()}</strong> {' '}
-                                - {commify(domain.aggregate(_.sum, 'conceptrecs'))} concepts,
-                                - {commify(domain.aggregate(_.sum, 'dbrecs'))} database records
+                                - {commify(domain.aggregate(_.sum, 'concept_count'))} concepts,
+                                - {commify(domain.aggregate(_.sum, 'record_count'))} database records
                             </p>,
           childConfig: {
             kids: domain=>domain.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
             kidTitle: vocab => <div><h3>{vocab.toString()}</h3>{vocab.children.join(', ')}</div>,
             kidContent: vocab=><p>
                                 <strong>{vocab.toString()}</strong> {' '}
-                                  - {commify(vocab.aggregate(_.sum, 'conceptrecs'))} concepts,
-                                  - {commify(vocab.aggregate(_.sum, 'dbrecs'))} database records
+                                  - {commify(vocab.aggregate(_.sum, 'concept_count'))} concepts,
+                                  - {commify(vocab.aggregate(_.sum, 'record_count'))} database records
                               </p>,
           }
         }
@@ -737,10 +732,10 @@ export class Concepts extends Component {
     /*
     const {conceptCount, breakdowns, conceptStats} = this.props;
     //{commify(conceptStats.length)} used in database<br/>
-                          //{bd.aggregate(_.sum, 'conceptrecs')} concepts, {' '}
-                          //{bd.aggregate(_.sum, 'dbrecs')} database records {' '}
-                          //{commify(_.sum(bd.records.map(d=>d.conceptrecs)))} concepts, {' '}
-                          //{commify(_.sum(bd.records.map(d=>d.dbrecs)))} database records {' '}
+                          //{bd.aggregate(_.sum, 'concept_count')} concepts, {' '}
+                          //{bd.aggregate(_.sum, 'record_count')} database records {' '}
+                          //{commify(_.sum(bd.records.map(d=>d.concept_count)))} concepts, {' '}
+                          //{commify(_.sum(bd.records.map(d=>d.record_count)))} database records {' '}
     return  <Panel className="concept-stats">
               {commify(conceptCount)} total concepts in concept table<br/>
               <ul>

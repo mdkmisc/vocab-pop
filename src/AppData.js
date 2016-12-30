@@ -7,16 +7,18 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
   // which returns a promise wrapped in some metadata
 
   function cacheDirty() {
+    console.error('running cacheDirty');
     return fetch(`${apiRoot}/cacheDirty`)
       .then(response => {
         return response.json()
           .then(
             results => {
               if (results) {
-                console.log('sessionStorage cache is dirty, emptying it');
+                //console.warn('sessionStorage cache is dirty, emptying it');
+                console.warn(`cache dirty. removing ${_.keys(sessionStorage).length} items in sessionStorage`);
                 sessionStorage.clear();
               } else {
-                console.warn(`${_.keys(sessionStorage).length} items in sessionStorage`);
+                console.warn(`cache clean. ${_.keys(sessionStorage).length} items in sessionStorage`);
               }
               return results;
             })

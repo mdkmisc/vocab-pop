@@ -20,25 +20,27 @@ app.get('*', function (req, res) {
 })
 */
 
-AppState.initialize({history:useRouterHistory(createHistory)()}); // set global history object
+AppState.initialize({history:useRouterHistory(createHistory)()}) // set global history object
+  .then(() => {
+    render((
+      <Router history={AppState.history}>
+        <Route path="/" component={App}>
+          <Route path="search" components={{main:Search, sidebar:Sidebar}} />
+          <Route path="drug" components={{main:DrugContainer, sidebar:Sidebar}} />
+          <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
+          <IndexRoute components={{main:Home, sidebar:Sidebar}}/>
+          {/*
+          <Route path="/concepts" component={ConceptsContainer} />
+          <Route path="/tables" component={Tables} >
+            <Route path=":table" component={Tables}/>
+          </Route>
+          <Route path="/vocabs" component={Vocabularies} >
+            <Route path=":vocab" component={Vocabularies}/>
+          </Route>
+          */}
+        </Route>
+      </Router>
+    ), document.getElementById('root'))
+  });
 
-render((
-  <Router history={AppState.history}>
-    <Route path="/" component={App}>
-      <Route path="search" components={{main:Search, sidebar:Sidebar}} />
-      <Route path="drug" components={{main:DrugContainer, sidebar:Sidebar}} />
-      <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
-      <IndexRoute components={{main:Home, sidebar:Sidebar}}/>
-      {/*
-      <Route path="/concepts" component={ConceptsContainer} />
-      <Route path="/tables" component={Tables} >
-        <Route path=":table" component={Tables}/>
-      </Route>
-      <Route path="/vocabs" component={Vocabularies} >
-        <Route path=":vocab" component={Vocabularies}/>
-      </Route>
-      */}
-    </Route>
-  </Router>
-), document.getElementById('root'))
 
