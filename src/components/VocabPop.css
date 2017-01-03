@@ -1,3 +1,6 @@
+svg {
+    background-color: grey;
+}
 .react-spinner {
   position: relative;
   width: 32px;

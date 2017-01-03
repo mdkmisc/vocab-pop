@@ -46,69 +46,6 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
     return new util.JsonFetcher(apiCallBaseUrl(apiCall), params);
   }
   */
-  function classRelations(params={}, queryName="classRelations") {
-    params = _.clone(params);
-    let apiCall = 'concepts';
-    params.resultsSchema = resultsSchema;
-    params.cdmSchema = cdmSchema;
-    params.queryName = queryName;
-
-    return (util.cachedGetJsonFetch(
-            `${apiRoot}/${apiCall}Post`, params)
-            .then(function(json) {
-              if (json.error)
-                console.error(json.error.message, json.error.queryName, json.error.url);
-
-              json.forEach(rec=>{
-                rec.is_hierarchical = !!parseInt(rec.is_hierarchical, 10);
-                rec.defines_ancestry = !!parseInt(rec.defines_ancestry, 10);
-                rec.c1_ids = parseInt(rec.c1_ids, 10);
-                rec.c2_ids = parseInt(rec.c2_ids, 10);
-                rec.c= parseInt(rec.c, 10);
-              })
-
-              return json;
-            }));
-  }
-  function conceptCount(params={}, queryName="conceptCount") {
-    params = _.clone(params);
-    let apiCall = 'concepts';
-    params.resultsSchema = resultsSchema;
-    params.cdmSchema = cdmSchema;
-    params.queryName = queryName;
-
-    return (util.cachedGetJsonFetch(
-            `${apiRoot}/${apiCall}Post`, params)
-            .then(function(json) {
-              if (json.error)
-                console.error(json.error.message, json.error.queryName, json.error.url);
-              if (json.length !== 1)
-                console.error('unexpect result count', json, json.queryName, json.url);
-              return parseInt(json[0].count, 10);
-            }));
-  }
-  function conceptStats(params={}, queryName="conceptStats") {
-    params = _.clone(params);
-    let apiCall = 'concepts';
-    params.resultsSchema = resultsSchema;
-    params.cdmSchema = cdmSchema;
-    params.queryName = queryName;
-    return (util.cachedGetJsonFetch(
-            `${apiRoot}/${apiCall}Post`, params)
-            .then(function(json) {
-              if (json.error)
-                console.error(json.error.message, json.error.queryName, json.error.url);
-
-              json.forEach(rec=>{
-                rec.conceptrecs = parseInt(rec.conceptrecs, 10);
-                rec.dbrecs = parseInt(rec.dbrecs, 10);
-                //rec.count = parseInt(rec.count, 10);
-                //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
-              })
-
-              return json;
-            }));
-  }
   function apiGetUrl(apiCall, params) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
@@ -133,9 +70,13 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
           return json;
         }));
   }
-  return {conceptCount, classRelations, apiCall,
+  return {
+          //conceptCount, 
+          //classRelations, 
+          //conceptStats, 
+          apiCall,
           apiGetUrl, ApiFetcher,
-          conceptStats, cacheDirty};
+          cacheDirty};
 }
   /* from drug explorer app
   function recsfetch(params, queryName) {
@@ -265,6 +206,69 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
     params.cdmSchema = cdmSchema;
     params.queryName = queryName;
     return (util.cachedPostJsonFetch(
+            `${apiRoot}/${apiCall}Post`, params)
+            .then(function(json) {
+              if (json.error)
+                console.error(json.error.message, json.error.queryName, json.error.url);
+
+              json.forEach(rec=>{
+                rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+                rec.dbrecs = parseInt(rec.dbrecs, 10);
+                //rec.count = parseInt(rec.count, 10);
+                //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+              })
+
+              return json;
+            }));
+  }
+  function classRelationsOBSOLETE(params={}, queryName="classRelations") {
+    params = _.clone(params);
+    let apiCall = 'concepts';
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    params.queryName = queryName;
+
+    return (util.cachedGetJsonFetch(
+            `${apiRoot}/${apiCall}Post`, params)
+            .then(function(json) {
+              if (json.error)
+                console.error(json.error.message, json.error.queryName, json.error.url);
+
+              json.forEach(rec=>{
+                rec.is_hierarchical = !!parseInt(rec.is_hierarchical, 10);
+                rec.defines_ancestry = !!parseInt(rec.defines_ancestry, 10);
+                rec.c1_ids = parseInt(rec.c1_ids, 10);
+                rec.c2_ids = parseInt(rec.c2_ids, 10);
+                rec.c= parseInt(rec.c, 10);
+              })
+
+              return json;
+            }));
+  }
+  function conceptCountOBSOLETE(params={}, queryName="conceptCount") {
+    params = _.clone(params);
+    let apiCall = 'concepts';
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    params.queryName = queryName;
+
+    return (util.cachedGetJsonFetch(
+            `${apiRoot}/${apiCall}Post`, params)
+            .then(function(json) {
+              if (json.error)
+                console.error(json.error.message, json.error.queryName, json.error.url);
+              if (json.length !== 1)
+                console.error('unexpect result count', json, json.queryName, json.url);
+              return parseInt(json[0].count, 10);
+            }));
+  }
+  function conceptStatsOBSOLETE(params={}, queryName="conceptStats") {
+    params = _.clone(params);
+    let apiCall = 'concepts';
+    params.resultsSchema = resultsSchema;
+    params.cdmSchema = cdmSchema;
+    params.queryName = queryName;
+    return (util.cachedGetJsonFetch(
             `${apiRoot}/${apiCall}Post`, params)
             .then(function(json) {
               if (json.error)

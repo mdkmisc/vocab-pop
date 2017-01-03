@@ -22,6 +22,8 @@ if (DEBUG) window.d3 = d3;
 if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 
+window._ = _; 
+
 import React, { Component } from 'react';
 import { Panel, Accordion, Label
           //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio
@@ -273,9 +275,36 @@ export class DrugContainerNoRouter extends Component {
     } else {
       console.log('created same aggStream');
     }
+
+    let classRelStream = new AppState.ApiStream({
+        apiCall: 'classRelations', 
+        params: {...filters, queryName: 'drugClasses',
+                  dataRequested: 'not using in this call but still required',
+                  //targetOrSource: 'both',
+                  domain_id: 'Drug',
+                }, 
+        meta: {
+          statePath: `drugClasses`,
+        },
+        /*
+        transformResults: 
+          results => results.map(
+            rec => {
+              rec.record_count = parseInt(rec.record_count,10);
+              rec.concept_count = parseInt(rec.concept_count,10);
+              return rec;
+            }),
+        */
+      });
+    if (this.classRelStream !== classRelStream) {
+      this.classRelStream = classRelStream;
+      this.aggSubscriber.filter(stream => classRelStream === stream);
+    } else {
+      console.log('created same classRelStream');
+    }
   }
   streamsCallback(streams, subName) {
-    console.log(`Drug ${subName} streamsSubscriber`, streams);
+    //console.log(`Drug ${subName} streamsSubscriber`, streams);
     let state = _.merge({}, this.state);
     streams.forEach(stream => {
       _.set(state, stream.meta.statePath, stream.results);
@@ -290,7 +319,7 @@ export class DrugContainerNoRouter extends Component {
   }
   render() {
     const {filters} = this.props;
-    const {counts, drugagg} = this.state;
+    const {counts, drugagg, drugClasses} = this.state;
     let cols = [
         'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'record_count', 
@@ -298,6 +327,7 @@ export class DrugContainerNoRouter extends Component {
     return <Drug filters={filters}
                   counts={counts}
                   drugagg={drugagg}
+                  drugClasses={drugClasses}
                   cols={cols} >
               <div>
                 <Label bsStyle="warning">Debug stuff</Label>
@@ -309,8 +339,13 @@ export class DrugContainerNoRouter extends Component {
 
 class Drug extends Component {
   render() {
-    const {children, counts, drugagg, cols} = this.props;
+    const {children, counts, drugagg, drugClasses, cols} = this.props;
+    console.log(drugClasses);
     return  <div>
+              <VocabMap drugClasses={drugClasses}
+                          width={800}
+                          height={600}
+              />
               <AgTable coldefs={cols} data={drugagg}
                       width={800} height={200}
                       id="DrugAgg"
@@ -352,6 +387,122 @@ class Drug extends Component {
                   samples<br/>
               </p>
             </div>;
+  }
+}
+function graph(recs, domnode, w, h, boxw, boxh) {
+  /*
+  let sg = _.supergroup(recs, 
+                d=>[d.vocab_1,d.vocab_2],
+                {multiValuedGroup:true});
+  */
+  let sg = _.supergroup(recs,
+                d=>[`${d.sc_1}:${d.vocab_1}`, `${d.sc_2}:${d.vocab_2}`],
+                {dimName: 'scVocab', multiValuedGroup:true});
+
+  sg.addLevel(
+    d => {
+      if (d.toString() === `${d.sc_1}:${d.vocab_1}`) {
+        return `${d.sc_2}:${d.vocab_2}`;
+      } else {
+        return `${d.sc_1}:${d.vocab_1}`;
+      }
+    },
+    {dimName: 'linkTo'});
+
+  let levelContents = [0,0,0]; // C, S, null for three standard concept levels
+  sg.forEach( d => {
+    d.ypos = ({'C': 0, 'S': 1, null: 2})[d.toString().replace(/:.*/,'')];
+    d.xpos = levelContents[d.ypos] ++;
+  });
+
+  let x = d3.scaleLinear().range([0,w])
+                .domain([-1, _.max(levelContents)])
+  let y = d3.scaleLinear().range([0,h])
+                .domain([-1, 4]);
+  var c10 = d3.scaleLinear().range(d3.schemeCategory10);
+
+  d3.select(domnode).select('svg').remove();
+  var svg = d3.select(domnode)
+    .append("svg")
+    .attr("width", w)
+    .attr("height", h);
+
+    /*
+  var drag = d3.drag()
+    .on("drag", function(d, i) {
+      d.x += d3.event.dx
+      d.y += d3.event.dy
+      d3.select(this).attr("cx", d.x).attr("cy", d.y);
+      d.getChildren().each(function(l, li) {
+        if (l.source === i) {
+          d3.select(this).attr("x1", d.x).attr("y1", d.y);
+        } else if (l.target === i) {
+          d3.select(this).attr("x2", d.x).attr("y2", d.y);
+        }
+      });
+    });
+    */
+
+  var d3nodes = svg.selectAll("node")
+                .data(sg).enter()
+                .append("rect")
+                  .attr("class", "node")
+                  .attr("x", function(d) {
+                    return x(d.xpos) - boxw / 2;
+                  })
+                .attr("y", function(d) {
+                  return y(d.ypos) - boxh / 2;
+                })
+                .attr("width", boxw)
+                .attr("height", boxh)
+                .attr("fill", function(d, i) {
+                  return c10(i);
+                })
+                //.call(drag);
+  var labels = svg.selectAll("foreighObject")
+          .data(sg)
+          .enter()
+        .append('foreignObject')
+          .attr("x", function(d) {
+            return x(d.xpos) - boxw / 2;
+          })
+          .attr("y", function(d) {
+            return y(d.ypos) - boxh / 2;
+          })
+          .attr('width', boxw)
+          .attr('height', boxh)
+        .append('xhtml:p')
+          .html(d=>d.toString().replace(/.*:/,''))
+
+  var links = svg.selectAll("link")
+                .data(sg.leafNodes())
+                .enter()
+                .append("line")
+                .attr("class", "link")
+                .attr("x1", d=>x(d.parent.xpos))
+                .attr("y1", d=>y(d.parent.ypos))
+                .attr("x2", d=>x(d.rootList().lookup(d).xpos))
+                .attr("y2", d=>y(d.rootList().lookup(d).ypos))
+                .attr("fill", "none")
+                .attr("stroke", "white");
+
+
+}
+class VocabMap extends Component {
+  componentDidMount() {
+  }
+  render() {
+    const {drugClasses, width, height} = this.props;
+    if (drugClasses && drugClasses.length) {
+      let ignoreForNow = 
+              _.filter(drugClasses, {sc_1:'C', sc_2:null})
+                .concat(
+                  _.filter(drugClasses, {sc_2:'C', sc_1:null}));
+      let recs = _.difference(drugClasses, ignoreForNow);
+      let div = this.div;
+      graph(recs, div, width, height, 70, 40);
+    }
+    return <div ref={div=>this.div=div} />
   }
 }
 class DrugTree extends Component {
@@ -507,7 +658,9 @@ export class Search extends Component {
   constructor(props) {
     super(props);
     let cols = [
-       'table_name', 'column_name','targetorsource',
+       'table_name', 
+       'targetorsource',
+       'column_name',
        'type_concept_name',
         'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'invalid_reason', 'concept_count', 'record_count', 
