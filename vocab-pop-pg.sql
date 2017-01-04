@@ -370,6 +370,8 @@ select
         r.relationship_name,
         r.is_hierarchical,
         r.defines_ancestry,
+        rr.is_hierarchical as reverse_is_hierarchical,
+        rr.defines_ancestry as reverse_defines_ancestry,
         r.reverse_relationship_id,
 
         
@@ -390,6 +392,7 @@ from :cdm.concept_relationship cr
 join :cdm.concept c1 on cr.concept_id_1 = c1.concept_id /* and c1.invalid_reason is null */
 join :cdm.concept c2 on cr.concept_id_2 = c2.concept_id /* and c2.invalid_reason is null */
 join :cdm.relationship r on cr.relationship_id = r.relationship_id
+join :cdm.relationship rr on cr.reverse_relationship_id = rr.relationship_id
 where cr.invalid_reason is null
 ;
 
@@ -443,6 +446,24 @@ select
 from :results.class_relations_pre cr
 group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
 ;
+
+
+/* Christian's query for selecting single-hop links only from concept_ancestor
+
+with real_ancestor as (
+  select ancestor_concept_id, descendant_concept_id
+  from cdm2.concept_ancestor
+  where ancestor_concept_id!=descendant_concept_id
+)
+select * from real_ancestor
+except
+select a.ancestor_concept_id, b.descendant_concept_id
+from real_ancestor a
+join real_ancestor b on a.descendant_concept_id=b.ancestor_concept_id
+*/
+
+
+
 /* where r.is_hierarchical = '1' and c1.vocabulary_id = c2.vocabulary_id */
 /*having count(distinct c1.concept_id) <= count(distinct c2.concept_id) and count(distinct c2.concept_id) >  count(distinct c1.concept_id) */
 
