@@ -27,6 +27,12 @@ import { LinkContainer } from 'react-router-bootstrap';
 //import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
+import {
+          DrugContainer, 
+          /*Search, Home*/
+          /*ConceptsContainer, Tables, */
+        } from './components/VocabPop';
+import * as AppState from './AppState';
 
 
 //import logo from './logo.svg';
@@ -258,12 +264,42 @@ export class Sidebar extends Component {
   showModal(which) {
   }
 }
-
+export class ComponentWrapper extends Component {
+  render() {
+    let {filters} = AppState.getState();
+    const Comp = ({
+      DrugContainer: DrugContainer,
+    })[this.props.route.components.compName];
+    return <Comp filters={filters} />;
+  }
+}
 export class App extends Component {
   constructor(props) {
     super(props);
     this.state = {
     }
+  }
+  render() {
+    const {main, sidebar} = this.props;
+    let NavBar = DefaultNavBar;
+    /*
+    if (this.props.router.isActive('/tables'))
+      NavBar = DomainNavBar 
+    //else if (this.props.router.isActive('/vocabs')) NavBar = VocabNavBar 
+    */
+    return (
+      <div className="vocab-app">
+        <NavBar />
+        <Row>
+          <Col md={2} className="sidebar">
+            {sidebar}
+          </Col>
+          <Col md={10} className="main-content">
+            {main}
+          </Col>
+        </Row>
+      </div>
+    );
   }
   /* 
   componentDidMount() {
@@ -299,28 +335,6 @@ export class App extends Component {
     this.userSettings.unsubscribe();
   }
   */
-  render() {
-    const {main, sidebar} = this.props;
-    let NavBar = DefaultNavBar;
-    /*
-    if (this.props.router.isActive('/tables'))
-      NavBar = DomainNavBar 
-    //else if (this.props.router.isActive('/vocabs')) NavBar = VocabNavBar 
-    */
-    return (
-      <div className="vocab-app">
-        <NavBar />
-        <Row>
-          <Col md={2} className="sidebar">
-            {sidebar}
-          </Col>
-          <Col md={10} className="main-content">
-            {main}
-          </Col>
-        </Row>
-      </div>
-    );
-  }
 }
 
   /*

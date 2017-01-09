@@ -21,6 +21,8 @@ import * as util from '../utils';
 if (DEBUG) window.d3 = d3;
 if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
+import ConceptData from './ConceptData';
+import VocabMap from './VocabMap';
 
 window._ = _; 
 
@@ -45,7 +47,7 @@ import 'react-json-inspector/json-inspector.css';
 require('./VocabPop.css');
 require('./fileBrowser.css');
 
-const coldefs = [
+export const coldefs = [
   {
     headerName: 'CDM Table',
     colId: 'table_name',
@@ -160,6 +162,7 @@ export class Home extends Component {
   render() {
     var conceptCount = this.state.conceptCount || 0;
     return  <div>
+              <ConceptContainer/>
               <Inspector search={false} 
                 data={ AppState.getState() } />
               <br/>
@@ -169,164 +172,28 @@ export class Home extends Component {
 }
 export class DrugContainer extends Component {
   render() {
-    let {filters} = AppState.getState();
     // don't want updates when router changes,
     // so add level of indirection -- better way?
-    return <DrugContainerNoRouter filters={filters}/>;
-  }
-}
-export class DrugContainerNoRouter extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-      counts: {},
-      drugagg: [],
-    };
-    //this.streamsRequested = [];
-    this.countStreamsToWatch = {}; 
-    // All,Inv,NoMatch,NonStd, and ONLY current With filt
-  }
-  componentDidMount() {
-    this.countSub( 'All', {
-        excludeInvalidConcepts: false,
-        excludeNoMatchingConcepts: false,
-        excludeNonStandardConcepts: false, });
-    this.countSub( 'Invalid', {
-        includeFiltersOnly: true,
-        includeInvalidConcepts: true, });
-    this.countSub( 'No matching concept', {
-        includeFiltersOnly: true,
-        includeNoMatchingConcepts: true, });
-    this.countSub( 'Non-standard concepts', {
-        includeFiltersOnly: true,
-        includeNonStandardConcepts: true, });
-
-    this.countsSubscriber = new AppState.StreamsSubscriber(
-      streams=>this.streamsCallback(streams,'counts'));
-    this.aggSubscriber = new AppState.StreamsSubscriber(
-      streams=>this.streamsCallback(streams,'agg'));
-    this.fetchData();
-  }
-  componentDidUpdate(prevProps, prevState) {
-    // should only need to fetch data if filters change, right?
-    if (!_.isEqual(prevProps.filters, this.props.filters)) {
-      this.fetchData();
-    }
-  }
-  shouldComponentUpdate(nextProps, nextState) {
-    //let equal = _.isEqual(this.state.counts, nextState.counts);
-    let stateChange = !_.isEqual(this.state, nextState);
-    let propsChange = !_.isEqual(this.props, nextProps);
-    //console.log(this.state, nextState, 'stateChange', stateChange);
-    //console.log(this.props, nextProps, 'propsChange', propsChange);
-    return stateChange || propsChange;
-  }
-  componentWillUnmount() {
-    //AppState.unsubscribe(this);
-    this.countsSubscriber.unsubscribe();
-    this.aggSubscriber.unsubscribe();
-  }
-  countSub(displayName, filters) {
-    let stream = new AppState.ApiStream({
-        apiCall: 'conceptCounts', 
-        params: {...filters, queryName:displayName,
-                  dataRequested: 'counts',
-                  domain_id: 'Drug',
-                }, 
-        singleValue: true,
-        transformResults: 
-          (results) => DrugContainerNoRouter.formatCounts(results, displayName),
-        meta: {
-          statePath: `counts.${displayName}`,
-        }
-      });
-    this.countStreamsToWatch[displayName] = stream;
-    //if (stream.newInstance) this.streamsRequested.push(stream);
-  }
-  fetchData() {
+    // return <DrugContainerNoRouter filters={filters}/>;
     const {filters} = this.props;
-    //console.log('in Drug.fetchData with filters', filters);
-    this.countSub('With current filters', filters);
-    this.countsSubscriber.filter( stream => 
-        _.includes( _.values(this.countStreamsToWatch), 
-                   stream));
-
-    let aggStream = new AppState.ApiStream({
-        apiCall: 'conceptCounts', 
-        params: {...filters, queryName: 'drugagg',
-                  dataRequested: 'agg',
-                  targetOrSource: 'both',
-                  domain_id: 'Drug',
-                }, 
-        meta: {
-          statePath: `drugagg`,
-        },
-        transformResults: 
-          results => results.map(
-            rec => {
-              rec.record_count = parseInt(rec.record_count,10);
-              rec.concept_count = parseInt(rec.concept_count,10);
-              return rec;
-            }),
-      });
-    if (this.aggStream !== aggStream) {
-      this.aggStream = aggStream;
-      this.aggSubscriber.filter(stream => aggStream === stream);
-    } else {
-      console.log('created same aggStream');
-    }
-
-    let classRelStream = new AppState.ApiStream({
-        apiCall: 'classRelations', 
-        params: {...filters, queryName: 'drugClasses',
-                  dataRequested: 'not using in this call but still required',
-                  //targetOrSource: 'both',
-                  domain_id: 'Drug',
-                }, 
-        meta: {
-          statePath: `drugClasses`,
-        },
-        /*
-        transformResults: 
-          results => results.map(
-            rec => {
-              rec.record_count = parseInt(rec.record_count,10);
-              rec.concept_count = parseInt(rec.concept_count,10);
-              return rec;
-            }),
-        */
-      });
-    if (this.classRelStream !== classRelStream) {
-      this.classRelStream = classRelStream;
-      this.aggSubscriber.filter(stream => classRelStream === stream);
-    } else {
-      console.log('created same classRelStream');
-    }
-  }
-  streamsCallback(streams, subName) {
-    //console.log(`Drug ${subName} streamsSubscriber`, streams);
-    let state = _.merge({}, this.state);
-    streams.forEach(stream => {
-      _.set(state, stream.meta.statePath, stream.results);
-    })
-    this.setState(state);
-  }
-  static formatCounts(dcc, displayName) {
-    return {
-          'Drug exposures': commify(parseInt(dcc.record_count,10)),
-          'Drug concepts': commify(parseInt(dcc.concept_count,10)),
-    };
-  }
-  render() {
-    const {filters} = this.props;
-    const {counts, drugagg, drugClasses} = this.state;
+    //const {counts, agg, drugClasses} = this.state;
     let cols = [
         'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'record_count', 
       ].map(c => _.find(coldefs, {colId: c}));
+    return  <ConceptData filters={filters}>
+              <ConceptBrowse
+                    domain_id={'Drug'}
+                    cols={cols} />
+            </ConceptData>;
+            /*
+                <div>
+                  <Label bsStyle="warning">Debug stuff</Label>
+                  <Inspector search={false} data={this.state} />
+                </div>
     return <Drug filters={filters}
                   counts={counts}
-                  drugagg={drugagg}
+                  agg={agg}
                   drugClasses={drugClasses}
                   cols={cols} >
               <div>
@@ -334,23 +201,36 @@ export class DrugContainerNoRouter extends Component {
                 <Inspector search={false} data={this.state} />
               </div>
             </Drug>;
+            */
   }
 }
 
-class Drug extends Component {
+export class ConceptContainer extends Component {
   render() {
-    const {children, counts, drugagg, drugClasses, cols} = this.props;
-    console.log(drugClasses);
+    const {filters} = this.props;
+    let cols = [
+        'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
+        'standard_concept', 'concept_count', 'record_count', 
+      ].map(c => _.find(coldefs, {colId: c}));
+    return  <ConceptData filters={filters}>
+              <ConceptBrowse cols={cols} />
+            </ConceptData>;
+  }
+}
+class ConceptBrowse extends Component {
+  render() {
+    const {domain_id, children, counts, agg, classes, cols} = this.props;
+    console.log(classes);
     return  <div>
-              <VocabMap drugClasses={drugClasses}
+              <VocabMap classes={classes}
                           width={800}
                           height={600}
               />
-              <AgTable coldefs={cols} data={drugagg}
+              <AgTable coldefs={cols} data={agg}
                       width={800} height={200}
-                      id="DrugAgg"
+                      id="Agg"
               />
-              <DrugTree drugagg={drugagg} />
+              <ConceptTree agg={agg} />
               <ul>
                 {
                   _.map(counts,
@@ -375,8 +255,8 @@ class Drug extends Component {
                 notes:<br/>
                   counts with/without filters<br/>
                   source/target<br/>
-                  drug type<br/>
-                  drug class<br/>
+                  Concept type<br/>
+                  Concept class<br/>
                   standard concept (color)<br/>
                   <br/>
                   <br/>
@@ -389,131 +269,15 @@ class Drug extends Component {
             </div>;
   }
 }
-function graph(recs, domnode, w, h, boxw, boxh) {
-  /*
-  let sg = _.supergroup(recs, 
-                d=>[d.vocab_1,d.vocab_2],
-                {multiValuedGroup:true});
-  */
-  let sg = _.supergroup(recs,
-                d=>[`${d.sc_1}:${d.vocab_1}`, `${d.sc_2}:${d.vocab_2}`],
-                {dimName: 'scVocab', multiValuedGroup:true});
-
-  sg.addLevel(
-    d => {
-      if (d.toString() === `${d.sc_1}:${d.vocab_1}`) {
-        return `${d.sc_2}:${d.vocab_2}`;
-      } else {
-        return `${d.sc_1}:${d.vocab_1}`;
-      }
-    },
-    {dimName: 'linkTo'});
-
-  let levelContents = [0,0,0]; // C, S, null for three standard concept levels
-  sg.forEach( d => {
-    d.ypos = ({'C': 0, 'S': 1, null: 2})[d.toString().replace(/:.*/,'')];
-    d.xpos = levelContents[d.ypos] ++;
-  });
-
-  let x = d3.scaleLinear().range([0,w])
-                .domain([-1, _.max(levelContents)])
-  let y = d3.scaleLinear().range([0,h])
-                .domain([-1, 4]);
-  var c10 = d3.scaleLinear().range(d3.schemeCategory10);
-
-  d3.select(domnode).select('svg').remove();
-  var svg = d3.select(domnode)
-    .append("svg")
-    .attr("width", w)
-    .attr("height", h);
-
-    /*
-  var drag = d3.drag()
-    .on("drag", function(d, i) {
-      d.x += d3.event.dx
-      d.y += d3.event.dy
-      d3.select(this).attr("cx", d.x).attr("cy", d.y);
-      d.getChildren().each(function(l, li) {
-        if (l.source === i) {
-          d3.select(this).attr("x1", d.x).attr("y1", d.y);
-        } else if (l.target === i) {
-          d3.select(this).attr("x2", d.x).attr("y2", d.y);
-        }
-      });
-    });
-    */
-
-  var d3nodes = svg.selectAll("node")
-                .data(sg).enter()
-                .append("rect")
-                  .attr("class", "node")
-                  .attr("x", function(d) {
-                    return x(d.xpos) - boxw / 2;
-                  })
-                .attr("y", function(d) {
-                  return y(d.ypos) - boxh / 2;
-                })
-                .attr("width", boxw)
-                .attr("height", boxh)
-                .attr("fill", function(d, i) {
-                  return c10(i);
-                })
-                //.call(drag);
-  var labels = svg.selectAll("foreighObject")
-          .data(sg)
-          .enter()
-        .append('foreignObject')
-          .attr("x", function(d) {
-            return x(d.xpos) - boxw / 2;
-          })
-          .attr("y", function(d) {
-            return y(d.ypos) - boxh / 2;
-          })
-          .attr('width', boxw)
-          .attr('height', boxh)
-        .append('xhtml:p')
-          .html(d=>d.toString().replace(/.*:/,''))
-
-  var links = svg.selectAll("link")
-                .data(sg.leafNodes())
-                .enter()
-                .append("line")
-                .attr("class", "link")
-                .attr("x1", d=>x(d.parent.xpos))
-                .attr("y1", d=>y(d.parent.ypos))
-                .attr("x2", d=>x(d.rootList().lookup(d).xpos))
-                .attr("y2", d=>y(d.rootList().lookup(d).ypos))
-                .attr("fill", "none")
-                .attr("stroke", "white");
-
-
-}
-class VocabMap extends Component {
-  componentDidMount() {
-  }
-  render() {
-    const {drugClasses, width, height} = this.props;
-    if (drugClasses && drugClasses.length) {
-      let ignoreForNow = 
-              _.filter(drugClasses, {sc_1:'C', sc_2:null})
-                .concat(
-                  _.filter(drugClasses, {sc_2:'C', sc_1:null}));
-      let recs = _.difference(drugClasses, ignoreForNow);
-      let div = this.div;
-      graph(recs, div, width, height, 70, 40);
-    }
-    return <div ref={div=>this.div=div} />
-  }
-}
-class DrugTree extends Component {
+class ConceptTree extends Component {
   constructor(props) {
     super(props);
     this.state = {
     };
   }
   componentWillReceiveProps(nextProps) {
-    if (!_.isEqual(this.props.drugagg, nextProps.drugagg)) {
-      let tree = _.supergroup(nextProps.drugagg,
+    if (!_.isEqual(this.props.agg, nextProps.agg)) {
+      let tree = _.supergroup(nextProps.agg,
             ['domain_id','vocabulary_id',
               'standard_concept','invalid_reason',
               'type_concept_name',
@@ -522,7 +286,7 @@ class DrugTree extends Component {
     }
   }
   render() {
-    const {selectCb=d=>console.log('drugtree selection',d)} = this.props;
+    const {selectCb=d=>console.log('Concepttree selection',d)} = this.props;
     const {tree} = this.state;
     //let rootVal = tree.length === 1 ? tree[0] : tree.asRootVal('');
     function innerCellRenderer(params) {

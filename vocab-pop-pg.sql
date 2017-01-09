@@ -448,6 +448,415 @@ group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
 ;
 
 
+
+
+
+
+
+
+
+drop table if exists :results.class_pedigree_pre;
+create table :results.class_pedigree_pre as
+select
+        'concept_ancestor'::varchar(20) as source,
+        min_levels_of_separation,
+        ca.ancestor_concept_id,
+        c1.domain_id as domain_id_1,
+        c1.vocabulary_id as vocab_1,
+        c1.concept_class_id as class_1,
+        c1.standard_concept as sc_1,
+        --c1.invalid_reason as invalid_1,
+
+        ca.descendant_concept_id,
+        c2.domain_id as domain_id_2,
+        c2.vocabulary_id as vocab_2,
+        c2.concept_class_id as class_2,
+        c2.standard_concept as sc_2
+        --c2.invalid_reason as invalid_2
+from :cdm.concept_ancestor ca
+join :cdm.concept c1 on ca.ancestor_concept_id = c1.concept_id and c1.invalid_reason is null
+join :cdm.concept c2 on ca.descendant_concept_id = c2.concept_id and c2.invalid_reason is null
+--where cr.invalid_reason is null
+;
+
+insert into :results.class_pedigree_pre
+select  
+        'concept_relationship' as source,
+        0,
+        cr.concept_id_1,
+        c1.domain_id as domain_id_1,
+        c1.vocabulary_id as vocab_1,
+        c1.concept_class_id as class_1,
+        c1.standard_concept as sc_1,
+        cr.concept_id_2,
+        c2.domain_id as domain_id_2,
+        c2.vocabulary_id as vocab_2,
+        c2.concept_class_id as class_2,
+        c2.standard_concept as sc_2
+from cdm2.concept_relationship cr
+join cdm2.relationship r on cr.relationship_id = r.relationship_id
+join cdm2.concept c1 on cr.concept_id_1 = c1.concept_id and c1.invalid_reason is null
+join cdm2.concept c2 on cr.concept_id_2 = c2.concept_id and c2.invalid_reason is null
+where cr.relationship_id = 'Maps to'
+  and cr.invalid_reason is null
+;
+
+create index class_pedigree_pre_idx on :results.class_pedigree_pre (
+        source,
+        min_levels_of_separation,
+        domain_id_1,
+        vocab_1,
+        class_1,
+        sc_1,
+        --invalid_1,
+        domain_id_2,
+        vocab_2,
+        class_2,
+        sc_2
+        --invalid_2
+      );
+
+drop table if exists :results.class_pedigree cascade;
+create table :results.class_pedigree as
+select
+        source,
+        min_levels_of_separation,
+        domain_id_1,
+        vocab_1,
+        class_1,
+        sc_1,
+        --invalid_1,
+        domain_id_2,
+        vocab_2,
+        class_2,
+        sc_2,
+        --invalid_2,
+        count(distinct ancestor_concept_id) as c1_ids,
+        count(distinct descendant_concept_id) as c2_ids,
+        count(*) c
+from :results.class_pedigree_pre cr
+group by 1,2,3,4,5,6,7,8,9,10
+;
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+create table results2.concept_rel_missing_direct_ancestor as (
+select
+        cr.concept_id_1,
+        c1.vocabulary_id as vocab1,
+        c1.concept_class_id as class1,
+        cr.concept_id_2,
+        c2.vocabulary_id as vocab2,
+        c2.concept_class_id as class2,
+        defines_ancestry,
+        is_hierarchical,
+        min(ca.min_levels_of_separation),
+        max(ca.min_levels_of_separation),
+        count(ca.min_levels_of_separation)
+from concept_relationship cr
+join relationship r on cr.relationship_id = r.relationship_id
+join concept c1 on cr.concept_id_1 = c1.concept_id
+join concept c2 on cr.concept_id_2 = c2.concept_id
+left join concept_ancestor ca
+  on cr.concept_id_1 = ca.ancestor_concept_id
+     and cr.concept_id_2 = ca.descendant_concept_id
+    and ca.min_levels_of_separation > 1
+where
+      cr.invalid_reason is null
+  and (r.is_hierarchical = '1' or r.defines_ancestry = '1')
+  and c1.invalid_reason is null
+  and c2.invalid_reason is null
+  and c1.standard_concept is not null
+  and c2.standard_concept is not null
+group by 1,2,3,4,5,6,7,8
+having min(ca.min_levels_of_separation) > 1
+);
+
+select
+        vocab1,
+        class1,
+        vocab2,
+        class2,
+        defines_ancestry,
+        is_hierarchical,
+        min(min) min_levels_of_separation,
+        sum(count) relationships
+from results2.concept_rel_missing_direct_ancestor
+/*where vocab1 not in ('DPD') and vocab2 not in ('DPD') */
+group by 1,2,3,4,5,6
+order by 1,2,3,4,5,6
+;
+
+create table results2.ancestor_missing_concept_rel as (
+select
+        ca.ancestor_concept_id,
+        c1.vocabulary_id as vocab1,
+        c1.concept_class_id as class1,
+        ca.descendant_concept_id,
+        c2.vocabulary_id as vocab2,
+        c2.concept_class_id as class2,
+        count(ca.min_levels_of_separation)
+from concept_ancestor ca
+join concept c1 on ca.ancestor_concept_id = c1.concept_id
+join concept c2 on ca.descendant_concept_id = c2.concept_id
+left join concept_relationship cr
+  on cr.concept_id_1 = ca.ancestor_concept_id
+     and cr.concept_id_2 = ca.descendant_concept_id
+where
+      ca.min_levels_of_separation = 1
+  and cr.concept_id_1 is null
+  and c1.invalid_reason is null
+  and c2.invalid_reason is null
+  and c1.standard_concept is not null
+  and c2.standard_concept is not null
+group by 1,2,3,4,5,6
+) ;
+
+select
+        vocab1,
+        class1,
+        vocab2,
+        class2,
+        defines_ancestry,
+        is_hierarchical,
+        min(min) min_levels_of_separation,
+        sum(count) relationships
+from results2.concept_rel_missing_direct_ancestor
+/*where vocab1 not in ('DPD') and vocab2 not in ('DPD') */
+group by 1,2,3,4,5,6
+order by 1,2,3,4,5,6
+;
+
+
+/* relationships without reciprocals */
+with allrel as (
+  select r.relationship_id, r.reverse_relationship_id,
+          row_number() over (order by r.relationship_id) rnum,
+          row_number() over (order by r.reverse_relationship_id) rrnum
+  from :cdm.relationship r
+)
+select *
+from allrel
+where rnum < rrnum or relationship_id < reverse_relationship_id
+order by 3,4;
+
+/* concept relationships without reciprocals 
+no good
+maybe come back to this later
+with allrel as (
+  select r.concept_id_1, r.concept_id_2,
+          row_number() over (order by r.concept_id_1) rnum1,
+          row_number() over (order by r.concept_id_2) rnum2
+  from :cdm.concept_relationship r
+)
+select *
+from allrel
+where rnum1 < rnum2
+order by 3,4;
+*/
+
+
+/* didn't work
+with recursive rel as (
+  select r.concept_id_1, r.concept_id_2,
+          array[r.concept_id_1] as path_info,
+          (r.concept_id_1 = r.concept_id_2) as cycle
+  from concept_relationship r
+  left join concept_relationship r2
+        on r.concept_id_2 = r2.concept_id_1
+        and r2.concept_id_1 < r2.concept_id_2
+  where
+        r.concept_id_1 < r.concept_id_2
+    and r.invalid_reason is null
+    and r2.concept_id_1 is null
+  union all
+  select cr.concept_id_1, cr.concept_id_2, rel.path_info || cr.concept_id_1,
+          cr.concept_id_2 = any(rel.path_info)
+  from rel
+  join concept_relationship cr on cr.concept_id_1 = rel.concept_id_2
+  where not rel.cycle
+)
+select *
+from rel
+where cycle ;
+*/
+
+create or replace view :cdm.concept_relationship_one_way as 
+    select distinct r.concept_id_1 as concept_id
+      from :cdm.concept_relationship r
+      left join :cdm.concept_relationship r2
+            on r.concept_id_2 = r2.concept_id_1
+            and r2.concept_id_1 < r2.concept_id_2
+      where
+            r.concept_id_1 < r.concept_id_2
+        and r.invalid_reason is null
+        and r2.concept_id_1 is null;
+
+create table results2.start_concepts as (
+  with sc as (
+    select distinct r.concept_id_1 as concept_id
+      from concept_relationship r
+      left join concept_relationship r2
+            on r.concept_id_2 = r2.concept_id_1
+            and r2.concept_id_1 < r2.concept_id_2
+      where
+            r.concept_id_1 < r.concept_id_2
+        and r.invalid_reason is null
+        and r2.concept_id_1 is null
+
+    union
+
+    select distinct ca.ancestor_concept_id
+      from concept_ancestor ca
+      left join concept_ancestor ca2
+            on ca2.ancestor_concept_id = ca.descendant_concept_id
+            and ca2.ancestor_concept_id < ca2.descendant_concept_id
+      where
+            ca.ancestor_concept_id < ca.descendant_concept_id
+  )
+  select distinct sc.concept_id
+  from sc
+  join concept c on sc.concept_id = c.concept_id
+  where c.invalid_reason is null
+);
+
+CREATE OR REPLACE 
+  FUNCTION :results.concept_link_path(path_so_far integer[], dpth integer)
+  RETURNS TABLE(new_path integer[])
+  AS
+  $func$
+  declare link_concepts integer[];
+  declare last_id integer;
+  BEGIN
+    if array_length(path_so_far, 1) > 5 then
+      --raise notice 'depth: %, should be returning link concepts: %, path so far: %: %', dpth, array_length(link_concepts,1), array_length(path_so_far,1), path_so_far;
+      return query
+                select path_so_far;
+    else
+      --raise notice 'depth: %, should not be returning link concepts: %, path so far: %: %', dpth, array_length(link_concepts,1), array_length(path_so_far,1), path_so_far;
+      --raise notice 'depth: %, did not return link concepts: %, path so far: %: %', dpth, array_length(link_concepts,1), array_length(path_so_far,1), path_so_far;
+      last_id = path_so_far[array_length(path_so_far,1)];
+      select distinct array_agg(concept_id_2) into link_concepts
+        from (
+          select distinct concept_id_2
+          from cdm2.concept_relationship cr
+          join cdm2.relationship r on cr.relationship_id = r.relationship_id
+          join cdm2.concept c1 on cr.concept_id_1 = c1.concept_id and c1.vocabulary_id != 'DPD' and c1.invalid_reason is null
+          join cdm2.concept c2 on cr.concept_id_2 = c2.concept_id and c2.vocabulary_id != 'DPD' and c2.invalid_reason is null
+          where concept_id_1 = last_id
+            and concept_id_2 != all(path_so_far)
+            and cr.invalid_reason is null
+            and (is_hierarchical = '1' or defines_ancestry = '1')
+        ) x;
+      raise notice 'depth: %, link concepts: %:%s, path so far: %: %', dpth, array_length(link_concepts,1), link_concepts, array_length(path_so_far,1), path_so_far;
+      /*raise notice 'path so far:    %', path_so_far;*/
+      if array_length(link_concepts, 1) > 0 and array_length(path_so_far,1) < 5 then
+        return query
+                  /*select array_append(path_so_far,id)*/
+                  select concept_link_path(array_append(path_so_far,id), dpth + 1)
+                  from ( select unnest(link_concepts[1:4]) as id ) x;
+      else
+        return query
+                  select path_so_far;
+      end if;
+    end if;
+  END
+  $func$ LANGUAGE plpgsql;
+
+CREATE OR REPLACE /* concept_ancestor version... if it works */
+  FUNCTION :results.concept_link_path(path_so_far integer[], dpth integer)
+  RETURNS TABLE(new_path integer[])
+  AS
+  $func$
+  declare link_concepts integer[];
+  declare last_id integer;
+  BEGIN
+    if array_length(path_so_far, 1) > 5 then
+      --raise notice 'depth: %, should be returning link concepts: %, path so far: %: %', dpth, array_length(link_concepts,1), array_length(path_so_far,1), path_so_far;
+      return query
+                select path_so_far;
+    else
+      --raise notice 'depth: %, should not be returning link concepts: %, path so far: %: %', dpth, array_length(link_concepts,1), array_length(path_so_far,1), path_so_far;
+      --raise notice 'depth: %, did not return link concepts: %, path so far: %: %', dpth, array_length(link_concepts,1), array_length(path_so_far,1), path_so_far;
+      last_id = path_so_far[array_length(path_so_far,1)];
+      select distinct array_agg(descendant_concept_id) into link_concepts
+        from (
+          select distinct descendant_concept_id
+          from cdm2.concept_ancestor cr
+          join cdm2.concept c1 on cr.ancestor_concept_id = c1.concept_id and c1.vocabulary_id != 'DPD' and c1.invalid_reason is null
+          join cdm2.concept c2 on cr.descendant_concept_id = c2.concept_id and c2.vocabulary_id != 'DPD' and c2.invalid_reason is null
+          where ancestor_concept_id = last_id
+            and descendant_concept_id != all(path_so_far)
+            /* and cr.invalid_reason is null */
+            and min_levels_of_separation = 1
+        ) x;
+      raise notice 'depth: %, link concepts: %:%s, path so far: %: %', dpth, array_length(link_concepts,1), link_concepts, array_length(path_so_far,1), path_so_far;
+      /*raise notice 'path so far:    %', path_so_far;*/
+      if array_length(link_concepts, 1) > 0 and array_length(path_so_far,1) < 5 then
+        return query
+                  /*select array_append(path_so_far,id)*/
+                  select concept_link_path(array_append(path_so_far,id), dpth + 1)
+                  from ( select unnest(link_concepts[1:4]) as id ) x;
+      else
+        return query
+                  select path_so_far;
+      end if;
+    end if;
+  END
+  $func$ LANGUAGE plpgsql;
+
+select * from concept_link_path(array[36312420], 1);
+
+with names as (
+  with unnestids as (
+    select new_path, unnest(new_path) id, generate_subscripts(new_path, 1) AS i
+    from concept_link_path(array[4333507], 1)
+  )
+  select new_path, i, id, c.vocabulary_id, c.concept_class_id, c.concept_name
+  from unnestids
+  join cdm2.concept c on id = c.concept_id
+  order by 1,2
+)
+--select new_path, array_agg(vocabulary_id||':'||concept_name), array_agg(id)
+--select new_path, array_agg(vocabulary_id||':'||concept_class_id), array_agg(id)
+select array_agg(vocabulary_id||':'||concept_class_id||':'||concept_name), new_path
+from names
+group by new_path
+order by 1
+--having array_agg(id) = new_path
+
+
+CREATE OR REPLACE 
+  FUNCTION junk(x integer)
+  RETURNS TABLE(
+                  x integer
+                )
+  AS
+  $func$
+    select 3
+  $func$ LANGUAGE sql;
+  
+
 /* Christian's query for selecting single-hop links only from concept_ancestor
 
 with real_ancestor as (
