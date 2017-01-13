@@ -28,6 +28,7 @@ create or replace view :results.concept_cols_by_table as
         select table_name,
                 array_agg(col) as cols
         from concept_cols cc
+        /*
         where
           col not like 'qualifier%' and
           col not like 'value%' and
@@ -41,13 +42,41 @@ create or replace view :results.concept_cols_by_table as
           col != 'specimen_source_value' and
           col != 'eff_drug_dose_source_value' and
           col not like 'death_impute%'
+        */
         group by table_name
       )
       select  table_name,
-              (select array_agg(col) from unnest(cols) as col where col not like '%type%' and col not like '%source%') as target_cols,
+              (select array_agg(col) from unnest(cols) as col where col not like '%type%' and col not like '%source%' and
+                        col not like 'qualifier%' and
+                        col not like 'value%' and
+                        col not like 'modifier%' and
+                        col not like 'operator%' and
+                        col not like 'range%' and
+                        col not like 'priority%' and
+                        col not like 'dose_unit%' and
+                        col not like 'route%' and
+                        col not like 'unit%' and
+                        col != 'specimen_source_value' and
+                        col != 'eff_drug_dose_source_value' and
+                        col not like 'death_impute%'
+                    ) as target_cols,
               (select array_agg(col) from unnest(cols) as col where col like '%type%') as type_cols,
               (select array_agg(col) from unnest(cols) as col where col like '%source%' and col not like '%source_value') as source_cols,
-              (select array_agg(col) from unnest(cols) as col where col like '%source_value') as source_value_cols
+              (select array_agg(col) from unnest(cols) as col where col like '%source_value') as source_value_cols,
+              (select array_agg(col) from unnest(cols) as col where col not like '%type%' and col not like '%source%' and (
+                        col like 'qualifier%' or
+                        col like 'value%' or
+                        col like 'modifier%' or
+                        col like 'operator%' or
+                        col like 'range%' or
+                        col like 'priority%' or
+                        col like 'dose_unit%' or
+                        col like 'route%' or
+                        col like 'unit%' or
+                        col = 'specimen_source_value' or
+                        col = 'eff_drug_dose_source_value' or
+                        col like 'death_impute%'
+                    )) as other_cols
               /*(select array_to_string(array_agg(other_cols), E'\n') from unnest(cols) as other_cols where other_cols not like '%type%') as other_cols_str,*/
               /*array_to_string(cols, E'\n') || E'\n' cols*/
       from table_cols
@@ -363,6 +392,7 @@ group by 1,2,3,4;
 
 
 /* should be view or materialzed view */
+-- based on concept_relationship table only. see class_pedigree for stuff based on ancestor
 drop table if exists :results.class_relations_pre;
 create table :results.class_relations_pre as
 select

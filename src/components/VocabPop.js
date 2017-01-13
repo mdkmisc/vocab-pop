@@ -22,7 +22,7 @@ if (DEBUG) window.d3 = d3;
 if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 import ConceptData from './ConceptData';
-import VocabMap from './VocabMap';
+import {VocabMapByDomain} from './VocabMap';
 
 window._ = _; 
 
@@ -181,9 +181,10 @@ export class DrugContainer extends Component {
         'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'record_count', 
       ].map(c => _.find(coldefs, {colId: c}));
-    return  <ConceptData filters={filters}>
-              <ConceptBrowse
+    return  <ConceptData filters={filters}
                     domain_id={'Drug'}
+              >
+              <ConceptBrowse
                     cols={cols} />
             </ConceptData>;
             /*
@@ -212,7 +213,11 @@ export class ConceptContainer extends Component {
         'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'record_count', 
       ].map(c => _.find(coldefs, {colId: c}));
-    return  <ConceptData filters={filters}>
+    let props = {};
+    let domain_id = AppState.getState('domain_id');
+    if (domain_id)
+      props.domain_id = domain_id;
+    return  <ConceptData filters={filters} {...props} >
               <ConceptBrowse cols={cols} />
             </ConceptData>;
   }
@@ -222,7 +227,8 @@ class ConceptBrowse extends Component {
     const {domain_id, children, counts, agg, classes, cols} = this.props;
     console.log(classes);
     return  <div>
-              <VocabMap classes={classes}
+              <VocabMapByDomain
+                          classes={classes}
                           width={800}
                           height={600}
               />

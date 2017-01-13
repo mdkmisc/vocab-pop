@@ -122,6 +122,7 @@ export default class ConceptData extends Component {
       params.domain_id = this.props.domain_id;
     let aggStream = new AppState.ApiStream({
         apiCall: 'conceptCounts', 
+        params,
         meta: {
           statePath: `agg`,
         },

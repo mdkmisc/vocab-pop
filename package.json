@@ -52,6 +52,8 @@
   "dependencies": {
     "ag-grid": "^7.0.2",
     "ag-grid-react": "^7.0.0",
+    "cy-viewer": "^2.0.1",
+    "cytoscape": "^2.7.13",
     "d3": "^4.3.0",
     "lodash": "^4.17.2",
     "lz-string": "^1.4.4",
