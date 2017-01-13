@@ -21,6 +21,7 @@ import _ from 'supergroup'; // in global space anyway
 //import CyViewer from 'cy-viewer';
 //var cytoscape = require('cytoscape');
 import cytoscape from 'cytoscape';
+//import cytoscape from '../../cytoscape.js/src/index';
 import * as AppState from '../AppState';
 
 
@@ -131,10 +132,10 @@ function graph(sg, domnode, w, h, boxw, boxh) {
         "css" : {
           //"curve-style": "bezier",
           //"control-point-step-size": .5,
-          /*
           'curve-style': 'unbundled-bezier',
-          'control-point-distances': 120,
-          'control-point-weights': 0.1,
+          'control-point-distances': '5 10 20 5',
+          'control-point-weights': '0.1 0.2 0.6 0.8',
+          /*
           */
           "line-color" : "steelblue",
           "color" : "pink"
@@ -218,6 +219,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
     */
     layout: {
       name: 'grid',
+      avoidOverlap: false,
       position: node => {
         return {row: node.data('row'), col: node.data('col')};
       },
@@ -230,26 +232,20 @@ function graph(sg, domnode, w, h, boxw, boxh) {
   ];
   let nodesInLayers = [0,0,0]; // counter for nodes in each layer
   let nodes = nodeGroups.concat(sg.map(
-                d => {
-                  let layer = ({'C': 0, 'S': 1, null: 2})[d.toString().replace(/:.*/,'')];
-                  let section = ['Classification','Standard','Source'][layer];
-                  return {
-                    data: {
-                      layer,
-                      layerIdx: nodesInLayers[layer]++,
-                      parent: section,
-                      id: d.toString(),
-                      label: d.toString().replace(/.*:/,''),
-                      //label: d.toString(),
-                    },
-                    selectable: true,
-                    //selected: true,
-                    position: { y: layer * 200, },
-                  };
+                sgVal => {
+                  let id = sgVal.toString(),
+                      label = sgVal.toString().replace(/.*:/,''),
+                      layer = ({'C': 0, 'S': 1, null: 2})[
+                              sgVal.toString().replace(/:.*/,'')],
+                      parent = ['Classification','Standard','Source'][layer],
+                      stub = false;
+                  let node = makeNode(id, label,layer, parent, stub);
+                  sgVal.cyNode = node;
+                  return node;
                 }));
 
   // split wide layers
-  let maxNodesPerRow = 7;
+  let maxNodesPerRow = 4;
   let rowsInLayers = 
     nodesInLayers.map((nodesInLayer,i) => Math.ceil(nodesInLayer / maxNodesPerRow));
   
@@ -267,7 +263,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
                 }
                 return rows;
               });
-  console.log(nodesInRowsByLayer.join('\n'));
+  //console.log(nodesInRowsByLayer.join('\n'));
   function colOffset(row, nodesInRows, max=maxNodesPerRow) {
     // even rows (except last) have maxNodes
     let nodesInRow = nodesInRows[row];
@@ -287,6 +283,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
     return offset;
   }
   window.colOffset = colOffset;
+  let rowContents = {};
   nodes.filter(d=>!d.data.isParent).forEach((node) => {
     let nodesInRows = nodesInRowsByLayer[node.data.layer];
     let prevRows = _.sum(nodesInRowsByLayer.slice(0, node.data.layer).map(d=>d.length))
@@ -307,28 +304,86 @@ function graph(sg, domnode, w, h, boxw, boxh) {
                                                     nodesInRowsByLayer[node.data.layer]);
               }
             });
+    let row = _.get(rowContents, [node.data.row, node.data.col]) || [];
+    row.push(node);
+    _.set(rowContents, [node.data.row, node.data.col], row);
     //if (node.data.layer === 2 && node.data.layerIdx > 3) debugger;
   });
   //cyConfig.layout.cols = _.max(nodes.map(d=>d.data.col));
   cyConfig.layout.rows = _.max(nodes.map(d=>d.data.row));
   cyConfig.layout.cols = _.max(nodes.map(d=>d.data.col));
   
-
-  let edges = sg.leafNodes().map(
+  function makeNode(id, label, layer, parent, stub) {
+    let node = { data: { id, }, };
+    if (typeof label !== 'undefined') node.data.label = label;
+    if (typeof layer !== 'undefined') {
+      node.data.layer = layer;
+      node.data.layerIdx = nodesInLayers[layer]++;
+    }
+    if (typeof parent !== 'undefined') node.data.parent = parent;
+    if (typeof stub !== 'undefined') {
+      node.data.stub = stub;
+      node.visible = !stub;
+      node.selectable = false;
+    } else {
+      node.selectable = true;
+    }
+    return node;
+  }
+  function findEmptyGridCol(row, fromCol, targetCol) {
+    // for now just leave these empty and don't try to spread stubs
+    let targetGridLocation = _.get(rowContents, [row, targetCol]);
+    if (!targetGridLocation) return targetCol;
+    let newTarget = targetCol > fromCol ? targetCol - 1 : targetCol + 1;
+    targetGridLocation = _.get(rowContents, [row, newTarget]);
+    if (!targetGridLocation) return newTarget;
+    throw new Error("can't find an empty grid col");
+  }
+  let stubs = [];
+  function addStubs(from, to) {
+    if (from.data.layer === to.data.layer)
+      return [from, to];
+    //console.log(_.get(rowContents, [from.data.layer, from.data.col]));
+    let fromCol = from.data.col, toCol = to.data.col;
+    let newStubs = _.range(from.data.row, to.data.row).slice(1).map(
+      row => {
+        let distanceLeft = toCol - fromCol;
+        let distanceNow = Math.ceil(distanceLeft / Math.abs(to.data.row - row));
+        let targetCol = fromCol + distanceNow;
+        let stub = makeNode(`${from.data.id}:${to.data.id}_stub_${row}`, 
+                            undefined, undefined, undefined, true);
+        stub.data.row = row;
+        fromCol = stub.data.col = findEmptyGridCol(row, fromCol, targetCol);
+        return stub;
+      });
+    stubs = stubs.concat(newStubs);
+    return [from].concat(newStubs, to);
+  }
+  function edge(from, to) {
+    return {
+      classes: from.data.id === to.data.id ? 'self' : 'not-self',
+      selectable: false,
+      events: 'no',
+      data: {
+        id: `${from.data.id}:${to.data.id}`,
+        source: from.data.id,
+        target: to.data.id,
+      }
+    };
+  }
+  let edges = _.flatten(sg.leafNodes().map(
                 d => {
-                  return {
-                    classes: d.toString() === d.parent.toString() ? 'self' : 'not-self',
-                    selectable: false,
-                    events: 'no',
-                    data: {
-                      id: d.toString() + '/' + d.parent.toString(),
-                      source: d.toString(),
-                      target: d.parent.toString(),
-                    }
-                  };
-                }).filter(d=>d.classes==='not-self');
+                  let from = d.parent.parentList.lookup(d).cyNode,
+                      to = d.parent.cyNode,
+                      nodePath = addStubs(from, to),
+                      edgePath = _.range(nodePath.length - 1).map(
+                        i => {
+                          return edge(nodePath[i], nodePath[i+1]);
+                        });
+                  return edgePath;
+                })).filter(d=>d.classes==='not-self');
 
-  cyConfig.elements = { nodes, edges };
+  cyConfig.elements = { nodes: nodes.concat(stubs), edges };
   //console.log(JSON.stringify(cyConfig, null, 2));
 
   cyConfig.container = domnode;
