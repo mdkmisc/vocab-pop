@@ -53,8 +53,6 @@ create or replace view :results.concept_cols as
             end as column_type
   from cols;
 
-
-
 drop table if exists :results.concept_id_occurrence;
 create table :results.concept_id_occurrence (
   --table_schema information_schema.sql_identifier,
@@ -115,7 +113,7 @@ CREATE OR REPLACE
   END;
   $func$ LANGUAGE plpgsql;
   
---select store_concept_id_counts('cdm2','drug_exposure','drug_concept_id','drug_type_concept_id','drug_source_concept_id','drug_source_value','results2','concept_id_occurrence');
+--select store_concept_id_counts('cdm2','drug_exposure','drug_concept_id','drug_type_concept_id','drug_source_concept_id','drug_source_value',':results','concept_id_occurrence');
 
 select store_concept_id_counts(
           schema::text,
@@ -138,141 +136,300 @@ alter table :results.concept_id_occurrence add primary key (table_name, column_n
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
 
 
-create or replace view :results.concept_info as
-  select  cio.*, 
-          concept_name,
-          invalid_reason, 
-          standard_concept, 
-          domain_id, 
-          vocabulary_id, 
-          concept_class_id 
-  from :results.concept_id_occurrence cio 
-  join :cdm.concept c on cio.concept_id = c.concept_id;
-
-create or replace view :results.concept_info_narrow as
-  select  cio.*, 
-          substr(concept_name, 0, 31) as concept_name_30_chars,
-          invalid_reason as ir,
-          standard_concept as sc,
-          domain_id,
-          vocabulary_id,
-          concept_class_id
-  from :results.concept_id_occurrence cio
-  join :cdm.concept c on cio.concept_id = c.concept_id;
-
-
-drop table if exists :results.concept_info_stats;
-create table :results.concept_info_stats as
-  select  cio.table_name,
-          cio.column_name,
+drop table if exists :results.record_counts;
+create table :results.record_counts as (
+  select  
+          c.concept_id, 
           c.domain_id,
           c.vocabulary_id,
           c.concept_class_id,
-          c.standard_concept as sc,
-          case when c.invalid_reason is null then false else true end as invalid,
-          count(*) as conceptrecs,
-          sum(cio.count) as dbrecs
-  from :cdm.concept c 
-  left outer join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
-  group by 1,2,3,4,5,6,7;
-
-
-
-
-/* should be view or materialzed view */
--- based on concept_relationship table only. see class_pedigree for stuff based on ancestor
-drop table if exists :results.class_relations_pre;
-create table :results.class_relations_pre as
-select
-        r.relationship_id,
-        r.relationship_name,
-        r.is_hierarchical,
-        r.defines_ancestry,
-        rr.is_hierarchical as reverse_is_hierarchical,
-        rr.defines_ancestry as reverse_defines_ancestry,
-        r.reverse_relationship_id,
-
-        
-        cr.concept_id_1,
-        c1.domain_id as domain_id_1,
-        c1.vocabulary_id as vocab_1,
-        c1.concept_class_id as class_1,
-        c1.standard_concept as sc_1,
-        c1.invalid_reason as invalid_1,
-
-        cr.concept_id_2,
-        c2.domain_id as domain_id_2,
-        c2.vocabulary_id as vocab_2,
-        c2.concept_class_id as class_2,
-        c2.standard_concept as sc_2,
-        c2.invalid_reason as invalid_2
-from :cdm.concept_relationship cr
-join :cdm.concept c1 on cr.concept_id_1 = c1.concept_id /* and c1.invalid_reason is null */
-join :cdm.concept c2 on cr.concept_id_2 = c2.concept_id /* and c2.invalid_reason is null */
-join :cdm.relationship r on cr.relationship_id = r.relationship_id
-join :cdm.relationship rr on cr.reverse_relationship_id = rr.relationship_id
-where cr.invalid_reason is null
-;
-
-create index class_relations_pre_idx on :results.class_relations_pre (
-        relationship_id,
-        relationship_name,
-        is_hierarchical,
-        defines_ancestry,
-        reverse_relationship_id,
-        domain_id_1,
-        vocab_1,
-        class_1,
-        sc_1,
-        invalid_1,
-        domain_id_2,
-        vocab_2,
-        class_2,
-        sc_2,
-        invalid_2);
-
-drop table if exists :results.class_relations cascade;
-create table :results.class_relations as
-select
-        case when vocab_1 = vocab_2 then true else false end as same_vocab,
-        case when class_1 = class_2 then true else false end as same_class,
-
-        relationship_id,
-        relationship_name,
-        is_hierarchical,
-        defines_ancestry,
-        reverse_relationship_id,
+          c.standard_concept
           /*
-            thought i should include No Matching Concept indicator since concept_id
-            isn't included, but you can get it by testing vocab_1 = 'None'
+            does the coalesce make sense?
+            if there's a direct record count, table/column is where the concept_id appears
+              but descendant record count might be in other table/columns
+            if no direct record count, but drc, table/column is where descendants appear
+              if descendants appear in different tables/columns, they'll be grouped
+              into separate rows, but not if there's also a direct count
+            if I "fix" this, I won't be able to sum on rc without double counting;
+            already can't sum on drc without double counting
           */
-        domain_id_1,
-        vocab_1,
-        class_1,
-        sc_1,
-        invalid_1,
+          coalesce(cio.schema, ciod.schema, '') as schema,
+          coalesce(cio.table_name, ciod.table_name, '') as table_name,
+          coalesce(cio.column_name, ciod.column_name, '') as column_name,
+          coalesce(cio.column_type, ciod.column_type, '') as column_type,
+          count(distinct ciod.concept_id) descendant_concept_ids,
+          coalesce(max(cio.count),0) rc, -- just want a single value here
+          coalesce(sum(ciod.count),0) drc -- count of descendant concept records
+                                          --    per table/column when no recs for main concept
+                                          --    or in the same table/column when main concept has recs
+  from :cdm.concept c
+  left join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
+  left join :cdm.concept_ancestor ca 
+            on c.concept_id = ca.ancestor_concept_id
+            and ca.ancestor_concept_id != ca.descendant_concept_id
+  left join :results.concept_id_occurrence ciod 
+            on ca.descendant_concept_id = ciod.concept_id
+            and (cio.table_name is null or cio.table_name = ciod.table_name)
+            and (cio.column_name is null or cio.column_name = ciod.column_name)
+            and (cio.schema is null or cio.schema = ciod.schema) -- just in case
+  group by 1,2,3,4,5,6,7,8,9
+);
+create unique index rcidx on :results.record_counts (concept_id,schema,table_name,column_name);
+alter table :results.record_counts add primary key using index rcidx;
 
-        domain_id_2,
-        vocab_2,
-        class_2,
-        sc_2,
-        invalid_2,
+create index rc_concept_att_idx on :results.record_counts (domain_id, vocabulary_id, concept_class_id, standard_concept);
 
-        count(distinct concept_id_1) as c1_ids,
-        count(distinct concept_id_2) as c2_ids,
-        count(*) c
-from :results.class_relations_pre cr
-group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
+/*
+drop table if exists :results.concept_ancestor_extra;
+create table :results.concept_ancestor_extra as
+  select  ca.*,
+          c1.domain_id domain_1,
+          c1.vocabulary_id vocab_1,
+          c1.concept_class_id class_1,
+          c1.standard_concept sc_1,
+          c2.domain_id domain_2,
+          c2.vocabulary_id vocab_2,
+          c2.concept_class_id class_2,
+          c2.standard_concept sc_2
+  from :cdm.concept_ancestor ca
+  join :cdm.concept c1 on ca.ancestor_concept_id = c1.concept_id
+  join :cdm.concept c2 on ca.descendant_concept_id = c2.concept_id
+  where ancestor_concept_id != descendant_concept_id;
+create index cae_idx_domain_anc on :results.concept_ancestor_extra 
+          (domain_1, domain_2, ancestor_concept_id, descendant_concept_id);
+*/
+
+create table :results.ancestor_plus_mapsto as
+  select
+          'concept_ancestor'::varchar(20) as source,
+          min_levels_of_separation,
+          ca.ancestor_concept_id,
+          ca.descendant_concept_id
+  from :cdm.concept_ancestor ca
+  where ca.ancestor_concept_id != ca.descendant_concept_id
+  union
+  select  
+          'concept_relationship' as source,
+          0,
+          cr.concept_id_1,
+          cr.concept_id_2
+  from :cdm.concept_relationship cr
+  where cr.relationship_id = 'Maps to'
+    and cr.invalid_reason is null
+    and cr.concept_id_1 != cr.concept_id_2
+  ;
+
+
+drop table if exists :results.concept_rel_counts;
+create table :results.concept_rel_counts as
+  select  ca.*,
+          rc1.domain_id domain_1,
+          rc1.vocabulary_id vocab_1,
+          rc1.concept_class_id class_1,
+          rc1.standard_concept sc_1,
+          rc1.table_name table_1,
+          rc1.column_name column_1,
+          rc1.column_type coltype_1,
+          rc1.rc,   -- record count for ancestor (by table/column)
+          rc1.drc same_tcdrc,  -- record count for descendants when no rc or in same table/col as rc
+          rc1.descendant_concept_ids dcc,
+
+          rc2.domain_id domain_2,
+          rc2.vocabulary_id vocab_2,
+          rc2.concept_class_id class_2,
+          rc2.standard_concept sc_2,
+          rc2.table_name table_2,
+          rc2.column_name column_2,
+          rc2.column_type coltype_2,
+          rc2.rc drc -- rc for this single descendant, can be summed for single ancestor
+                -- for multiple ancestor ids:
+                --    select sum(drc)
+                --    from (select distinct descendant_concept_id, drc
+                --          from concept_ancestor_counts
+                --          where ancestor_concept_id in (...)) x
+  from :results.ancestor_plus_mapsto ca
+  join :results.record_counts rc1 on ca.ancestor_concept_id = rc1.concept_id
+  join :results.record_counts rc2 on ca.descendant_concept_id = rc2.concept_id
+  where ancestor_concept_id != descendant_concept_id;
+
+create unique index crc_idx on :results.concept_rel_counts 
+          ( 
+            ancestor_concept_id, descendant_concept_id,
+            table_1, table_2, 
+            column_1, column_2 
+          );
+alter table :results.concept_rel_counts add primary key using index cac_idx;
+
+ create index crc_idx_dvtc on concept_rel_counts (
+                        domain_1,
+                        vocab_1,
+                        table_1,
+                        column_1,
+                        coltype_1,
+                        ancestor_concept_id
+                      );
+
+create or replace view :results.concept_ancestor_counts_narrow as
+select domain_1, vocab_1, class_1, sc_1, table_1, column_1, rc,
+          same_tcdrc, dcc, domain_2, vocab_2, class_2, sc_2, table_2,
+          column_2, drc
+from :results.concept_ancestor_counts;
+
+/*
+create index cac_idx on :results.concept_ancestor_counts using brin
+          ( 
+            ancestor_concept_id, descendant_concept_id,
+            table_1, table_2, 
+            column_1, column_2 
+            domain_1, domain_2, 
+            vocabulary_1, vocabulary_2, 
+            class_1, class_2, 
+            sc_1, sc_2
+          );
+*/
+-- for main vocab map:
+
+create table :results.vocab_map as (
+  with rcg as ( 
+                select
+                      vocabulary_id,
+                      standard_concept,
+                      count(*) cc,
+                      sum(rc) rc,
+                      sum(descendant_concept_ids) dcc,
+                      sum(drc) baddrc,
+                      array_agg(concept_id) cids
+                from record_counts
+                group by 1,2
+              )
+  select distinct
+                  rcg.vocabulary_id a_vocabulary_id,
+                  rcg.standard_concept a_standard_concept,
+                  rcg.cc,
+                  rcg.rc,
+                  rcg.dcc,
+                  rcg.baddrc,
+                  rc.vocabulary_id d_vocabulary_id,
+                  rc.standard_concept d_standard_concept,
+                  count(distinct rc.concept_id) final_dids,
+                  sum(rc.rc) drc
+  from :results.concept_ancestor_extra cae
+  join rcg on cae.ancestor_concept_id = any(rcg.cids)
+  left join record_counts rc on cae.descendant_concept_id = rc.concept_id
+  group by 1,2,3,4,5,6,7,8
+  order by 1,2
+);
+
+
+
+
+
+with rcg as ( select table_name,
+                     column_name,
+                     count(*) cc,
+                     sum(rc) rc,
+                     sum(descendant_concept_ids) dcc,
+                     sum(drc) baddrc,
+                     array_agg(concept_id) cids
+              from record_counts
+              where domain_id='Condition' and vocabulary_id='Cohort' and concept_class_id='Cohort' and standard_concept='C'
+              group by 1,2
+            )
+select distinct rcg.table_name a_table_name,
+                rcg.column_name a_column_name,
+                rcg.cc,
+                rcg.rc,
+                rcg.dcc,
+                rcg.baddrc,
+                rc.table_name d_table_name,
+                rc.column_name d_column_name,
+                count(distinct rc.concept_id) final_dids,
+                sum(rc.rc) drc
+from cdm2.concept_ancestor_no_self cans
+join rcg on cans.ancestor_concept_id = any(rcg.cids)
+left join record_counts rc on cans.descendant_concept_id = rc.concept_id
+group by 1,2,3,4,5,6,7,8
+order by 1,2
+/*
+with canss as (
+  )
+      select * from canss
+select * from rcg join canss on 1=1
+from (
+
+              select table_name, column_name, count(*), count(distinct concept_id), sum(rc), sum(descendant_concept_ids), sum(drc), array_agg(concept_id)
+              from record_counts rce
+              join (
+                      select distinct descendant_concept_id dcid
+                      from (
+                              select *
+                              from cdm2.concept_ancestor_no_self cans
+                              where cans.ancestor_concept_id = any(array_agg(rcg.ids))
+                            ) canss
+                    ) dcids on rce.concept_id = dcids.dcid
+              group by 1,2
+      ) cans
+      */
+
 ;
 
 
+drop table if exists :results.record_counts_agg cascade;
+create :results.record_counts_agg as
+with rc as (
+
+  fix this now that record_counts includes all the concept cols
 
 
-
-
-
-
-
+            select domain_id, vocabulary_id, concept_class_id, standard_concept,
+                    rcs.schema,
+                    rcs.table_name,
+                    rcs.column_name,
+                    rcs.column_type,
+                    count(*) cc,
+                    sum(rc) rc
+            from :cdm.concept c
+            left join :results.record_counts rcs on c.concept_id = rcs.concept_id
+            where c.invalid_reason is null
+                              -- and c.concept_id between 4000000 and 4005000 -- for testing
+            group by 1,2,3,4,5,6,7,8
+          ),
+   drc as (
+            select  drcs.domain_id,
+                    drcs.vocabulary_id,
+                    drcs.concept_class_id,
+                    drcs.standard_concept,
+                    drc.schema,
+                    drc.table_name,
+                    drc.column_name,
+                    drc.column_type,
+                    count(distinct drcs.descendant_concept_id) dcc,
+                    sum(drc.rc) drc
+            from (
+                    select distinct domain_id, vocabulary_id, concept_class_id, standard_concept, ca.descendant_concept_id
+                    from cdm2.concept c
+                    left join cdm2.concept_ancestor ca 
+                              on c.concept_id = ca.ancestor_concept_id 
+                              and ca.ancestor_concept_id != ca.descendant_concept_id
+                    where c.invalid_reason is null
+                      -- and c.concept_id between 4000000 and 4005000 -- for testing
+                ) drcs
+            left join :results.record_counts drc on drcs.descendant_concept_id = drc.concept_id
+            group by 1,2,3,4,5,6,7,8
+          )
+select rc.*, drc.dcc, drc.drc
+from rc
+left join drc on    rc.domain_id = drc.domain_id and
+                    rc.vocabulary_id = drc.vocabulary_id and
+                    rc.concept_class_id = drc.concept_class_id and
+                    rc.standard_concept = drc.standard_concept and
+                    rc.schema = drc.schema and
+                    rc.table_name = drc.table_name and
+                    rc.column_name = drc.column_name
+                    rc.column_type = drc.column_type
+;
+/*
 drop table if exists :results.class_pedigree_pre;
 create table :results.class_pedigree_pre as
 select
@@ -312,10 +469,10 @@ select
         c2.vocabulary_id as vocab_2,
         c2.concept_class_id as class_2,
         c2.standard_concept as sc_2
-from cdm2.concept_relationship cr
-join cdm2.relationship r on cr.relationship_id = r.relationship_id
-join cdm2.concept c1 on cr.concept_id_1 = c1.concept_id and c1.invalid_reason is null
-join cdm2.concept c2 on cr.concept_id_2 = c2.concept_id and c2.invalid_reason is null
+from :cdm.concept_relationship cr
+--join :cdm.relationship r on cr.relationship_id = r.relationship_id
+join :cdm.concept c1 on cr.concept_id_1 = c1.concept_id and c1.invalid_reason is null
+join :cdm.concept c2 on cr.concept_id_2 = c2.concept_id and c2.invalid_reason is null
 where cr.relationship_id = 'Maps to'
   and cr.invalid_reason is null
   and cr.concept_id_1 != cr.concept_id_2
@@ -336,8 +493,8 @@ create index class_pedigree_pre_idx on :results.class_pedigree_pre (
         --invalid_2
       );
 
-drop table if exists :results.class_pedigree cascade;
-create table :results.class_pedigree as
+drop table if exists :results.class_pedigree_pre_agg cascade;
+create table :results.class_pedigree_pre_agg as
 select
         source,
         min_levels_of_separation,
@@ -352,53 +509,81 @@ select
         sc_2,
         --invalid_2,
         count(distinct ancestor_concept_id) as c1_ids,
-        count(distinct descendant_concept_id) as c2_ids,
-        count(*) c
+        count(distinct descendant_concept_id) as c2_ids
+        --count(*) c
 from :results.class_pedigree_pre cr
 group by 1,2,3,4,5,6,7,8,9,10
 ;
 
+drop table if exists :results.class_pedigree cascade;
+create table :results.class_pedigree as
+select
+        source,
+        min_levels_of_separation sep,
 
+        cppa.domain_id_1,
+        cppa.vocab_1,
+        cppa.class_1,
+        cppa.sc_1,
+        --invalid_1,
+        --rc1.schema1,
+        rc1.table_name table_name1,
+        rc1.column_name column_name1,
+        --rc1.column_type1,  fix record_counts_agg (fixed but needs rerunning)
+        rc1.rc as rc1,
+        rc1.cc as cc1,
+        rc1.drc as drc1,
+        rc1.dcc as dcc1,
 
-
-
-/*
-create or replace view :results.class_pedigree_pre_w_db_counts as
-select *
-from :results.class_pedigree_pre cpp
-join :results.concept_id_occurrence cio1 on cpp.ancestor_concept_id 
-        in (cio1.target_concept_id, cio1.type_concept_id, cio1.source_concept_id)
-join :results.concept_id_occurrence cio2 on cpp.descendant_concept_id 
-        in (cio2.target_concept_id, cio2.type_concept_id, cio2.source_concept_id)
+        cppa.domain_id_2,
+        cppa.vocab_2,
+        cppa.class_2,
+        cppa.sc_2,
+        --invalid_2,
+        --rc2.schema2,
+        rc2.table_name table_name2,
+        rc2.column_name column_name2,
+        --rc2.column_type2,
+        rc2.rc as rc2,
+        rc2.cc as cc2,
+        rc2.drc as drc2,
+        rc2.dcc as dcc2
+from :results.class_pedigree_pre_agg cppa
+left join record_counts_agg rc1 on cppa.domain_id_1 = rc1.domain_id and
+                                   cppa.vocab_1 = rc1.vocabulary_id and
+                                   cppa.class_1 = rc1.concept_class_id and
+                                   cppa.sc_1 = rc1.standard_concept
+left join record_counts_agg rc2 on cppa.domain_id_2 = rc2.domain_id and
+                                   cppa.vocab_2 = rc2.vocabulary_id and
+                                   cppa.class_2 = rc2.concept_class_id and
+                                   cppa.sc_2 = rc2.standard_concept
 ;
 */
 
-
-drop table if exists :results.class_pedigree_w_db_counts cascade;
-create table :results.class_pedigree_w_db_counts as
-select
-        source,
-        min_levels_of_separation,
-        domain_id_1,
-        vocab_1,
-        class_1,
-        sc_1,
-        --invalid_1,
-        domain_id_2,
-        vocab_2,
-        class_2,
-        sc_2,
-        --invalid_2,
-        count(distinct ancestor_concept_id) as c1_ids,
-        count(distinct descendant_concept_id) as c2_ids,
-        count(*) as links,
-        sum(cio1.count) as db_recs_1,
-        sum(cio2.count) as db_recs_2
-from :results.class_pedigree_pre cpp
-join :results.concept_id_occurrence cio1 on cpp.ancestor_concept_id = cio1.concept_id
-join :results.concept_id_occurrence cio2 on cpp.descendant_concept_id = cio2.concept_id
-group by 1,2,3,4,5,6,7,8,9,10
-;
+/*
+better drcs:
+select  desc_uniq.domain_id,
+        desc_uniq.vocabulary_id,
+        desc_uniq.concept_class_id,
+        desc_uniq.standard_concept,
+        rc.schema,
+        rc.table_name,
+        rc.column_name,
+        count(desc_uniq.descendant_concept_id) descendant_rows,
+        count(distinct desc_uniq.descendant_concept_id) descendant_concepts,
+        count(rc.concept_id) rc_rows,
+        count(distinct rc.concept_id) rc_distinct_rows,
+        sum(rc.rc) drc
+from (
+        select distinct domain_id, vocabulary_id, concept_class_id, standard_concept, ca.descendant_concept_id
+        from :cdm.concept c
+        left join :cdm.concept_ancestor ca on c.concept_id = ca.ancestor_concept_id and ca.ancestor_concept_id != ca.descendant_concept_id
+        where c.invalid_reason is null
+          and c.concept_id between 4000000 and 4005000
+     ) desc_uniq
+left join :results.record_counts rc on desc_uniq.descendant_concept_id = rc.concept_id
+group by 1,2,3,4,5,6,7
+*/
 
 
 
@@ -412,12 +597,7 @@ group by 1,2,3,4,5,6,7,8,9,10
 
 
 
-
-
-
-
-
-create table results2.concept_rel_missing_direct_ancestor as (
+create table :results.concept_rel_missing_direct_ancestor as (
 select
         cr.concept_id_1,
         c1.vocabulary_id as vocab1,
@@ -458,13 +638,13 @@ select
         is_hierarchical,
         min(min) min_levels_of_separation,
         sum(count) relationships
-from results2.concept_rel_missing_direct_ancestor
+from :results.concept_rel_missing_direct_ancestor
 /*where vocab1 not in ('DPD') and vocab2 not in ('DPD') */
 group by 1,2,3,4,5,6
 order by 1,2,3,4,5,6
 ;
 
-create table results2.ancestor_missing_concept_rel as (
+create table :results.ancestor_missing_concept_rel as (
 select
         ca.ancestor_concept_id,
         c1.vocabulary_id as vocab1,
@@ -498,7 +678,7 @@ select
         is_hierarchical,
         min(min) min_levels_of_separation,
         sum(count) relationships
-from results2.concept_rel_missing_direct_ancestor
+from :results.concept_rel_missing_direct_ancestor
 /*where vocab1 not in ('DPD') and vocab2 not in ('DPD') */
 group by 1,2,3,4,5,6
 order by 1,2,3,4,5,6
@@ -569,7 +749,7 @@ create or replace view :cdm.concept_relationship_one_way as
         and r.invalid_reason is null
         and r2.concept_id_1 is null;
 
-create table results2.start_concepts as (
+create table :results.start_concepts as (
   with sc as (
     select distinct r.concept_id_1 as concept_id
       from concept_relationship r
@@ -842,4 +1022,165 @@ create or replace view :results.concept_cols_by_table as
     and source_col is not null
     and target_col is not null
   ;
+
+
+
+
+below is replaced by class_pedigree tables which combine concept_ancestor and concept_relationship links
+
+
+/* should be view or materialzed view * /
+-- based on concept_relationship table only. see class_pedigree for stuff based on ancestor
+drop table if exists :results.class_relations_pre;
+create table :results.class_relations_pre as
+select
+        r.relationship_id,
+        r.relationship_name,
+        r.is_hierarchical,
+        r.defines_ancestry,
+        rr.is_hierarchical as reverse_is_hierarchical,
+        rr.defines_ancestry as reverse_defines_ancestry,
+        r.reverse_relationship_id,
+
+        
+        cr.concept_id_1,
+        c1.domain_id as domain_id_1,
+        c1.vocabulary_id as vocab_1,
+        c1.concept_class_id as class_1,
+        c1.standard_concept as sc_1,
+        c1.invalid_reason as invalid_1,
+
+        cr.concept_id_2,
+        c2.domain_id as domain_id_2,
+        c2.vocabulary_id as vocab_2,
+        c2.concept_class_id as class_2,
+        c2.standard_concept as sc_2,
+        c2.invalid_reason as invalid_2
+from :cdm.concept_relationship cr
+join :cdm.concept c1 on cr.concept_id_1 = c1.concept_id /* and c1.invalid_reason is null * /
+join :cdm.concept c2 on cr.concept_id_2 = c2.concept_id /* and c2.invalid_reason is null * /
+join :cdm.relationship r on cr.relationship_id = r.relationship_id
+join :cdm.relationship rr on cr.reverse_relationship_id = rr.relationship_id
+where cr.invalid_reason is null
+;
+
+
+create index class_relations_pre_idx on :results.class_relations_pre (
+        relationship_id,
+        relationship_name,
+        is_hierarchical,
+        defines_ancestry,
+        reverse_relationship_id,
+        domain_id_1,
+        vocab_1,
+        class_1,
+        sc_1,
+        invalid_1,
+        domain_id_2,
+        vocab_2,
+        class_2,
+        sc_2,
+        invalid_2);
+
+drop table if exists :results.class_relations cascade;
+create table :results.class_relations as
+select
+        case when vocab_1 = vocab_2 then true else false end as same_vocab,
+        case when class_1 = class_2 then true else false end as same_class,
+
+        relationship_id,
+        relationship_name,
+        is_hierarchical,
+        defines_ancestry,
+        reverse_relationship_id,
+          /*
+            thought i should include No Matching Concept indicator since concept_id
+            isn't included, but you can get it by testing vocab_1 = 'None'
+          * /
+        domain_id_1,
+        vocab_1,
+        class_1,
+        sc_1,
+        invalid_1,
+
+        domain_id_2,
+        vocab_2,
+        class_2,
+        sc_2,
+        invalid_2,
+
+        count(distinct concept_id_1) as c1_ids,
+        count(distinct concept_id_2) as c2_ids,
+        count(*) c
+from :results.class_relations_pre cr
+group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17
+;
+
+
+
+create or replace view :results.concept_info as
+  select  cio.*, 
+          concept_name,
+          invalid_reason, 
+          standard_concept, 
+          domain_id, 
+          vocabulary_id, 
+          concept_class_id 
+  from :results.concept_id_occurrence cio 
+  join :cdm.concept c on cio.concept_id = c.concept_id;
+
+create or replace view :results.concept_info_narrow as
+  select  cio.*, 
+          substr(concept_name, 0, 31) as concept_name_30_chars,
+          invalid_reason as ir,
+          standard_concept as sc,
+          domain_id,
+          vocabulary_id,
+          concept_class_id
+  from :results.concept_id_occurrence cio
+  join :cdm.concept c on cio.concept_id = c.concept_id;
+
+
+drop table if exists :results.concept_info_stats;
+create table :results.concept_info_stats as
+  select  cio.table_name,
+          cio.column_name,
+          c.domain_id,
+          c.vocabulary_id,
+          c.concept_class_id,
+          c.standard_concept as sc,
+          case when c.invalid_reason is null then false else true end as invalid,
+          count(*) as conceptrecs,
+          sum(cio.count) as dbrecs
+  from :cdm.concept c 
+  left outer join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
+  group by 1,2,3,4,5,6,7;
+
+
+
+drop table if exists :results.class_pedigree_pre_w_counts cascade;
+create table :results.class_pedigree_pre_w_counts as
+select  cpp.*,
+        rc1.schema as schema1,
+        rc1.table_name as table_name1,
+        rc1.column_name as column_name1,
+        rc1.column_type as column_type1,
+        rc1.descendant_concept_ids as descendant_concept_ids1,
+        rc1.rc as rc1,
+        rc1.drc as drc1,
+        rc2.schema as schema2,
+        rc2.table_name as table_name2,
+        rc2.column_name as column_name2,
+        rc2.column_type as column_type2,
+        rc2.descendant_concept_ids as descendant_concept_ids2,
+        rc2.rc as rc2,
+        rc2.drc as drc2
+from class_pedigree_pre cpp 
+join record_counts rc1 on ancestor_concept_id = rc1.concept_id
+join record_counts rc2 on descendant_concept_id = rc2.concept_id;
+
+
+
+
+
 */
