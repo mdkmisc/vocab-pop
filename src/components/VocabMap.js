@@ -23,6 +23,7 @@ import _ from 'supergroup'; // in global space anyway
 import cytoscape from 'cytoscape';
 //import cytoscape from '../../cytoscape.js/src/index';
 import * as AppState from '../AppState';
+import {commify} from '../utils';
 
 
 function graph(sg, domnode, w, h, boxw, boxh) {
@@ -64,6 +65,12 @@ function graph(sg, domnode, w, h, boxw, boxh) {
     },
     */
     style: [
+      {
+        selector: '.multiline-manual',
+        style: {
+          'text-wrap': 'wrap'
+        }
+      },
       {
         "selector" : "node",
         "css" : {
@@ -130,13 +137,55 @@ function graph(sg, domnode, w, h, boxw, boxh) {
       {
         "selector" : "edge.not-self",
         "css" : {
-          //"curve-style": "bezier",
           //"control-point-step-size": .5,
-          'curve-style': 'unbundled-bezier',
-          'control-point-distances': '5 10 20 5',
-          'control-point-weights': '0.1 0.2 0.6 0.8',
+          //"curve-style": "bezier",
           /*
+          'curve-style': 'unbundled-bezier',
+          'control-point-distances': 
+            function(edge) {
+              return edge.data('waypoints').map(d=>d.distance).join(" ");
+            },
+          'control-point-weights':
+            function(edge) {
+              let points = edge.data('waypoints');
+              let y = d3.scaleLinear()
+                        .range([1 / (points.length + 2), 1 - 1 / (points.length + 2) ])
+                        .domain([edge.source().data().row,edge.target().data().row]);
+              edge.data().weights = points.map(d=>{
+                return d.weight = y('wayRow' in d ? d.wayRow : .5)
+              }).join(" ");
+              return edge.data().weights;
+            },
           */
+          //'curve-style': 'unbundled-bezier',
+          //'curve-style': 'segments',
+          //http://js.cytoscape.org/#style/segments-edges
+          'control-point-distances': 
+          //'segment-distances': 
+            function(edge) {
+              return edge.data('waypoints').map(d=>d.distance).join(" ");
+            },
+          'control-point-weights':
+          //'segment-weights':
+            function(edge) {
+              return edge.data('waypoints').map(d=>d.weight).join(" ");
+            },
+            /*
+            function(edge) {
+              let points = edge.data('waypoints');
+              let y = d3.scaleLinear()
+                        .range([1 / (points.length + 2), 1 - 1 / (points.length + 2) ])
+                        .domain([edge.source().data().row,edge.target().data().row]);
+              edge.data().weights = points.map(d=>{
+                return d.weight = y('wayRow' in d ? d.wayRow : .5)
+              }).join(" ");
+              return edge.data().weights;
+            },
+            */
+          //'control-point-distances': '5 10 20 5',
+          //'control-point-distances': () => '5 10 20 5',
+          //'control-point-weights': '0.1 0.2 0.6 0.8',
+          //'control-point-weights': () => '0.1 0.2 0.6 0.8',
           "line-color" : "steelblue",
           "color" : "pink"
         }
@@ -145,6 +194,14 @@ function graph(sg, domnode, w, h, boxw, boxh) {
         "selector" : "edge",
         "css" : {
           "line-color" : "steelblue",
+          "color" : "pink",
+          "shadow-color": "green",
+        }
+      },
+      {
+        "selector" : "edge:selected",
+        "css" : {
+          "line-color" : "red",
           "color" : "pink"
         }
       },
@@ -234,18 +291,19 @@ function graph(sg, domnode, w, h, boxw, boxh) {
   let nodes = nodeGroups.concat(sg.map(
                 sgVal => {
                   let id = sgVal.toString(),
-                      label = sgVal.toString().replace(/.*:/,''),
+                      label = `${sgVal.toString().replace(/.*:/,'')}\n${commify(sgVal.aggregate(_.sum, 'rc2'))}`,
                       layer = ({'C': 0, 'S': 1, null: 2})[
                               sgVal.toString().replace(/:.*/,'')],
-                      parent = ['Classification','Standard','Source'][layer],
-                      stub = false;
-                  let node = makeNode(id, label,layer, parent, stub);
-                  sgVal.cyNode = node;
+                      parent = ['Classification','Standard','Source'][layer];
+                  let node = makeNode(id, label,layer, parent);
+                  node.classes = 'multiline-manual';
+                  //sgVal.cyNode = node;
                   return node;
                 }));
 
   // split wide layers
-  let maxNodesPerRow = 4;
+  let maxNodesPerRow = 7;
+  let rowsBetweenLayers = 0;
   let rowsInLayers = 
     nodesInLayers.map((nodesInLayer,i) => Math.ceil(nodesInLayer / maxNodesPerRow));
   
@@ -287,7 +345,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
   nodes.filter(d=>!d.data.isParent).forEach((node) => {
     let nodesInRows = nodesInRowsByLayer[node.data.layer];
     let prevRows = _.sum(nodesInRowsByLayer.slice(0, node.data.layer).map(d=>d.length))
-                      + node.data.layer * 2;
+                      + node.data.layer * rowsBetweenLayers;
     nodesInRows.forEach(
             (nodesInRow,i) => {
               if (
@@ -313,7 +371,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
   cyConfig.layout.rows = _.max(nodes.map(d=>d.data.row));
   cyConfig.layout.cols = _.max(nodes.map(d=>d.data.col));
   
-  function makeNode(id, label, layer, parent, stub) {
+  function makeNode(id, label, layer, parent) {
     let node = { data: { id, }, };
     if (typeof label !== 'undefined') node.data.label = label;
     if (typeof layer !== 'undefined') {
@@ -321,6 +379,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
       node.data.layerIdx = nodesInLayers[layer]++;
     }
     if (typeof parent !== 'undefined') node.data.parent = parent;
+    /*
     if (typeof stub !== 'undefined') {
       node.data.stub = stub;
       node.visible = !stub;
@@ -328,10 +387,12 @@ function graph(sg, domnode, w, h, boxw, boxh) {
     } else {
       node.selectable = true;
     }
+    */
+    node.selectable = true;
     return node;
   }
   function findEmptyGridCol(row, fromCol, targetCol) {
-    // for now just leave these empty and don't try to spread stubs
+    // for now just leave these empty and don't try to spread waypoints
     let targetGridLocation = _.get(rowContents, [row, targetCol]);
     if (!targetGridLocation) return targetCol;
     let newTarget = targetCol > fromCol ? targetCol - 1 : targetCol + 1;
@@ -339,51 +400,78 @@ function graph(sg, domnode, w, h, boxw, boxh) {
     if (!targetGridLocation) return newTarget;
     throw new Error("can't find an empty grid col");
   }
-  let stubs = [];
-  function addStubs(from, to) {
-    if (from.data.layer === to.data.layer)
-      return [from, to];
-    //console.log(_.get(rowContents, [from.data.layer, from.data.col]));
-    let fromCol = from.data.col, toCol = to.data.col;
-    let newStubs = _.range(from.data.row, to.data.row).slice(1).map(
-      row => {
-        let distanceLeft = toCol - fromCol;
-        let distanceNow = Math.ceil(distanceLeft / Math.abs(to.data.row - row));
-        let targetCol = fromCol + distanceNow;
-        let stub = makeNode(`${from.data.id}:${to.data.id}_stub_${row}`, 
-                            undefined, undefined, undefined, true);
-        stub.data.row = row;
-        fromCol = stub.data.col = findEmptyGridCol(row, fromCol, targetCol);
-        return stub;
-      });
-    stubs = stubs.concat(newStubs);
-    return [from].concat(newStubs, to);
+  function rotateRad(cx, cy, x, y, radians) {
+    var cos = Math.cos(radians),
+        sin = Math.sin(radians),
+        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
+        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+    return [nx, ny];
   }
+  function rotate(cx, cy, x, y, angle) {
+    var radians = (Math.PI / 180) * angle,
+        cos = Math.cos(radians),
+        sin = Math.sin(radians),
+        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
+        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+    return [nx, ny];
+  }
+  function perpendicular_coords(x1, y1, x2, y2, xp, yp) {
+    var dx = x2 - x1,
+        dy = y2 - y1;
+
+    //find intersection point    
+    var k = (dy * (xp-x1) - dx * (yp-y1)) / (dy*dy + dx*dx);
+    var x4 = xp - k * dy;
+    var y4 = yp + k * dx;
+
+    var ypt = Math.sqrt((y4-y1)*(y4-y1)+(x4-x1)*(x4-x1));
+    var xpt = pointToLineDist(x1, y1, x2, y2, xp, yp);
+    return [xpt, ypt];
+  }
+
+  function pointToLineDist(x1, y1, x2, y2, xp, yp) {
+    var dx = x2 - x1;
+    var dy = y2 - y1;
+    return Math.abs(dy*xp - dx*yp + x2*y1 - y2*x1) / Math.sqrt(dy*dy + dx*dx);
+  }
+  function pointToPointDist(x1, y1, x2, y2) {
+    var dx = x2 - x1;
+    var dy = y2 - y1;
+    return Math.sqrt(dx * dx + dy * dy);
+  }
+  /*
+  function dumbCoordRotate(x0,y0, x1,y1, xp,yp) {
+    // get slope from source to target
+    let m = (y1 - y0) / (x1 - x0);
+    // then y == m*x + b, plug in a point: y0 == m*x0 + b
+    let b = y0 - m * x0;
+    let mp = -1 / m; // slope of perpendicular line
+    let bp = yp - mp * xp;
+  }
+  function rotate(cx, cy, x, y) {
+    var radians = Math.atan2(cy, cx),
+        cos = Math.cos(radians),
+        sin = Math.sin(radians),
+        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
+        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+    return [nx, ny];
+  }
+  */
   function edge(from, to) {
     return {
-      classes: from.data.id === to.data.id ? 'self' : 'not-self',
-      selectable: false,
+      classes: from.id() === to.id() ? 'self' : 'not-self',
+      selectable: true,
       events: 'no',
+      groups: 'edges',
       data: {
-        id: `${from.data.id}:${to.data.id}`,
-        source: from.data.id,
-        target: to.data.id,
+        id: `${from.id()}:${to.id()}`,
+        source: from.id(),
+        target: to.id(),
       }
     };
   }
-  let edges = _.flatten(sg.leafNodes().map(
-                d => {
-                  let from = d.parent.parentList.lookup(d).cyNode,
-                      to = d.parent.cyNode,
-                      nodePath = addStubs(from, to),
-                      edgePath = _.range(nodePath.length - 1).map(
-                        i => {
-                          return edge(nodePath[i], nodePath[i+1]);
-                        });
-                  return edgePath;
-                })).filter(d=>d.classes==='not-self');
 
-  cyConfig.elements = { nodes: nodes.concat(stubs), edges };
+  cyConfig.elements = { nodes};
   //console.log(JSON.stringify(cyConfig, null, 2));
 
   cyConfig.container = domnode;
@@ -401,98 +489,116 @@ function graph(sg, domnode, w, h, boxw, boxh) {
       console.log('tapped', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
     }
   });
-  window.cy = cy;
-  return cy;
-  return <div className="cydiv">
-              <h5>cyviewer</h5>
-              <CyViewer {...cyConfig} />
-          </div>;
-  
-
-
-  let levelContents = [0,0,0]; // C, S, null for three standard concept levels
-  sg.forEach( d => {
-    d.ypos = ({'C': 0, 'S': 1, null: 2})[d.toString().replace(/:.*/,'')];
-    d.xpos = levelContents[d.ypos] ++;
+  cy.on('mouseover', evt => {
+    let el = evt.cyTarget;
+    if (el === cy) {
+    } else {
+      if (el.data().isParent)
+        return false;
+      //el.select();
+      el.activate();
+      if (el.group() === 'edges') {
+        console.log('edge mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+        return false;
+      }
+      console.log('node mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+    }
   });
+  cy.on('mouseout', evt => {
+    let el = evt.cyTarget;
+    el.unactivate && el.unactivate();
+  });
+  /*
+  let nodesByCol = _.sortBy(cy.nodes().toArray().filter(d=>d.data().col), d=>d.data().col),
+      leftNode   = _.first(nodesByCol),
+      rightNode  = _.last(nodesByCol),
+      x          = d3.scaleLinear()
+                      .domain([leftNode.data().col, rightNode.data().col])
+                      .range([leftNode.position().x, rightNode.position().x]);
+  let nodesByRow = _.sortBy(cy.nodes().toArray().filter(d=>d.data().row), d=>d.data().row),
+      topNode    = _.first(nodesByRow),
+      bottomNode = _.last(nodesByRow),
+      y          = d3.scaleLinear()
+                      .domain([topNode.data().col, bottomNode.data().col])
+                      .range([topNode.position().y, bottomNode.position().y]);
+  */
+  let edges = _.flatten(sg.leafNodes().map(
+                d => {
+                  let from = cy.getElementById(d.parent.parentList.lookup(d).toString()),
+                      to = cy.getElementById(d.parent.toString()),
+                      points = waypoints(from, to);
+                      /*
+                      edgePath = _.range(nodePath.length - 1).map(
+                        i => {
+                          return edge(nodePath[i], nodePath[i+1]);
+                        });
+                      return edgePath;
+                      */
+                  let e = edge(from, to);
+                  e.data.waypoints = points;
+                  return e;
+                }))
+                //.filter(d=>d.classes==='not-self');
 
-  let x = d3.scaleLinear().range([0,w])
-                .domain([-1, _.max(levelContents)])
-  let y = d3.scaleLinear().range([0,h])
-                .domain([-1, 4]);
-  var c10 = d3.scaleLinear().range(d3.schemeCategory10);
+  function waypoints(from, to) {
+    let stubPoint = { row: from.data().row, col: from.data().col, 
+                      distance: 0, weight: .5, };
+    if (from.data().layer === to.data().layer)
+      return [stubPoint];
+    let fromCol = from.data().col, 
+        curCol = fromCol,
+        toCol = to.data().col,
+        fromRow = from.data().row,
+        curRow = fromRow,
+        toRow = to.data().row,
+        fromX = from.position().x,
+        fromY = from.position().y,
+        toX = to.position().x,
+        toY = to.position().y,
+        x = d3.scaleLinear().domain([fromCol,toCol]).range([fromX,toX]),
+        y = d3.scaleLinear().domain([fromRow,toRow]).range([fromY,toY]);
+    let rowsBetween = _.range(fromRow, toRow).slice(1);
+    let edgeLength = pointToPointDist(x(fromCol),y(fromRow),x(toCol),y(toRow));
+    let points = rowsBetween.map(
+      (nextRow,i) => {
+        let colsRemaining = toCol - curCol;
+        let colsNow = Math.ceil(colsRemaining / Math.abs(toRow - curRow));
+        let nextCol = findEmptyGridCol(nextRow, curCol, curCol + colsNow);
+        let curX = x(curCol), curY = y(curRow),
+            nextX = x(nextCol), nextY = y(nextRow);
+        let [distanceFromEdge, distanceOnEdge] = 
+              perpendicular_coords(curX, curY, toX, toY, nextX, nextY);
 
-  d3.select(domnode).select('svg').remove();
-  var svg = d3.select(domnode)
-    .append("svg")
-    .attr("width", w)
-    .attr("height", h);
-
-    /*
-  var drag = d3.drag()
-    .on("drag", function(d, i) {
-      d.x += d3.event.dx
-      d.y += d3.event.dy
-      d3.select(this).attr("cx", d.x).attr("cy", d.y);
-      d.getChildren().each(function(l, li) {
-        if (l.source === i) {
-          d3.select(this).attr("x1", d.x).attr("y1", d.y);
-        } else if (l.target === i) {
-          d3.select(this).attr("x2", d.x).attr("y2", d.y);
-        }
+        let point = {curCol, curRow, 
+                      toCol, toRow,
+                      nextCol, nextRow,
+                      curX, curY, toX, toY, nextX, nextY,
+                      edgeLength,
+                      colsNow,
+                      //wayCol, wayRow,
+                      distance:-distanceFromEdge * 2, 
+                      weight:distanceOnEdge / edgeLength,
+                    };
+        curCol = nextCol;
+        curRow = nextRow;
+        return point;
       });
-    });
-    */
+    if (points.length === 0)
+        return [stubPoint];
+    return points;
+  }
+  window.cy = cy;
+  window.sg = sg;
+  window.waypoints = waypoints;
+  window.edge = edge;
+  window.edges = edges;
+  window.rotateRad = rotateRad;
+  window.perpendicular_coords = perpendicular_coords;
 
-  //var d3nodes = 
-  svg.selectAll("node")
-                .data(sg).enter()
-                .append("rect")
-                  .attr("class", "node")
-                  .attr("x", function(d) {
-                    return x(d.xpos) - boxw / 2;
-                  })
-                .attr("y", function(d) {
-                  return y(d.ypos) - boxh / 2;
-                })
-                .attr("width", boxw)
-                .attr("height", boxh)
-                .attr("fill", function(d, i) {
-                  return c10(i);
-                })
-                //.call(drag);
-  //var labels = 
-  svg.selectAll("foreighObject")
-          .data(sg)
-          .enter()
-        .append('foreignObject')
-          .attr("x", function(d) {
-            return x(d.xpos) - boxw / 2;
-          })
-          .attr("y", function(d) {
-            return y(d.ypos) - boxh / 2;
-          })
-          .attr('width', boxw)
-          .attr('height', boxh)
-        .append('xhtml:p')
-          .html(d=>d.toString().replace(/.*:/,''))
-
-  //var links = 
-  svg.selectAll("link")
-                .data(sg.leafNodes())
-                .enter()
-                .append("line")
-                .attr("class", "link")
-                .attr("x1", d=>x(d.parent.xpos))
-                .attr("y1", d=>y(d.parent.ypos))
-                .attr("x2", d=>{
-                      return x(d.parent.parentList.lookup(d).xpos)
-                })
-                .attr("y2", d=>y(d.parent.parentList.lookup(d).ypos))
-                .attr("fill", "none")
-                .attr("stroke", "white");
+  cy.add(edges);
 
 
+  return cy;
 }
 function sgPrep(classRecs) {
   //let sg = _.supergroup(classRecs, 'domain_id'); // have to deal with two

@@ -147,9 +147,11 @@ export default class ConceptData extends Component {
                  }; 
     if (this.props.domain_id)
       params.domain_id = this.props.domain_id;
+    // testing:
+    params.grpset = 'dom,sc,voc';
     let classRelStream = new AppState.ApiStream({
         //apiCall: 'classRelations', 
-        apiCall: 'classPedigree', 
+        apiCall: 'conceptGroups', 
         params,
         meta: {
           statePath: `classes`,

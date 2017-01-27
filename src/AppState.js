@@ -7,6 +7,7 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import yaml from 'js-yaml';
 import settingsYaml from './appSettings.yml';
+var d3 = require('d3');
 //import qs from 'qs';
 //var qs = require('qs');
 //if (DEBUG) window.qs = qs;
@@ -281,8 +282,7 @@ export function subscribe(component, streamName, subName) {
       results => {
         setTimeout(
           () => {
-            console.log(component.constructor.name, 
-                        'has new value for', streamName);
+            //console.log(component.constructor.name, 'has new value for', streamName);
             if (getNamesFromResults) {
               component.setState(
                 _.merge({},component.state, results));
@@ -357,7 +357,9 @@ export class AppState extends Component {
   constructor(props) {
     //const {location, params, route, router, routeParams, children} = props;
     super(props);
-    this.state = {};
+    this.state = {
+      appSettings,
+    };
 
     tableSetup();
   }
@@ -367,6 +369,11 @@ export class AppState extends Component {
     subscribe(this, 'classRelations');
     subscribe(this, 'userSettings');
     subscribe(this, 'conceptCount');
+    d3.selectAll('span.json-inspector__key>span')
+      .nodes()
+      .filter(d=>d.textContent.match(/^\d+$/))
+      .map(d=>d.parentNode.parentNode)
+      .forEach(d=>d3.select(d).remove())
   }
   componentWillUnmount() {
     unsubscribe(this, 'statsByTable');
@@ -375,10 +382,25 @@ export class AppState extends Component {
     unsubscribe(this, 'userSettings');
     unsubscribe(this, 'conceptCount');
   }
+  componentDidUpdate() {
+  }
   render() {
-    console.log('AppState', this.state);
+    //console.log('AppState', this.state);
     //const {location, params, route, router, routeParams, children} = this.props;
-    return <Inspector data={ this.state } />;
+    const {appSettings} = this.state;
+    return <Inspector 
+              data={ this.state.appSettings['use cases'] } 
+              search={false}
+              isExpanded={()=>true}
+              /*
+              isExpanded={
+                keypath => {
+                  console.log(keypath);
+                  return keypath.match(/(use cases|to-dos)/);
+                }
+              }
+              */
+            />;
   }
 }
 
