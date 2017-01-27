@@ -136,6 +136,7 @@ alter table :results.concept_id_occurrence add primary key (table_name, column_n
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
 
 
+/*
 drop table if exists :results.record_counts;
 create table :results.record_counts as (
   select  
@@ -153,7 +154,7 @@ create table :results.record_counts as (
               into separate rows, but not if there's also a direct count
             if I "fix" this, I won't be able to sum on rc without double counting;
             already can't sum on drc without double counting
-          */
+          * /
           coalesce(cio.schema, ciod.schema, '') as schema,
           coalesce(cio.table_name, ciod.table_name, '') as table_name,
           coalesce(cio.column_name, ciod.column_name, '') as column_name,
@@ -175,10 +176,184 @@ create table :results.record_counts as (
             and (cio.schema is null or cio.schema = ciod.schema) -- just in case
   group by 1,2,3,4,5,6,7,8,9
 );
-create unique index rcidx on :results.record_counts (concept_id,schema,table_name,column_name);
-alter table :results.record_counts add primary key using index rcidx;
 
-create index rc_concept_att_idx on :results.record_counts (domain_id, vocabulary_id, concept_class_id, standard_concept);
+getting rid of drc in this table
+
+
+*/
+
+
+drop materialized view if exists :results.record_counts cascade;
+create materialized view :results.record_counts as (
+  select  
+          c.concept_id cid,
+          c.domain_id dom,
+          coalesce(c.standard_concept, 'X') sc, -- use X for source concepts
+                                                -- because null comparison messes things up
+          c.vocabulary_id voc,
+          c.concept_class_id cls,
+          --cio.schema,
+          coalesce(cio.table_name,'') tbl,
+          coalesce(cio.column_name,'') col,
+          coalesce(cio.column_type,'') coltype,
+          /*
+          md5(
+              coalesce(c.domain_id,'') ||
+              coalesce(c.standard_concept,'') ||
+              coalesce(c.vocabulary_id,'') ||
+              coalesce(c.concept_class_id,'') ||
+              coalesce(cio.table_name,'') ||
+              coalesce(cio.column_name,'') ||
+              coalesce(cio.column_type,'')) grphash,
+            */
+          case when c.standard_concept is null then 0 else coalesce(cio.count,0) end rc, --record count
+          case when c.standard_concept is null then coalesce(cio.count,0) else 0 end src --source record count
+  from :cdm.concept c
+  left join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
+);
+
+create unique index rcidx on :results.record_counts (cid,tbl,col);
+create index rc_concept_att_idx on :results.record_counts 
+              (dom, sc, voc, cls, tbl, col, coltype);
+
+CREATE OR REPLACE FUNCTION results2.concept_groups_for_cids(arr integer[] default array[-1])
+  RETURNS TABLE(
+                  cids integer[],
+                  dom text,
+                  sc text,
+                  voc text,
+                  cls text,
+                  tbl text,
+                  col text,
+                  coltype text,
+                  grp integer,
+                  grpset text[],
+                  cc integer,
+                  rc_rowcnt integer,
+                  tblcols integer,
+                  rc numeric,
+                  src numeric
+                )
+ LANGUAGE sql
+AS $function$
+        select    distinct
+                  array_unique(array_agg(cid)) cids,
+                  dom,
+                  sc,
+                  voc,
+                  cls,
+                  tbl,
+                  col,
+                  coltype,
+                  grouping(dom, sc, voc, cls, tbl, col, coltype) grp,
+                  (array_remove(array[
+                    case when grouping(dom) =     0 then 'dom'     else null end,
+                    case when grouping(sc) =      0 then 'sc'      else null end,
+                    case when grouping(voc) =     0 then 'voc'     else null end,
+                    case when grouping(cls) =     0 then 'cls'     else null end,
+                    case when grouping(tbl) =     0 then 'tbl'     else null end,
+                    case when grouping(col) =     0 then 'col'     else null end,
+                    case when grouping(coltype) = 0 then 'coltype' else null end
+                      ], null))::text[] grpset,
+                  count(distinct cid)::integer cc,
+                  count(*)::integer rc_rowcnt,
+                  count(distinct tbl||col)::integer tblcols,
+                  sum(rc) rc,
+                  sum(src) src
+                  --md5(coalesce(dom,'') || coalesce(sc,'') || coalesce(voc,'') || coalesce(cls,'') || coalesce(tbl,'') || coalesce(col,'') || coalesce(coltype,'') || grouping(dom, sc, voc, cls, tbl, col, coltype)) grphash
+                  --array(select row_to_json(r.*)->>unnest(c.grpset) col) vals,
+        from results2.record_counts rc
+        --where cardinality($1) = 0 or rc.cid = any($1)
+        where $1[1] = -1 or rc.cid = any($1)
+        group by  dom, sc, 
+                  grouping sets (
+                    (voc, cls, tbl, col, coltype),
+                    rollup((voc, cls), (tbl, col)),
+                    rollup((voc), (tbl, col))
+                  )
+$function$;
+
+drop table if exists concept_groups_w_cids cascade;
+create table junkf as
+  select row_number() over (order by x.grpset, dom,sc,voc,tbl,col ) as cgid, x.*,
+          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals
+  from (select * from concept_groups_for_cids(array[]::integer[])) x;
+
+
+/* probably will need source, but not for now */
+drop table if exists cg_dcids;
+create table cg_dcids as
+  select  cgwc.cgid, --source, 
+          array_remove(array_unique(
+                  array_agg(apm.descendant_concept_id order by descendant_concept_id)
+                ),null) dcids
+  from concept_groups_w_cids cgwc
+  left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
+  group by 1;--,2;
+
+/*  this is the same as concept_groups_w_cids but without the cids...which makes
+    it faster to work with, but maybe don't need it
+drop table if exists concept_groups_temp cascade;
+create table concept_groups_temp as
+select  cgid,
+        dom,sc,voc,cls,tbl,col,coltype,grp,grpset, cc,rc_rowcnt,tblcols,rc,src,
+        array_length(array_unique(cids),1) cidcnt
+from concept_groups_w_cids;
+create index cgtidx on :results.concept_groups (grp,grpset,dom, sc, voc, cls, tbl, col, coltype);
+*/
+
+drop table if exists dcnts_temp cascade;
+create table dcnts_temp as
+  select d.cgid, r.tbl, r.col, -- d.source,
+         count(distinct r.cid) dcc, sum(r.rc) drc, sum(r.src) dsrc --, count(*) cccheck  
+  from cg_dcids d 
+  --from (select * from cg_dcids where array_length(dcids,1) > 0 limit 4) d 
+  join record_counts r on r.tbl != '' and r.cid = any(d.dcids) 
+  group by 1,2,3;
+
+create or replace view dcnts as
+  select cgid, sum(dcc) dcc, sum(drc) drc, sum(dsrc) dsrc, 
+          count(distinct tbl||col) tblcols 
+  from dcnts_temp 
+  group by 1;
+
+
+drop table if exists dcid_goups;
+  select  row_number() over () as dcid_grp_id,
+          array_agg(cgid) cgids,
+          dcids
+  from cg_dcids group by dcids;
+
+drop table if exists concept_groups cascade; -- descendant counts, but for descendants
+create table concept_groups as               -- link to cg_dcids or dcid_groups
+  --select t.*, d.tbl dtbl, d.col dcol, d.dcc, d.drc, d.dsrc -- with tbl/col
+  select t.*, d.dcc, d.drc, d.dsrc
+  from concept_groups_temp t
+  --left join dcnts_temp d on t.cgid = d.cgid; -- with tbl/col
+  left join dcnts d on t.cgid = d.cgid;
+
+drop table dcnts_temp;
+drop table concept_groups_temp;
+
+
+
+/*
+CREATE OR REPLACE FUNCTION results2.eqn(anyelement, anyelement) -- equal with null=null
+ RETURNS boolean
+ LANGUAGE sql
+AS $function$
+    select $1 = $2 or $1 is null and $2 is null
+$function$;
+*/
+CREATE OR REPLACE FUNCTION results2.partial_compare(j1, j2, grpset)
+ RETURNS boolean
+ LANGUAGE sql
+AS $function$
+  select 
+  regexp_split_to_array(grpset)
+    select $1 = $2 or $1 is null and $2 is null
+$function$;
+
 
 /*
 drop table if exists :results.concept_ancestor_extra;
@@ -200,18 +375,24 @@ create index cae_idx_domain_anc on :results.concept_ancestor_extra
           (domain_1, domain_2, ancestor_concept_id, descendant_concept_id);
 */
 
-create table :results.ancestor_plus_mapsto as
+drop materialized view :results.ancestor_plus_mapsto;
+create materialized view :results.ancestor_plus_mapsto as
   select
-          'concept_ancestor'::varchar(20) as source,
-          min_levels_of_separation,
+          'ca ' || min_levels_of_separation || '-' 
+                || max_levels_of_separation as source,
           ca.ancestor_concept_id,
           ca.descendant_concept_id
   from :cdm.concept_ancestor ca
-  where ca.ancestor_concept_id != ca.descendant_concept_id
+  -- left join to cr is not necessary when min_levels_of_separation < 2
+  left join :cdm.concept_relationship cr on cr.relationship_id = 'Maps to'
+        and ((ca.ancestor_concept_id = cr.concept_id_1 and ca.descendant_concept_id = cr.concept_id_2)
+          or (ca.ancestor_concept_id = cr.concept_id_2 and ca.descendant_concept_id = cr.concept_id_1))
+  where ca.ancestor_concept_id != ca.descendant_concept_id 
+            --and min_levels_of_separation < 2
+    and cr.concept_id_1 is null
   union
   select  
-          'concept_relationship' as source,
-          0,
+          'cr_mapsto' as source,
           cr.concept_id_1,
           cr.concept_id_2
   from :cdm.concept_relationship cr
@@ -219,39 +400,86 @@ create table :results.ancestor_plus_mapsto as
     and cr.invalid_reason is null
     and cr.concept_id_1 != cr.concept_id_2
   ;
+create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
+
+CREATE OR REPLACE FUNCTION results2.array_unique(arr anyarray)
+ RETURNS anyarray
+ LANGUAGE sql
+AS $function$
+    select array( select distinct unnest($1) order by 1 )
+$function$;
 
 
-drop table if exists :results.concept_rel_counts;
-create table :results.concept_rel_counts as
-  select  ca.*,
-          rc1.domain_id domain_1,
-          rc1.vocabulary_id vocab_1,
-          rc1.concept_class_id class_1,
-          rc1.standard_concept sc_1,
-          rc1.table_name table_1,
-          rc1.column_name column_1,
-          rc1.column_type coltype_1,
-          rc1.rc,   -- record count for ancestor (by table/column)
-          rc1.drc same_tcdrc,  -- record count for descendants when no rc or in same table/col as rc
-          rc1.descendant_concept_ids dcc,
+CREATE AGGREGATE array_agg_mult (anyarray)  (
+    SFUNC     = array_cat
+   ,STYPE     = anyarray
+   ,INITCOND  = '{}'
+);
 
-          rc2.domain_id domain_2,
-          rc2.vocabulary_id vocab_2,
-          rc2.concept_class_id class_2,
-          rc2.standard_concept sc_2,
-          rc2.table_name table_2,
-          rc2.column_name column_2,
-          rc2.column_type coltype_2,
-          rc2.rc drc -- rc for this single descendant, can be summed for single ancestor
-                -- for multiple ancestor ids:
-                --    select sum(drc)
-                --    from (select distinct descendant_concept_id, drc
-                --          from concept_ancestor_counts
-                --          where ancestor_concept_id in (...)) x
-  from :results.ancestor_plus_mapsto ca
-  join :results.record_counts rc1 on ca.ancestor_concept_id = rc1.concept_id
-  join :results.record_counts rc2 on ca.descendant_concept_id = rc2.concept_id
-  where ancestor_concept_id != descendant_concept_id;
+with gps as (
+  select  vocab_1, class_1, sc_1,  
+          array_unique(array_agg_mult(distinct dcids order by dcids)) dcids,
+          count(*) cids,
+          sum(d.rc) rc
+  from descendants d 
+  where concept_id in (
+            select ancestor_concept_id
+            from ancestor_plus_mapsto 
+            where descendant_concept_id = 73553 ) 
+  group by 1,2,3
+)
+
+/*
+
+descendant groupings needing drcs:
+
+
+  concept_id                      -- all descendants
+  concept_id, table_2, column_2   -- descendants by table/col
+
+  -- overall domain/sc/vocab maps:
+
+    domain_1, sc_1, vocab_1                           -- need counts
+    domain_1, sc_1, vocab_1, domain_2, sc_2, vocab_2  -- need links
+                                                   
+  -- drill to class:
+    domain_1, sc_1, vocab_1, class_1                  -- need counts
+
+  domain_1, sc_1, cla
+
+
+          concept_id,
+          source,
+          dcids_hash
+          rc,
+
+          sc_1,
+          domain_1,
+          vocab_1,
+          class_1,
+          table_1,
+          column_1,
+          coltype_1,
+
+          sc_2,
+          domain_2,
+          vocab_2,
+          class_2,
+          table_2,
+          column_2,
+          coltype_2,
+
+*/
+
+
+select gps.*, vocab_1, class_1, sc_1, sum(rc.rc) drc
+from gps
+join record_counts rc ON rc.concept_id = any(gps.dcids)
+group by 1,2,3,4,5,6,7,8,9
+;
+
+
+
 
 create unique index crc_idx on :results.concept_rel_counts 
           ( 
@@ -259,9 +487,9 @@ create unique index crc_idx on :results.concept_rel_counts
             table_1, table_2, 
             column_1, column_2 
           );
-alter table :results.concept_rel_counts add primary key using index cac_idx;
+alter table :results.concept_rel_counts add primary key using index crc_idx;
 
- create index crc_idx_dvtc on concept_rel_counts (
+create index crc_idx_dvtc on concept_rel_counts (
                         domain_1,
                         vocab_1,
                         table_1,
@@ -270,11 +498,12 @@ alter table :results.concept_rel_counts add primary key using index cac_idx;
                         ancestor_concept_id
                       );
 
-create or replace view :results.concept_ancestor_counts_narrow as
-select domain_1, vocab_1, class_1, sc_1, table_1, column_1, rc,
+create or replace view :results.crelnarrow as
+select source, domain_1, vocab_1, class_1, sc_1, table_1, column_1, rc,
           same_tcdrc, dcc, domain_2, vocab_2, class_2, sc_2, table_2,
           column_2, drc
-from :results.concept_ancestor_counts;
+from :results.concept_rel_counts;
+
 
 /*
 create index cac_idx on :results.concept_ancestor_counts using brin
@@ -1180,6 +1409,99 @@ join record_counts rc1 on ancestor_concept_id = rc1.concept_id
 join record_counts rc2 on descendant_concept_id = rc2.concept_id;
 
 
+
+
+drop table if exists :results.descendants;
+create table :results.descendants as
+  select  
+          rc1.concept_id,
+          rc1.standard_concept sc_1,
+          rc1.domain_id domain_1,
+          rc1.vocabulary_id vocab_1,
+          rc1.concept_class_id class_1,
+          rc1.table_name table_1,
+          rc1.column_name column_1,
+          rc1.column_type coltype_1,
+          rc1.rc,   -- record count for ancestor (by table/column)
+
+          ca.source,
+          rc2.standard_concept sc_2,
+          rc2.domain_id domain_2,
+          rc2.vocabulary_id vocab_2,
+          rc2.concept_class_id class_2,
+          rc2.table_name table_2,
+          rc2.column_name column_2,
+          rc2.column_type coltype_2,
+          coalesce(sum(rc2.rc),0) drc,   -- record count for descendants (by table/column)
+          count(descendant_concept_id) dcc,
+          array_unique(array_remove(array_agg(descendant_concept_id order by descendant_concept_id),null)) dcids,
+          md5(array_unique(array_remove(array_agg(descendant_concept_id order by descendant_concept_id),null))) dcids_hash
+  from :results.record_counts rc1 
+  left join :results.ancestor_plus_mapsto ca 
+              on rc1.concept_id = ca.ancestor_concept_id
+              and ancestor_concept_id != descendant_concept_id
+  left join :results.record_counts rc2 on ca.descendant_concept_id = rc2.concept_id
+  group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17;
+
+create index descstuff on :results.descendants 
+                (domain_1, vocab_1, class_1, sc_1, dcids_hash);
+create index desccid on :results.descendants (concept_id);
+create index desc3 on :results.descendants (domain_1, sc_1, vocab_1);
+create index dcidshashidx on :results.descendants (dcids_hash);
+-- select dcids_hash, count(distinct dcids) from descendants  group by 1 having count(distinct dcids) > 1;
+--  1-to-1 btn dcids_hash and dcids. made hash because it's indexable
+
+create materialized view descendants_smaller as
+select
+          concept_id,
+          source,
+          rc,
+          dcc,
+          drc,
+          dcids_hash,
+
+          sc_1,
+          domain_1,
+          vocab_1,
+          class_1,
+          table_1,
+          column_1,
+          coltype_1,
+
+          sc_2,
+          domain_2,
+          vocab_2,
+          class_2,
+          table_2,
+          column_2,
+          coltype_2
+from descendants;
+create index sdescstuff on :results.descendants_smaller 
+                (domain_1, vocab_1, class_1, sc_1, dcids_hash);
+create index sdesccid on :results.descendants_smaller (concept_id);
+create index sdesc3 on :results.descendants_smaller (domain_1, sc_1, vocab_1);
+create index sdcidshashidx on :results.descendants_smaller (dcids_hash);
+create index sdescstuff on :results.descendants_smaller 
+                (domain_1, vocab_1, class_1, sc_1, dcids_hash);
+create index sdesccid on :results.descendants_smaller (concept_id);
+create index sdesc3 on :results.descendants_smaller (domain_1, sc_1, vocab_1);
+create index sdcidshashidx on :results.descendants_smaller (dcids_hash);
+
+create materialized view dcid_lists as (
+  select dcids_hash, dcids, array_length(dcids,1) ids, count(*) parent_concepts 
+  from descendants 
+  group by 1,2,3);
+create index dcidlistidx on dcid_lists (dcids_hash);
+
+create materialized view cc_scdomvoctctc as
+select
+        sc_1, domain_1,vocab_1,table_1,column_1,table_2,column_2,
+        count(*) cids, count(distinct concept_id) cids_check,
+        sum(rc) rc,
+        results2.array_unique(results2.array_agg_mult(distinct dcids order by dcids)) dcids,
+        array_length(results2.array_unique(results2.array_agg_mult(distinct dcids order by dcids)),1) dcc
+from results2.descendants
+group by rollup (1,2,3,4,5,6,7);
 
 
 
