@@ -269,12 +269,14 @@ AS $function$
         from results2.record_counts rc
         --where cardinality($1) = 0 or rc.concept_id = any($1)
         where $1[1] = -1 or rc.concept_id = any($1)
-        group by  domain_id, standard_concept, 
-                  grouping sets (
-                    (vocabulary_id, class_concept_id, tbl, col, coltype),
-                    rollup((vocabulary_id, class_concept_id), (tbl, col)),
-                    rollup((vocabulary_id), (tbl, col))
-                  )
+        group by  grouping sets 
+                    (rollup(
+                            standard_concept, domain_id, vocabulary_id, class_concept_id, 
+                            (tbl, col, coltype)
+                           ),
+                     (tbl,col,coltype),
+                     (standard_concept, domain_id, vocabulary_id, tbl,col,coltype)
+                    )
 $function$;
 
 drop table if exists concept_groups_w_cids cascade;
@@ -284,166 +286,7 @@ create table concept_groups_w_cids as
           array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
           cc,rc_rowcnt, tblcols, rc, src, cids
   from (select * from get_concept_groups()) x;
-
-drop materialized view if exists concept_groups cascade;
-create materialized view concept_groups as
-  select  cgid, grp, grpset, vals, cc,rc_rowcnt, tblcols, rc, src
-  from concept_groups_w_cids;
-
-/* probably will need source, but not for now */
-drop table if exists cg_dcids;
-create table cg_dcids as
-  select  cgwc.cgid, --source, 
-          array_remove(array_unique(
-                  array_agg(apm.descendant_concept_id order by descendant_concept_id)
-                ),null) dcids
-  from concept_groups_w_cids cgwc
-  left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
-  group by 1;--,2;
-
-drop table if exists dcid_groups;
-create table dcid_groups as
-  select  row_number() over () as dcid_grp_id,
-          array_agg(cgid) cgids,
-          dcids
-  from cg_dcids group by dcids;
-
-
-drop table concept_groups_for_descendants;
-create table concept_groups_for_descendants as
-  select  x.*,
-          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals
-  from (
-        select    distinct
-                  g.dcid_grp_id,
-                  domain_id,
-                  standard_concept,
-                  vocabulary_id,
-                  array['domain_id','standard_concept','vocabulary_id'] grpset,
-                  count(distinct concept_id)::integer cc,
-                  count(*)::integer rc_rowcnt,
-                  count(distinct tbl||col)::integer tblcols,
-                  sum(rc) rc,
-                  sum(src) src
-        from results2.record_counts rc
-        join dcid_groups g on rc.concept_id = any(g.dcids)
-        group by 1, domain_id,standard_concept,vocabulary_id
-      ) x;
-
-
--- my links!!!!!
-
-select cg.vals cgv, dg.vals dgv, count(*) 
-from concept_groups cg 
-left join concept_groups_for_descendants dg on cg.vals = dg.vals 
-where cg.grp = 15 and cg.vals[1] = 'Drug' group by 1,2 order by 1,2;
-
-
-
-CREATE OR REPLACE FUNCTION results2.concept_groups_for_dcidgrps(
-    arr integer[] default array[-1]
-  )
-  RETURNS TABLE(
-                  domain_id text,
-                  standard_concept text,
-                  vocabulary_id text,
-                  --tbl text,
-                  --col text,
-                  --grp integer,
-                  grpset text[],
-                  cc integer,
-                  rc_rowcnt integer,
-                  tblcols integer,
-                  rc numeric,
-                  src numeric
-                )
- LANGUAGE sql
-AS $function$
-        select    distinct
-                  domain_id,
-                  standard_concept,
-                  vocabulary_id,
-                  --tbl,
-                  --col,
-                  --grouping(domain_id, standard_concept, vocabulary_id, tbl, col) grp,
-                  (array_remove(array[
-                    case when grouping(domain_id) =     0 then 'domain_id'     else null end,
-                    case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
-                    case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end
-                      ], null))::text[] grpset,
-                  count(distinct concept_id)::integer cc,
-                  count(*)::integer rc_rowcnt,
-                  count(distinct tbl||col)::integer tblcols,
-                  sum(rc) rc,
-                  sum(src) src
-        from results2.record_counts rc
-        where $1[1] = -1 or rc.concept_id = any($1)
-        --group by domain_id,standard_concept,vocabulary_id, cube((tbl,col))
-        group by domain_id,standard_concept,vocabulary_id
-$function$;
-
-drop table if exists concept_groups_for_descendants cascade;
-create table concept_groups_for_descendants as
-  select  x.*,
-          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals
-  from (
-        select g.dcid_grp_id, f.* 
-        from  dcid_groups g, 
-              concept_groups_for_dcidgrps(g.dcids) f
-        ) x;
-
-
-
-
-/*  this is the same as concept_groups_w_cids but without the cids...which makes
-    it faster to work with, but maybe don't need it
-drop table if exists concept_groups_temp cascade;
-create table concept_groups_temp as
-select  cgid,
-        domain_id,standard_concept,vocabulary_id,class_concept_id,tbl,col,coltype,grp,grpset, cc,rc_rowcnt,tblcols,rc,src,
-        array_length(array_unique(cids),1) cidcnt
-from concept_groups_w_cids;
-create index cgtidx on :results.concept_groups (grp,grpset,domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype);
-*/
-
-
-/*
-CREATE OR REPLACE FUNCTION results2.eqn(anyelement, anyelement) -- equal with null=null
- RETURNS boolean
- LANGUAGE sql
-AS $function$
-    select $1 = $2 or $1 is null and $2 is null
-$function$;
-*/
-CREATE OR REPLACE FUNCTION results2.partial_compare(j1, j2, grpset)
- RETURNS boolean
- LANGUAGE sql
-AS $function$
-  select 
-  regexp_split_to_array(grpset)
-    select $1 = $2 or $1 is null and $2 is null
-$function$;
-
-
-/*
-drop table if exists :results.concept_ancestor_extra;
-create table :results.concept_ancestor_extra as
-  select  ca.*,
-          c1.domain_id domain_1,
-          c1.vocabulary_id vocab_1,
-          c1.concept_class_id class_1,
-          c1.standard_concept sc_1,
-          c2.domain_id domain_2,
-          c2.vocabulary_id vocab_2,
-          c2.concept_class_id class_2,
-          c2.standard_concept sc_2
-  from :cdm.concept_ancestor ca
-  join :cdm.concept c1 on ca.ancestor_concept_id = c1.concept_id
-  join :cdm.concept c2 on ca.descendant_concept_id = c2.concept_id
-  where ancestor_concept_id != descendant_concept_id;
-create index cae_idx_domain_anc on :results.concept_ancestor_extra 
-          (domain_1, domain_2, ancestor_concept_id, descendant_concept_id);
-*/
+create unique index cgccidx on concept_groups_w_cids (cgid);
 
 drop materialized view :results.ancestor_plus_mapsto;
 create materialized view :results.ancestor_plus_mapsto as
@@ -472,6 +315,7 @@ create materialized view :results.ancestor_plus_mapsto as
   ;
 create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
 
+
 CREATE OR REPLACE FUNCTION results2.array_unique(arr anyarray)
  RETURNS anyarray
  LANGUAGE sql
@@ -486,6 +330,74 @@ CREATE AGGREGATE array_agg_mult (anyarray)  (
    ,INITCOND  = '{}'
 );
 
+/* probably will need source, but not for now */
+drop table if exists cg_dcids;
+create table cg_dcids as
+  select  cgwc.cgid, --source, 
+          array_remove(array_unique(
+                  array_agg(apm.descendant_concept_id order by descendant_concept_id)
+                ),null) dcids
+  from concept_groups_w_cids cgwc
+  left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
+  where cgid != 1 -- assumes cgid 1 is the record with grouping {}
+  group by 1;--,2;
+
+-- do this one separately just to save time:
+insert into cg_dcids  -- it should just be all desc ids, right?
+  select 1, array_agg(apm.descendant_concept_id order by descendant_concept_id)
+  from ancestor_plus_mapsto apm;
+
+drop table if exists dcid_groups;
+create table dcid_groups as
+  select  row_number() over () as dcid_grp_id,
+          array_agg(cgid) cgids,
+          dcids
+  from cg_dcids group by dcids;
+
+create table dcid_cnts as
+  select  dcid_grp_id, cgids, 
+          count(rc.concept_id) dcc,
+          count(distinct rc.tbl||rc.col) dtblcols,
+          sum(rc.rc) drc,
+          sum(rc.src) dsrc
+  from dcid_groups dg
+  left join record_counts rc on rc.concept_id = any(dg.dcids)
+  group by 1,2;
+
+
+drop table if exists concept_groups cascade;
+create table concept_group as
+  select  cgw.cgid, cgw.grp, cgw.grpset, cgw.vals, 
+          cgw.cc, cgw.rc_rowcnt, cgw.tblcols, cgw.rc, cgw.src, 
+          dg.dcid_grp_id,
+          dg.dcc,
+          dg.dtblcols,
+          dg.drc,
+          dg.dsrc
+  from concept_groups_w_cids cgw
+  join dcid_cnts dg on cgw.cgid = any(dg.cgids);
+
+drop materialized view if exists concept_groups cascade;
+create materialized view concept_groups as
+  select  cgid, grp, grpset, vals, cc,rc_rowcnt, tblcols, rc, src
+  from concept_groups_w_cids;
+create unique index cgidx on concept_groups (grpset,vals);
+create unique index cgiddx on concept_groups (cgid);
+
+
+drop table if exists concept_groups_for_descendants cascade;
+create table concept_groups_for_descendants as
+  select  x.dcid_grp_id,
+          x.grp, x.grpset, 
+          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
+          cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids
+  from (
+        select g.dcid_grp_id, f.* 
+        from  dcid_groups g, 
+              get_concept_groups(g.dcids) f
+       ) x;
+
+/*
 with gps as (
   select  vocab_1, class_1, sc_1,  
           array_unique(array_agg_mult(distinct dcids order by dcids)) dcids,
@@ -499,7 +411,6 @@ with gps as (
   group by 1,2,3
 )
 
-/*
 
 descendant groupings needing drcs:
 

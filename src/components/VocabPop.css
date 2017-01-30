@@ -105,3 +105,14 @@ span.aside {
 .handle {
 
 }
+
+/* concept/count types */
+.standard, .rc {
+  color: #0070dd;
+}
+.classification, .drc {
+  color: rgb(163, 53, 238);
+}
+.source, .src {
+  color: pink;
+}

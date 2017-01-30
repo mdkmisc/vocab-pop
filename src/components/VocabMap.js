@@ -19,14 +19,19 @@ import React, { Component } from 'react';
 var d3 = require('d3');
 import _ from 'supergroup'; // in global space anyway
 //import CyViewer from 'cy-viewer';
-//var cytoscape = require('cytoscape');
+
 import cytoscape from 'cytoscape';
+//var cytoscape = require('cytoscape');
+//var css_renderer = require('cytoscape-css-renderer');
+//css_renderer( cytoscape ); // register extension
 //import cytoscape from '../../cytoscape.js/src/index';
+
 import * as AppState from '../AppState';
 import {commify} from '../utils';
 
+//var $ = require('jquery'); window.$ = $;
 
-function graph(sg, domnode, w, h, boxw, boxh) {
+function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function selectNodes(nodeIds, nodeProps) {
       console.log('====== Custom node select function called! ========');
       console.log('Selected Node ID: ' + nodeIds)
@@ -38,37 +43,20 @@ function graph(sg, domnode, w, h, boxw, boxh) {
       console.log(edgeProps)
     };
   var cyConfig = {
-    
     //boxSelectionEnabled: false,
     //autounselectify: true,
     //autoungrabify: true,
     //autolock: true,
     //selectionType: 'single',
+    //renderer: { name: "css" }, 
     minZoom: .1,
     maxZoom: 3,
     "text-events": "yes",
-    
-    /*
-    style: {
-      width: '100%',
-      height: '100%',
-      backgroundColor: '#404040',
-      label: 'data(id)',
-    },
-    titleStyle: {
-      height: '2em',
-      margin: 0,
-      fontWeight: 100,
-      color: '#777777',
-      paddingTop: '0.2em',
-      paddingLeft: '0.8em',
-    },
-    */
     style: [
       {
         selector: '.multiline-manual',
         style: {
-          'text-wrap': 'wrap'
+          'text-wrap': 'wrap',
         }
       },
       {
@@ -77,7 +65,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
           "font-family" : "sans-serif",
           "shape" : "roundrectangle",
           //"background-color" : "rgb(255,255,255)",
-          "background-color" : "beige",
+          //"background-color" : "beige",
           //"width" : 55.0,
           //"height" : 20.0,
           "width" : "label",
@@ -87,7 +75,7 @@ function graph(sg, domnode, w, h, boxw, boxh) {
           "text-halign" : "center",
           //"text-margin-x": "50px",
           //"color" : "#666666",
-          "color" : "green",
+          //"color" : "green",
           //"font-size" : '0.1em',
           "label" : "data(label)"
         }
@@ -95,17 +83,17 @@ function graph(sg, domnode, w, h, boxw, boxh) {
       {
         selector: ':parent',
         css: {
-          'background-opacity': .6,
+          //'background-opacity': .6,
           "content" : "data(label)",
           "events": 'no',
-          "background-color" : "burlywood",
+          //"background-color" : "burlywood",
           //'padding-top': '10px',
           //'padding-left': '10px',
           //'padding-bottom': '10px',
           //'padding-right': '10px',
           'text-valign': 'top',
           'text-halign': 'left',
-          "color" : "brown",
+          //"color" : "brown",
         },
       },
       /*
@@ -119,11 +107,31 @@ function graph(sg, domnode, w, h, boxw, boxh) {
       {
         "selector" : "node:selected",
         "css" : {
-          "background-color" : "orange",
+          //"background-color" : "orange",
+          //"color" : "white",
+        }
+      },
+      {
+        "selector" : "node.rc",
+        style: {
+          "background-color" : "#0070dd",
+          "color" : "white"
+        }
+      },
+      {
+        "selector" : "node.drc",
+        style: {
+          "background-color" : "rgb(163, 53, 238)",
           "color" : "white",
         }
       },
-      /*
+      {
+        "selector" : "node.src",
+        style: {
+          "background-color" : "pink",
+          "color" : "blue"
+        }
+      },
       {
         selector: ':selected',
         css: {
@@ -133,7 +141,6 @@ function graph(sg, domnode, w, h, boxw, boxh) {
           'source-arrow-color': 'black'
         }
       },
-      */
       {
         "selector" : "edge.not-self",
         "css" : {
@@ -206,74 +213,6 @@ function graph(sg, domnode, w, h, boxw, boxh) {
         }
       },
     ],
-    /*
-      {
-        "selector" : "edge:selected",
-        "css" : {
-          "line-color" : "orange",
-          "color" : "white"
-        }
-      },
-    styles: [
-      {
-        selector: 'node',
-        css: {
-          'label': 'data(id)',
-          'height': 20,
-          'width': 20,
-          //'text-valign': 'center',
-          //'text-halign': 'center'
-        }
-      },
-      {
-        selector: '$node > node',
-        css: {
-          'padding-top': '10px',
-          'padding-left': '10px',
-          'padding-bottom': '10px',
-          'padding-right': '10px',
-          'text-valign': 'top',
-          'text-halign': 'center',
-          'background-color': '#bbb'
-        }
-      },
-      {
-        selector: 'edge',
-        css: {
-          'target-arrow-shape': 'triangle',
-          'curve-style': 'bezier'
-        }
-      },
-    ],
-    */
-    // Then use it as a custom handler
-    /*
-    eventHandler: {
-      selectNodes: selectNodes,
-      selectEdges: selectEdges
-    },
-    appStyle: {
-      backgroundColor: '#eeeeee',
-      color: '#EEEEEE',
-      width: '100%',
-      height: '100%',
-    },
-    elements: {
-      nodes: [
-        { data: { id: 'a', parent: 'b' }, position: { x: 215, y: 85 } },
-        { data: { id: 'b' } },
-        { data: { id: 'c', parent: 'b' }, position: { x: 300, y: 85 } },
-        { data: { id: 'd' }, position: { x: 215, y: 175 } },
-        { data: { id: 'e' } },
-        { data: { id: 'f', parent: 'e' }, position: { x: 300, y: 175 } }
-      ],
-      edges: [
-        { data: { id: 'ad', source: 'a', target: 'd' } },
-        { data: { id: 'eb', source: 'e', target: 'b' } }
-        
-      ]
-    },
-    */
     layout: {
       name: 'grid',
       avoidOverlap: false,
@@ -288,19 +227,28 @@ function graph(sg, domnode, w, h, boxw, boxh) {
         { selectable: false, data: { isParent: true, id: 'Source', label: 'Source' }, position: { y: 600, } },
   ];
   let nodesInLayers = [0,0,0]; // counter for nodes in each layer
-  let nodes = nodeGroups.concat(sg.map(
-                sgVal => {
-                  let id = sgVal.toString(),
-                      label = `${sgVal.toString().replace(/.*:/,'')}\n${commify(sgVal.aggregate(_.sum, 'rc2'))}`,
-                      layer = ({'C': 0, 'S': 1, null: 2})[
-                              sgVal.toString().replace(/:.*/,'')],
-                      parent = ['Classification','Standard','Source'][layer];
-                  let node = makeNode(id, label,layer, parent);
-                  node.classes = 'multiline-manual';
-                  //sgVal.cyNode = node;
-                  return node;
-                }));
-
+  let nodes = nodeGroups.concat(
+                _.flatten(sg.map(sc=>sc.getChildren().map(voc=>{
+                    let counts = {};
+                    ['rc','src','drc','dsrc']
+                          .filter(fld=>voc.aggregate(_.sum,fld))
+                          .forEach(fld=>counts[fld] = voc.aggregate(_.sum,fld));
+                    let biggest = _.isEmpty(counts) ?
+                          '' : _.last(_.sortBy(_.toPairs(counts), 1))[0];
+                    let id = voc.namePath(','),
+                        label = voc.toString() + ' ' + biggest,
+                        info =
+                          [voc.toString()].concat(_.map(counts,
+                            (cnt,fld) => `<span class="${fld}">${fld}: ${commify(cnt)}</span>`
+                                        )).join('<br/>'),
+                        layer = ({'C': 0, 'S': 1, 'X': 2})[sc.toString()],
+                        parent = ['Classification','Standard','Source'][layer];
+                    let node = makeNode(id, label,layer, parent);
+                    node.data.info = info;
+                    node.data.biggestCount = biggest;
+                    node.classes = `${biggest} multiline-manual`;
+                    return node;
+                  }))));
   // split wide layers
   let maxNodesPerRow = 7;
   let rowsBetweenLayers = 0;
@@ -501,6 +449,8 @@ function graph(sg, domnode, w, h, boxw, boxh) {
         console.log('edge mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
         return false;
       }
+      msgDiv.innerHTML = el.data().info;
+      console.log(domnode);
       console.log('node mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
     }
   });
@@ -522,10 +472,13 @@ function graph(sg, domnode, w, h, boxw, boxh) {
                       .domain([topNode.data().col, bottomNode.data().col])
                       .range([topNode.position().y, bottomNode.position().y]);
   */
-  let edges = _.flatten(sg.leafNodes().map(
+  let edges = 
+    _.flatten(sg.leafNodes()
+              .filter(d=>d.dim==='linknodes')
+              .map(
                 d => {
-                  let from = cy.getElementById(d.parent.parentList.lookup(d).toString()),
-                      to = cy.getElementById(d.parent.toString()),
+                  let from = cy.getElementById(d.toString()),
+                      to = cy.getElementById(d.parent.namePath(',')),
                       points = waypoints(from, to);
                       /*
                       edgePath = _.range(nodePath.length - 1).map(
@@ -595,14 +548,24 @@ function graph(sg, domnode, w, h, boxw, boxh) {
   window.rotateRad = rotateRad;
   window.perpendicular_coords = perpendicular_coords;
 
+  //cy.nodes().forEach( ele => ele.css('content', '<span>blah</span>'));
+
   cy.add(edges);
 
 
   return cy;
 }
 function sgPrep(classRecs) {
-  //let sg = _.supergroup(classRecs, 'domain_id'); // have to deal with two
+  if (!classRecs.length) throw new Error("no classRecs");
+  let grpsets = _.uniq(classRecs.map(d=>d.grpset.join(',')));
+  if (grpsets.length !== 1) throw new Error("expected 1 grpset");
 
+  let sg = _.supergroup(classRecs, classRecs[0].grpset);
+  sg.addLevel('linknodes',{multiValuedGroup:true});
+  return sg;
+
+  /*
+  let sg = _.supergroup(classRecs, 'domain_id'); // have to deal with two
   let sg = _.supergroup(classRecs, d=>_.uniq([d.domain_id_1, d.domain_id_2]),
                     {dimName: 'domain_id', multiValuedGroup:true});
 
@@ -622,6 +585,7 @@ function sgPrep(classRecs) {
     {dimName: 'linkTo'});
 
   return sg;
+  */
 }
 export class VocabMapByDomain extends Component {
   render() {
@@ -656,7 +620,7 @@ export default class VocabMap extends Component {
   componentDidUpdate() {
     const {sg, width, height} = this.props;
     if (this.graphDiv && sg && sg.length) {
-      this.cy = graph(sg.getChildren(), this.graphDiv, width, height, 70, 40);
+      this.cy = graph(sg.getChildren(), this.graphDiv, width, height, 70, 40, this.msgDiv);
     }
   }
   render() {
@@ -665,8 +629,10 @@ export default class VocabMap extends Component {
                         float: 'left', 
                         margin: 5,
                         border: '1px solid blue',
+                        position: 'relative',
                     }} >
               <h4><a href="#" onClick={()=>AppState.saveState({domain_id:sg.toString()})}> {sg.toString()}</a></h4>
+              <div style={{ position: 'absolute', right: '10px',}} ref={div=>this.msgDiv=div} />
               <div ref={div=>this.graphDiv=div} 
                    style={{ width: `${width}px`, height: `${height}px`, }}
               />
