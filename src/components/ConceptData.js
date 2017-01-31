@@ -47,6 +47,7 @@ export default class ConceptData extends Component {
            </div>;
   }
   componentDidMount() {
+    const {filters} = this.props;
     this.countSub( 'All', {
         excludeInvalidConcepts: false,
         excludeNoMatchingConcepts: false,
@@ -60,6 +61,7 @@ export default class ConceptData extends Component {
     this.countSub( 'Non-standard concepts', {
         includeFiltersOnly: true,
         includeNonStandardConcepts: true, });
+    this.aggStream();
 
     this.countsSubscriber = new AppState.StreamsSubscriber(
       streams=>this.streamsCallback(streams,'counts'));
@@ -85,7 +87,6 @@ export default class ConceptData extends Component {
     return stateChange || propsChange;
   }
   componentWillUnmount() {
-    //AppState.unsubscribe(this);
     this.countsSubscriber.unsubscribe();
     this.aggSubscriber.unsubscribe();
   }
@@ -109,19 +110,13 @@ export default class ConceptData extends Component {
     this.countStreamsToWatch[displayName] = stream;
     //if (stream.newInstance) this.streamsRequested.push(stream);
   }
-  fetchData() {
+  aggStream() {
     const {filters, domain_id} = this.props;
-    //console.log('in Drug.fetchData with filters', filters);
-    this.countSub('With current filters', filters);
-    this.countsSubscriber.filter( stream => 
-        _.includes( _.values(this.countStreamsToWatch), 
-                   stream));
-
     let params = {...filters, queryName: 'agg',
+                    domain_id,
                     dataRequested: 'agg',
                     targetOrSource: 'both',
                   }; 
-    if (domain_id) params.domain_id = domain_id;
     let aggStream = new AppState.ApiStream({
         apiCall: 'conceptCounts', 
         params,
@@ -136,14 +131,27 @@ export default class ConceptData extends Component {
               return rec;
             }),
       });
+    this.countStreamsToWatch['agg'] = aggStream;
+  }
+  fetchData() {
+    const {filters, domain_id} = this.props;
+    //console.log('in Drug.fetchData with filters', filters);
+    this.countSub('With current filters', filters);
+    this.countsSubscriber.filter( stream => 
+        _.includes( _.values(this.countStreamsToWatch), 
+                   stream));
+
+    this.aggStream();
+    /* not sure if i need this:
     if (this.aggStream !== aggStream) {
       this.aggStream = aggStream;
       this.aggSubscriber.filter(stream => aggStream === stream);
     } else {
       console.log('created same aggStream');
     }
+    */
 
-    params = {  ...filters, 
+    let params = {  ...filters, 
                     queryName:'classes',
                     dataRequested: 'not using in this call but still required',
                  }; 

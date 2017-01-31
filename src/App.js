@@ -82,17 +82,6 @@ class DefaultNavBar extends Component {
             <LinkContainer to={locPath('/appstate')}>
               <NavItem eventKey={5}>App State</NavItem>
             </LinkContainer>
-            {/*
-            <LinkContainer to={locPath('/tables')}>
-              <NavItem eventKey={3}>Tables</NavItem>
-            </LinkContainer>
-            <LinkContainer to={locPath('/concepts')}>
-              <NavItem eventKey={2}>Concepts</NavItem>
-            </LinkContainer>
-            <LinkContainer to={locPath('/vocabs')}>
-              <NavItem eventKey={4}>Vocabularies</NavItem>
-            </LinkContainer>
-            */}
           </Nav>
         </Navbar>
     );
@@ -293,19 +282,9 @@ export class ComponentWrapper extends Component {
   }
 }
 export class App extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {
-    }
-  }
   render() {
     const {main, sidebar} = this.props;
     let NavBar = DefaultNavBar;
-    /*
-    if (this.props.router.isActive('/tables'))
-      NavBar = DomainNavBar 
-    //else if (this.props.router.isActive('/vocabs')) NavBar = VocabNavBar 
-    */
     return (
       <div className="vocab-app">
         <NavBar />
@@ -320,143 +299,4 @@ export class App extends Component {
       </div>
     );
   }
-  /* 
-  componentDidMount() {
-    
-    var {history} = AppState; // global history object
-    this.statsByTable = AppState.statsByTable
-          .subscribe(statsByTable=>this.setState({statsByTable}));
-    this.tableConfig = AppState.tableConfig
-          .subscribe(tableConfig=>this.setState({tableConfig}));
-    this.classRelations = AppState.classRelations
-          .subscribe(classRelations=>this.setState({classRelations}));
-    //moving to AppState
-    this.userSettings = AppState.userSettings.subscribe(
-      (userSettings => 
-       {
-          var loc = history.getCurrentLocation();
-          var curQuery = queryParse(loc.query);
-          if (_.isEqual(userSettings, curQuery))
-            return;
-
-          var query = {};
-          _.each(userSettings,
-            (v,k) => {
-              query[k] = JSON.stringify(v);
-            });
-          history.push({pathname: loc.pathname, query});
-      }));
-  }
-  componentWillUnmount() {
-    this.statsByTable.unsubscribe();
-    this.tableConfig.unsubscribe();
-    this.classRelations.unsubscribe();
-    this.userSettings.unsubscribe();
-  }
-  */
 }
-
-  /*
-                    <LinkContainer 
-                        to={{
-                          pathname: `/tables/${tname}`,
-                          //query: _.merge({}, query, {domain: tname})
-                        }}
-                        key={tname}
-                      >
-                        <MenuItem eventKey={3.1}>{tname}</MenuItem>    
-                    </LinkContainer>      
-  */
-/*
-            <NavDropdown eventKey={3} title="Tables" id="basic-nav-dropdown">
-              {domainLinks}
-            </NavDropdown>  
-*/
-/*
-class VocabNavBar extends Component {
-  componentDidMount() {
-    dataToStateWhenReady(this, ['breakdowns']); // need breakdowns.vocabulary_id
-  }
-  constructor(props) {
-    super(props);
-    this.state = {
-      breakdowns: {},
-    };
-  }
-  shouldComponentUpdate(nextProps, nextState) {
-    const oldBreakdowns = this.state.breakdowns;
-    const breakdowns = nextState.breakdowns;
-    return !this.state.vocabLinks;
-    debugger;
-    return !!(!(oldBreakdowns && oldBreakdowns.vocabulary_id) &&
-         (breakdowns && breakdowns.vocabulary_id))
-  }
-  componentDidUpdate() {
-    const vocabs = this.state.breakdowns && this.state.breakdowns.vocabulary_id;
-    if (!vocabs) return;
-    let vocabLinks = vocabs.map(
-                      d => {
-                        let vname = d.toString();
-                        return  <LinkContainer key={vname} to={`/vocabs/${vname}`}>
-                                  <NavItem eventKey={2}>{vname}</NavItem>
-                                </LinkContainer>
-                      })
-    this.setState({vocabLinks});
-  }
-  render() {
-    const {vocabLinks} = this.state;
-    return (
-        <Navbar fluid={true} fixedTop={false}>
-          <Navbar.Header>
-            <Navbar.Brand>
-              <NavLink to={locPath('/')} onlyActiveOnIndex>
-                Vocab Population Browser / Vocabularies
-              </NavLink>
-            </Navbar.Brand>
-          </Navbar.Header>
-          <Nav >
-            {vocabLinks}
-          </Nav>
-        </Navbar>
-    );
-  }
-}
-class DomainNavBar extends Component {
-  constructor(props) {
-    super(props);
-    let tables = AppState.getTableConfig();
-    //let {query} = props.location;
-    let domainLinks = _.chain(tables)
-          .toPairs()
-          .filter(d=>d[1] && d[1].enabled)
-          .map(d => {
-            // eslint-disable-next-line
-            let [tname, dconf] = d;
-            return  <LinkContainer key={tname} to={`/tables/${tname}`}>
-                      <NavItem eventKey={2}>{tname}</NavItem>
-                    </LinkContainer>
-          })
-          .value();
-    this.state = {
-      domainLinks,
-    };
-  }
-  render() {
-    const {domainLinks} = this.state;
-    return (
-        <Navbar fluid={true} fixedTop={false}>
-          <Navbar.Header>
-            <Navbar.Brand>
-              <NavLink to={locPath('/')} onlyActiveOnIndex>
-                Vocab Population Browser / Tables
-              </NavLink>
-            </Navbar.Brand>
-          </Navbar.Header>
-          <Nav >
-            {domainLinks}
-          </Nav>
-        </Navbar>
-    );
-  }
-}
-*/
