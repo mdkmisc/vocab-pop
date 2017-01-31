@@ -15,7 +15,7 @@ Copyright 2016 Sigfried Gold
 */
 // @flow
 // npm run-script flow
-import * as util from '../utils';
+//import * as util from '../utils';
 import React, { Component } from 'react';
 import * as AppState from '../AppState';
 //import * as VocabPop from './VocabPop';
@@ -69,7 +69,10 @@ export default class ConceptData extends Component {
   }
   componentDidUpdate(prevProps, prevState) {
     // should only need to fetch data if filters change, right?
-    if (!_.isEqual(prevProps.filters, this.props.filters)) {
+    if (
+           !_.isEqual(prevProps.filters, this.props.filters)
+        || !_.isEqual(prevProps.domain_id, this.props.domain_id)
+    ) {
       this.fetchData();
     }
   }
@@ -87,12 +90,12 @@ export default class ConceptData extends Component {
     this.aggSubscriber.unsubscribe();
   }
   countSub(displayName, filters) {
+    const {domain_id} = this.props;
     let params = {  ...filters, 
                     queryName:displayName,
                     dataRequested: 'counts',
                  }; 
-    if (this.props.domain_id)
-      params.domain_id = this.props.domain_id;
+    if (domain_id) params.domain_id = domain_id;
     let stream = new AppState.ApiStream({
         apiCall: 'conceptCounts', 
         params,
@@ -118,8 +121,7 @@ export default class ConceptData extends Component {
                     dataRequested: 'agg',
                     targetOrSource: 'both',
                   }; 
-    if (this.props.domain_id)
-      params.domain_id = this.props.domain_id;
+    if (domain_id) params.domain_id = domain_id;
     let aggStream = new AppState.ApiStream({
         apiCall: 'conceptCounts', 
         params,
@@ -145,8 +147,7 @@ export default class ConceptData extends Component {
                     queryName:'classes',
                     dataRequested: 'not using in this call but still required',
                  }; 
-    if (this.props.domain_id)
-      params.domain_id = this.props.domain_id;
+    if (domain_id) params.domain_id = domain_id;
     // testing:
     params.grpset = 'domain_id,standard_concept,vocabulary_id';
     let classRelStream = new AppState.ApiStream({

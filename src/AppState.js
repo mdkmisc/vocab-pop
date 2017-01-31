@@ -11,7 +11,7 @@ var d3 = require('d3');
 //import qs from 'qs';
 //var qs = require('qs');
 //if (DEBUG) window.qs = qs;
-var myqs = {
+export var myqs = {
   stringify: obj=>encodeURI(JSON.stringify(obj)),
   parse: json=>JSON.parse(decodeURI(json||'{}'))
 }
@@ -387,7 +387,7 @@ export class AppState extends Component {
   render() {
     //console.log('AppState', this.state);
     //const {location, params, route, router, routeParams, children} = this.props;
-    const {appSettings} = this.state;
+    //const {appSettings} = this.state;
     return <Inspector 
               data={ this.state.appSettings['use cases'] } 
               search={false}

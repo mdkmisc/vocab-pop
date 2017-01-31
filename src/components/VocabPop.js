@@ -160,9 +160,15 @@ export class Home extends Component {
     //AppState.unsubscribe(this, 'conceptCount');
   }
   render() {
+    const {filters, domain_id} = this.props;
     var conceptCount = this.state.conceptCount || 0;
+    console.log(this.props);
     return  <div>
-              <ConceptContainer/>
+              {/*
+              <div>
+                <ConceptContainer filters={filters} domain_id={domain_id} />
+              </div>
+              */}
               <Inspector search={false} 
                 data={ AppState.getState() } />
               <br/>
@@ -177,17 +183,16 @@ export class DrugContainer extends Component {
     // return <DrugContainerNoRouter filters={filters}/>;
     const {filters} = this.props;
     //const {counts, agg, drugClasses} = this.state;
-    let cols = [
-        'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
-        'standard_concept', 'concept_count', 'record_count', 
-      ].map(c => _.find(coldefs, {colId: c}));
-    return  <ConceptData filters={filters}
-                    domain_id={'Drug'}
-              >
-              <ConceptBrowse
-                    cols={cols} />
-            </ConceptData>;
+    //let cols = [ 'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id', 'standard_concept', 'concept_count', 'record_count', ].map(c => _.find(coldefs, {colId: c}));
+    return  <div>
+              <ConceptContainer filters={filters} domain_id={'Drug'} />
+            </div>;
             /*
+    return  <ConceptData 
+                filters={filters} domain_id={'Drug'}
+              >
+              <ConceptBrowse cols={cols} />
+            </ConceptData>;
                 <div>
                   <Label bsStyle="warning">Debug stuff</Label>
                   <Inspector search={false} data={this.state} />
@@ -208,23 +213,21 @@ export class DrugContainer extends Component {
 
 export class ConceptContainer extends Component {
   render() {
-    const {filters} = this.props;
+    const {filters, domain_id} = this.props;
     let cols = [
         'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'record_count', 
       ].map(c => _.find(coldefs, {colId: c}));
-    let props = {};
-    let domain_id = AppState.getState('domain_id');
-    if (domain_id)
-      props.domain_id = domain_id;
-    return  <ConceptData filters={filters} {...props} >
+    return  <ConceptData filters={filters} domain_id={domain_id} >
               <ConceptBrowse cols={cols} />
             </ConceptData>;
   }
 }
 class ConceptBrowse extends Component {
   render() {
-    const {domain_id, children, counts, agg, classes, cols} = this.props;
+    const {
+            //domain_id, 
+            children, counts, agg, classes, cols} = this.props;
     console.log(classes);
     return  <div>
               <VocabMapByDomain

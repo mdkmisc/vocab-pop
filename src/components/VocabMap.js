@@ -32,6 +32,7 @@ import {commify} from '../utils';
 //var $ = require('jquery'); window.$ = $;
 
 function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
+  /*
   function selectNodes(nodeIds, nodeProps) {
       console.log('====== Custom node select function called! ========');
       console.log('Selected Node ID: ' + nodeIds)
@@ -42,6 +43,7 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       console.log('Selected Edge ID: ' + edgeIds)
       console.log(edgeProps)
     };
+  */
   var cyConfig = {
     //boxSelectionEnabled: false,
     //autounselectify: true,
@@ -203,6 +205,8 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
           "line-color" : "steelblue",
           "color" : "pink",
           "shadow-color": "green",
+          'mid-target-arrow-shape': 'triangle',
+          'target-arrow-shape': 'triangle',
         }
       },
       {
@@ -247,13 +251,13 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                     node.data.info = info;
                     node.data.biggestCount = biggest;
                     node.classes = `${biggest} multiline-manual`;
+                    node.data.sgVal = voc;
                     return node;
                   }))));
   // split wide layers
   let maxNodesPerRow = 7;
   let rowsBetweenLayers = 0;
-  let rowsInLayers = 
-    nodesInLayers.map((nodesInLayer,i) => Math.ceil(nodesInLayer / maxNodesPerRow));
+  //let rowsInLayers = nodesInLayers.map((nodesInLayer,i) => Math.ceil(nodesInLayer / maxNodesPerRow));
   
   let nodesInRowsByLayer = 
         _.map(nodesInLayers, 
@@ -355,6 +359,7 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
         ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
     return [nx, ny];
   }
+  /*
   function rotate(cx, cy, x, y, angle) {
     var radians = (Math.PI / 180) * angle,
         cos = Math.cos(radians),
@@ -363,6 +368,7 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
         ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
     return [nx, ny];
   }
+  */
   function perpendicular_coords(x1, y1, x2, y2, xp, yp) {
     var dx = x2 - x1,
         dy = y2 - y1;
@@ -428,13 +434,13 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   cy.on('tap', evt => {
     let el = evt.cyTarget;
     if (el === cy) {
-      console.log("tapped background");
+      //console.log("tapped background");
     } else {
       if (el.group() === 'edges')
         return false;
       if (el.data().isParent)
         return false;
-      console.log('tapped', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+      //console.log('tapped', (el.data && el.data()) || 'no data', (el.id && el.id()) || 'no id');
     }
   });
   cy.on('mouseover', evt => {
@@ -445,18 +451,20 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
         return false;
       //el.select();
       el.activate();
+      el.neighborhood().forEach(e => e.activate());
       if (el.group() === 'edges') {
-        console.log('edge mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+        //console.log('edge mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
         return false;
       }
       msgDiv.innerHTML = el.data().info;
       console.log(domnode);
-      console.log('node mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+      //console.log('node mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
     }
   });
   cy.on('mouseout', evt => {
     let el = evt.cyTarget;
     el.unactivate && el.unactivate();
+    el.neighborhood().forEach(e => e.unactivate && e.unactivate());
   });
   /*
   let nodesByCol = _.sortBy(cy.nodes().toArray().filter(d=>d.data().col), d=>d.data().col),

@@ -6,10 +6,7 @@ import {  Router, Route,
 import { createHistory } from 'history';
 import {App, Sidebar, ComponentWrapper} from './App';
 import * as AppState from './AppState';
-import {
-          DrugContainer, Search, Home
-          /*ConceptsContainer, Tables, */
-        } from './components/VocabPop';
+//import { DrugContainer, Search, Home /*ConceptsContainer, Tables, */ } from './components/VocabPop';
 import './index.css';
 
 
@@ -25,10 +22,10 @@ AppState.initialize({history:useRouterHistory(createHistory)()}) // set global h
     render((
       <Router history={AppState.history}>
         <Route path="/" component={App}>
-          <Route path="search" components={{main:Search, sidebar:Sidebar}} />
-          <Route path="drug" components={{main:ComponentWrapper, compName:'DrugContainer', sidebar:Sidebar}} />
+          <Route path="search" components={{main:ComponentWrapper, compName:'Search', sidebar:Sidebar}} />
+          <Route path="concepts" components={{main:ComponentWrapper, compName:'ConceptContainer', sidebar:Sidebar}} />
+          <IndexRoute        components={{main:ComponentWrapper, compName:'Home',          sidebar:Sidebar}}/>
           <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
-          <IndexRoute components={{main:Home, sidebar:Sidebar}}/>
           {/*
           <Route path="/concepts" component={ConceptsContainer} />
           <Route path="/tables" component={Tables} >

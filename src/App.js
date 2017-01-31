@@ -27,10 +27,8 @@ import { LinkContainer } from 'react-router-bootstrap';
 //import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
-import {
-          DrugContainer, 
-          /*Search, Home*/
-          /*ConceptsContainer, Tables, */
+import { Home, Search, ConceptContainer,
+          /* DrugContainer, Tables, */
         } from './components/VocabPop';
 import * as AppState from './AppState';
 
@@ -42,8 +40,20 @@ import _ from 'supergroup';
 //import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
 
-function locPath(pathname) {
-  return Object.assign({}, location, {pathname});
+function locPath(pathname, opts={}) {
+  // not sure whether to get state from AppState.getState()
+  // here. this does the same:
+  let search = AppState.myqs.parse(location.search.substr(1));
+  if (opts.clear) {
+    opts.clear.forEach(param=>delete search[param]);
+  }
+  if (opts.params) {
+    _.each(opts.params, (v,p) => search[p] = v);
+  }
+
+  let loc = Object.assign({}, location, {pathname});
+  loc.search = '?' + AppState.myqs.stringify(search);
+  return loc;
 }
 class DefaultNavBar extends Component {
   render() {
@@ -51,17 +61,20 @@ class DefaultNavBar extends Component {
         <Navbar fluid={true} fixedTop={false}>
           <Navbar.Header>
             <Navbar.Brand>
-              <NavLink to={locPath('/')} onlyActiveOnIndex>
+              <NavLink to={locPath('/',{clear:['domain_id']})} onlyActiveOnIndex>
                 Vocab Population Browser
               </NavLink>
             </Navbar.Brand>
           </Navbar.Header>
           <Nav >
-            <LinkContainer to={locPath('/drug')}>
+            <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
               <NavItem eventKey={1}>Drug</NavItem>
             </LinkContainer>
-            <LinkContainer to={locPath('/condition')}>
+            <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
               <NavItem eventKey={1}>Condition</NavItem>
+            </LinkContainer>
+            <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
+              <NavItem eventKey={1}>All Domains</NavItem>
             </LinkContainer>
             <LinkContainer to={locPath('/search')}>
               <NavItem eventKey={1}>Search</NavItem>
@@ -267,10 +280,15 @@ export class Sidebar extends Component {
 export class ComponentWrapper extends Component {
   render() {
     let {filters} = AppState.getState();
+    let domain_id = AppState.getState('domain_id');
+    let props = {
+      filters, domain_id,
+    };
     const Comp = ({
-      DrugContainer: DrugContainer,
+      ConceptContainer: ConceptContainer,
+      Home: Home,
     })[this.props.route.components.compName];
-    return <Comp filters={filters} />;
+    return <Comp {...props} />;
   }
 }
 export class App extends Component {
