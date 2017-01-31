@@ -228,18 +228,23 @@ class ConceptBrowse extends Component {
     const {
             //domain_id, 
             children, counts, agg, classes, cols} = this.props;
-    console.log(classes);
+    console.log(classes, agg);
     return  <div>
-              <VocabMapByDomain
+              <div>
+                <VocabMapByDomain
                           classes={classes}
                           width={800}
                           height={600}
-              />
-              <AgTable coldefs={cols} data={agg}
+                />
+              </div>
+              <div style={{clear:'both'}}>
+                <h5>Concept Tree</h5>
+                <AgTable coldefs={cols} data={agg}
                       width={800} height={200}
                       id="Agg"
-              />
-              <ConceptTree agg={agg} />
+                />
+                <ConceptTree agg={agg} />
+              </div>
               <ul>
                 {
                   _.map(counts,

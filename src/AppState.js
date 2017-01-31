@@ -201,7 +201,7 @@ export class StreamsSubscriber {
     this.callback = callback;
   }
   /* picks the streams and subscribes the callback
-   * if existing subscription, unsubscribe
+   * if there's an existing subscription, unsubscribe from it
    */
   filter(filtFunc) { 
     this.filtFunc = filtFunc;
@@ -223,40 +223,6 @@ export class StreamsSubscriber {
       this.subscription.unsubscribe();
   }
 }
-
-/* @function makeStream
- *  @param opts object
- *  @param opts.apiCall string   // name of api call
- *  @param opts.params [object]  // apiCall params
- *  @param opts.singleValue [boolean]  // whether to return a single value instead of array
- *  @param opts.transformResults [function]  // callback on results returning object to call setState with
- *  @returns string // streamKey, which is valid get url, though stream is based on post url
- */
-export function makeStreamOBSOLETE({apiCall, 
-                            params, 
-                            singleValue = false,
-                            transformResults
-                          }) {
-
-  let streamKey = AppData.apiGetUrl(apiCall, params);
-
-  if (_.has(streams, streamKey))
-    return streamKey;
-
-  let stream = streams[streamKey] = new Rx.BehaviorSubject([]);
-
-  AppData.apiCall(apiCall, params)
-          .then(results => {
-            if (singleValue)
-              results = results[0];
-            if (transformResults)
-              results = transformResults(results);
-            stream.next(results);
-            return results;
-          });
-  return streamKey;
-}
-
 
 /* @function subscribe
  *  @param component ReactComponent
@@ -364,11 +330,13 @@ export class AppState extends Component {
     tableSetup();
   }
   componentDidMount() {
+    /*
     subscribe(this, 'statsByTable');
     subscribe(this, 'tableConfig');
     subscribe(this, 'classRelations');
     subscribe(this, 'userSettings');
     subscribe(this, 'conceptCount');
+    */
     d3.selectAll('span.json-inspector__key>span')
       .nodes()
       .filter(d=>d.textContent.match(/^\d+$/))

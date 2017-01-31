@@ -287,6 +287,7 @@ export class ComponentWrapper extends Component {
     const Comp = ({
       ConceptContainer: ConceptContainer,
       Home: Home,
+      Search: Search,
     })[this.props.route.components.compName];
     return <Comp {...props} />;
   }

@@ -146,6 +146,7 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       {
         "selector" : "edge.not-self",
         "css" : {
+          'mid-target-arrow-shape': 'triangle',
           //"control-point-step-size": .5,
           //"curve-style": "bezier",
           /*
@@ -165,10 +166,6 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
               }).join(" ");
               return edge.data().weights;
             },
-          */
-          //'curve-style': 'unbundled-bezier',
-          //'curve-style': 'segments',
-          //http://js.cytoscape.org/#style/segments-edges
           'control-point-distances': 
           //'segment-distances': 
             function(edge) {
@@ -179,33 +176,18 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
             function(edge) {
               return edge.data('waypoints').map(d=>d.weight).join(" ");
             },
-            /*
-            function(edge) {
-              let points = edge.data('waypoints');
-              let y = d3.scaleLinear()
-                        .range([1 / (points.length + 2), 1 - 1 / (points.length + 2) ])
-                        .domain([edge.source().data().row,edge.target().data().row]);
-              edge.data().weights = points.map(d=>{
-                return d.weight = y('wayRow' in d ? d.wayRow : .5)
-              }).join(" ");
-              return edge.data().weights;
-            },
-            */
-          //'control-point-distances': '5 10 20 5',
-          //'control-point-distances': () => '5 10 20 5',
-          //'control-point-weights': '0.1 0.2 0.6 0.8',
-          //'control-point-weights': () => '0.1 0.2 0.6 0.8',
-          "line-color" : "steelblue",
-          "color" : "pink"
+          */
+          //'curve-style': 'unbundled-bezier',
+          //'curve-style': 'segments',
         }
       },
       {
         "selector" : "edge",
         "css" : {
+          width: 1,
           "line-color" : "steelblue",
-          "color" : "pink",
+          "line-color" : "steelblue",
           "shadow-color": "green",
-          'mid-target-arrow-shape': 'triangle',
           'target-arrow-shape': 'triangle',
         }
       },
