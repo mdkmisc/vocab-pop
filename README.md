@@ -11,21 +11,23 @@
       - develop detailed requirements, designs, and prototypes
       - implement in ATLAS if and when resources are available
   - use cases:
-    - source(s) to target(s):
-      - find mapped or matching codes, classification or standard
-      - in target code(s) selected, see which source codes are added or left out and counts of corresponding patient records
+    - define a cohort or phenotype (needed by ATLAS users):
+      - translate existing phenotype definition (e.g., set of ICD-9 codes for some condition) from a source vocabulary into a target vocabulary
     - explore the whole set of OHDSI vocabularies:
+      - needed in Athena
+      - to improve and debug the vocabularies
       - in general
       - only for concepts in user's CDM
       - for a specific domain:
         - e.g., provider specialty, show record counts for all values including zero counts for specialties not used; maybe also show corresponding source values and source values that weren't able to be mapped to a target. (provider.specialty_concept_id, provider.specialty_source_value, provider.specialty_source_concept_id, care_site.specialty_concept_id, care_site.specialty_source_value)
       - to better understand relationships between source and target domains
       - to better understand classifications available
+    - source(s) to target(s):
+      - find mapped or matching codes, classification or standard
+      - in target code(s) selected, see which source codes are added or left out and counts of corresponding patient records
     - find a concept:
       - have immediate feedback on CDM records with concept
       - see relationships to other concepts and be encouraged to assure one has chosen correctly
-    - define a cohort or phenotype:
-      - translate existing phenotype definition (e.g., set of ICD-9 codes for some condition) from a source vocabulary into a target vocabulary
     - explore my popupaltion:
       - overall
       - in terms of some domain
