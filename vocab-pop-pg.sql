@@ -254,13 +254,13 @@ create materialized view :results.ancestor_plus_mapsto as
   select
           'ca ' || min_levels_of_separation || '-' 
                 || max_levels_of_separation as source,
-          ca.ancestor_concept_id,
-          ca.descendant_concept_id
+          ca.descendant_concept_id,
+          ca.ancestor_concept_id
   from :cdm.concept_ancestor ca
   -- left join to cr is not necessary when min_levels_of_separation < 2
   left join :cdm.concept_relationship cr on cr.relationship_id = 'Maps to'
-        and ((ca.ancestor_concept_id = cr.concept_id_1 and ca.descendant_concept_id = cr.concept_id_2)
-          or (ca.ancestor_concept_id = cr.concept_id_2 and ca.descendant_concept_id = cr.concept_id_1))
+        and ((ca.ancestor_concept_id = cr.concept_id_2 and ca.descendant_concept_id = cr.concept_id_1)
+          or (ca.ancestor_concept_id = cr.concept_id_1 and ca.descendant_concept_id = cr.concept_id_2))
   where ca.ancestor_concept_id != ca.descendant_concept_id 
             --and min_levels_of_separation < 2
     and cr.concept_id_1 is null
@@ -300,6 +300,7 @@ create table dcid_groups as
           dcids
   from cg_dcids group by dcids;
 
+drop table if exists dcid_cnts;
 create table dcid_cnts as
   select  dcid_grp_id, cgids, 
           count(rc.concept_id) dcc,
@@ -415,7 +416,7 @@ create table dcid_cnts_breakdown (
 CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
   declare dcid_group record;
   BEGIN
-    for dcid_group in select * from dcid_groups limit 3 loop
+    for dcid_group in select * from dcid_groups loop
       RAISE NOTICE 'dcid_group %: % cids, % dcids', 
         dcid_group.dcid_grp_id, 
         array_length(dcid_group.dcids,1),
@@ -468,6 +469,7 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
     return 1;
   END;
   $func$ LANGUAGE plpgsql;
+select * from make_dcid_cnts_breakdown();
 /*
 with gps as (
   select  vocab_1, class_1, sc_1,  
