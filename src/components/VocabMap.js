@@ -159,10 +159,9 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     id: 'main',
     type: 'svg',
     container: domnode,
-    freeStyle: true
+    //freeStyle: true
   });
   s.camera.ratio = 1.4;
-  s.refresh();
 
   // Binding silly interactions
   function mute(node) {
@@ -173,30 +172,62 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function unmute(node) {
     node.setAttributeNS(null, 'class', node.getAttribute('class').replace(/(\s|^)muted(\s|$)/g, '$2'));
   }
-
-  $('.sigma-node').click(function() {
-
-    // Muting
-    $('.sigma-node, .sigma-edge').each(function() {
-      mute(this);
+  /* from event example: do these work with svg?
+    // Bind the events:
+    s.bind('overNode outNode clickNode doubleClickNode rightClickNode', function(e) {
+      console.log(e.type, e.data.node.label, e.data.captor);
     });
-
-    // Unmuting neighbors
-    var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
-    neighbors.nodes.forEach(function(node) {
-      unmute($('[data-node-id="' + node.id + '"]')[0]);
+    s.bind('overEdge outEdge clickEdge doubleClickEdge rightClickEdge', function(e) {
+      console.log(e.type, e.data.edge, e.data.captor);
     });
-
-    neighbors.edges.forEach(function(edge) {
-      unmute($('[data-edge-id="' + edge.id + '"]')[0]);
+    s.bind('clickStage', function(e) {
+      console.log(e.type, e.data.captor);
     });
-  });
-
-  s.bind('clickStage', function() {
-    $('.sigma-node, .sigma-edge').each(function() {
-      unmute(this);
+    s.bind('doubleClickStage rightClickStage', function(e) {
+      console.log(e.type, e.data.captor);
     });
-  });
+  */
+  s.refresh();
+  //$('.fo-node').appendTo('svg.sigma-svg');
+
+
+
+  $('.fo-node').hover(function(e) {
+      // Unmuting neighbors
+      var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
+      neighbors.nodes.forEach(function(node) {
+        unmute($('[data-node-id="' + node.id + '"]')[0]);
+      });
+
+      neighbors.edges.forEach(function(edge) {
+        unmute($('[data-edge-id="' + edge.id + '"]')[0]);
+      });
+      // Muting
+      $('.sigma-node, .sigma-edge').each(function() {
+        mute(this);
+      });
+      /*
+      let node = this.__node__;
+      let fo = document.createElementNS(d3.namespaces.svg, 'foreignObject');
+      fo.innerHTML = node.info;
+      fo.setAttributeNS(null, 'x', node[prefix + 'x'] - w / 2);
+      fo.setAttributeNS(null, 'y', node[prefix + 'y'] - h / 2);
+      //fo.setAttributeNS(null, 'width', w);
+      //fo.setAttributeNS(null, 'height', h);
+      fo.setAttributeNS(null, 'class', node.classes);
+      $(this).replaceWith(el);
+      */
+    },
+    function(e) {
+      $(this).height(40);
+      let node = this.__node__;
+      this.innerHTML = node.label;
+      $('.sigma-node, .sigma-edge').each(function() {
+        unmute(this);
+      });
+    }
+  );
+
   /*
   cy.on('tap', evt => {
     let el = evt.cyTarget;
