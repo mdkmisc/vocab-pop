@@ -135,9 +135,12 @@ select store_concept_id_counts(
 alter table :results.concept_id_occurrence add primary key (table_name, column_name, concept_id);
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
 
+delete from concept_id_occurrence cio
+using cdm2.concept c
+where cio.concept_id = c.concept_id and c.invalid_reason is not null;
 
-drop materialized view if exists :results.record_counts cascade;
-create materialized view :results.record_counts as (
+drop table if exists :results.record_counts cascade;
+create table :results.record_counts as (
   select  
           c.concept_id,
           c.domain_id domain_id,
@@ -249,6 +252,8 @@ create table concept_groups_w_cids as
   from (select * from get_concept_groups()) x;
 create unique index cgccidx on concept_groups_w_cids (cgid);
 
+
+
 drop materialized view :results.ancestor_plus_mapsto;
 create materialized view :results.ancestor_plus_mapsto as
   select
@@ -275,6 +280,8 @@ create materialized view :results.ancestor_plus_mapsto as
     and cr.concept_id_1 != cr.concept_id_2
   ;
 create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
+
+
 
 /* probably will need source, but not for now */
 drop table if exists cg_dcids;

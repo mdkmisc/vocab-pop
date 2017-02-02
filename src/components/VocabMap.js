@@ -18,203 +18,28 @@ Copyright 2016 Sigfried Gold
 import React, { Component } from 'react';
 var d3 = require('d3');
 import _ from 'supergroup'; // in global space anyway
-//import CyViewer from 'cy-viewer';
-
-import cytoscape from 'cytoscape';
-//var cytoscape = require('cytoscape');
-//var css_renderer = require('cytoscape-css-renderer');
-//css_renderer( cytoscape ); // register extension
-//import cytoscape from '../../cytoscape.js/src/index';
 
 import * as AppState from '../AppState';
 import {commify} from '../utils';
 
-//var $ = require('jquery'); window.$ = $;
+var sigma = require('sigma');
+window.sigma = sigma;
+var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
+var $ = require('jquery'); window.$ = $;
 
-function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
-  /*
-  function selectNodes(nodeIds, nodeProps) {
-      console.log('====== Custom node select function called! ========');
-      console.log('Selected Node ID: ' + nodeIds)
-      console.log(nodeProps)
-    };
-  function selectEdges(edgeIds, edgeProps) {
-      console.log('====== Custom edge select function called! ========');
-      console.log('Selected Edge ID: ' + edgeIds)
-      console.log(edgeProps)
-    };
-  */
-  var cyConfig = {
-    //boxSelectionEnabled: false,
-    //autounselectify: true,
-    //autoungrabify: true,
-    //autolock: true,
-    //selectionType: 'single',
-    //renderer: { name: "css" }, 
-    minZoom: .1,
-    maxZoom: 3,
-    "text-events": "yes",
-    style: [
-      {
-        selector: '.multiline-manual',
-        style: {
-          'text-wrap': 'wrap',
-        }
-      },
-      {
-        "selector" : "node",
-        "css" : {
-          "font-family" : "sans-serif",
-          "shape" : "roundrectangle",
-          //"background-color" : "rgb(255,255,255)",
-          //"background-color" : "beige",
-          //"width" : 55.0,
-          //"height" : 20.0,
-          "width" : "label",
-          "height" : "label",
-          "padding": "6px 4px 0px 4px",
-          "text-valign" : "center",
-          "text-halign" : "center",
-          //"text-margin-x": "50px",
-          //"color" : "#666666",
-          //"color" : "green",
-          //"font-size" : '0.1em',
-          "label" : "data(label)"
-        }
-      },
-      {
-        selector: ':parent',
-        css: {
-          //'background-opacity': .6,
-          "content" : "data(label)",
-          "events": 'no',
-          //"background-color" : "burlywood",
-          //'padding-top': '10px',
-          //'padding-left': '10px',
-          //'padding-bottom': '10px',
-          //'padding-right': '10px',
-          'text-valign': 'top',
-          'text-halign': 'left',
-          //"color" : "brown",
-        },
-      },
-      /*
-      {
-        selector: '$node > node',
-        css: {
-          "label" : "data(label)",
-        }
-      },
-      */
-      {
-        "selector" : "node:selected",
-        "css" : {
-          //"background-color" : "orange",
-          //"color" : "white",
-        }
-      },
-      {
-        "selector" : "node.rc",
-        style: {
-          "background-color" : "#0070dd",
-          "color" : "white"
-        }
-      },
-      {
-        "selector" : "node.drc",
-        style: {
-          "background-color" : "rgb(163, 53, 238)",
-          "color" : "white",
-        }
-      },
-      {
-        "selector" : "node.src",
-        style: {
-          "background-color" : "pink",
-          "color" : "blue"
-        }
-      },
-      {
-        selector: ':selected',
-        css: {
-          'background-color': 'purple',
-          'line-color': 'black',
-          'target-arrow-color': 'black',
-          'source-arrow-color': 'black'
-        }
-      },
-      {
-        "selector" : "edge.not-self",
-        "css" : {
-          'mid-target-arrow-shape': 'triangle',
-          //"control-point-step-size": .5,
-          //"curve-style": "bezier",
-          /*
-          'curve-style': 'unbundled-bezier',
-          'control-point-distances': 
-            function(edge) {
-              return edge.data('waypoints').map(d=>d.distance).join(" ");
-            },
-          'control-point-weights':
-            function(edge) {
-              let points = edge.data('waypoints');
-              let y = d3.scaleLinear()
-                        .range([1 / (points.length + 2), 1 - 1 / (points.length + 2) ])
-                        .domain([edge.source().data().row,edge.target().data().row]);
-              edge.data().weights = points.map(d=>{
-                return d.weight = y('wayRow' in d ? d.wayRow : .5)
-              }).join(" ");
-              return edge.data().weights;
-            },
-          'control-point-distances': 
-          //'segment-distances': 
-            function(edge) {
-              return edge.data('waypoints').map(d=>d.distance).join(" ");
-            },
-          'control-point-weights':
-          //'segment-weights':
-            function(edge) {
-              return edge.data('waypoints').map(d=>d.weight).join(" ");
-            },
-          */
-          //'curve-style': 'unbundled-bezier',
-          //'curve-style': 'segments',
-        }
-      },
-      {
-        "selector" : "edge",
-        "css" : {
-          width: 1,
-          "line-color" : "steelblue",
-          "line-color" : "steelblue",
-          "shadow-color": "green",
-          'target-arrow-shape': 'triangle',
-        }
-      },
-      {
-        "selector" : "edge:selected",
-        "css" : {
-          "line-color" : "red",
-          "color" : "pink"
-        }
-      },
-    ],
-    layout: {
-      name: 'grid',
-      avoidOverlap: false,
-      position: node => {
-        return {row: node.data('row'), col: node.data('col')};
-      },
-    },
-  };
-  let nodeGroups = [
-        { selectable: false, data: { isParent: true, id: 'Classification', label: 'Classification' }, position: { y: 10, } },
-        { selectable: false, data: { isParent: true, id: 'Standard', label: 'Standard' }, position: { y: 300, } },
-        { selectable: false, data: { isParent: true, id: 'Source', label: 'Source' }, position: { y: 600, } },
-  ];
+function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
+  function makeNode(id, label, layer, parent) {
+    let node = { id, size: 1, color: 'orange', };
+    if (typeof label !== 'undefined') node.label = label;
+    if (typeof layer !== 'undefined') {
+      node.layer = layer;
+      node.layerIdx = nodesInLayers[layer]++;
+    }
+    if (typeof parent !== 'undefined') node.parent = parent;
+    return node;
+  }
   let nodesInLayers = [0,0,0]; // counter for nodes in each layer
-  let nodes = nodeGroups.concat(
-                _.flatten(sg.map(sc=>sc.getChildren().map(voc=>{
+  let nodes = _.flatten(sg.map(sc=>sc.getChildren().map(voc=>{
                     let counts = {};
                     ['rc','src','drc','dsrc']
                           .filter(fld=>voc.aggregate(_.sum,fld))
@@ -230,12 +55,12 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                         layer = ({'C': 0, 'S': 1, 'X': 2})[sc.toString()],
                         parent = ['Classification','Standard','Source'][layer];
                     let node = makeNode(id, label,layer, parent);
-                    node.data.info = info;
-                    node.data.biggestCount = biggest;
+                    node.info = info;
+                    node.biggestCount = biggest;
                     node.classes = `${biggest} multiline-manual`;
-                    node.data.sgVal = voc;
+                    node.sgVal = voc;
                     return node;
-                  }))));
+                  })));
   // split wide layers
   let maxNodesPerRow = 7;
   let rowsBetweenLayers = 0;
@@ -276,55 +101,39 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   }
   window.colOffset = colOffset;
   let rowContents = {};
-  nodes.filter(d=>!d.data.isParent).forEach((node) => {
-    let nodesInRows = nodesInRowsByLayer[node.data.layer];
-    let prevRows = _.sum(nodesInRowsByLayer.slice(0, node.data.layer).map(d=>d.length))
-                      + node.data.layer * rowsBetweenLayers;
+  nodes.filter(d=>!d.isParent).forEach((node) => {
+    let nodesInRows = nodesInRowsByLayer[node.layer];
+    let prevRows = _.sum(nodesInRowsByLayer.slice(0, node.layer).map(d=>d.length))
+                      + node.layer * rowsBetweenLayers;
     nodesInRows.forEach(
             (nodesInRow,i) => {
               if (
-                    node.data.layerIdx >= _.sum(nodesInRows.slice(0, i)) &&
-                    node.data.layerIdx <  _.sum(nodesInRows.slice(0, i + 1))
+                    node.layerIdx >= _.sum(nodesInRows.slice(0, i)) &&
+                    node.layerIdx <  _.sum(nodesInRows.slice(0, i + 1))
                  ) {
-                      node.data.rowInLayer = i;
-                      node.data.row = node.data.rowInLayer + prevRows;
+                      node.rowInLayer = i;
+                      node.row = node.rowInLayer + prevRows;
 
-                      node.data.rowIdx = node.data.layerIdx -  // rowIdx == idx within the row
+                      node.rowIdx = node.layerIdx -  // rowIdx == idx within the row
                                           _.sum(nodesInRows.slice(0, i));
-                      node.data.col = node.data.rowIdx * 2
-                                        + colOffset(node.data.rowInLayer,
-                                                    nodesInRowsByLayer[node.data.layer]);
+                      node.col = node.rowIdx * 2
+                                        + colOffset(node.rowInLayer,
+                                                    nodesInRowsByLayer[node.layer]);
               }
             });
-    let row = _.get(rowContents, [node.data.row, node.data.col]) || [];
+    let row = _.get(rowContents, [node.row, node.col]) || [];
     row.push(node);
-    _.set(rowContents, [node.data.row, node.data.col], row);
-    //if (node.data.layer === 2 && node.data.layerIdx > 3) debugger;
+    _.set(rowContents, [node.row, node.col], row);
+    //if (node.layer === 2 && node.layerIdx > 3) debugger;
   });
-  //cyConfig.layout.cols = _.max(nodes.map(d=>d.data.col));
-  cyConfig.layout.rows = _.max(nodes.map(d=>d.data.row));
-  cyConfig.layout.cols = _.max(nodes.map(d=>d.data.col));
+  let x = d3.scaleLinear().domain(d3.extent(nodes.map(d=>d.col)));
+  let y = d3.scaleLinear().domain(d3.extent(nodes.map(d=>d.row)));
+  window.x = x; window.y = y;
+  nodes.forEach(node => {
+    node.x = x(node.col);
+    node.y = y(node.row);
+  });
   
-  function makeNode(id, label, layer, parent) {
-    let node = { data: { id, }, };
-    if (typeof label !== 'undefined') node.data.label = label;
-    if (typeof layer !== 'undefined') {
-      node.data.layer = layer;
-      node.data.layerIdx = nodesInLayers[layer]++;
-    }
-    if (typeof parent !== 'undefined') node.data.parent = parent;
-    /*
-    if (typeof stub !== 'undefined') {
-      node.data.stub = stub;
-      node.visible = !stub;
-      node.selectable = false;
-    } else {
-      node.selectable = true;
-    }
-    */
-    node.selectable = true;
-    return node;
-  }
   function findEmptyGridCol(row, fromCol, targetCol) {
     // for now just leave these empty and don't try to spread waypoints
     let targetGridLocation = _.get(rowContents, [row, targetCol]);
@@ -341,16 +150,6 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
         ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
     return [nx, ny];
   }
-  /*
-  function rotate(cx, cy, x, y, angle) {
-    var radians = (Math.PI / 180) * angle,
-        cos = Math.cos(radians),
-        sin = Math.sin(radians),
-        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
-        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-    return [nx, ny];
-  }
-  */
   function perpendicular_coords(x1, y1, x2, y2, xp, yp) {
     var dx = x2 - x1,
         dy = y2 - y1;
@@ -375,44 +174,83 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     var dy = y2 - y1;
     return Math.sqrt(dx * dx + dy * dy);
   }
-  /*
-  function dumbCoordRotate(x0,y0, x1,y1, xp,yp) {
-    // get slope from source to target
-    let m = (y1 - y0) / (x1 - x0);
-    // then y == m*x + b, plug in a point: y0 == m*x0 + b
-    let b = y0 - m * x0;
-    let mp = -1 / m; // slope of perpendicular line
-    let bp = yp - mp * xp;
-  }
-  function rotate(cx, cy, x, y) {
-    var radians = Math.atan2(cy, cx),
-        cos = Math.cos(radians),
-        sin = Math.sin(radians),
-        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
-        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-    return [nx, ny];
-  }
-  */
   function edge(from, to) {
     return {
-      classes: from.id() === to.id() ? 'self' : 'not-self',
-      selectable: true,
-      events: 'no',
-      groups: 'edges',
-      data: {
-        id: `${from.id()}:${to.id()}`,
-        source: from.id(),
-        target: to.id(),
-      }
+      //classes: from.id() === to.id() ? 'self' : 'not-self',
+      //selectable: true,
+      //events: 'no',
+      //groups: 'edges',
+      id: `${from}:${to}`,
+      source: from,
+      target: to,
     };
   }
+  let edges = 
+    _.flatten(sg.leafNodes()
+              .filter(d=>d.dim==='linknodes')
+              .map(
+                d => {
+                  /*
+                  let from = s.nodes(d.toString()),
+                      to = s.nodes(d.parent.namePath(',')),
+                      points = waypoints(from, to);
+                  */
+                  let e = edge(d.toString(), d.parent.namePath(','));
+                  //e.waypoints = points;
+                  return e;
+                }))
+                //.filter(d=>d.classes==='not-self');
+  // Instantiate sigma:
+  let neigh = new sigma.plugins.neighborhoods();
+  let s = new sigma({
+    graph: { nodes, edges },
+    settings: {
+      enableHovering: false
+    }
+  });
 
-  cyConfig.elements = { nodes};
-  //console.log(JSON.stringify(cyConfig, null, 2));
+  s.addRenderer({
+    id: 'main',
+    type: 'svg',
+    container: domnode,
+    freeStyle: true
+  });
+  s.refresh();
 
-  cyConfig.container = domnode;
-    
-  let cy = cytoscape(cyConfig);
+  // Binding silly interactions
+  function mute(node) {
+    if (!~node.getAttribute('class').search(/muted/))
+      node.setAttributeNS(null, 'class', node.getAttribute('class') + ' muted');
+  }
+
+  function unmute(node) {
+    node.setAttributeNS(null, 'class', node.getAttribute('class').replace(/(\s|^)muted(\s|$)/g, '$2'));
+  }
+
+  $('.sigma-node').click(function() {
+
+    // Muting
+    $('.sigma-node, .sigma-edge').each(function() {
+      mute(this);
+    });
+
+    // Unmuting neighbors
+    var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
+    neighbors.nodes.forEach(function(node) {
+      unmute($('[data-node-id="' + node.id + '"]')[0]);
+    });
+
+    neighbors.edges.forEach(function(edge) {
+      unmute($('[data-edge-id="' + edge.id + '"]')[0]);
+    });
+  });
+
+  s.bind('clickStage', function() {
+    $('.sigma-node, .sigma-edge').each(function() {
+      unmute(this);
+    });
+  });
+  /*
   cy.on('tap', evt => {
     let el = evt.cyTarget;
     if (el === cy) {
@@ -420,27 +258,27 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     } else {
       if (el.group() === 'edges')
         return false;
-      if (el.data().isParent)
+      if (el().isParent)
         return false;
-      //console.log('tapped', (el.data && el.data()) || 'no data', (el.id && el.id()) || 'no id');
+      //console.log('tapped', (el && el()) || 'no data', (el.id && el.id()) || 'no id');
     }
   });
   cy.on('mouseover', evt => {
     let el = evt.cyTarget;
     if (el === cy) {
     } else {
-      if (el.data().isParent)
+      if (el().isParent)
         return false;
       //el.select();
       el.activate();
       el.neighborhood().forEach(e => e.activate());
       if (el.group() === 'edges') {
-        //console.log('edge mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+        //console.log('edge mouseover', el && el() || 'no data', el.id && el.id() || 'no id');
         return false;
       }
-      msgDiv.innerHTML = el.data().info;
+      msgDiv.innerHTML = el().info;
       console.log(domnode);
-      //console.log('node mouseover', el.data && el.data() || 'no data', el.id && el.id() || 'no id');
+      //console.log('node mouseover', el && el() || 'no data', el.id && el.id() || 'no id');
     }
   });
   cy.on('mouseout', evt => {
@@ -448,52 +286,19 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     el.unactivate && el.unactivate();
     el.neighborhood().forEach(e => e.unactivate && e.unactivate());
   });
-  /*
-  let nodesByCol = _.sortBy(cy.nodes().toArray().filter(d=>d.data().col), d=>d.data().col),
-      leftNode   = _.first(nodesByCol),
-      rightNode  = _.last(nodesByCol),
-      x          = d3.scaleLinear()
-                      .domain([leftNode.data().col, rightNode.data().col])
-                      .range([leftNode.position().x, rightNode.position().x]);
-  let nodesByRow = _.sortBy(cy.nodes().toArray().filter(d=>d.data().row), d=>d.data().row),
-      topNode    = _.first(nodesByRow),
-      bottomNode = _.last(nodesByRow),
-      y          = d3.scaleLinear()
-                      .domain([topNode.data().col, bottomNode.data().col])
-                      .range([topNode.position().y, bottomNode.position().y]);
   */
-  let edges = 
-    _.flatten(sg.leafNodes()
-              .filter(d=>d.dim==='linknodes')
-              .map(
-                d => {
-                  let from = cy.getElementById(d.toString()),
-                      to = cy.getElementById(d.parent.namePath(',')),
-                      points = waypoints(from, to);
-                      /*
-                      edgePath = _.range(nodePath.length - 1).map(
-                        i => {
-                          return edge(nodePath[i], nodePath[i+1]);
-                        });
-                      return edgePath;
-                      */
-                  let e = edge(from, to);
-                  e.data.waypoints = points;
-                  return e;
-                }))
-                //.filter(d=>d.classes==='not-self');
 
   function waypoints(from, to) {
-    let stubPoint = { row: from.data().row, col: from.data().col, 
+    let stubPoint = { row: from().row, col: from().col, 
                       distance: 0, weight: .5, };
-    if (from.data().layer === to.data().layer)
+    if (from().layer === to().layer)
       return [stubPoint];
-    let fromCol = from.data().col, 
+    let fromCol = from().col, 
         curCol = fromCol,
-        toCol = to.data().col,
-        fromRow = from.data().row,
+        toCol = to().col,
+        fromRow = from().row,
         curRow = fromRow,
-        toRow = to.data().row,
+        toRow = to().row,
         fromX = from.position().x,
         fromY = from.position().y,
         toX = to.position().x,
@@ -530,20 +335,14 @@ function graph(sg, domnode, w, h, boxw, boxh, msgDiv) {
         return [stubPoint];
     return points;
   }
-  window.cy = cy;
+  window.s = s;
   window.sg = sg;
   window.waypoints = waypoints;
   window.edge = edge;
   window.edges = edges;
   window.rotateRad = rotateRad;
   window.perpendicular_coords = perpendicular_coords;
-
-  //cy.nodes().forEach( ele => ele.css('content', '<span>blah</span>'));
-
-  cy.add(edges);
-
-
-  return cy;
+  return s;
 }
 function sgPrep(classRecs) {
   if (!classRecs.length) throw new Error("no classRecs");
@@ -610,7 +409,8 @@ export default class VocabMap extends Component {
   componentDidUpdate() {
     const {sg, width, height} = this.props;
     if (this.graphDiv && sg && sg.length) {
-      this.cy = graph(sg.getChildren(), this.graphDiv, width, height, 70, 40, this.msgDiv);
+      //this.cy = cytoGraph(sg.getChildren(), this.graphDiv, width, height, 70, 40, this.msgDiv);
+      this.cy = sigmaGraph(sg.getChildren(), this.graphDiv, width, height, 70, 40, this.msgDiv);
     }
   }
   render() {

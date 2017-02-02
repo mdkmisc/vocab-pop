@@ -192,13 +192,10 @@ export class StreamsSubscriber {
 // this component is just for debugging, it shows current AppState
 export class AppState extends Component {
   constructor(props) {
-    //const {location, params, route, router, routeParams, children} = props;
     super(props);
     this.state = {
       appSettings,
     };
-
-    //tableSetup(); // not needed at moment
   }
   componentDidUpdate() {
   }
@@ -218,4 +215,3 @@ export class AppState extends Component {
             />;
   }
 }
-
