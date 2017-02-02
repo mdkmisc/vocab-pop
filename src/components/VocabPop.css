@@ -118,13 +118,13 @@ span.aside {
 }
 
 /* from sigma.js freelstyle svg example */
-#graph-container {
+.sigma-svg {
   top: 0;
   bottom: 0;
   left: 0;
   right: 0;
   position: absolute;
-  background-color: #455660;
+  background-color: white;
 }
 .sigma-edge {
   stroke: #14191C;
@@ -141,4 +141,6 @@ span.aside {
   fill-opacity: 0.1;
   stroke-opacity: 0.1;
 }
-
+foreignObject.fo-node {
+  border: 1px solid purple;
+}

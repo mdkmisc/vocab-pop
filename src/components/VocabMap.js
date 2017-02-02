@@ -25,7 +25,14 @@ import {commify} from '../utils';
 var sigma = require('sigma');
 window.sigma = sigma;
 var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
+
+import nodeRenderer from './sigmaSvgNodeRenderer';
+nodeRenderer(sigma);
+
 var $ = require('jquery'); window.$ = $;
+
+let maxNodesPerRow = 4;
+let rowsBetweenLayers = 1;
 
 function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function makeNode(id, label, layer, parent) {
@@ -57,13 +64,11 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                     let node = makeNode(id, label,layer, parent);
                     node.info = info;
                     node.biggestCount = biggest;
-                    node.classes = `${biggest} multiline-manual`;
+                    node.classes = `${biggest} fo-node`;
                     node.sgVal = voc;
                     return node;
                   })));
   // split wide layers
-  let maxNodesPerRow = 7;
-  let rowsBetweenLayers = 0;
   //let rowsInLayers = nodesInLayers.map((nodesInLayer,i) => Math.ceil(nodesInLayer / maxNodesPerRow));
   
   let nodesInRowsByLayer = 
@@ -81,30 +86,14 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                 return rows;
               });
   //console.log(nodesInRowsByLayer.join('\n'));
-  function colOffset(row, nodesInRows, max=maxNodesPerRow) {
-    // even rows (except last) have maxNodes
-    let nodesInRow = nodesInRows[row];
-    let offset = 0;
-    if (row % 2) { // odd row
-      if (nodesInRow < max - 1) // short row, adjust to center
-        offset = max - nodesInRow;
-      else
-        offset = 1;
-      if (row === nodesInRows.length - 1 &&
-          nodesInRow === max) // last row, full length, don't adjust
-        offset = 0;
-    } else { // even row
-      if (nodesInRow < max) // short row
-        offset = max - nodesInRow;
-    }
-    return offset;
-  }
+  let layerStartRows = 
+        nodesInRowsByLayer
+          .map(d=>d.length)
+          .map((d,i,a) => _.sum(a.slice(0,i)) + i * rowsBetweenLayers + i * 1);
   window.colOffset = colOffset;
   let rowContents = {};
   nodes.filter(d=>!d.isParent).forEach((node) => {
     let nodesInRows = nodesInRowsByLayer[node.layer];
-    let prevRows = _.sum(nodesInRowsByLayer.slice(0, node.layer).map(d=>d.length))
-                      + node.layer * rowsBetweenLayers;
     nodesInRows.forEach(
             (nodesInRow,i) => {
               if (
@@ -112,7 +101,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                     node.layerIdx <  _.sum(nodesInRows.slice(0, i + 1))
                  ) {
                       node.rowInLayer = i;
-                      node.row = node.rowInLayer + prevRows;
+                      node.row = node.rowInLayer + layerStartRows[node.layer] + 1;
 
                       node.rowIdx = node.layerIdx -  // rowIdx == idx within the row
                                           _.sum(nodesInRows.slice(0, i));
@@ -126,65 +115,20 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     _.set(rowContents, [node.row, node.col], row);
     //if (node.layer === 2 && node.layerIdx > 3) debugger;
   });
-  let x = d3.scaleLinear().domain(d3.extent(nodes.map(d=>d.col)));
+  let x = d3.scaleLinear().domain([0,d3.max(nodes.map(d=>d.col))]);
   let y = d3.scaleLinear().domain(d3.extent(nodes.map(d=>d.row)));
   window.x = x; window.y = y;
   nodes.forEach(node => {
     node.x = x(node.col);
     node.y = y(node.row);
   });
+  let nodeGroups = [
+        { isParent: true, id: 'Classification', label: 'Classification', x:x(0), y:y(layerStartRows[0]), size:2 },
+        { isParent: true, id: 'Standard', label: 'Standard', x:x(0), y:y(layerStartRows[1]), size:2 },
+        { isParent: true, id: 'Source', label: 'Source', x:x(0), y:y(layerStartRows[2]), size:2 },
+  ];
+  nodes = nodes.concat(nodeGroups);
   
-  function findEmptyGridCol(row, fromCol, targetCol) {
-    // for now just leave these empty and don't try to spread waypoints
-    let targetGridLocation = _.get(rowContents, [row, targetCol]);
-    if (!targetGridLocation) return targetCol;
-    let newTarget = targetCol > fromCol ? targetCol - 1 : targetCol + 1;
-    targetGridLocation = _.get(rowContents, [row, newTarget]);
-    if (!targetGridLocation) return newTarget;
-    throw new Error("can't find an empty grid col");
-  }
-  function rotateRad(cx, cy, x, y, radians) {
-    var cos = Math.cos(radians),
-        sin = Math.sin(radians),
-        nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
-        ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
-    return [nx, ny];
-  }
-  function perpendicular_coords(x1, y1, x2, y2, xp, yp) {
-    var dx = x2 - x1,
-        dy = y2 - y1;
-
-    //find intersection point    
-    var k = (dy * (xp-x1) - dx * (yp-y1)) / (dy*dy + dx*dx);
-    var x4 = xp - k * dy;
-    var y4 = yp + k * dx;
-
-    var ypt = Math.sqrt((y4-y1)*(y4-y1)+(x4-x1)*(x4-x1));
-    var xpt = pointToLineDist(x1, y1, x2, y2, xp, yp);
-    return [xpt, ypt];
-  }
-
-  function pointToLineDist(x1, y1, x2, y2, xp, yp) {
-    var dx = x2 - x1;
-    var dy = y2 - y1;
-    return Math.abs(dy*xp - dx*yp + x2*y1 - y2*x1) / Math.sqrt(dy*dy + dx*dx);
-  }
-  function pointToPointDist(x1, y1, x2, y2) {
-    var dx = x2 - x1;
-    var dy = y2 - y1;
-    return Math.sqrt(dx * dx + dy * dy);
-  }
-  function edge(from, to) {
-    return {
-      //classes: from.id() === to.id() ? 'self' : 'not-self',
-      //selectable: true,
-      //events: 'no',
-      //groups: 'edges',
-      id: `${from}:${to}`,
-      source: from,
-      target: to,
-    };
-  }
   let edges = 
     _.flatten(sg.leafNodes()
               .filter(d=>d.dim==='linknodes')
@@ -193,7 +137,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                   /*
                   let from = s.nodes(d.toString()),
                       to = s.nodes(d.parent.namePath(',')),
-                      points = waypoints(from, to);
+                      points = waypoints(from, to, rowContents);
                   */
                   let e = edge(d.toString(), d.parent.namePath(','));
                   //e.waypoints = points;
@@ -205,7 +149,9 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   let s = new sigma({
     graph: { nodes, edges },
     settings: {
-      enableHovering: false
+      labelSize: 'proportional',
+      labelThreshold: 6,
+      //enableHovering: false,
     }
   });
 
@@ -215,6 +161,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     container: domnode,
     freeStyle: true
   });
+  s.camera.ratio = 1.4;
   s.refresh();
 
   // Binding silly interactions
@@ -288,53 +235,6 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   });
   */
 
-  function waypoints(from, to) {
-    let stubPoint = { row: from().row, col: from().col, 
-                      distance: 0, weight: .5, };
-    if (from().layer === to().layer)
-      return [stubPoint];
-    let fromCol = from().col, 
-        curCol = fromCol,
-        toCol = to().col,
-        fromRow = from().row,
-        curRow = fromRow,
-        toRow = to().row,
-        fromX = from.position().x,
-        fromY = from.position().y,
-        toX = to.position().x,
-        toY = to.position().y,
-        x = d3.scaleLinear().domain([fromCol,toCol]).range([fromX,toX]),
-        y = d3.scaleLinear().domain([fromRow,toRow]).range([fromY,toY]);
-    let rowsBetween = _.range(fromRow, toRow).slice(1);
-    let edgeLength = pointToPointDist(x(fromCol),y(fromRow),x(toCol),y(toRow));
-    let points = rowsBetween.map(
-      (nextRow,i) => {
-        let colsRemaining = toCol - curCol;
-        let colsNow = Math.ceil(colsRemaining / Math.abs(toRow - curRow));
-        let nextCol = findEmptyGridCol(nextRow, curCol, curCol + colsNow);
-        let curX = x(curCol), curY = y(curRow),
-            nextX = x(nextCol), nextY = y(nextRow);
-        let [distanceFromEdge, distanceOnEdge] = 
-              perpendicular_coords(curX, curY, toX, toY, nextX, nextY);
-
-        let point = {curCol, curRow, 
-                      toCol, toRow,
-                      nextCol, nextRow,
-                      curX, curY, toX, toY, nextX, nextY,
-                      edgeLength,
-                      colsNow,
-                      //wayCol, wayRow,
-                      distance:-distanceFromEdge * 2, 
-                      weight:distanceOnEdge / edgeLength,
-                    };
-        curCol = nextCol;
-        curRow = nextRow;
-        return point;
-      });
-    if (points.length === 0)
-        return [stubPoint];
-    return points;
-  }
   window.s = s;
   window.sg = sg;
   window.waypoints = waypoints;
@@ -428,4 +328,120 @@ export default class VocabMap extends Component {
               />
             </div>);
   }
+}
+function colOffset(row, nodesInRows, max=maxNodesPerRow) {
+  // even rows (except last) have maxNodes
+  let nodesInRow = nodesInRows[row];
+  let offset = 0;
+  if (row % 2) { // odd row
+    if (nodesInRow < max - 1) // short row, adjust to center
+      offset = max - nodesInRow;
+    else
+      offset = 1;
+    if (row === nodesInRows.length - 1 &&
+        nodesInRow === max) // last row, full length, don't adjust
+      offset = 0;
+  } else { // even row
+    if (nodesInRow < max) // short row
+      offset = max - nodesInRow;
+  }
+  return offset;
+}
+function findEmptyGridCol(row, fromCol, targetCol, rowContents) {
+  // for now just leave these empty and don't try to spread waypoints
+  let targetGridLocation = _.get(rowContents, [row, targetCol]);
+  if (!targetGridLocation) return targetCol;
+  let newTarget = targetCol > fromCol ? targetCol - 1 : targetCol + 1;
+  targetGridLocation = _.get(rowContents, [row, newTarget]);
+  if (!targetGridLocation) return newTarget;
+  throw new Error("can't find an empty grid col");
+}
+function rotateRad(cx, cy, x, y, radians) {
+  var cos = Math.cos(radians),
+      sin = Math.sin(radians),
+      nx = (cos * (x - cx)) + (sin * (y - cy)) + cx,
+      ny = (cos * (y - cy)) - (sin * (x - cx)) + cy;
+  return [nx, ny];
+}
+function perpendicular_coords(x1, y1, x2, y2, xp, yp) {
+  var dx = x2 - x1,
+      dy = y2 - y1;
+
+  //find intersection point    
+  var k = (dy * (xp-x1) - dx * (yp-y1)) / (dy*dy + dx*dx);
+  var x4 = xp - k * dy;
+  var y4 = yp + k * dx;
+
+  var ypt = Math.sqrt((y4-y1)*(y4-y1)+(x4-x1)*(x4-x1));
+  var xpt = pointToLineDist(x1, y1, x2, y2, xp, yp);
+  return [xpt, ypt];
+}
+
+function pointToLineDist(x1, y1, x2, y2, xp, yp) {
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  return Math.abs(dy*xp - dx*yp + x2*y1 - y2*x1) / Math.sqrt(dy*dy + dx*dx);
+}
+function pointToPointDist(x1, y1, x2, y2) {
+  var dx = x2 - x1;
+  var dy = y2 - y1;
+  return Math.sqrt(dx * dx + dy * dy);
+}
+function edge(from, to) {
+  return {
+    //classes: from.id() === to.id() ? 'self' : 'not-self',
+    //selectable: true,
+    //events: 'no',
+    //groups: 'edges',
+    id: `${from}:${to}`,
+    source: from,
+    target: to,
+  };
+}
+function waypoints(from, to, rowContents) {
+  let stubPoint = { row: from().row, col: from().col, 
+                    distance: 0, weight: .5, };
+  if (from().layer === to().layer)
+    return [stubPoint];
+  let fromCol = from().col, 
+      curCol = fromCol,
+      toCol = to().col,
+      fromRow = from().row,
+      curRow = fromRow,
+      toRow = to().row,
+      fromX = from.position().x,
+      fromY = from.position().y,
+      toX = to.position().x,
+      toY = to.position().y,
+      x = d3.scaleLinear().domain([fromCol,toCol]).range([fromX,toX]),
+      y = d3.scaleLinear().domain([fromRow,toRow]).range([fromY,toY]);
+  let rowsBetween = _.range(fromRow, toRow).slice(1);
+  let edgeLength = pointToPointDist(x(fromCol),y(fromRow),x(toCol),y(toRow));
+  let points = rowsBetween.map(
+    (nextRow,i) => {
+      let colsRemaining = toCol - curCol;
+      let colsNow = Math.ceil(colsRemaining / Math.abs(toRow - curRow));
+      let nextCol = findEmptyGridCol(nextRow, curCol, curCol + colsNow, rowContents);
+      let curX = x(curCol), curY = y(curRow),
+          nextX = x(nextCol), nextY = y(nextRow);
+      let [distanceFromEdge, distanceOnEdge] = 
+            perpendicular_coords(curX, curY, toX, toY, nextX, nextY);
+
+      let point = {curCol, curRow, 
+                    toCol, toRow,
+                    nextCol, nextRow,
+                    curX, curY, toX, toY, nextX, nextY,
+                    edgeLength,
+                    colsNow,
+                    //wayCol, wayRow,
+                    distance:-distanceFromEdge * 2, 
+                    weight:distanceOnEdge / edgeLength,
+                  };
+      curCol = nextCol;
+      curRow = nextRow;
+      return point;
+    });
+  if (points.length === 0)
+      return [stubPoint];
+  return points;
 }
