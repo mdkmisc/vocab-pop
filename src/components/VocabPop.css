@@ -107,14 +107,33 @@ span.aside {
 }
 
 /* concept/count types */
-.standard, .rc {
-  color: #0070dd;
+div.standard, div.rc {
+  background-color: rgba(0,119,221,0.3);
+  width: 100%;
 }
-.classification, .drc {
-  color: rgb(163, 53, 238);
+div.classification, div.drc {
+  background-color: rgba(163, 53, 238,0.3);
+  width: 100%;
 }
-.source, .src {
-  color: pink;
+div.source, div.src {
+  background-color: rgba(220,20,60,0.3);
+  width: 100%;
+}
+div.source, div.dsrc {
+  background-color: rgba(120,20,60,0.3);
+  width: 100%;
+}
+.standard>div, .rc>div {
+  border-color: rgba(0,119,221,1);
+}
+.classification>div, .drc>div {
+  border-color: rgba(163, 53, 238,1);
+}
+.source>div, .src>div {
+  border-color: rgba(220,20,60,1);
+}
+.source>div, .dsrc>div {
+  border-color: rgba(120,20,60,1);
 }
 
 /* from sigma.js freelstyle svg example */
@@ -137,18 +156,26 @@ span.aside {
 .sigma-node:hover {
   fill: blue;
 }
-.muted {
+.muted, .muted>div {
+  opacity: 0.1;
   fill-opacity: 0.1;
   stroke-opacity: 0.1;
 }
 foreignObject.fo-node {
-  border: 3px solid purple;
-  padding: 2px;
-  border-radius: 8px;
   cursor: pointer;
   font-size: small;
+  position: relative;
 }
 .fo-div {
-  margin: 2px;
-  font-size: small;
+  border: 3px;
+  border-style: solid;
+  padding: 4px;
+  border-radius: 8px;
+  background-color: white;
+}
+foreignObject.sigma-node.parent>div {
+  font-size: large;
+  background-color: aliceblue;
+  pointer-events: none;
+  border: 1px solid steelblue;
 }

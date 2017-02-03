@@ -22,6 +22,10 @@ export default function(sigma) {
       fo.setAttributeNS(null, 'data-node-id', node.id);
       fo.setAttributeNS(null, 'class', settings('classPrefix') + '-node');
       fo.setAttributeNS( null, 'fill', node.color || settings('defaultNodeColor'));
+      fo.setAttributeNS(null, 'x', node[prefix + 'x']);
+      fo.setAttributeNS(null, 'y', node[prefix + 'y']);
+      //fo.setAttributeNS(null, 'width', 0);
+      //fo.setAttributeNS(null, 'height', 0);
       fo.__node__ = node;
 
       node.fo = fo;
@@ -42,32 +46,45 @@ export default function(sigma) {
       let stub = document.createElementNS(d3.namespaces.svg, 'foreignObject');
       stub.innerHTML = node.info || node.label;
       let s = $(stub).appendTo(fo.parentNode);
-      let cbr = stub.getBoundingClientRect();
       fo.innerHTML = node.info;
       let w = s.width();
       let h = s.height();
       */
-      let content = `<div>${node.info || node.label}</div>`;
-      let c = $(content).appendTo($(fo).closest('svg').parent()[0]);
-      c.addClass('fo-div');
-      c.css('position','absolute');
-      c.css('font-size','large');
+      let content = `<div class="fo-div">${node.info || node.label}</div>`;
+      //let c = $(content).appendTo($(fo).closest('svg').parent()[0]);
+      //c.addClass('fo-div');
+      //c.css('position','absolute');
+      //c.css('font-size','large');
       //let cbr = fo.childNodes[0].getBoundingClientRect(), w = cbr.width, h = cbr.height;
-      let w = c.width(), h = c.height();
-      c.css('position','');
-      let t = `<g>${c[0].outerHTML}</g>`;
-      fo.innerHTML = t;
+      //let w = c.width(), h = c.height();
+      //c.remove();
+      //c.css('position','');
+      if (fo.innerHTML === content) {
+        fo.style.display = '';
+        fo.setAttributeNS(null, 'x', node[prefix + 'x'] - $(fo).width() / 2);
+        fo.setAttributeNS(null, 'y', node[prefix + 'y'] - $(fo).height() / 2);
+        return this;
+      }
+      fo.setAttributeNS(null, 'class', 'fo-node ' + (node.classes || ''));
+      fo.innerHTML = content; //c[0].outerHTML; //`<g>${c[0].outerHTML}</g>`;
+      $(fo.childNodes[0]).css('position','absolute');
+      let cbr = fo.childNodes[0].getBoundingClientRect(), w = cbr.width, h = cbr.height;
+      $(fo.childNodes[0]).css('position','');
+      $(fo).width(w).height(h);
+      fo.setAttributeNS(null, 'x', node[prefix + 'x'] - w / 2);
+      fo.setAttributeNS(null, 'y', node[prefix + 'y'] - h / 2);
+      //$('fo').find('div').width(w).height(h).left(-w/2).top(-h/2);
       //c.appendTo(fo);
 
       //let w = 100, h = 40;
       //var bcr = fo.getBoundingClientRect();
       // Applying changes
       // TODO: optimize - check if necessary
-      fo.setAttributeNS(null, 'x', node[prefix + 'x'] - w / 2);
-      fo.setAttributeNS(null, 'y', node[prefix + 'y'] - h / 2);
+      /*
       fo.setAttributeNS(null, 'width', w);
       fo.setAttributeNS(null, 'height', h);
-      fo.setAttributeNS(null, 'class', node.classes || '');
+      $(fo).find('div').css('font-size', '8px');
+      */
       //fo.css('font-size','small');
 
       // Updating only if not freestyle

@@ -31,12 +31,14 @@ nodeRenderer(sigma);
 
 var $ = require('jquery'); window.$ = $;
 
-let maxNodesPerRow = 4;
+let maxNodesPerRow = 5; // actual rows will have twice this to make room for stubs
+                        // though not using stubs right now (they're for wayppoints,
+                        // which are for drawing edges between nodes)
 let rowsBetweenLayers = 1;
 
 function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function makeNode(id, label, layer, parent) {
-    let node = { id, size: 1, color: 'orange', };
+    let node = { id, size: 1, };
     if (typeof label !== 'undefined') node.label = label;
     if (typeof layer !== 'undefined') {
       node.layer = layer;
@@ -57,14 +59,14 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                         label = voc.toString() + ' ' + biggest,
                         info =
                           [voc.toString()].concat(_.map(counts,
-                            (cnt,fld) => `<span class="${fld}">${fld}: ${commify(cnt)}</span>`
-                                        )).join('<br/>'),
+                            (cnt,fld) => `<div class="${fld}">${fld}:&nbsp;${commify(cnt)}</div>`
+                                        )).join('\n'),
                         layer = ({'C': 0, 'S': 1, 'X': 2})[sc.toString()],
                         parent = ['Classification','Standard','Source'][layer];
                     let node = makeNode(id, label,layer, parent);
                     node.info = info;
                     node.biggestCount = biggest;
-                    node.classes = `${biggest} fo-node`;
+                    node.classes = `${biggest} fo-node sigma-node`;
                     node.sgVal = voc;
                     return node;
                   })));
@@ -90,8 +92,10 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
         nodesInRowsByLayer
           .map(d=>d.length)
           .map((d,i,a) => _.sum(a.slice(0,i)) + i * rowsBetweenLayers + i * 1);
-  window.colOffset = colOffset;
-  let rowContents = {};
+  window.colOffset = colOffset; // need console access to function while testing
+  //let rowContentsForWayPoints = {}; // was working for waypoints, but not using waypoints now
+                                      // and need rowContents for re-adjusting pos after size available
+                                      // which is going to mess up waypoints anyway
   nodes.filter(d=>!d.isParent).forEach((node) => {
     let nodesInRows = nodesInRowsByLayer[node.layer];
     nodesInRows.forEach(
@@ -110,22 +114,23 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                                                     nodesInRowsByLayer[node.layer]);
               }
             });
-    let row = _.get(rowContents, [node.row, node.col]) || [];
-    row.push(node);
-    _.set(rowContents, [node.row, node.col], row);
-    //if (node.layer === 2 && node.layerIdx > 3) debugger;
+    // replacing waypoints stuff because not using, but might need again sometime
+    //let row = _.get(rowContentsForWayPoints, [node.row, node.col]) || [];
+    //row.push(node);
+    //_.set(rowContentsForWayPoints, [node.row, node.col], row);
   });
-  let x = d3.scaleLinear().domain([0,d3.max(nodes.map(d=>d.col))]);
-  let y = d3.scaleLinear().domain(d3.extent(nodes.map(d=>d.row)));
+  let x = d3.scaleLinear().domain([-2,d3.max(nodes.map(d=>d.col))]);
+  let y = d3.scaleLinear().domain(d3.extent(nodes.map(d=>d.row))).range([.2,.8]);
   window.x = x; window.y = y;
   nodes.forEach(node => {
     node.x = x(node.col);
     node.y = y(node.row);
   });
+  let lowestX = _.min(nodes.map(d=>d.x));
   let nodeGroups = [
-        { isParent: true, id: 'Classification', label: 'Classification', x:x(0), y:y(layerStartRows[0]), size:2 },
-        { isParent: true, id: 'Standard', label: 'Standard', x:x(0), y:y(layerStartRows[1]), size:2 },
-        { isParent: true, id: 'Source', label: 'Source', x:x(0), y:y(layerStartRows[2]), size:2 },
+        { classes: 'sigma-node parent', isParent: true, id: 'Classification', label: 'Classification', x:x(-2), y:y(layerStartRows[0]), size:2 },
+        { classes: 'sigma-node parent', isParent: true, id: 'Standard', label: 'Standard', x:x(-2), y:y(layerStartRows[1]), size:2 },
+        { classes: 'sigma-node parent', isParent: true, id: 'Source', label: 'Source', x:x(-2), y:y(layerStartRows[2]), size:2 },
   ];
   nodes = nodes.concat(nodeGroups);
   
@@ -137,7 +142,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                   /*
                   let from = s.nodes(d.toString()),
                       to = s.nodes(d.parent.namePath(',')),
-                      points = waypoints(from, to, rowContents);
+                      points = waypoints(from, to, rowContentsForWayPoints);
                   */
                   let e = edge(d.toString(), d.parent.namePath(','));
                   //e.waypoints = points;
@@ -161,7 +166,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     container: domnode,
     //freeStyle: true
   });
-  s.camera.ratio = 1.4;
+  s.camera.ratio = .9;
 
   // Binding silly interactions
   function mute(node) {
@@ -188,23 +193,30 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     });
   */
   s.refresh();
-  //$('.fo-node').appendTo('svg.sigma-svg');
-
-
+  let rows = _.groupBy(s.graph.nodes(), d=>d.row);
+  _.each(rows, nodes => {
+    if (nodes && nodes.length && nodes[0].isParent) return;
+    let prevPositions = nodes.map(d=>d.x);
+    let widths = nodes.map(d=>parseInt(d.fo.style.width));
+    let centers = widths.map((w,i,a) => _.sum(a.slice(0,i)) + w/2);
+    let s = d3.scaleLinear().range([lowestX,1]).domain([0,_.sum(widths)]);
+    nodes.forEach((node,i) => node.x = s(centers[i]));
+  });
+  s.refresh();
+      
 
   $('.fo-node').hover(function(e) {
-      // Unmuting neighbors
       var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
-      neighbors.nodes.forEach(function(node) {
-        unmute($('[data-node-id="' + node.id + '"]')[0]);
-      });
-
-      neighbors.edges.forEach(function(edge) {
-        unmute($('[data-edge-id="' + edge.id + '"]')[0]);
-      });
       // Muting
       $('.sigma-node, .sigma-edge').each(function() {
         mute(this);
+      });
+      // Unmuting neighbors
+      neighbors.nodes.forEach(function(node) {
+        unmute($('[data-node-id="' + node.id + '"]')[0]);
+      });
+      neighbors.edges.forEach(function(edge) {
+        unmute($('[data-edge-id="' + edge.id + '"]')[0]);
       });
       /*
       let node = this.__node__;
@@ -219,9 +231,11 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       */
     },
     function(e) {
+      /*
       $(this).height(40);
       let node = this.__node__;
       this.innerHTML = node.label;
+      */
       $('.sigma-node, .sigma-edge').each(function() {
         unmute(this);
       });
@@ -378,12 +392,12 @@ function colOffset(row, nodesInRows, max=maxNodesPerRow) {
   }
   return offset;
 }
-function findEmptyGridCol(row, fromCol, targetCol, rowContents) {
+function findEmptyGridCol(row, fromCol, targetCol, rowContentsForWayPoints) {
   // for now just leave these empty and don't try to spread waypoints
-  let targetGridLocation = _.get(rowContents, [row, targetCol]);
+  let targetGridLocation = _.get(rowContentsForWayPoints, [row, targetCol]);
   if (!targetGridLocation) return targetCol;
   let newTarget = targetCol > fromCol ? targetCol - 1 : targetCol + 1;
-  targetGridLocation = _.get(rowContents, [row, newTarget]);
+  targetGridLocation = _.get(rowContentsForWayPoints, [row, newTarget]);
   if (!targetGridLocation) return newTarget;
   throw new Error("can't find an empty grid col");
 }
@@ -429,7 +443,7 @@ function edge(from, to) {
     target: to,
   };
 }
-function waypoints(from, to, rowContents) {
+function waypoints(from, to, rowContentsForWayPoints) {
   let stubPoint = { row: from().row, col: from().col, 
                     distance: 0, weight: .5, };
   if (from().layer === to().layer)
@@ -452,7 +466,7 @@ function waypoints(from, to, rowContents) {
     (nextRow,i) => {
       let colsRemaining = toCol - curCol;
       let colsNow = Math.ceil(colsRemaining / Math.abs(toRow - curRow));
-      let nextCol = findEmptyGridCol(nextRow, curCol, curCol + colsNow, rowContents);
+      let nextCol = findEmptyGridCol(nextRow, curCol, curCol + colsNow, rowContentsForWayPoints);
       let curX = x(curCol), curY = y(curRow),
           nextX = x(nextCol), nextY = y(nextRow);
       let [distanceFromEdge, distanceOnEdge] = 
