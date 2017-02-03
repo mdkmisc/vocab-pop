@@ -1,8 +1,11 @@
+import React, { Component } from 'react';
+import {render} from 'react-dom';
+import {VNode, VNodeLabel} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 export default function(sigma) {
   sigma.utils.pkg('sigma.svg.nodes');
-  labelRenderer(sigma);
+  //labelRenderer(sigma);
 
   /**
    * The default node renderer. It renders the node as a simple disc.
@@ -16,6 +19,9 @@ export default function(sigma) {
      * @param  {configurable}             settings The settings function.
      */
     create: function(node, settings) {
+      let g = document.createElementNS(d3.namespaces.svg, 'g');
+      render(<VNode sigmaNode={node} sigmaSettings={settings} />, g);
+      return g;
       var prefix = settings('prefix') || '',
           fo = document.createElementNS(d3.namespaces.svg, 'foreignObject');
 
@@ -40,25 +46,13 @@ export default function(sigma) {
      * @param  {DOMElement}               fo       The node DOM element.
      * @param  {configurable}             settings The settings function.
      */
-    update: function(node, fo, settings) {
-      var prefix = settings('prefix') || '';
+    update: function(node, el, settings) {
+      el.style.display = '';
+      node.update(node, el, settings);
+      return this;
       /*
-      let stub = document.createElementNS(d3.namespaces.svg, 'foreignObject');
-      stub.innerHTML = node.info || node.label;
-      let s = $(stub).appendTo(fo.parentNode);
-      fo.innerHTML = node.info;
-      let w = s.width();
-      let h = s.height();
-      */
+      var prefix = settings('prefix') || '';
       let content = `<div class="fo-div">${node.info || node.label}</div>`;
-      //let c = $(content).appendTo($(fo).closest('svg').parent()[0]);
-      //c.addClass('fo-div');
-      //c.css('position','absolute');
-      //c.css('font-size','large');
-      //let cbr = fo.childNodes[0].getBoundingClientRect(), w = cbr.width, h = cbr.height;
-      //let w = c.width(), h = c.height();
-      //c.remove();
-      //c.css('position','');
       if (fo.innerHTML === content) {
         fo.style.display = '';
         fo.setAttributeNS(null, 'x', node[prefix + 'x'] - $(fo).width() / 2);
@@ -73,29 +67,13 @@ export default function(sigma) {
       $(fo).width(w).height(h);
       fo.setAttributeNS(null, 'x', node[prefix + 'x'] - w / 2);
       fo.setAttributeNS(null, 'y', node[prefix + 'y'] - h / 2);
-      //$('fo').find('div').width(w).height(h).left(-w/2).top(-h/2);
-      //c.appendTo(fo);
-
-      //let w = 100, h = 40;
-      //var bcr = fo.getBoundingClientRect();
-      // Applying changes
-      // TODO: optimize - check if necessary
-      /*
-      fo.setAttributeNS(null, 'width', w);
-      fo.setAttributeNS(null, 'height', h);
-      $(fo).find('div').css('font-size', '8px');
-      */
-      //fo.css('font-size','small');
-
-      // Updating only if not freestyle
       if (!settings('freeStyle'))
         fo.setAttributeNS(null, 'fill', node.color || settings('defaultNodeColor'));
 
       // Showing
       fo.style.display = '';
-
-
       return this;
+      */
     }
   };
 }
@@ -111,6 +89,11 @@ function labelRenderer(sigma) {
      * @param  {configurable}             settings   The settings function.
      */
     create: function(node, settings) {
+      var prefix = settings('prefix') || '',
+          size = node[prefix + 'size'],
+          div = document.createElementNS(settings('xmlns'), 'div');
+      render(<VNodeLabel sigmaNode={node} sigmaSettings={settings} />, div);
+      return div;
       return node.fo;
       /*
       var prefix = settings('prefix') || '',

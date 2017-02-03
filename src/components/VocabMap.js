@@ -18,6 +18,7 @@ Copyright 2016 Sigfried Gold
 import React, { Component } from 'react';
 var d3 = require('d3');
 import _ from 'supergroup'; // in global space anyway
+var $ = require('jquery'); window.$ = $;
 
 import * as AppState from '../AppState';
 import {commify} from '../utils';
@@ -29,17 +30,86 @@ var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min
 import nodeRenderer from './sigmaSvgNodeRenderer';
 nodeRenderer(sigma);
 
-var $ = require('jquery'); window.$ = $;
+
+export class VNode extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {w:0, h:0};
+  }
+  componentDidMount() {
+    const {sigmaNode, sigmaSettings} = this.props;
+    sigmaNode.update = this.update.bind(this);
+  }
+  update(node, el, settings) {
+    const {sigmaNode, sigmaSettings} = this.props;
+    let w=0,h=0;
+    if (this.content) {
+      this.content.style.position = 'absolute';
+      let cbr = this.content.getBoundingClientRect(); 
+      this.content.style.position = '';
+      w = cbr.width; 
+      h = cbr.height;
+    }
+    this.setState({node, el, settings, w, h});
+  }
+  /*
+  componentDidUpdate() {
+    const {sigmaNode, sigmaSettings} = this.props;
+    if (this.content) {
+    }
+  }
+  */
+  render() {
+    const {sigmaNode, sigmaSettings} = this.props;
+    const {node, el, settings, w, h} = this.state;
+    let prefix = sigmaSettings('prefix') || '';
+    return (<foreignObject r="6"
+              data-node-id={sigmaNode.id}
+              className={'voc-node ' + (sigmaNode.classes || '')}
+              x={sigmaNode[`${prefix}x`] - w/2}
+              y={sigmaNode[`${prefix}y`] - h/2}
+              width={w}
+              height={h}
+            >
+              <div  className="voc-div" 
+                    ref={d=>this.content=d} 
+                    //style={{pointerEvents:'none'}}
+              >
+                <div className="caption">{sigmaNode.caption}</div>
+                { sigmaNode.counts 
+                  ?  _.map(sigmaNode.counts,
+                          (v,k)=> <div className={"info " + k} key={k}>
+                                    {k}:&nbsp;{commify(v)}
+                                  </div>)
+                  : ''}
+              </div>
+            </foreignObject>);
+    return <circle r="6"
+              data-node-id={sigmaNode.id}
+              className={'voc-node ' + (sigmaNode.classes || '')}
+              cx={sigmaNode[`${prefix}x`]}
+              cy={sigmaNode[`${prefix}y`]}
+            />;
+  }
+}
+export class VNodeLabel extends Component {
+  render() {
+    const {sigmaNode, sigmaSettings} = this.props;
+    return <p>NOT USING{sigmaNode.label}</p>;
+  }
+}
+
+
+
 
 let maxNodesPerRow = 5; // actual rows will have twice this to make room for stubs
                         // though not using stubs right now (they're for wayppoints,
                         // which are for drawing edges between nodes)
 let rowsBetweenLayers = 1;
-
 function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function makeNode(id, label, layer, parent) {
     let node = { id, size: 1, };
-    if (typeof label !== 'undefined') node.label = label;
+    if (typeof label !== 'undefined') node.caption = label;
     if (typeof layer !== 'undefined') {
       node.layer = layer;
       node.layerIdx = nodesInLayers[layer]++;
@@ -56,18 +126,21 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                     let biggest = _.isEmpty(counts) ?
                           '' : _.last(_.sortBy(_.toPairs(counts), 1))[0];
                     let id = voc.namePath(','),
-                        label = voc.toString() + ' ' + biggest,
+                        label = voc.toString(), // + ' ' + biggest,
+                          /*
                         info =
                           [voc.toString()].concat(_.map(counts,
                             (cnt,fld) => `<div class="${fld}">${fld}:&nbsp;${commify(cnt)}</div>`
                                         )).join('\n'),
+                          */
                         layer = ({'C': 0, 'S': 1, 'X': 2})[sc.toString()],
                         parent = ['Classification','Standard','Source'][layer];
                     let node = makeNode(id, label,layer, parent);
-                    node.info = info;
+                    //node.info = info;
                     node.biggestCount = biggest;
                     node.classes = `${biggest} fo-node sigma-node`;
                     node.sgVal = voc;
+                    node.counts = counts;
                     return node;
                   })));
   // split wide layers
@@ -128,9 +201,9 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   });
   let lowestX = _.min(nodes.map(d=>d.x));
   let nodeGroups = [
-        { classes: 'sigma-node parent', isParent: true, id: 'Classification', label: 'Classification', x:x(-2), y:y(layerStartRows[0]), size:2 },
-        { classes: 'sigma-node parent', isParent: true, id: 'Standard', label: 'Standard', x:x(-2), y:y(layerStartRows[1]), size:2 },
-        { classes: 'sigma-node parent', isParent: true, id: 'Source', label: 'Source', x:x(-2), y:y(layerStartRows[2]), size:2 },
+        { classes: 'sigma-node parent', isParent: true, id: 'Classification', caption: 'Classification', x:x(-2), y:y(layerStartRows[0]), size:2 },
+        { classes: 'sigma-node parent', isParent: true, id: 'Standard', caption: 'Standard', x:x(-2), y:y(layerStartRows[1]), size:2 },
+        { classes: 'sigma-node parent', isParent: true, id: 'Source', caption: 'Source', x:x(-2), y:y(layerStartRows[2]), size:2 },
   ];
   nodes = nodes.concat(nodeGroups);
   
@@ -154,8 +227,10 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   let s = new sigma({
     graph: { nodes, edges },
     settings: {
-      labelSize: 'proportional',
-      labelThreshold: 6,
+      drawLabels: false,
+      drawEdgeLabels: false,
+      //labelSize: 'proportional',
+      //labelThreshold: 6,
       //enableHovering: false,
     }
   });
@@ -178,19 +253,9 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     node.setAttributeNS(null, 'class', node.getAttribute('class').replace(/(\s|^)muted(\s|$)/g, '$2'));
   }
   s.refresh();
-  let rows = _.groupBy(s.graph.nodes(), d=>d.row);
-  _.each(rows, nodes => {
-    if (nodes && nodes.length && nodes[0].isParent) return;
-    let prevPositions = nodes.map(d=>d.x);
-    let widths = nodes.map(d=>parseInt(d.fo.style.width));
-    let centers = widths.map((w,i,a) => _.sum(a.slice(0,i)) + w/2);
-    let s = d3.scaleLinear().range([lowestX,1]).domain([0,_.sum(widths)]);
-    nodes.forEach((node,i) => node.x = s(centers[i]));
-  });
-  s.refresh();
-      
-
-  $('.fo-node').hover(function(e) {
+  window.s = s;
+  window.sg = sg;
+  $('.voc-node').hover(function(e) {
       var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
       // Muting
       $('.sigma-node, .sigma-edge').each(function() {
@@ -203,6 +268,9 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       neighbors.edges.forEach(function(edge) {
         unmute($('[data-edge-id="' + edge.id + '"]')[0]);
       });
+      $('.sigma-node.parent').each(function() {
+        unmute(this);
+      });
     },
     function(e) {
       $('.sigma-node, .sigma-edge').each(function() {
@@ -210,7 +278,25 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       });
     }
   );
+  return s;
 
+
+
+
+  let rows = _.groupBy(s.graph.nodes(), d=>d.row);
+  _.each(rows, nodes => {
+    if (nodes && nodes.length && nodes[0].isParent) return;
+    let prevPositions = nodes.map(d=>d.x);
+    let widths = nodes.map(d=>parseInt(d.fo.style.width));
+    let centers = widths.map((w,i,a) => _.sum(a.slice(0,i)) + w/2);
+    let s = d3.scaleLinear().range([lowestX,1]).domain([0,_.sum(widths)]);
+    nodes.forEach((node,i) => node.x = s(centers[i]));
+  });
+  s.refresh();
+      
+
+
+  /*
   window.s = s;
   window.sg = sg;
   window.waypoints = waypoints;
@@ -219,6 +305,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   window.rotateRad = rotateRad;
   window.perpendicular_coords = perpendicular_coords;
   return s;
+  */
 }
 function sgPrep(classRecs) {
   if (!classRecs.length) throw new Error("no classRecs");

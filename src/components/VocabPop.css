@@ -161,12 +161,12 @@ div.source, div.dsrc {
   fill-opacity: 0.1;
   stroke-opacity: 0.1;
 }
-foreignObject.fo-node {
+foreignObject.voc-node {
   cursor: pointer;
   font-size: small;
   position: relative;
 }
-.fo-div {
+.voc-div {
   border: 3px;
   border-style: solid;
   padding: 4px;
