@@ -177,21 +177,6 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function unmute(node) {
     node.setAttributeNS(null, 'class', node.getAttribute('class').replace(/(\s|^)muted(\s|$)/g, '$2'));
   }
-  /* from event example: do these work with svg?
-    // Bind the events:
-    s.bind('overNode outNode clickNode doubleClickNode rightClickNode', function(e) {
-      console.log(e.type, e.data.node.label, e.data.captor);
-    });
-    s.bind('overEdge outEdge clickEdge doubleClickEdge rightClickEdge', function(e) {
-      console.log(e.type, e.data.edge, e.data.captor);
-    });
-    s.bind('clickStage', function(e) {
-      console.log(e.type, e.data.captor);
-    });
-    s.bind('doubleClickStage rightClickStage', function(e) {
-      console.log(e.type, e.data.captor);
-    });
-  */
   s.refresh();
   let rows = _.groupBy(s.graph.nodes(), d=>d.row);
   _.each(rows, nodes => {
@@ -218,67 +203,13 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       neighbors.edges.forEach(function(edge) {
         unmute($('[data-edge-id="' + edge.id + '"]')[0]);
       });
-      /*
-      let node = this.__node__;
-      let fo = document.createElementNS(d3.namespaces.svg, 'foreignObject');
-      fo.innerHTML = node.info;
-      fo.setAttributeNS(null, 'x', node[prefix + 'x'] - w / 2);
-      fo.setAttributeNS(null, 'y', node[prefix + 'y'] - h / 2);
-      //fo.setAttributeNS(null, 'width', w);
-      //fo.setAttributeNS(null, 'height', h);
-      fo.setAttributeNS(null, 'class', node.classes);
-      $(this).replaceWith(el);
-      */
     },
     function(e) {
-      /*
-      $(this).height(40);
-      let node = this.__node__;
-      this.innerHTML = node.label;
-      */
       $('.sigma-node, .sigma-edge').each(function() {
         unmute(this);
       });
     }
   );
-
-  /*
-  cy.on('tap', evt => {
-    let el = evt.cyTarget;
-    if (el === cy) {
-      //console.log("tapped background");
-    } else {
-      if (el.group() === 'edges')
-        return false;
-      if (el().isParent)
-        return false;
-      //console.log('tapped', (el && el()) || 'no data', (el.id && el.id()) || 'no id');
-    }
-  });
-  cy.on('mouseover', evt => {
-    let el = evt.cyTarget;
-    if (el === cy) {
-    } else {
-      if (el().isParent)
-        return false;
-      //el.select();
-      el.activate();
-      el.neighborhood().forEach(e => e.activate());
-      if (el.group() === 'edges') {
-        //console.log('edge mouseover', el && el() || 'no data', el.id && el.id() || 'no id');
-        return false;
-      }
-      msgDiv.innerHTML = el().info;
-      console.log(domnode);
-      //console.log('node mouseover', el && el() || 'no data', el.id && el.id() || 'no id');
-    }
-  });
-  cy.on('mouseout', evt => {
-    let el = evt.cyTarget;
-    el.unactivate && el.unactivate();
-    el.neighborhood().forEach(e => e.unactivate && e.unactivate());
-  });
-  */
 
   window.s = s;
   window.sg = sg;
@@ -297,29 +228,37 @@ function sgPrep(classRecs) {
   let sg = _.supergroup(classRecs, classRecs[0].grpset);
   sg.addLevel('linknodes',{multiValuedGroup:true});
   return sg;
-
-  /*
-  let sg = _.supergroup(classRecs, 'domain_id'); // have to deal with two
-  let sg = _.supergroup(classRecs, d=>_.uniq([d.domain_id_1, d.domain_id_2]),
-                    {dimName: 'domain_id', multiValuedGroup:true});
-
-  // have to make sure I get a node for each box whether it's in _1 or _2
-  // but I don't want two nodes for the same sc/vocab combo
-  sg.addLevel( d=>[`${d.sc_1}:${d.vocab_1}`, `${d.sc_2}:${d.vocab_2}`],
-                    {dimName: 'linkFrom', multiValuedGroup:true});
-
-  sg.addLevel(
-    d => {
-      if (d.toString() === `${d.sc_1}:${d.vocab_1}`) {
-        return `${d.sc_2}:${d.vocab_2}`;
-      } else {
-        return `${d.sc_1}:${d.vocab_1}`;
-      }
-    },
-    {dimName: 'linkTo'});
-
-  return sg;
-  */
+}
+export default class VocabMap extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
+    this.setState({mounted:true}); // force a rerender after div ref available
+  }
+  componentDidUpdate() {
+    const {sg, width, height} = this.props;
+    if (this.graphDiv && sg && sg.length) {
+      this.cy = sigmaGraph(sg.getChildren(), this.graphDiv, width, height, 
+                           70, 40, this.msgDiv);
+    }
+  }
+  render() {
+    const {sg, width, height} = this.props;
+    return (<div style={{
+                        float: 'left', 
+                        margin: 5,
+                        border: '1px solid blue',
+                        position: 'relative',
+                    }} >
+              <h4><a href="#" onClick={()=>AppState.saveState({domain_id:sg.toString()})}> {sg.toString()}</a></h4>
+              <div style={{ position: 'absolute', right: '10px',}} ref={div=>this.msgDiv=div} />
+              <div ref={div=>this.graphDiv=div} 
+                   style={{ width: `${width}px`, height: `${height}px`, }}
+              />
+            </div>);
+  }
 }
 export class VocabMapByDomain extends Component {
   render() {
@@ -341,37 +280,6 @@ export class VocabMapByDomain extends Component {
     } else {
       return <div/>;
     }
-  }
-}
-export default class VocabMap extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-  }
-  componentDidMount() {
-    this.setState({mounted:true}); // force a rerender after div ref available
-  }
-  componentDidUpdate() {
-    const {sg, width, height} = this.props;
-    if (this.graphDiv && sg && sg.length) {
-      //this.cy = cytoGraph(sg.getChildren(), this.graphDiv, width, height, 70, 40, this.msgDiv);
-      this.cy = sigmaGraph(sg.getChildren(), this.graphDiv, width, height, 70, 40, this.msgDiv);
-    }
-  }
-  render() {
-    const {sg, width, height} = this.props;
-    return (<div style={{
-                        float: 'left', 
-                        margin: 5,
-                        border: '1px solid blue',
-                        position: 'relative',
-                    }} >
-              <h4><a href="#" onClick={()=>AppState.saveState({domain_id:sg.toString()})}> {sg.toString()}</a></h4>
-              <div style={{ position: 'absolute', right: '10px',}} ref={div=>this.msgDiv=div} />
-              <div ref={div=>this.graphDiv=div} 
-                   style={{ width: `${width}px`, height: `${height}px`, }}
-              />
-            </div>);
   }
 }
 function colOffset(row, nodesInRows, max=maxNodesPerRow) {
