@@ -149,7 +149,7 @@ export class Home extends Component {
     this.stateSub.unsubscribe();
   }
   render() {
-    const {filters, domain_id} = this.props;
+    //const {filters, domain_id} = this.props;
     var conceptCount = this.state.conceptCount || 0;
     console.log(this.props);
     return  <div>
@@ -183,7 +183,7 @@ class ConceptBrowse extends Component {
     const {
             //domain_id, 
             children, counts, agg, classes, cols} = this.props;
-    console.log(classes, agg);
+    //console.log(classes, agg);
     return  <div>
               <div>
                 <VocabMapByDomain

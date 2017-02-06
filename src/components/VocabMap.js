@@ -16,6 +16,9 @@ Copyright 2016 Sigfried Gold
 // @flow
 // npm run-script flow
 import React, { Component } from 'react';
+import { Glyphicon
+          //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label
+       } from 'react-bootstrap';
 var d3 = require('d3');
 import _ from 'supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
@@ -39,6 +42,29 @@ export class VNode extends Component {
   componentDidMount() {
     const {sigmaNode, sigmaSettings} = this.props;
     sigmaNode.update = this.update.bind(this);
+    let self = this;
+    AppState.ephemeralEventStream.subscribe(
+      e => {
+        if (sigmaNode.id !== e.jqEvt.target.closest('foreignObject').getAttribute('data-node-id'))
+          return;
+        switch (e.jqEvt.type) {
+          case 'mouseover':
+            self.setState({hover:true});
+            break;
+          case 'mouseout':
+            self.setState({hover:false});
+            break;
+          case 'click':
+            if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
+              console.log(sigmaNode.id, 'zoom');
+            } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
+              console.log(sigmaNode.id, 'list');
+            }
+            break;
+          default:
+            console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+        }
+      });
   }
   update(node, el, settings) {
     const {sigmaNode, sigmaSettings} = this.props;
@@ -59,10 +85,29 @@ export class VNode extends Component {
     }
   }
   */
+  nodeEvent(e) {
+    console.log('react event', this, e);
+  }
   render() {
     const {sigmaNode, sigmaSettings} = this.props;
-    const {node, el, settings, w, h} = this.state;
+    const {node, el, settings, w, h, hover} = this.state;
     let prefix = sigmaSettings('prefix') || '';
+    let icons = '';
+    //if (hover)
+      icons = <span className="icons" // sigma chokes on events for elements without classes
+                style={{display:this.state.hover ? 'inline' : 'none',}}
+              >
+                <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
+                  onClick={this.nodeEvent.bind(this)}
+                  title="Drill down to concept classes"
+                  //onMouseOver={this.nodeEvent.bind(this)}
+                  //onMouseOut={this.nodeEvent.bind(this)}
+                />
+                <Glyphicon glyph="list" style={{pointerEvents:'auto'}} 
+                  title="Show sample records"
+                />
+              </span>;
+                  
     return (<foreignObject r="6"
               data-node-id={sigmaNode.id}
               className={'voc-node ' + (sigmaNode.classes || '')}
@@ -70,12 +115,14 @@ export class VNode extends Component {
               y={sigmaNode[`${prefix}y`] - h/2}
               width={w}
               height={h}
+              onClick={this.nodeEvent.bind(this)}
+              //onMouseOver={this.nodeEvent.bind(this)}
+              //onMouseOut={this.nodeEvent.bind(this)}
             >
-              <div  className="voc-div" 
-                    ref={d=>this.content=d} 
-                    //style={{pointerEvents:'none'}}
-              >
-                <div className="caption">{sigmaNode.caption}</div>
+              <div  className="voc-div" ref={d=>this.content=d} >
+                <div className="caption" >
+                  {sigmaNode.caption}{icons}
+                </div>
                 { sigmaNode.counts 
                   ?  _.map(sigmaNode.counts,
                           (v,k)=> <div className={"info " + k} key={k}>
@@ -229,9 +276,11 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     settings: {
       drawLabels: false,
       drawEdgeLabels: false,
+      //enableHovering: false,
+      //mouseEnabled: false,
+      //eventsEnabled: false,
       //labelSize: 'proportional',
       //labelThreshold: 6,
-      //enableHovering: false,
     }
   });
 
@@ -242,6 +291,19 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     //freeStyle: true
   });
   s.camera.ratio = .9;
+  /*
+  s.bind('clickNode', function(e) {
+    console.log('sigma', e.type, e.data.node);
+    AppState.ephemeralEventStream.next(e);
+  });
+  */
+  s.refresh();
+  $('.voc-node')
+    .on('click mouseover mouseout drag',
+        function(e) {
+          //console.log(e.type, this);
+          AppState.ephemeralEventStream.next({jqEvt:e, domNode:this});
+        });
 
   // Binding silly interactions
   function mute(node) {
@@ -252,10 +314,10 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function unmute(node) {
     node.setAttributeNS(null, 'class', node.getAttribute('class').replace(/(\s|^)muted(\s|$)/g, '$2'));
   }
-  s.refresh();
   window.s = s;
   window.sg = sg;
-  $('.voc-node').hover(function(e) {
+  /*
+  $('.sigma-node').hover(function(e) {
       var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
       // Muting
       $('.sigma-node, .sigma-edge').each(function() {
@@ -278,6 +340,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
       });
     }
   );
+  */
   return s;
 
 
