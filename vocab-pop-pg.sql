@@ -265,19 +265,42 @@ CREATE AGGREGATE array_cat_agg(anyarray) (
     select count(*) from record_counts_agg --> 759
     select count(*) from concept_groups_w_cids --> 1951
 
+    a sample of concept_groups_w_cids rows with low concept counts:
 
- cgid | grp |                                   grpset                                    |                                                vals                                                 | cc | rc_rowcnt | tblcols |   rc    | src |                 cids
-------+-----+-----------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------+----+-----------+---------+---------+-----+---------------------------------------
-   21 |  31 | {standard_concept,domain_id}                                                | {S,Ethnicity}                                       |  2 |         2 |       1 | 624283 |       0 | {38003563,38003564}
-  132 |  15 | {standard_concept,domain_id,vocabulary_id}                                  | {X,Metadata,PEDSnet}                                |  9 |         9 |       3 |      0 |    1475 | {2000000034,2000000035,2000000036,2000000037,2000000038,2000000049,2000000050,2000000051,2000000052}
-  732 |   7 | {standard_concept,domain_id,vocabulary_id,class_concept_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                                          |  1 |         1 |       1 |       0 |   0 | {44814701}
- 1905 | 120 | {tbl,col,coltype}                                                           | {visit_occurrence,visit_type_concept_id,type}                                                       |  1 |         1 |       1 | 9263690 |   0 | {44818518}
- 1350 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,Drug,RxNorm,Ingredient,observation,value_as_concept_id,other}                                    |  4 |         4 |       1 |       0 |   6 | {19074752,19101614,19113056,19123866}
- 1398 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source}              |  3 |         3 |       1 |       0 |   6 | {45935765,45941602,45947121}
-  732 |   7 | {standard_concept,domain_id,vocabulary_id,class_concept_id}                 | {S,Observation,PCORNet,"Discharge Status"}          |  1 |         1 |       1 |      0 |       0 | {44814701}
-  994 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}               |  6 |         6 |       1 |      0 |       0 | {44814654,44814655,44814656,44814657,44814658,44814660}
+ cgid | grp |                                   grpset                                    |                                          vals                                          | cc | rc_rowcnt | tblcols |   rc   | src |                                            cids
+------+-----+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------+----+-----------+---------+--------+-----+---------------------------------------------------------------------------------------------
+   21 |  31 | {standard_concept,domain_id}                                                | {S,Ethnicity}                                                                          |  2 |         2 |       1 | 624283 |   0 | {38003563,38003564}
+  132 |  15 | {standard_concept,domain_id,vocabulary_id}                                  | {X,Metadata,PEDSnet}                                                                   |  9 |         9 |       3 |      0 |1475 | {2000000034,2000000035,2000000036,2000000037,2000000038,2000000049,2000000050,2000000051,2000000052}
+  732 |   7 | {standard_concept,domain_id,vocabulary_id,class_concept_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                             |  1 |         1 |       1 |      0 |   0 | {44814701}
+  994 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}                                                  |  6 |         6 |       1 |      0 |   0 | {44814654,44814655,44814656,44814657,44814658,44814660}
+ 1398 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source} |  3 |         3 |       1 |      0 |   6 | {45935765,45941602,45947121}
+ 1905 | 120 | {tbl,col,coltype}                                                           | {visit_occurrence,visit_type_concept_id,type}                                          |  1 |         1 |       1 |9263690 |   0 | {44818518}
+
+    a little easier to read:
+
+select vals, cc, tblcols, rc, src from concept_groups_w_cids where cgid in (21, 132, 732, 1905, 1350, 732);
+                               vals                               | cc | tblcols |   rc    | src
+------------------------------------------------------------------+----+---------+---------+------
+ {S,Ethnicity}                                                    |  2 |       1 |  624283 |    0
+ {X,Metadata,PEDSnet}                                             |  9 |       3 |       0 | 1475
+ {S,Observation,PCORNet,"Discharge Status"}                       |  1 |       1 |       0 |    0
+ {X,Drug,RxNorm,Ingredient,observation,value_as_concept_id,other} |  4 |       1 |       0 |    6
+ {visit_occurrence,visit_type_concept_id,type}                    |  1 |       1 | 9263690 |    0
+
+    all the grouping sets and their group counts:
+
+select grpset,count(*) from concept_groups_w_cids group by 1 order by 1;
+                                   grpset                                    | count
+-----------------------------------------------------------------------------+-------
+ {}                                                                          |     1
+ {standard_concept}                                                          |     3
+ {standard_concept,domain_id}                                                |    56
+ {standard_concept,domain_id,vocabulary_id}                                  |   207
+ {standard_concept,domain_id,vocabulary_id,class_concept_id}                 |   504
+ {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} |   759
+ {standard_concept,domain_id,vocabulary_id,tbl,col,coltype}                  |   366
+ {tbl,col,coltype}                                                           |    55
 */
-
 create table concept_groups_w_cids as
   select  row_number() over (order by grpset) as cgid, 
           grp, grpset, 
@@ -321,8 +344,11 @@ create table concept_groups_w_cids as
   ) x;
 create unique index cgccidx on concept_groups_w_cids (cgid);
 
-
-
+/* ancestor_plus_mapsto
+    extended version of concept_ancestor table including concept_relationship
+    'maps to' relationships and a single field telling which table the record
+    came from and, if it came from concept_ancestor, the min and max separation
+*/
 drop materialized view :results.ancestor_plus_mapsto;
 create materialized view :results.ancestor_plus_mapsto as
   select
@@ -346,29 +372,45 @@ create materialized view :results.ancestor_plus_mapsto as
   from :cdm.concept_relationship cr
   where cr.relationship_id = 'Maps to'
     and cr.invalid_reason is null
-    and cr.concept_id_1 != cr.concept_id_2
-  ;
+    and cr.concept_id_1 != cr.concept_id_2 ;
 create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
 
 
+/* cg_dcids
+    for every concept group (which includes different grouping levels)
+    collect all the descendant concept ids connected to the concepts in
+    that group. if we didn't go through all the steps we did to get here,
+    there would be no way to be sure we only counted the descendant concept
+    ids in each concept group only once.
 
-/* probably will need source, but not for now */
+    it would be better to include source but it takes so long to run, I've given
+    up on that.
+
+    also, doing the total group with every concept id (grpset = {}) separately
+    for performance reasons
+*/
 drop table if exists cg_dcids;
 create table cg_dcids as
-  select  cgwc.cgid, --source, 
-          array_remove(array_unique(
-                  array_agg(apm.descendant_concept_id order by descendant_concept_id)
-                ),null) dcids
-  from concept_groups_w_cids cgwc
-  left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
-  where cgid != 1 -- assumes cgid 1 is the record with grouping {}
-  group by 1;--,2;
-
--- do this one separately just to save time:
+    select  cgwc.cgid, --source, 
+            array_remove(array_unique(
+                    array_agg(apm.descendant_concept_id order by descendant_concept_id)
+                  ),null) dcids
+    from concept_groups_w_cids cgwc
+    left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
+    where grpset != array[]::text[]
+    group by 1; --,2;
 insert into cg_dcids  -- it should just be all desc ids, right?
-  select 1, array_agg(apm.descendant_concept_id order by descendant_concept_id)
-  from ancestor_plus_mapsto apm;
+  select cg.cgid, array_agg(apm.descendant_concept_id order by descendant_concept_id)
+  from ancestor_plus_mapsto apm,
+       (select distinct cgid from concept_groups_w_cids where grpset = array[]::text[]) cg
 
+/*
+    cg_dcids (above) has one row for each concept group with an array of its
+    descendant concept ids -- 1951 rows. But there are only 275 distinct arrays
+    of descendant concept ids, so I'm giving them their own smaller table with
+    one row per distinct descendant id set and a list of all the concept group
+    ids having that descendant group for its descendants
+*/
 drop table if exists dcid_groups;
 create table dcid_groups as
   select  row_number() over () as dcid_grp_id,
@@ -376,6 +418,19 @@ create table dcid_groups as
           dcids
   from cg_dcids group by dcids;
 
+/* dcid_cnts
+    now, for each descendant group, go back to the record_counts table
+    for counts and aggregate them. this combines counts across different
+    tables/columns where counted records appear, which, for some concepts,
+    might be misleading. but we do a breakdown later
+
+ dcid_grp_id |                  cgids                   |   dcc   | dtblcols |    drc    |   dsrc
+-------------+------------------------------------------+---------+----------+-----------+----------
+           1 | {208}                                    |   85250 |        4 |    201516 |        0
+           2 | {2}                                      | 1738752 |       25 | 263282174 | 40499979
+           4 | {609,1320}                               |      10 |        1 |         0 |        0
+           5 | {705,1494}                               |   15031 |        5 |   3758970 |        0
+*/
 drop table if exists dcid_cnts;
 create table dcid_cnts as
   select  dcid_grp_id, cgids, 
@@ -388,6 +443,11 @@ create table dcid_cnts as
   group by 1,2;
 
   
+/* concept_groups
+    this is the main counts table. it brings together what we already know
+    about concept groups with descendant counts. as mentioned above, these
+    descendant counts can be misleading, but they'll do for a first pass
+*/
 drop table if exists concept_groups cascade;
 create table concept_groups as
   select  cgw.cgid, cgw.grp, cgw.grpset, cgw.vals, 
@@ -402,18 +462,14 @@ create table concept_groups as
 
 
 
-
-
-  select  x.dcid_grp_id,
-          x.grp, x.grpset, 
-          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
-          cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids
-  from (
-        select g.dcid_grp_id, f.* 
-        from  dcid_groups g, 
-              get_concept_groups(g.dcids) f
-       ) x;
-
+/* dcid_cnts_breakdown
+    now we get descendant record counts broken down by the same groupings
+    as we used for concept groups. i don't know if these will all be useful,
+    but it gives us access to more meaningful descendant counts than the
+    concept_groups table. at least the {tbl,col,coltype} groupings will
+    be important, but I think others will be as well, if we can make a
+    reasonable ui for navigating them.
+*/
 drop table if exists dcid_cnts_breakdown cascade;
 create table dcid_cnts_breakdown (
   dcid_grp_id integer,
@@ -484,5 +540,6 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
     return 1;
   END;
   $func$ LANGUAGE plpgsql;
+
 select * from make_dcid_cnts_breakdown();
 
