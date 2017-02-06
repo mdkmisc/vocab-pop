@@ -1,8 +1,22 @@
+-- change these settings to the appropriate cdm and results schemas
+--   right now not all queries have table names qualified by schema, that
+--   needs to be fixed
 \set cdm cdm2
 set session my.vars.cdm = :cdm; -- lets me use it as string in query (as per http://stackoverflow.com/a/29469454/1368860)
 \set results results2
 set session my.vars.results = :results;
 
+/* generate a list of all CDM columns containing concept ids
+    that should be counted in record counts:
+
+          tbl           |    table_name     |          column_name          | column_type
+------------------------+-------------------+-------------------------------+-------------
+ cdm2.cohort_definition | cohort_definition | definition_type_concept_id    | type
+ cdm2.cohort_definition | cohort_definition | subject_concept_id            | target
+ cdm2.observation       | observation       | observation_concept_id        | target
+ cdm2.observation       | observation       | observation_source_concept_id | source
+ cdm2.observation       | observation       | observation_type_concept_id   | type
+*/
 create or replace view :results.concept_cols as
   with cols as (
     select (table_schema||'.'||table_name)::regclass as tbl, 
@@ -53,6 +67,16 @@ create or replace view :results.concept_cols as
             end as column_type
   from cols;
 
+/* the following table, function, query are used to generate record counts
+    for each concept_id for each column it appears in:
+
+ schema | table_name  |          column_name          | column_type | concept_id |  count
+--------+-------------+-------------------------------+-------------+------------+---------
+ cdm2   | observation | observation_concept_id        | target      |    4275495 |  553962
+ cdm2   | observation | observation_concept_id        | target      |    3040464 |   91141
+ cdm2   | observation | observation_concept_id        | target      |    4219336 |  554134
+ cdm2   | observation | observation_concept_id        | target      |   44813951 | 9235879
+ */
 drop table if exists :results.concept_id_occurrence;
 create table :results.concept_id_occurrence (
   --table_schema information_schema.sql_identifier,
@@ -112,8 +136,6 @@ CREATE OR REPLACE
     EXECUTE sql;
   END;
   $func$ LANGUAGE plpgsql;
-  
---select store_concept_id_counts('cdm2','drug_exposure','drug_concept_id','drug_type_concept_id','drug_source_concept_id','drug_source_value',':results','concept_id_occurrence');
 
 select store_concept_id_counts(
           schema::text,
@@ -130,48 +152,78 @@ select store_concept_id_counts(
           current_setting('my.vars.results')::text target_schema, 
           'concept_id_occurrence'::text target_table
     from concept_cols cc) x;
-
-
 alter table :results.concept_id_occurrence add primary key (table_name, column_name, concept_id);
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
 
+/* get rid of concept counts for invalid concepts --
+    revisit this, do we want these counts so we can report
+    on invalid concepts appearing in the CDM? probably. but
+    for now it just complicates things.
+    (though some of the vocab-pop code assumes that there will be invalid
+    concepts and allows them to be counted or filtered out)
+*/
 delete from concept_id_occurrence cio
 using cdm2.concept c
 where cio.concept_id = c.concept_id and c.invalid_reason is not null;
 
+
+/* record_counts table
+    combines counts with concept attributes from the concept table:
+      domain, standard concept, vocabulary, concept class. (should
+      also have invalid indicator, but see preceding comment.)
+
+    includes a row for every concept, even when they have 0 counts,
+    and more than one row if the concept appears in more than one
+    column.
+
+    converts standard_concept = null to 'X' because joins later on
+    won't work on null values.
+
+    has two count columns, one for standard_concept = 'S' (rc) 
+    and one for others (C,X) (src)
+
+    S concepts and columns marked as target should only have rc counts.
+    X concepts and columns marked as source should only have src counts.
+    C concepts shouldn't have any counts.
+
+    where these rules are broken, there may have been a problem with ETL,
+    or in the vocabularies
+
+ concept_id |     domain_id      | standard_concept | vocabulary_id |  class_concept_id  |     tbl     |              col              | coltype | rc  | src
+------------+--------------------+------------------+---------------+--------------------+-------------+-------------------------------+---------+-----+-----
+   38001032 | Observation        | S                | DRG           | MS-DRG             | observation | observation_source_concept_id | source  |  64 |   0
+   38000965 | Observation        | S                | DRG           | MS-DRG             | observation | observation_source_concept_id | source  | 171 |   0
+   44777738 | Provider Specialty | S                | HES Specialty | HES Specialty      | observation | observation_source_concept_id | source  |   1 |   0
+   45414607 | Drug               | X                | Multum        | Multum             | observation | observation_source_concept_id | source  |   0 |   2
+   45941602 | Spec Anatomic Site | X                | CIEL          | Anatomy            | observation | observation_source_concept_id | source  |   0 |   2
+   38001140 | Observation        | S                | DRG           | MS-DRG             | observation | observation_source_concept_id | source  |  35 |   0
+   38000982 | Observation        | S                | DRG           | MS-DRG             | observation | observation_source_concept_id | source  | 141 |   0
+   44777801 | Provider Specialty | S                | HES Specialty | HES Specialty      | observation | observation_source_concept_id | source  |   3 |   0
+   44823089 | Condition          | X                | ICD9CM        | 3-dig nonbill code | observation | observation_source_concept_id | source  |   0 |   1
+   38000092 | Condition          | C                | SMQ           | SMQ                | observation | observation_source_concept_id | source  |   1 |   0
+*/
 drop table if exists :results.record_counts cascade;
 create table :results.record_counts as (
   select  
           c.concept_id,
           c.domain_id domain_id,
-          coalesce(c.standard_concept, 'X') standard_concept, -- use X for source concepts
-                                                -- because null comparison messes things up
+          coalesce(c.standard_concept, 'X') standard_concept, 
           c.vocabulary_id vocabulary_id,
           c.concept_class_id class_concept_id,
           --cio.schema,
           coalesce(cio.table_name,'') tbl,
           coalesce(cio.column_name,'') col,
           coalesce(cio.column_type,'') coltype,
-          /*
-          md5(
-              coalesce(c.domain_id,'') ||
-              coalesce(c.standard_concept,'') ||
-              coalesce(c.vocabulary_id,'') ||
-              coalesce(c.concept_class_id,'') ||
-              coalesce(cio.table_name,'') ||
-              coalesce(cio.column_name,'') ||
-              coalesce(cio.column_type,'')) grphash,
-            */
-          case when c.standard_concept is null then 0 else coalesce(cio.count,0) end rc, --record count
-          case when c.standard_concept is null then coalesce(cio.count,0) else 0 end src --source record count
+          case when c.standard_concept is null then 0 
+                else coalesce(cio.count,0) end rc, --record count
+          case when c.standard_concept is null then coalesce(cio.count,0) 
+                else 0 end src --source record count
   from :cdm.concept c
   left join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
 );
-
 create unique index rcidx on :results.record_counts (concept_id,tbl,col);
 create index rc_concept_att_idx on :results.record_counts 
               (domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype);
-
 
 CREATE OR REPLACE FUNCTION results2.array_unique(arr anyarray)
  RETURNS anyarray
@@ -180,76 +232,93 @@ AS $function$
     select array( select distinct unnest($1) order by 1 )
 $function$;
 
-CREATE OR REPLACE FUNCTION results2.get_concept_groups(
-    arr integer[] default array[-1]
-  )
-  RETURNS TABLE(
-                  domain_id text,
-                  standard_concept text,
-                  vocabulary_id text,
-                  class_concept_id text,
-                  tbl text,
-                  col text,
-                  coltype text,
-                  grp integer,
-                  grpset text[],
-                  cc integer,
-                  rc_rowcnt integer,
-                  tblcols integer,
-                  rc numeric,
-                  src numeric,
-                  cids integer[]
-                )
- LANGUAGE sql
-AS $function$
-        select    distinct
-                  domain_id,
-                  standard_concept,
-                  vocabulary_id,
-                  class_concept_id,
-                  tbl,
-                  col,
-                  coltype,
-                  grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
-                  (array_remove(array[
-                    case when grouping(domain_id) =     0 then 'domain_id'     else null end,
-                    case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
-                    case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
-                    case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
-                    case when grouping(tbl) =     0 then 'tbl'     else null end,
-                    case when grouping(col) =     0 then 'col'     else null end,
-                    case when grouping(coltype) = 0 then 'coltype' else null end
-                      ], null))::text[] grpset,
-                  count(distinct concept_id)::integer cc,
-                  count(*)::integer rc_rowcnt,
-                  count(distinct tbl||col)::integer tblcols,
-                  sum(rc) rc,
-                  sum(src) src,
-                  array_remove(array_unique(
-                          array_agg(rc.concept_id order by concept_id)
-                        ),null) cids
-                  --md5(coalesce(domain_id,'') || coalesce(standard_concept,'') || coalesce(vocabulary_id,'') || coalesce(class_concept_id,'') || coalesce(tbl,'') || coalesce(col,'') || coalesce(coltype,'') || grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype)) grphash
-                  --array(select row_to_json(r.*)->>unnest(c.grpset) col) vals,
-        from results2.record_counts rc
-        --where cardinality($1) = 0 or rc.concept_id = any($1)
-        where $1[1] = -1 or rc.concept_id = any($1)
-        group by  grouping sets 
-                    (rollup(
-                            standard_concept, domain_id, vocabulary_id, class_concept_id, 
-                            (tbl, col, coltype)
-                           ),
-                     (tbl,col,coltype),
-                     (standard_concept, domain_id, vocabulary_id, tbl,col,coltype)
-                    )
-$function$;
+/* record_counts_agg
+    groups by all the attribute columns we have and aggregates counts
+    and includes an array of all concept ids in each groups */
+create table record_counts_agg as
+  select
+        row_number() over () as rcgid, -- could link concept_groups_w_cids back to here, but no need
+                                       -- so no need for this id
+        standard_concept, domain_id, vocabulary_id, class_concept_id, tbl, col, coltype,
+        count(distinct concept_id)::integer cc,
+        count(*)::integer rc_rowcnt,
+        count(distinct tbl||col)::integer tblcols,
+        sum(rc) rc,
+        sum(src) src,
+        array_remove(array_unique(
+                array_agg(rc.concept_id order by concept_id)
+              ),null) cids
+  from results2.record_counts rc
+  group by  standard_concept, domain_id, vocabulary_id, class_concept_id, tbl, col, coltype ;
 
-drop table if exists concept_groups_w_cids cascade;
+CREATE AGGREGATE array_cat_agg(anyarray) (
+  SFUNC=array_cat,
+  STYPE=anyarray
+);
+
+/* concept_groups_w_cids
+    creates different grouping sets including lower levels of granularity
+    for record counts. this is convenient for the api, but it's necessary
+    in order to get descendant record counts later without double counting
+    descendants.
+
+    select count(*) from record_counts_agg --> 759
+    select count(*) from concept_groups_w_cids --> 1951
+
+
+ cgid | grp |                                   grpset                                    |                                                vals                                                 | cc | rc_rowcnt | tblcols |   rc    | src |                 cids
+------+-----+-----------------------------------------------------------------------------+-----------------------------------------------------------------------------------------------------+----+-----------+---------+---------+-----+---------------------------------------
+   21 |  31 | {standard_concept,domain_id}                                                | {S,Ethnicity}                                       |  2 |         2 |       1 | 624283 |       0 | {38003563,38003564}
+  132 |  15 | {standard_concept,domain_id,vocabulary_id}                                  | {X,Metadata,PEDSnet}                                |  9 |         9 |       3 |      0 |    1475 | {2000000034,2000000035,2000000036,2000000037,2000000038,2000000049,2000000050,2000000051,2000000052}
+  732 |   7 | {standard_concept,domain_id,vocabulary_id,class_concept_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                                          |  1 |         1 |       1 |       0 |   0 | {44814701}
+ 1905 | 120 | {tbl,col,coltype}                                                           | {visit_occurrence,visit_type_concept_id,type}                                                       |  1 |         1 |       1 | 9263690 |   0 | {44818518}
+ 1350 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,Drug,RxNorm,Ingredient,observation,value_as_concept_id,other}                                    |  4 |         4 |       1 |       0 |   6 | {19074752,19101614,19113056,19123866}
+ 1398 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source}              |  3 |         3 |       1 |       0 |   6 | {45935765,45941602,45947121}
+  732 |   7 | {standard_concept,domain_id,vocabulary_id,class_concept_id}                 | {S,Observation,PCORNet,"Discharge Status"}          |  1 |         1 |       1 |      0 |       0 | {44814701}
+  994 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}               |  6 |         6 |       1 |      0 |       0 | {44814654,44814655,44814656,44814657,44814658,44814660}
+*/
+
 create table concept_groups_w_cids as
   select  row_number() over (order by grpset) as cgid, 
           grp, grpset, 
           array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
           cc,rc_rowcnt, tblcols, rc, src, cids
-  from (select * from get_concept_groups()) x;
+  from (select    
+              standard_concept,
+              domain_id,
+              vocabulary_id,
+              class_concept_id,
+              tbl,
+              col,
+              coltype,
+              grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
+              (array_remove(array[
+                case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
+                case when grouping(domain_id) =     0 then 'domain_id'     else null end,
+                case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
+                case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
+                case when grouping(tbl) =     0 then 'tbl'     else null end,
+                case when grouping(col) =     0 then 'col'     else null end,
+                case when grouping(coltype) = 0 then 'coltype' else null end
+                  ], null))::text[] grpset,
+              sum(cc) cc,
+              sum(rc_rowcnt) rc_rowcnt,
+              sum(tblcols) tblcols,
+              sum(rc) rc,
+              sum(src) src,
+              -- doing array_unique in order to sort list, there shouldn't
+              -- actually be any duplicates
+              array_unique(array_cat_agg(cids)) cids
+    from results2.record_counts_agg rc
+    group by  grouping sets 
+                (rollup(
+                        standard_concept, domain_id, vocabulary_id, class_concept_id, 
+                        (tbl, col, coltype)
+                        ),
+                  (tbl,col,coltype),
+                  (standard_concept, domain_id, vocabulary_id, tbl,col,coltype)
+                )
+  ) x;
 create unique index cgccidx on concept_groups_w_cids (cgid);
 
 
@@ -318,68 +387,7 @@ create table dcid_cnts as
   left join record_counts rc on rc.concept_id = any(dg.dcids)
   group by 1,2;
 
-
-create table dg_cnts_breakdown_docscvoc as
-  select  dcid_grp_id,
-          x.grp, x.grpset,
-          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
-          cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids
-          from (
-            select    distinct
-                      dg.dcid_grp_id,
-                      domain_id,
-                      standard_concept,
-                      vocabulary_id,
-                      class_concept_id,
-                      tbl,
-                      col,
-                      coltype,
-                      grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
-                      (array_remove(array[
-                        case when grouping(domain_id) =     0 then 'domain_id'     else null end,
-                        case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
-                        case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
-                        case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
-                        case when grouping(tbl) =     0 then 'tbl'     else null end,
-                        case when grouping(col) =     0 then 'col'     else null end,
-                        case when grouping(coltype) = 0 then 'coltype' else null end
-                          ], null))::text[] grpset,
-                      count(distinct concept_id)::integer cc,
-                      count(*)::integer rc_rowcnt,
-                      count(distinct tbl||col)::integer tblcols,
-                      sum(rc) rc,
-                      sum(src) src,
-                      array_remove(array_unique(
-                              array_agg(rc.concept_id order by concept_id)
-                            ),null) cids
-            from dcid_groups dg
-            left join results2.record_counts rc on rc.concept_id = any(dg.dcids)
-            where dg.dcid_grp_id in (
-                select dcid_grp_id from concept_groups 
-                where grpset = array['domain_id','standard_concept','vocabulary_id'])
-            group by  dg.dcid_grp_id,
-                      grouping sets (
-                          (standard_concept, domain_id, vocabulary_id),
-                          (standard_concept, domain_id, vocabulary_id, class_concept_id,tbl,col,coltype))
-            having grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) = 15
-        ) x;
--- concept_groups with links at same breakdown
-/*
-select cg.*,
-       array_unique(array_agg(array_to_string(dg.vals,','))) linknodes,
-       sum(dg.dcc), sum(dg.dtblcols), sum(dg.drc), sum(dg.dsrc)
-from results2.concept_groups cg
-join dg_cnts_breakdown_docscvoc dg on cg.dcid_grp_id = dg.dcid_grp_id and
-                                      cg.grpset = dg.grpset and
-                                      cg.vals[array_position(cg.grpset, 'domain_id')] = 'Drug'
-where cg.vals[array_position(cg.grpset, 'domain_id')] = 'Drug' and cg.grpset = array['domain_id','standard_concept','vocabulary_id']
-group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14;
-
-
-maybe just build this into concept_groups
-.... well, not now, maybe later
-*/
-
+  
 drop table if exists concept_groups cascade;
 create table concept_groups as
   select  cgw.cgid, cgw.grp, cgw.grpset, cgw.vals, 
@@ -477,7 +485,14 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
   END;
   $func$ LANGUAGE plpgsql;
 select * from make_dcid_cnts_breakdown();
+
+
+
 /*
+only  old stuff from here down. about to delete
+
+
+
 with gps as (
   select  vocab_1, class_1, sc_1,  
           array_unique(array_agg_mult(distinct dcids order by dcids)) dcids,
@@ -1565,5 +1580,136 @@ from results2.descendants
 group by rollup (1,2,3,4,5,6,7);
 
 
+CREATE OR REPLACE FUNCTION results2.get_concept_groups(
+    arr integer[] default array[-1]
+  )
+  RETURNS TABLE(
+                  domain_id text,
+                  standard_concept text,
+                  vocabulary_id text,
+                  class_concept_id text,
+                  tbl text,
+                  col text,
+                  coltype text,
+                  grp integer,
+                  grpset text[],
+                  cc integer,
+                  rc_rowcnt integer,
+                  tblcols integer,
+                  rc numeric,
+                  src numeric,
+                  cids integer[]
+                )
+ LANGUAGE sql
+AS $function$
+        select    distinct
+                  domain_id,
+                  standard_concept,
+                  vocabulary_id,
+                  class_concept_id,
+                  tbl,
+                  col,
+                  coltype,
+                  grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
+                  (array_remove(array[
+                    case when grouping(domain_id) =     0 then 'domain_id'     else null end,
+                    case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
+                    case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
+                    case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
+                    case when grouping(tbl) =     0 then 'tbl'     else null end,
+                    case when grouping(col) =     0 then 'col'     else null end,
+                    case when grouping(coltype) = 0 then 'coltype' else null end
+                      ], null))::text[] grpset,
+                  count(distinct concept_id)::integer cc,
+                  count(*)::integer rc_rowcnt,
+                  count(distinct tbl||col)::integer tblcols,
+                  sum(rc) rc,
+                  sum(src) src,
+                  array_remove(array_unique(
+                          array_agg(rc.concept_id order by concept_id)
+                        ),null) cids
+                  --md5(coalesce(domain_id,'') || coalesce(standard_concept,'') || coalesce(vocabulary_id,'') || coalesce(class_concept_id,'') || coalesce(tbl,'') || coalesce(col,'') || coalesce(coltype,'') || grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype)) grphash
+                  --array(select row_to_json(r.*)->>unnest(c.grpset) col) vals,
+        from results2.record_counts rc
+        --where cardinality($1) = 0 or rc.concept_id = any($1)
+        where $1[1] = -1 or rc.concept_id = any($1)
+        group by  grouping sets 
+                    (rollup(
+                            standard_concept, domain_id, vocabulary_id, class_concept_id, 
+                            (tbl, col, coltype)
+                           ),
+                     (tbl,col,coltype),
+                     (standard_concept, domain_id, vocabulary_id, tbl,col,coltype)
+                    )
+$function$;
 
+drop table if exists concept_groups_w_cids cascade;
+create table concept_groups_w_cids as
+  select  row_number() over (order by grpset) as cgid, 
+          grp, grpset, 
+          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
+          cc,rc_rowcnt, tblcols, rc, src, cids
+  from (select * from get_concept_groups()) x;
+
+
+create table dg_cnts_breakdown_docscvoc as
+  select  dcid_grp_id,
+          x.grp, x.grpset,
+          array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
+          cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids
+          from (
+            select    distinct
+                      dg.dcid_grp_id,
+                      domain_id,
+                      standard_concept,
+                      vocabulary_id,
+                      class_concept_id,
+                      tbl,
+                      col,
+                      coltype,
+                      grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
+                      (array_remove(array[
+                        case when grouping(domain_id) =     0 then 'domain_id'     else null end,
+                        case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
+                        case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
+                        case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
+                        case when grouping(tbl) =     0 then 'tbl'     else null end,
+                        case when grouping(col) =     0 then 'col'     else null end,
+                        case when grouping(coltype) = 0 then 'coltype' else null end
+                          ], null))::text[] grpset,
+                      count(distinct concept_id)::integer cc,
+                      count(*)::integer rc_rowcnt,
+                      count(distinct tbl||col)::integer tblcols,
+                      sum(rc) rc,
+                      sum(src) src,
+                      array_remove(array_unique(
+                              array_agg(rc.concept_id order by concept_id)
+                            ),null) cids
+            from dcid_groups dg
+            left join results2.record_counts rc on rc.concept_id = any(dg.dcids)
+            where dg.dcid_grp_id in (
+                select dcid_grp_id from concept_groups 
+                where grpset = array['domain_id','standard_concept','vocabulary_id'])
+            group by  dg.dcid_grp_id,
+                      grouping sets (
+                          (standard_concept, domain_id, vocabulary_id),
+                          (standard_concept, domain_id, vocabulary_id, class_concept_id,tbl,col,coltype))
+            having grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) = 15
+        ) x;
+-- concept_groups with links at same breakdown
+/*
+select cg.*,
+       array_unique(array_agg(array_to_string(dg.vals,','))) linknodes,
+       sum(dg.dcc), sum(dg.dtblcols), sum(dg.drc), sum(dg.dsrc)
+from results2.concept_groups cg
+join dg_cnts_breakdown_docscvoc dg on cg.dcid_grp_id = dg.dcid_grp_id and
+                                      cg.grpset = dg.grpset and
+                                      cg.vals[array_position(cg.grpset, 'domain_id')] = 'Drug'
+where cg.vals[array_position(cg.grpset, 'domain_id')] = 'Drug' and cg.grpset = array['domain_id','standard_concept','vocabulary_id']
+group by 1,2,3,4,5,6,7,8,9,10,11,12,13,14;
+
+
+maybe just build this into concept_groups
+.... well, not now, maybe later
 */
+
