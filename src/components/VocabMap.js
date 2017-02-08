@@ -30,11 +30,16 @@ var sigma = require('sigma');
 window.sigma = sigma;
 var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
 
-import nodeRenderer from './sigmaSvgNodeRenderer';
-nodeRenderer(sigma);
+import sigmaReactRenderer from './sigmaSvgReactRenderer';
+sigmaReactRenderer(sigma);
 
-
-export class VNode extends Component {
+function eventPerspective(me, evt, neighbors) {
+  if (me === evt) return 'self';
+  if (_.includes(neighbors, me)) return 'neighbor';
+  return 'other';
+}
+export class VocNode extends Component {
+  // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
     this.state = {w:0, h:0};
@@ -45,24 +50,58 @@ export class VNode extends Component {
     let self = this;
     AppState.ephemeralEventStream.subscribe(
       e => {
-        if (sigmaNode.id !== e.jqEvt.target.closest('foreignObject').getAttribute('data-node-id'))
-          return;
-        switch (e.jqEvt.type) {
-          case 'mouseover':
-            self.setState({hover:true});
+        let eventNodeId = e.jqEvt.target.closest('foreignObject').getAttribute('data-node-id');
+        var neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
+        switch (eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id))) {
+          case 'self':
+            switch (e.jqEvt.type) {
+              case 'mouseover':
+                self.setState({hover:true});
+                break;
+              case 'mouseout':
+                self.setState({hover:false});
+                break;
+              case 'click':
+                if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
+                  console.log(sigmaNode.id, 'zoom');
+                } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
+                  console.log(sigmaNode.id, 'list');
+                }
+                break;
+              default:
+                console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+            }
             break;
-          case 'mouseout':
-            self.setState({hover:false});
+          case 'neighbor':
+            switch (e.jqEvt.type) {
+              case 'mouseover':
+                self.setState({neighborHover:true});
+                break;
+              case 'mouseout':
+                self.setState({neighborHover:false});
+                break;
+              case 'click':
+                break;
+              default:
+                console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+            }
             break;
-          case 'click':
-            if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
-              console.log(sigmaNode.id, 'zoom');
-            } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
-              console.log(sigmaNode.id, 'list');
+          case 'other':
+            switch (e.jqEvt.type) {
+              case 'mouseover':
+                self.setState({mute:true});
+                break;
+              case 'mouseout':
+                self.setState({mute:false});
+                break;
+              case 'click':
+                break;
+              default:
+                console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
             }
             break;
           default:
-            console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+            console.log('weird perspective in node event from', sigmaNode.id);
         }
       });
   }
@@ -78,19 +117,12 @@ export class VNode extends Component {
     }
     this.setState({node, el, settings, w, h});
   }
-  /*
-  componentDidUpdate() {
-    const {sigmaNode, sigmaSettings} = this.props;
-    if (this.content) {
-    }
-  }
-  */
   nodeEvent(e) {
     console.log('react event', this, e);
   }
   render() {
     const {sigmaNode, sigmaSettings} = this.props;
-    const {node, el, settings, w, h, hover} = this.state;
+    const {node, el, settings, w, h, hover, mute} = this.state;
     let prefix = sigmaSettings('prefix') || '';
     let icons = '';
     //if (hover)
@@ -110,7 +142,8 @@ export class VNode extends Component {
                   
     return (<foreignObject r="6"
               data-node-id={sigmaNode.id}
-              className={'voc-node ' + (sigmaNode.classes || '')}
+              className={ (sigmaNode.classes || '')
+                          + (mute ? ' muted' : '')}
               x={sigmaNode[`${prefix}x`] - w/2}
               y={sigmaNode[`${prefix}y`] - h/2}
               width={w}
@@ -131,23 +164,96 @@ export class VNode extends Component {
                   : ''}
               </div>
             </foreignObject>);
-    return <circle r="6"
-              data-node-id={sigmaNode.id}
-              className={'voc-node ' + (sigmaNode.classes || '')}
-              cx={sigmaNode[`${prefix}x`]}
-              cy={sigmaNode[`${prefix}y`]}
+  }
+}
+
+export class VocEdge extends Component {
+  // these get made by sigmaSvgReactRenderer
+  constructor(props) {
+    super(props);
+    this.state = {w:0, h:0};
+  }
+  componentDidMount() {
+    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
+    sigmaEdge.update = this.update.bind(this);
+    let self = this;
+    AppState.ephemeralEventStream.subscribe(
+      e => {
+        // these (so far) are just node events
+        let nodeId = e.jqEvt.target.closest('foreignObject').getAttribute('data-node-id');
+        if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
+          // event on this edge
+          switch (e.jqEvt.type) {
+            case 'mouseover':
+              self.setState({hover:true});
+              break;
+            case 'mouseout':
+              self.setState({hover:false});
+              break;
+            case 'click':
+              break;
+            default:
+              console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
+          }
+        } else {
+          // event on another edge
+          switch (e.jqEvt.type) {
+            case 'mouseover':
+              self.setState({mute:true});
+              break;
+            case 'mouseout':
+              self.setState({mute:false});
+              break;
+            case 'click':
+              break;
+            default:
+              console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
+          }
+        }
+      });
+    this.setState({mounted:true}); // force a rerender after div ref available
+  }
+  update(edge, el, source, target, settings) {
+    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
+    let w=0,h=0;
+    if (!this.path) return;
+    let path = this.path;
+    var prefix = settings('prefix') || '';
+    path.setAttributeNS(null, 'stroke-width', edge[prefix + 'size'] || 1);
+
+    // Control point
+    var cx = (source[prefix + 'x'] + target[prefix + 'x']) / 2 +
+      (target[prefix + 'y'] - source[prefix + 'y']) / 4,
+        cy = (source[prefix + 'y'] + target[prefix + 'y']) / 2 +
+      (source[prefix + 'x'] - target[prefix + 'x']) / 4;
+
+    // Path
+    var p = 'M' + source[prefix + 'x'] + ',' + source[prefix + 'y'] + ' ' +
+            'Q' + cx + ',' + cy + ' ' +
+            target[prefix + 'x'] + ',' + target[prefix + 'y'];
+
+    // Updating attributes
+    path.setAttributeNS(null, 'd', p);
+    path.setAttributeNS(null, 'fill', 'none');
+
+    // Showing
+    path.style.display = '';
+    this.setState({edge, el, settings, w, h});
+  }
+  nodeEvent(e) {
+    console.log('react event', this, e);
+  }
+  render() {
+    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings, classes} = this.props;
+    const {hover, mute} = this.state;
+    let prefix = sigmaSettings('prefix') || '';
+    return <path ref={p=>this.path=p} 
+            data-edge-id={sigmaEdge.id}
+            className={classes}
+            className={ (classes || '') + (mute ? ' muted' : '')}
             />;
   }
 }
-export class VNodeLabel extends Component {
-  render() {
-    const {sigmaNode, sigmaSettings} = this.props;
-    return <p>NOT USING{sigmaNode.label}</p>;
-  }
-}
-
-
-
 
 let maxNodesPerRow = 5; // actual rows will have twice this to make room for stubs
                         // though not using stubs right now (they're for wayppoints,
@@ -155,7 +261,7 @@ let maxNodesPerRow = 5; // actual rows will have twice this to make room for stu
 let rowsBetweenLayers = 1;
 function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   function makeNode(id, label, layer, parent) {
-    let node = { id, size: 1, };
+    let node = { id, size: 1, type: 'react', };
     if (typeof label !== 'undefined') node.caption = label;
     if (typeof layer !== 'undefined') {
       node.layer = layer;
@@ -185,7 +291,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                     let node = makeNode(id, label,layer, parent);
                     //node.info = info;
                     node.biggestCount = biggest;
-                    node.classes = `${biggest} fo-node sigma-node`;
+                    node.classes = `${biggest} voc-node sigma-node`;
                     node.sgVal = voc;
                     node.counts = counts;
                     return node;
@@ -257,6 +363,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   let edges = 
     _.flatten(sg.leafNodes()
               .filter(d=>d.dim==='linknodes')
+              .filter(d=>_.includes(nodes.map(n=>n.id),d.toString()))
               .map(
                 d => {
                   /*
@@ -264,7 +371,7 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
                       to = s.nodes(d.parent.namePath(',')),
                       points = waypoints(from, to, rowContentsForWayPoints);
                   */
-                  let e = edge(d.toString(), d.parent.namePath(','));
+                  let e = makeEdge(d.toString(), d.parent.namePath(','));
                   //e.waypoints = points;
                   return e;
                 }))
@@ -288,64 +395,22 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     id: 'main',
     type: 'svg',
     container: domnode,
+    edgeColor: 'target',
+    //defaultNodeType: 'react', // doesn't seem to do anything, have to add it to nodes explicitly
     //freeStyle: true
   });
   s.camera.ratio = .9;
-  /*
-  s.bind('clickNode', function(e) {
-    console.log('sigma', e.type, e.data.node);
-    AppState.ephemeralEventStream.next(e);
-  });
-  */
   s.refresh();
-  $('.voc-node')
+  $('foreignObject.voc-node')
     .on('click mouseover mouseout drag',
         function(e) {
           //console.log(e.type, this);
           AppState.ephemeralEventStream.next({jqEvt:e, domNode:this});
         });
-
-  // Binding silly interactions
-  function mute(node) {
-    if (!~node.getAttribute('class').search(/muted/))
-      node.setAttributeNS(null, 'class', node.getAttribute('class') + ' muted');
-  }
-
-  function unmute(node) {
-    node.setAttributeNS(null, 'class', node.getAttribute('class').replace(/(\s|^)muted(\s|$)/g, '$2'));
-  }
   window.s = s;
   window.sg = sg;
-  /*
-  $('.sigma-node').hover(function(e) {
-      var neighbors = s.graph.neighborhood($(this).attr('data-node-id'));
-      // Muting
-      $('.sigma-node, .sigma-edge').each(function() {
-        mute(this);
-      });
-      // Unmuting neighbors
-      neighbors.nodes.forEach(function(node) {
-        unmute($('[data-node-id="' + node.id + '"]')[0]);
-      });
-      neighbors.edges.forEach(function(edge) {
-        unmute($('[data-edge-id="' + edge.id + '"]')[0]);
-      });
-      $('.sigma-node.parent').each(function() {
-        unmute(this);
-      });
-    },
-    function(e) {
-      $('.sigma-node, .sigma-edge').each(function() {
-        unmute(this);
-      });
-    }
-  );
-  */
   return s;
-
-
-
-
+  /*
   let rows = _.groupBy(s.graph.nodes(), d=>d.row);
   _.each(rows, nodes => {
     if (nodes && nodes.length && nodes[0].isParent) return;
@@ -356,10 +421,6 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
     nodes.forEach((node,i) => node.x = s(centers[i]));
   });
   s.refresh();
-      
-
-
-  /*
   window.s = s;
   window.sg = sg;
   window.waypoints = waypoints;
@@ -370,12 +431,15 @@ function sigmaGraph(sg, domnode, w, h, boxw, boxh, msgDiv) {
   return s;
   */
 }
-function sgPrep(classRecs) {
-  if (!classRecs.length) throw new Error("no classRecs");
-  let grpsets = _.uniq(classRecs.map(d=>d.grpset.join(',')));
-  if (grpsets.length !== 1) throw new Error("expected 1 grpset");
+function sgPrep(concept_groups) {
+  if (!concept_groups.length) throw new Error("no concept_groups");
+  let cg = concept_groups.filter(
+    d=>d.grpset.join(',') === 'standard_concept,domain_id,vocabulary_id');
+  if (!cg.length) throw new Error("no cg");
+  //let grpsets = _.uniq(concept_groups.map(d=>d.grpset.join(',')));
+  //if (grpsets.length !== 1) throw new Error("expected 1 grpset");
 
-  let sg = _.supergroup(classRecs, classRecs[0].grpset);
+  let sg = _.supergroup(cg, ['domain_id','standard_concept','vocabulary_id']);
   sg.addLevel('linknodes',{multiValuedGroup:true});
   return sg;
 }
@@ -390,9 +454,15 @@ export default class VocabMap extends Component {
   componentDidUpdate() {
     const {sg, width, height} = this.props;
     if (this.graphDiv && sg && sg.length) {
-      this.cy = sigmaGraph(sg.getChildren(), this.graphDiv, width, height, 
+      this.sigmaInstance = sigmaGraph(sg.getChildren(), this.graphDiv, width, height, 
                            70, 40, this.msgDiv);
+      this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
+      this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
+      this.setState({graphDrawn:true});
     }
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    return !this.state.graphDrawn || this.props.sg !== nextProps.sg;
   }
   render() {
     const {sg, width, height} = this.props;
@@ -411,14 +481,27 @@ export default class VocabMap extends Component {
   }
 }
 export class VocabMapByDomain extends Component {
-  render() {
-    const {classes, width, height} = this.props;
+  constructor(props) { super(props); this.state = {}; }
+  componentDidMount() {
+    const {concept_groups, width, height} = this.props;
+    if (concept_groups && concept_groups.length)
+      this.setState({sg: sgPrep(concept_groups)});
+  }
+  componentDidUpdate(prevProps, prevState) {
+    const {concept_groups, width, height} = this.props;
+    if (concept_groups && concept_groups.length && 
+        !_.isEqual(concept_groups, prevProps.concept_groups))
+      this.setState({sg: sgPrep(concept_groups)});
+  }
 
-    if (classes && classes.length) {
-      //let ignoreForNow = _.filter(classes, {sc_1:'C', sc_2:null}) .concat( _.filter(classes, {sc_2:'C', sc_1:null}));
-      //let recs = _.difference(classes, ignoreForNow);
+  render() {
+    const {concept_groups, width, height} = this.props;
+    const {sg} = this.state;
+
+    if (sg && sg.length) {
+      //let ignoreForNow = _.filter(concept_groups, {sc_1:'C', sc_2:null}) .concat( _.filter(concept_groups, {sc_2:'C', sc_1:null}));
+      //let recs = _.difference(concept_groups, ignoreForNow);
       let div = this.graphDiv;
-      let sg = sgPrep(classes);
       let mapWidth = Math.max(250, width / Math.ceil(Math.sqrt(sg.length)));
       let mapHeight = Math.max(250, height / Math.ceil(Math.sqrt(sg.length)));
       let maps = sg.map(domain => <VocabMap sg={domain} 
@@ -490,7 +573,7 @@ function pointToPointDist(x1, y1, x2, y2) {
   var dy = y2 - y1;
   return Math.sqrt(dx * dx + dy * dy);
 }
-function edge(from, to) {
+function makeEdge(from, to) {
   return {
     //classes: from.id() === to.id() ? 'self' : 'not-self',
     //selectable: true,
@@ -499,6 +582,10 @@ function edge(from, to) {
     id: `${from}:${to}`,
     source: from,
     target: to,
+    type: 'react',
+    //color: function(e) { console.log(e); return 'green'; } // doesn't seem to work
+    color: 'steelblue',
+    classes: `voc-edge sigma-edge`,
   };
 }
 function waypoints(from, to, rowContentsForWayPoints) {

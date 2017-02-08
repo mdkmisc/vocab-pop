@@ -493,7 +493,7 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
         array_length(dcid_group.dcids,1),
         array_length(dcid_group.cgids,1);
         insert into dcid_cnts_breakdown
-          select  dcid_group.dcid_grp_id,
+          select  dcid_group.dcid_grp_id,dcid_group.cgids,
                   x.grp, x.grpset, 
                   array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
                   cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids

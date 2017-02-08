@@ -31,43 +31,82 @@ export default class ConceptData extends Component {
       agg: [],
     };
     //this.streamsRequested = [];
-    this.countStreamsToWatch = {}; 
+    this.streamsToWatch = {}; 
     // All,Inv,NoMatch,NonStd, and ONLY current With filt
   }
   render() {
     const {filters} = this.props;
-    const {counts, agg, classes} = this.state;
+    const {counts, agg, cgdc, concept_groups, dcid_cnts_breakdown} = this.state;
     return <div>
               {React.cloneElement(this.props.children, {
                   filters,
                   counts,
                   agg,
-                  classes,
+                  concept_groups: cgdc,
                 })}
            </div>;
   }
   componentDidMount() {
-    const {filters} = this.props;
-    this.countSub( 'All', {
-        excludeInvalidConcepts: false,
-        excludeNoMatchingConcepts: false,
-        excludeNonStandardConcepts: false, });
-    this.countSub( 'Invalid', {
-        includeFiltersOnly: true,
-        includeInvalidConcepts: true, });
-    this.countSub( 'No matching concept', {
-        includeFiltersOnly: true,
-        includeNoMatchingConcepts: true, });
-    this.countSub( 'Non-standard concepts', {
-        includeFiltersOnly: true,
-        includeNonStandardConcepts: true, });
-    this.aggStream();
+    const {filters, domain_id} = this.props;
 
-    this.countsSubscriber = new AppState.StreamsSubscriber(
-      streams=>this.streamsCallback(streams,'counts'));
-    this.aggSubscriber = new AppState.StreamsSubscriber(
-      streams=>this.streamsCallback(streams,'agg'));
-    this.fetchData();
+    let params = {  ...filters, 
+                    queryName:'concept_groups',
+                    //dataRequested: 'not using in this call but still required',
+                 }; 
+    if (domain_id) params.domain_id = domain_id;
+    params.grpset = 'domain_id,standard_concept,vocabulary_id';
+    this.requestStream({apiCall:'conceptCounts',dataRequested:'agg',
+                        statePath:'agg', queryName:'agg',targetOrSource:'both',});
+    this.requestStream({apiCall:'concept_groups', params,
+                        statePath:'concept_groups', });
+    this.requestStream({apiCall:'dcid_cnts_breakdown', params,
+                        statePath:'dcid_cnts_breakdown', });
+
+
+    this.requestStream({
+      apiCall:'conceptCounts',dataRequested:'counts',singleValue:true,
+      statePath:'counts.All', queryName:'All',targetOrSource:'both',
+      filters: { excludeInvalidConcepts: false, excludeNoMatchingConcepts: false,
+                 excludeNonStandardConcepts: false, },
+      transformResults:results=>ConceptData.formatCounts(results, 'All'), });
+    this.requestStream({
+      apiCall:'conceptCounts',dataRequested:'counts',singleValue:true,
+      statePath:'counts.Invalid', queryName:'Invalid',targetOrSource:'both',
+      filters: { includeFiltersOnly: true, includeInvalidConcepts: true, },
+      transformResults:results=>ConceptData.formatCounts(results, 'Invalid'), });
+    this.requestStream({
+      apiCall:'conceptCounts',dataRequested:'counts',singleValue:true,
+      statePath:'counts.No matching concept', queryName:'No matching concept',targetOrSource:'both',
+      filters: { includeFiltersOnly: true, includeNoMatchingConcepts: true, },
+      transformResults:results=>ConceptData.formatCounts(results, 'No matching concept'), });
+    this.requestStream({
+      apiCall:'conceptCounts',dataRequested:'counts',singleValue:true,
+      statePath:'counts.Non-standard concepts', queryName:'Non-standard concepts',targetOrSource:'both',
+      filters: { includeFiltersOnly: true, includeNonStandardConcepts: true, },
+      transformResults:results=>ConceptData.formatCounts(results, 'Non-standard concepts'), });
+    this.requestStream({apiCall:'conceptCounts',dataRequested:'agg',
+                        statePath:'agg', queryName:'agg',targetOrSource:'both',});
+  }
+  requestStream({apiCall, statePath, queryName, dataRequested, 
+            targetOrSource, transformResults, filters=this.props.filters}) {
+    const {domain_id} = this.props;
+    let params = {...filters, queryName,
+                    domain_id, dataRequested,
+                    targetOrSource,
+                  }; 
+    let stream = new AppState.ApiStream({
+        apiCall,
+        params,
+        meta: { statePath },
+        transformResults,
+      });
+    if (this.streamsToWatch[statePath] &&
+        this.streamsToWatch[statePath] !== stream) {
+      console.log('replacing', statePath);
+      this.streamsToWatch[statePath].unsubscribe();
+    }
+    this.streamsToWatch[statePath] = stream;
+    stream.subscribe(this.newData.bind(this));
   }
   componentDidUpdate(prevProps, prevState) {
     // should only need to fetch data if filters change, right?
@@ -87,108 +126,45 @@ export default class ConceptData extends Component {
     return stateChange || propsChange;
   }
   componentWillUnmount() {
-    this.countsSubscriber.unsubscribe();
-    this.aggSubscriber.unsubscribe();
+    _.each(this.streamsToWatch, s => s.unsubscribe());
   }
-  countSub(displayName, filters) {
-    const {domain_id} = this.props;
-    let params = {  ...filters, 
-                    queryName:displayName,
-                    dataRequested: 'counts',
-                 }; 
-    if (domain_id) params.domain_id = domain_id;
-    let stream = new AppState.ApiStream({
-        apiCall: 'conceptCounts', 
-        params,
-        singleValue: true,
-        transformResults: 
-          (results) => ConceptData.formatCounts(results, displayName),
-        meta: {
-          statePath: `counts.${displayName}`,
-        }
-      });
-    this.countStreamsToWatch[displayName] = stream;
-    //if (stream.newInstance) this.streamsRequested.push(stream);
+  newData() {
+    let state = Object.assign({}, this.state);
+    //console.log('newData', _.keys(this.streamsToWatch));
+    _.each(this.streamsToWatch, (stream,name) => {
+      if (stream.results && 
+          !_.isEqual(_.get(state, stream.meta.statePath), stream.results)) {
+        console.log('newData for', stream.meta.statePath);
+        _.set(state, stream.meta.statePath, stream.results);
+      }
+    })
+    if (state.concept_groups && state.dcid_cnts_breakdown && !state.cgdc) {
+      state.cgdc = this.combineCgDc(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+    }
+    this.setState(state);
+    window.ConceptDataState = state;
   }
-  aggStream() {
-    const {filters, domain_id} = this.props;
-    let params = {...filters, queryName: 'agg',
-                    domain_id,
-                    dataRequested: 'agg',
-                    targetOrSource: 'both',
-                  }; 
-    let aggStream = new AppState.ApiStream({
-        apiCall: 'conceptCounts', 
-        params,
-        meta: {
-          statePath: `agg`,
-        },
-        transformResults: 
-          results => results.map(
-            rec => {
-              rec.record_count = parseInt(rec.record_count,10);
-              rec.concept_count = parseInt(rec.concept_count,10);
-              return rec;
-            }),
-      });
-    this.countStreamsToWatch['agg'] = aggStream;
+  combineCgDc(cg, dc) {
+    let byDgid = _.supergroup(dc.filter(d=>d.drc||d.dsrc),'dcid_grp_id');
+    let empty = []; // for debugging convenience, use the same empty array, allows checking w/ _.uniq
+    let wDc = cg.map(g => Object.assign(g, {dc:(byDgid.lookup(g.dcid_grp_id)||{}).records||empty}));
+    wDc.forEach(g => {
+      let dcs = g.dc.filter(d=>d.grp===15);
+      g.linknodes = dcs.map(d=>d.vals.join(','));
+    });
+    return wDc;
   }
   fetchData() {
     const {filters, domain_id} = this.props;
     //console.log('in Drug.fetchData with filters', filters);
-    this.countSub('With current filters', filters);
-    this.countsSubscriber.filter( stream => 
-        _.includes( _.values(this.countStreamsToWatch), 
-                   stream));
+    this.requestStream({
+      apiCall:'conceptCounts',dataRequested:'counts',singleValue:true,
+      statePath:'counts.With current filters', queryName:'With current filters',targetOrSource:'both',
+      filters: { includeFiltersOnly: true, includeNonStandardConcepts: true, },
+      transformResults:results=>ConceptData.formatCounts(results, 'With current filters'), });
 
-    this.aggStream();
-    /* not sure if i need this:
-    if (this.aggStream !== aggStream) {
-      this.aggStream = aggStream;
-      this.aggSubscriber.filter(stream => aggStream === stream);
-    } else {
-      console.log('created same aggStream');
-    }
-    */
-
-    let params = {  ...filters, 
-                    queryName:'classes',
-                    dataRequested: 'not using in this call but still required',
-                 }; 
-    if (domain_id) params.domain_id = domain_id;
-    // testing:
-    params.grpset = 'domain_id,standard_concept,vocabulary_id';
-    let classRelStream = new AppState.ApiStream({
-        //apiCall: 'classRelations', 
-        apiCall: 'conceptGroups', 
-        params,
-        meta: {
-          statePath: `classes`,
-        },
-        /*
-        transformResults: 
-          results => results.map(
-            rec => {
-              rec.record_count = parseInt(rec.record_count,10);
-              rec.concept_count = parseInt(rec.concept_count,10);
-              return rec;
-            }),
-        */
-      });
-    if (this.classRelStream !== classRelStream) {
-      this.classRelStream = classRelStream;
-      this.aggSubscriber.filter(stream => classRelStream === stream);
-    } else {
-      console.log('created same classRelStream');
-    }
-  }
-  streamsCallback(streams, subName) {
-    //console.log(`Drug ${subName} streamsSubscriber`, streams);
-    let state = _.merge({}, this.state);
-    streams.forEach(stream => {
-      _.set(state, stream.meta.statePath, stream.results);
-    })
-    this.setState(state);
+    this.requestStream({apiCall:'conceptCounts',dataRequested:'agg',
+                        statePath:'agg', queryName:'agg',targetOrSource:'both',});
   }
   static formatCounts(dcc, displayName) {
     return {

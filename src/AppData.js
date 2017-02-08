@@ -1,3 +1,4 @@
+const DEBUG = false;
 import _ from 'supergroup';
 import * as util from './utils';
 
@@ -7,7 +8,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
   // which returns a promise wrapped in some metadata
 
   function cacheDirty() {
-    console.error('running cacheDirty');
+    DEBUG && console.error('running cacheDirty');
     return fetch(`${apiRoot}/cacheDirty`)
       .then(response => {
         return response.json()
@@ -15,10 +16,10 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
             results => {
               if (results) {
                 //console.warn('sessionStorage cache is dirty, emptying it');
-                console.warn(`cache dirty. removing ${_.keys(sessionStorage).length} items in sessionStorage`);
+                DEBUG && console.warn(`cache dirty. removing ${_.keys(sessionStorage).length} items in sessionStorage`);
                 sessionStorage.clear();
               } else {
-                console.warn(`cache clean. ${_.keys(sessionStorage).length} items in sessionStorage`);
+                DEBUG && console.warn(`cache clean. ${_.keys(sessionStorage).length} items in sessionStorage`);
               }
               return results;
             })
@@ -42,7 +43,7 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
   function apiGetUrl(apiCall, params) {
     params.resultsSchema = resultsSchema;
     params.cdmSchema = cdmSchema;
-    console.log(util.getUrl(apiCallBaseUrl(apiCall), params));
+    DEBUG && console.log(util.getUrl(apiCallBaseUrl(apiCall), params));
     return util.getUrl(apiCallBaseUrl(apiCall), params);
   }
   function apiCall(apiCall, params={}) {

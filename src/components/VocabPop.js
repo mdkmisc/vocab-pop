@@ -173,25 +173,46 @@ export class ConceptContainer extends Component {
         'targetorsource', 'type_concept_name', 'domain_id', 'vocabulary_id', 'concept_class_id',
         'standard_concept', 'concept_count', 'record_count', 
       ].map(c => _.find(coldefs, {colId: c}));
+    // all the important data fetching should be happening in ConceptData now
     return  <ConceptData filters={filters} domain_id={domain_id} >
-              <ConceptBrowse cols={cols} />
+              <ConceptBrowse cols={cols} domain_id={domain_id}/>
             </ConceptData>;
   }
 }
 class ConceptBrowse extends Component {
+  constructor(props) { super(props); this.state = {}; }
+  componentDidMount() {
+    const {concept_groups} = this.props;
+    if (concept_groups && concept_groups.length)
+      this.setState({concept_groups});
+  }
+  componentDidUpdate(prevProps, prevState) {
+    const {concept_groups, domain_id, } = this.props;
+    if (concept_groups && concept_groups.length && 
+        concept_groups !== prevProps.concept_groups) {
+      let cg = domain_id 
+        ? (concept_groups||[]).filter(d=>d.domain_id===domain_id) : concept_groups;
+      this.setState({cg});
+    }
+  }
   render() {
-    const {
-            //domain_id, 
-            children, counts, agg, classes, cols} = this.props;
-    //console.log(classes, agg);
+    const { children, counts, agg, cols} = this.props;
+    const { cg } = this.state;
+            
     return  <div>
               <div>
                 <VocabMapByDomain
-                          classes={classes}
+                          concept_groups={cg}
                           width={800}
                           height={600}
                 />
               </div>
+            </div>;
+
+
+    // turning this stuff off for a while. the aggrid was going really slow
+            // starting i think when a lot of renders were being called
+    return  <div>
               <div style={{clear:'both'}}>
                 <h5>Concept Tree</h5>
                 <AgTable coldefs={cols} data={agg}
@@ -386,72 +407,6 @@ export class AgSgTreeBrowser extends Component {
   }
   
 }
-export class Search extends Component {
-  constructor(props) {
-    super(props);
-    let cols = [
-       'table_name', 
-       'targetorsource',
-       'column_name',
-       'type_concept_name',
-        'domain_id', 'vocabulary_id', 'concept_class_id',
-        'standard_concept', 'invalid_reason', 'concept_count', 'record_count', 
-      ].map(c => _.find(coldefs, {colId: c}));
-    this.state = { filters:{}, cols };
-  }
-  componentDidMount() {
-    this.filtSub = AppState.subscribeState(
-      'filters', filters => {
-        //console.log('new search filters', filters);
-        this.setState({filters});
-      });
-    this.fetchData();
-  }
-  componentDidUpdate(prevProps, prevState) {
-    if (!_.isEqual(prevState.filters, this.state.filters)) {
-      this.fetchData(this.state.filters);
-    }
-  }
-  componentWillUnmount() {
-    this.filtSub.unsubscribe();
-  }
-  fetchData(filters={}) {
-    //let stream = 
-    new AppState.ApiStream({
-        apiCall: 'conceptCounts', 
-        params: {...filters, 
-                      //query:'conceptStats',
-                      targetOrSource: 'both',
-                      dataRequested: 'agg',
-                    }, 
-        transformResults: 
-          (results) => {
-            let recs = results.map(rec=>{
-              return _.merge({}, rec, {
-                concept_count: parseInt(rec.concept_count, 10),
-                record_count: parseInt(rec.record_count, 10),
-              });
-            });
-            console.log('new search results for', filters);
-            return recs;
-            //let sbt = _.supergroup(recs, ['table_name','column_name','domain_id','vocabulary_id']);
-            //return sbt;
-          },
-        //cb: statsByTable => { this.setState({statsByTable}); }
-        cb: conceptStats => { this.setState({conceptStats}); }
-      });
-  }
-  render() {
-    let {conceptStats, cols} = this.state;
-    console.log(conceptStats, cols);
-    return (
-              <AgTable coldefs={cols} data={conceptStats}
-                      width={"100%"} height={550}
-                      id="Search"
-              />
-    );
-  }
-}
 export class TreeWalker extends Component {
   constructor(props) {
     super(props);
@@ -485,51 +440,6 @@ export class TreeWalker extends Component {
           }
         </Accordion>
     );
-  }
-}
-export class ConceptsContainer extends Component {
-  constructor(props) {
-    super(props);
-    throw new Error("haven't tried this for a while");
-    /*
-    this.state = { 
-      breakdowns: {},
-    };
-    */
-  }
-  componentDidMount() {
-    this.fetchConceptStats(this.props);
-  }
-  componentWillReceiveProps(nextProps) {
-    this.fetchConceptStats(nextProps);
-  }
-  fetchConceptStats(props) {
-    AppState.subscribe('appData.conceptStats')(conceptStats => this.setState({conceptStats}));
-    AppState.subscribe('appData.conceptCount')(conceptCount => this.setState({conceptCount}));
-    //console.error("FIX");
-    //dataToStateWhenReady(this);
-    /*
-    let {conceptCount, conceptStats, breakdowns } = appData;
-    conceptCount.then(
-      cc => this.setState({conceptCount: cc}));
-    conceptStats.then(
-      cs => this.setState({conceptStats: cs}));
-    breakdowns.then(
-      bd => this.setState({breakdowns: bd}));
-    */
-  }
-
-  render() {
-    const {conceptStats, conceptCount, breakdowns} = this.state;
-    if (breakdowns && typeof conceptCount !== 'undefined') {
-      return <Concepts  
-                conceptCount={conceptCount} 
-                conceptStats={conceptStats} 
-                breakdowns={breakdowns} 
-              />;
-    } else {
-      return <Waiting>Waiting for concept stats...</Waiting>;
-    }
   }
 }
  
@@ -785,6 +695,7 @@ export class Tables extends Component {
             </Panel>
   }
 }
+/*
 export class Concepts extends Component {
   render() {
     if (false) return null; // avoid lint warning
@@ -811,6 +722,117 @@ export class Concepts extends Component {
                 {JSON.stringify(conceptStats, null, 2)}
               </pre>
             </Panel>;
-    */
+    * /
   }
 }
+export class ConceptsContainer extends Component {
+  constructor(props) {
+    super(props);
+    throw new Error("haven't tried this for a while");
+    /*
+    this.state = { 
+      breakdowns: {},
+    };
+    * /
+  }
+  componentDidMount() {
+    this.fetchConceptStats(this.props);
+  }
+  componentWillReceiveProps(nextProps) {
+    this.fetchConceptStats(nextProps);
+  }
+  fetchConceptStats(props) {
+    AppState.subscribe('appData.conceptStats')(conceptStats => this.setState({conceptStats}));
+    AppState.subscribe('appData.conceptCount')(conceptCount => this.setState({conceptCount}));
+    //console.error("FIX");
+    //dataToStateWhenReady(this);
+    /*
+    let {conceptCount, conceptStats, breakdowns } = appData;
+    conceptCount.then(
+      cc => this.setState({conceptCount: cc}));
+    conceptStats.then(
+      cs => this.setState({conceptStats: cs}));
+    breakdowns.then(
+      bd => this.setState({breakdowns: bd}));
+    * /
+  }
+
+  render() {
+    const {conceptStats, conceptCount, breakdowns} = this.state;
+    if (breakdowns && typeof conceptCount !== 'undefined') {
+      return <Concepts  
+                conceptCount={conceptCount} 
+                conceptStats={conceptStats} 
+                breakdowns={breakdowns} 
+              />;
+    } else {
+      return <Waiting>Waiting for concept stats...</Waiting>;
+    }
+  }
+}
+export class Search extends Component {
+  constructor(props) {
+    super(props);
+    let cols = [
+       'table_name', 
+       'targetorsource',
+       'column_name',
+       'type_concept_name',
+        'domain_id', 'vocabulary_id', 'concept_class_id',
+        'standard_concept', 'invalid_reason', 'concept_count', 'record_count', 
+      ].map(c => _.find(coldefs, {colId: c}));
+    this.state = { filters:{}, cols };
+  }
+  componentDidMount() {
+    this.filtSub = AppState.subscribeState(
+      'filters', filters => {
+        //console.log('new search filters', filters);
+        this.setState({filters});
+      });
+    this.fetchData();
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (!_.isEqual(prevState.filters, this.state.filters)) {
+      this.fetchData(this.state.filters);
+    }
+  }
+  componentWillUnmount() {
+    this.filtSub.unsubscribe();
+  }
+  fetchData(filters={}) {
+    new AppState.ApiStream({
+        apiCall: 'concept_groups', 
+        params: {...filters, 
+          //query:'conceptStats', targetOrSource: 'both', dataRequested: 'agg',
+        },
+        /* parseInt happened at server now
+        transformResults: 
+          (results) => {
+            let recs = results.map(rec=>{
+              return _.merge({}, rec, {
+                concept_count: parseInt(rec.concept_count, 10),
+                record_count: parseInt(rec.record_count, 10),
+              });
+            });
+            console.log('new search results for', filters);
+            return recs;
+            //let sbt = _.supergroup(recs, ['table_name','column_name','domain_id','vocabulary_id']);
+            //return sbt;
+          },
+          * /
+        //cb: statsByTable => { this.setState({statsByTable}); }
+        cb: concept_groups => { this.setState({concept_groups}); }
+      });
+  }
+  render() {
+    let {concept_groups, cols} = this.state;
+    console.log(concept_groups, cols);
+    return (
+              <AgTable coldefs={cols} data={concept_groups}
+                      width={"100%"} height={550}
+                      id="Search"
+              />
+    );
+  }
+}
+*/

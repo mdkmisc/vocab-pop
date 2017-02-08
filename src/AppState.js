@@ -164,15 +164,17 @@ export class ApiStream extends AppData.ApiFetcher {
         //this.behaviorSubj.complete();
       });
   }
-  /* subscribe(cb) { return this.behaviorSubj.subscribe(cb); } */
+  subscribe(cb) { return this.behaviorSubj.subscribe(cb); }
+  unsubscribe() { return this.behaviorSubj.unsubscribe(); }
 }
+/*
 export class StreamsSubscriber {
   constructor(callback) {
     this.callback = callback;
   }
   /* picks the streams and subscribes the callback
    * if there's an existing subscription, unsubscribe from it
-   */
+   * /
   filter(filtFunc) { 
     this.filtFunc = filtFunc;
     if (this.subscription) this.subscription.unsubscribe();
@@ -193,6 +195,7 @@ export class StreamsSubscriber {
       this.subscription.unsubscribe();
   }
 }
+*/
 
 // this component is just for debugging, it shows current AppState
 export class AppState extends Component {

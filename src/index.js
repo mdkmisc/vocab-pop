@@ -17,12 +17,12 @@ app.get('*', function (req, res) {
 })
 */
 
+          //<Route path="search" components={{main:ComponentWrapper, compName:'Search', sidebar:Sidebar}} />
 AppState.initialize({history:useRouterHistory(createHistory)()}) // set global history object
   .then(() => {
     render((
       <Router history={AppState.history}>
         <Route path="/" component={App}>
-          <Route path="search" components={{main:ComponentWrapper, compName:'Search', sidebar:Sidebar}} />
           <Route path="concepts" components={{main:ComponentWrapper, compName:'ConceptContainer', sidebar:Sidebar}} />
           <IndexRoute        components={{main:ComponentWrapper, compName:'Home',          sidebar:Sidebar}}/>
           <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
