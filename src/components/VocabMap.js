@@ -63,9 +63,9 @@ export class VocNode extends Component {
                 break;
               case 'click':
                 if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
-                  console.log(sigmaNode.id, 'zoom');
+                  self.setState({zoom:true});
                 } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
-                  console.log(sigmaNode.id, 'list');
+                  self.setState({list:true});
                 }
                 break;
               default:
@@ -81,6 +81,11 @@ export class VocNode extends Component {
                 self.setState({neighborHover:false});
                 break;
               case 'click':
+                if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
+                  self.setState({zoom:false});
+                } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
+                  self.setState({list:false});
+                }
                 break;
               default:
                 console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
@@ -95,6 +100,11 @@ export class VocNode extends Component {
                 self.setState({mute:false});
                 break;
               case 'click':
+                if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
+                  self.setState({zoom:false});
+                } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
+                  self.setState({list:false});
+                }
                 break;
               default:
                 console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
@@ -119,26 +129,38 @@ export class VocNode extends Component {
   }
   nodeEvent(e) {
     console.log('react event', this, e);
+    debugger;
   }
   render() {
     const {sigmaNode, sigmaSettings} = this.props;
-    const {node, el, settings, w, h, hover, mute} = this.state;
+    const {node, el, settings, w, h, hover, mute, zoom, list} = this.state;
     let prefix = sigmaSettings('prefix') || '';
+
+    if (sigmaNode.sgVal.records.length !== 1) throw new Error("expected one record");
+    let rec = sigmaNode.sgVal.records[0];
+    let classVal = rec.drill.lookup('class_concept_id');
+    let conceptClasses = classVal ? classVal.getChildren() : [];
+    //console.log(conceptClasses.join('\n'));
+
+    let zoomContent = '';
+    if (zoom) {
+      zoomContent = <div>ZOOM!</div>;
+    }
+    
     let icons = '';
-    //if (hover)
-      icons = <span className="icons" // sigma chokes on events for elements without classes
-                style={{display:this.state.hover ? 'inline' : 'none',}}
-              >
-                <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
-                  onClick={this.nodeEvent.bind(this)}
-                  title="Drill down to concept classes"
-                  //onMouseOver={this.nodeEvent.bind(this)}
-                  //onMouseOut={this.nodeEvent.bind(this)}
-                />
-                <Glyphicon glyph="list" style={{pointerEvents:'auto'}} 
-                  title="Show sample records"
-                />
-              </span>;
+    icons = <span className="icons" // sigma chokes on events for elements without classes
+              style={{display:this.state.hover ? 'inline' : 'none',}}
+            >
+              <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
+                onClick={this.nodeEvent.bind(this)}
+                title="Drill down to concept classes"
+                //onMouseOver={this.nodeEvent.bind(this)}
+                //onMouseOut={this.nodeEvent.bind(this)}
+              />
+              <Glyphicon glyph="list" style={{pointerEvents:'auto'}} 
+                title="Show sample records"
+              />
+            </span>;
                   
     return (<foreignObject r="6"
               data-node-id={sigmaNode.id}
@@ -154,7 +176,10 @@ export class VocNode extends Component {
             >
               <div  className="voc-div" ref={d=>this.content=d} >
                 <div className="caption" >
-                  {sigmaNode.caption}{icons}
+                  {sigmaNode.caption}
+                  {conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.caption
+                    ? conceptClasses.map(d=>' ' + d) : ''}
+                  {icons}
                 </div>
                 { sigmaNode.counts 
                   ?  _.map(sigmaNode.counts,
@@ -162,6 +187,7 @@ export class VocNode extends Component {
                                     {k}:&nbsp;{commify(v)}
                                   </div>)
                   : ''}
+                {zoomContent}
               </div>
             </foreignObject>);
   }
@@ -239,9 +265,6 @@ export class VocEdge extends Component {
     // Showing
     path.style.display = '';
     this.setState({edge, el, settings, w, h});
-  }
-  nodeEvent(e) {
-    console.log('react event', this, e);
   }
   render() {
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings, classes} = this.props;

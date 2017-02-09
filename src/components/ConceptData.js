@@ -144,13 +144,24 @@ export default class ConceptData extends Component {
     this.setState(state);
     window.ConceptDataState = state;
   }
-  combineCgDc(cg, dc) {
+  combineCgDc(cg, dc) { // for now just doing sc/dom/voc and desc/children
     let byDgid = _.supergroup(dc.filter(d=>d.drc||d.dsrc),'dcid_grp_id');
     let empty = []; // for debugging convenience, use the same empty array, allows checking w/ _.uniq
+
+    // add descendant concept groups
     let wDc = cg.map(g => Object.assign(g, {dc:(byDgid.lookup(g.dcid_grp_id)||{}).records||empty}));
-    wDc.forEach(g => {
+        
+    wDc
+      .filter(d=>d.grp === 15)
+      .forEach(g => {
       let dcs = g.dc.filter(d=>d.grp===15);
       g.linknodes = dcs.map(d=>d.vals.join(','));
+
+      // add drilldown concept groups
+      let deeperGroups=wDc.filter(d=>_.compact(d.vals).join(',').match(g.vals.join(',')+'.'));
+      g.drill = _.supergroup(
+                    deeperGroups, 
+                    [d=>d.grpset.slice(3).join(','), d=>d.vals.slice(3).join(',')]);
     });
     return wDc;
   }
