@@ -37,7 +37,8 @@ export default class ConceptData extends Component {
   render() {
     const {filters} = this.props;
     const {counts, agg, cgdc, concept_groups, dcid_cnts_breakdown} = this.state;
-    return <div>
+    return  <div style={{width:'100%', height:'100%'}}
+                  className="concept-data">
               {React.cloneElement(this.props.children, {
                   filters,
                   counts,
@@ -134,7 +135,7 @@ export default class ConceptData extends Component {
     _.each(this.streamsToWatch, (stream,name) => {
       if (stream.results && 
           !_.isEqual(_.get(state, stream.meta.statePath), stream.results)) {
-        console.log('newData for', stream.meta.statePath);
+        //console.log('newData for', stream.meta.statePath);
         _.set(state, stream.meta.statePath, stream.results);
       }
     })

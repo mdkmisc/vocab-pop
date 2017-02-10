@@ -17,6 +17,7 @@ Copyright 2016 Sigfried Gold
 // npm run-script flow
 const DEBUG = true;
 var d3 = require('d3');
+var $ = require('jquery');
 import * as util from '../utils';
 if (DEBUG) window.d3 = d3;
 if (DEBUG) window.util = util;
@@ -44,7 +45,8 @@ import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-require('./VocabPop.css');
+//require('./VocabPop.css');
+require('./stylesheets/Vocab.css');
 require('./fileBrowser.css');
 
 export const coldefs = [
@@ -180,7 +182,10 @@ export class ConceptContainer extends Component {
   }
 }
 class ConceptBrowse extends Component {
-  constructor(props) { super(props); this.state = {}; }
+  constructor(props) { 
+    super(props); 
+    this.state = {ww:$(window).width(), wh:$(window).height()}; 
+  }
   componentDidMount() {
     const {concept_groups} = this.props;
     if (concept_groups && concept_groups.length)
@@ -188,25 +193,30 @@ class ConceptBrowse extends Component {
   }
   componentDidUpdate(prevProps, prevState) {
     const {concept_groups, domain_id, } = this.props;
+    const { w, h, ww, wh } = this.state;
     if (concept_groups && concept_groups.length && 
         concept_groups !== prevProps.concept_groups) {
       let cg = domain_id 
         ? (concept_groups||[]).filter(d=>d.domain_id===domain_id) : concept_groups;
-      this.setState({cg});
+      let newState = {cg};
+      if (!w || $(window).width() !== ww) newState.w = $(window).width() * .7;
+      if (!h || $(window).height() !== wh) newState.h = $(window).height() * .8;
+      this.setState(newState);
     }
+
   }
   render() {
     const { children, counts, agg, cols} = this.props;
-    const { cg } = this.state;
+    const { cg, w, h } = this.state;
             
-    return  <div>
-              <div>
+    return  <div style={{width:w, height:h}}
+                  className="concept-browse"
+            >
                 <VocabMapByDomain
                           concept_groups={cg}
-                          width={800}
-                          height={600}
+                          width={w}
+                          height={h}
                 />
-              </div>
             </div>;
 
 

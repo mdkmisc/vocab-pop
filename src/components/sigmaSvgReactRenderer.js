@@ -1,6 +1,6 @@
 import React, { Component } from 'react';
 import {render} from 'react-dom';
-import {VocNode, VocEdge} from './VocabMap';
+//import {VocNode, VocEdge} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 export default function(sigma) {
@@ -14,23 +14,15 @@ export default function(sigma) {
      * @param  {configurable}             settings The settings function.
      */
     create: function(node, settings) {
+      let Component = node.ComponentClass;
       let g = document.createElementNS(d3.namespaces.svg, 'g');
       g.setAttributeNS(null, 'data-node-id', node.id);
 
-      let cls, classes = node.classes || [];
-      if (Array.isArray(classes)) {
-        classes.push('plain-g-node');
-        cls = classes.join(' ');
-      } else if (typeof classes === 'string') {
-        cls = classes + ' plain-g-node';
-      } else {
-        throw new Error("unknown type in node.classes");
-      }
-      cls += (' ' + settings('classPrefix') + '-node');
-      g.setAttributeNS(null, 'class', cls);
-
+      g.setAttributeNS(null, 'class', 
+              settings('classPrefix') + '-node'
+              + ' sigma-react');
       //g.setAttributeNS(null, 'fill', node.color || settings('defaultNodeColor'));
-      render(<VocNode sigmaNode={node} sigmaSettings={settings} />, g);
+      render(<Component sigmaNode={node} sigmaSettings={settings} />, g);
       return g;
     },
     /**
@@ -79,17 +71,11 @@ export default function(sigma) {
         }
       g.setAttributeNS(null, 'stroke', color);
       g.setAttributeNS(null, 'data-edge-id', edge.id);
+      g.setAttributeNS(null, 'class', 
+              settings('classPrefix') + '-edge' + ' sigma-react');
 
-      let cls, classes = edge.classes || [];
-      if (typeof classes === 'string') {
-        cls = classes + ' plain-g-edge';
-      } else {
-        throw new Error("unknown type in edge.classes");
-      }
-      cls += (' ' + settings('classPrefix') + '-edge');
-      g.setAttributeNS(null, 'class', cls);
-
-      render(<VocEdge classes={cls} sigmaEdge={edge} sigmaSource={source} 
+      let Component = edge.ComponentClass;
+      render(<Component sigmaEdge={edge} sigmaSource={source} 
               sigmaTarget={target} sigmaSettings={settings} />, g);
       return g;
     },

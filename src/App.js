@@ -35,7 +35,7 @@ import * as AppState from './AppState';
 
 //import logo from './logo.svg';
 //import './App.css';
-import './components/VocabPop.css';
+import './stylesheets/VocabPop.css';
 import _ from 'supergroup';
 //import * as AppState from './AppState';
 //import * as util from './ohdsi.util';

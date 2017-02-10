@@ -1,0 +1,232 @@
+//colors
+$gray: grey;
+$blue: blue;
+$color_granny_smith_apple_approx: lightgreen;
+$color_regent_st_blue_approx: lightblue;
+$color_quill_gray_approx:  lightgray;
+$color_alto_approx: #ddd;
+$color_mountain_mist_approx: #999;
+$white: #fff;
+$color_lochmara_30_approx: rgba(0,119,221,0.3);
+$color_lochmara_10_approx: rgba(0,119,221,0.1);
+$color_amethyst_30_approx: rgba(163, 53, 238,0.3);
+$color_amethyst_10_approx: rgba(163, 53, 238,0.1);
+$crimson_30: rgba(220,20,60,0.3);
+$crimson_10: rgba(220,20,60,0.1);
+$black_30: rgba(0,0,0,0.3);
+$black_10: rgba(0,0,0,0.1);
+$color_claret_30_approx: rgba(120,20,60,0.3);
+$color_claret_10_approx: rgba(120,20,60,0.1);
+$color_lochmara_approx: rgba(0,119,221,1);
+$color_amethyst_approx: rgba(163, 53, 238,1);
+$crimson_100: rgba(220,20,60,1);
+$color_claret_approx: rgba(120,20,60,1);
+$alice_blue: aliceblue;
+$steel_blue:  steelblue;
+$mute_opacity: 0.3;
+
+UNDO A COUPLE TIMES TO FIX
+
+div.concept-browse {
+  height: 100vh;
+}
+.react-spinner {
+	position: relative;
+	width: 32px;
+	height: 32px;
+	top: 50%;
+	left: 50%;
+}
+.react-spinner_bar {
+	animation: react-spinner_spin 1.2s linear infinite;
+	//Instead of the line below you could use @include border-radius($radius, $vertical-radius)
+	border-radius: 5px;
+	background-color: $blue;
+	position: absolute;
+	width: 20%;
+	height: 7.8%;
+	top: -3.9%;
+	left: -10%;
+}
+@keyframes react-spinner_spin {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.15;
+	}
+}
+@-moz-keyframes react-spinner_spin {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.15;
+	}
+}
+@-webkit-keyframes react-spinner_spin {
+	0% {
+		opacity: 1;
+	}
+	100% {
+		opacity: 0.15;
+	}
+}
+.standard-concept {
+	background-color: $color_granny_smith_apple_approx;
+}
+.classification-concept {
+	background-color: $color_regent_st_blue_approx;
+}
+.ag-row {
+	border-bottom: 1px solid $color_quill_gray_approx;
+}
+.ag-row-odd {
+}
+.react-draggable {
+	cursor: move;
+	.handle {
+		background: $color_alto_approx;
+		border: 1px solid $color_mountain_mist_approx;
+		//Instead of the line below you could use @include border-radius($radius, $vertical-radius)
+		border-radius: 3px;
+		display: block;
+		margin-bottom: 7px;
+		padding: 3px 5px;
+		text-align: center;
+	}
+}
+.cursor {
+	cursor: move;
+}
+.no-cursor {
+	cursor: auto;
+}
+.cursor-y {
+	cursor: ns-resize;
+}
+.cursor-x {
+	cursor: ew-resize;
+}
+
+div.concept-browse {
+  div.vocab-map {
+    svg.sigma-svg {
+      top: 0;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      position: absolute;
+      background-color: $white;
+
+      g.sigma-edge {
+        path {
+          stroke: $steel_blue;
+          &.muted {
+            opacity: $mute_opacity;
+          }
+        }
+      }
+
+      g.sigma-node {
+        g.voc-node-container {
+          &.muted {
+            opacity: $mute_opacity;
+          }
+          rect {
+            fill: $white;
+          }
+          cursor: pointer;
+          font-size: small;
+          &.parent {
+            font-size: large;
+            background-color: $alice_blue;
+            pointer-events: none;
+            border: 1px solid $steel_blue;
+          }
+          foreignObject {
+
+
+            div.voc-div {
+              border: 1px solid gray;
+              padding: 4px;
+              //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
+              border-radius: 8px;
+              background-color: $white;
+              span.icons > span.glyphicon {
+                margin-left: 5px;
+                position: static;
+              }
+            }
+          }
+        }
+      }
+      div {
+        &.rc {
+          background-color: $color_lochmara_30_approx;
+        }
+        &.drc {
+          background-color: $color_amethyst_30_approx;
+        }
+        &.src {
+          background-color: $crimson_30;
+        }
+        &.dsrc {
+          background-color: $color_claret_30_approx;
+        }
+        &.info {
+          display: flex;
+          flex-direction: row;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin: 2px 0px 1px 0px;
+          span {
+            &.key {
+              margin-right: 4px;
+              font-weight: bold;
+              padding-left: 3px;
+            }
+            &.val {
+              padding-right: 3px;
+              text-align: right;
+            }
+          }
+        }
+      }
+      .rc > div {
+        border-color: $color_lochmara_30_approx;
+        background-color: $color_lochmara_10_approx;
+      }
+      .drc > div {
+        border-color: $color_amethyst_30_approx;
+        background-color: $color_amethyst_10_approx;
+      }
+      .src > div {
+        border-color: $crimson_30;
+        background-color: $crimson_10;
+      }
+      .dsrc > div {
+        border-color: $color_claret_30_approx;
+        background-color: $color_claret_10_approx;
+      }
+      .norecs > div {
+        border-color: $black_30;
+        background-color: $black_10;
+      }
+      span.aside {
+        font-weight: lighter;
+        font-size: 90%;
+        font-style: italic;
+        padding-left: 10px;
+      }
+      .field.nest-level-1 {
+        .form-group {
+          padding-left: 20px;
+        }
+        legend {
+          font-size: 16px;
+        }
+      }
+    }
+  }
+}
