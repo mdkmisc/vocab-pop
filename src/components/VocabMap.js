@@ -22,6 +22,7 @@ import { Glyphicon
 var d3 = require('d3');
 import _ from 'supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
+import Rx from 'rxjs/Rx';
 
 import * as AppState from '../AppState';
 import {commify} from '../utils';
@@ -74,21 +75,36 @@ export default class VocabMap extends Component {
   constructor(props) {
     super(props);
     this.state = {updates:0};
+    this.nodeEventStream = new Rx.Subject();
   }
   componentDidMount() {
     this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
   }
   componentDidUpdate() {
     const {sg, width, height} = this.props;
+    let self = this;
     if (this.graphDiv && sg && sg.length) {
       let elements = makeElements(sg.getChildren());
       elements.nodes.forEach(
-        e => e.ComponentClass = e.isParent ? VocGroupNode : VocNode);
-      elements.edges.forEach(e => e.ComponentClass = VocEdge);
+        d => {
+          d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
+          d.nodeEventStream = this.nodeEventStream;
+        });
+      elements.edges.forEach(
+        d => {
+          d.ComponentClass = VocEdge;
+          d.nodeEventStream = this.nodeEventStream;
+        });
       this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
       this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
       this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
       this.setState({graphDrawn:true, updates:this.state.updates+1});
+      $('g.voc-node-container')
+        .on('click mouseover mouseout drag',
+            function(e) {
+              //console.log(e.type, this);
+              self.nodeEventStream.next({jqEvt:e, domNode:this});
+            });
     }
   }
   shouldComponentUpdate(nextProps, nextState) {
@@ -121,15 +137,14 @@ export class VocNode extends Component {
   constructor(props) {
     super(props);
     this.state = {w:0, h:0, updates:0};
-  }
-  content() {
-    return <VocNodeContent {...this.props} {...this.state} />;
+    this.nodeSizeStream = new Rx.Subject();
+    this.nodeSizeStream.debounceTime(100).subscribe(this.setSize.bind(this));
   }
   componentDidMount() {
     const {sigmaNode, sigmaSettings} = this.props;
     sigmaNode.update = this.update.bind(this);
     let self = this;
-    AppState.ephemeralEventStream.subscribe(
+    sigmaNode.nodeEventStream.subscribe(
       e => {
         let eventNodeId = e.jqEvt.target.closest('g.sigma-node').getAttribute('data-node-id');
         var neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
@@ -156,7 +171,7 @@ export class VocNode extends Component {
           case 'neighbor':
             switch (e.jqEvt.type) {
               case 'mouseover':
-                self.setState({neighborHover:true});
+                self.setState({neighborHover:true, hover:false});
                 break;
               case 'mouseout':
                 self.setState({neighborHover:false});
@@ -175,7 +190,7 @@ export class VocNode extends Component {
           case 'other':
             switch (e.jqEvt.type) {
               case 'mouseover':
-                self.setState({mute:true});
+                self.setState({mute:true, hover:false});
                 break;
               case 'mouseout':
                 self.setState({mute:false});
@@ -196,27 +211,12 @@ export class VocNode extends Component {
         }
       });
   }
-  update(node, el, settings) {
-    const {sigmaNode, sigmaSettings} = this.props;
-    if (node !== sigmaNode) throw new Error('is this right?');
-    if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
-    let w=0,h=0;
-    if (this.contentDiv) {
-      this.contentDiv.style.position = 'absolute';
-      let cbr = this.contentDiv.getBoundingClientRect(); 
-      this.contentDiv.style.position = '';
-      w = cbr.width; 
-      h = cbr.height;
-      console.log(cbr,w,h);
-    }
-    this.setState({w, h, updates: this.state.updates+1});
-    //$('g.sigma-node').css('display','');
-  }
   render() {
     const {sigmaNode, sigmaSettings} = this.props;
     const {w, h, hover, mute, zoom, list} = this.state;
     let prefix = sigmaSettings('prefix') || '';
 
+    //console.log(sigmaNode.id, hover, mute, 'vocnode');
     return (
             <g className={"voc-node-container " 
                             + sigmaNode.classes
@@ -229,17 +229,44 @@ export class VocNode extends Component {
               />    
               <foreignObject
                 className="voc-node-fo"
-                width={w}
-                height={h}
+                //width={w}
+                //height={h}
               >
-                <div  className={"voc-div"}
-                ref={d=>this.contentDiv=d} >
+                <div  className={"voc-div"} ref={d=>this.contentDiv=d} >
                   {this.content()}
                 </div>
               </foreignObject>
             </g>
            );
 
+  }
+  content() {
+    return <VocNodeContent {...this.props} {...this.state} 
+              setVocNodeSize={this.setSize.bind(this)} />;
+  }
+  setSize(dn) {
+    //console.log('resize');
+    let cbr = dn.getBoundingClientRect(); 
+    this.setState({w:cbr.width, h:cbr.height, updates: this.state.updates+1});
+  }
+  update(node, el, settings) {
+    /*
+    const {sigmaNode, sigmaSettings} = this.props;
+    //if (node !== sigmaNode) throw new Error('is this right?');
+    //if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
+    let w=0,h=0;
+    if (this.contentDiv) {
+      this.contentDiv.style.position = 'absolute';
+      let cbr = this.contentDiv.getBoundingClientRect(); 
+      this.contentDiv.style.position = '';
+      w = cbr.width; 
+      h = cbr.height;
+      //console.log(cbr,w,h);
+    }
+    this.setState({w, h, updates: this.state.updates+1});
+    */
+    this.setState({updates: this.state.updates+1});
+    //$('g.sigma-node').css('display','');
   }
 }
 export class VocGroupNode extends VocNode {
@@ -264,8 +291,32 @@ function Icons(props) {
          </span>;
 }
 export class VocNodeContent extends Component {
+  constructor(props) { super(props); this.state = {}; }
+  shouldComponentUpdate(nextProps, nextState) {
+    let p = ['sigmaNode','hover','mute','zoom','list'];
+    return  !this.state.initialized ||
+            this.state.refresh !== nextState.refresh ||
+            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
+  }
+  componentDidMount() {
+    setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
+  }
+  componentDidUpdate() {
+    if (!this.mainDiv) {
+      setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
+    }
+    this.props.setVocNodeSize(this.mainDiv);
+  }
+  componentWillUpdate(nextProps) {
+    const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = nextProps;
+    //console.log(sigmaNode.id, hover, mute, 'content update');
+
+    //this.setState({icons: <Icons hover={hover} />, chunks, zoomContent, initialized: true});
+    this.setState({initialized: true});
+  }
   render() {
-    const {sigmaNode, sigmaSettings, settings, w, h, hover, mute, zoom, list, } = this.props;
+    const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = this.props;
+    //const {icons, chunks, zoomContent} = this.state;
 
     if (sigmaNode.sgVal.records.length !== 1) throw new Error("expected one record");
     let rec = sigmaNode.sgVal.records[0];
@@ -275,31 +326,38 @@ export class VocNodeContent extends Component {
 
     let zoomContent = '';
     if (zoom) {
-      zoomContent = <div>ZOOM!</div>;
+      zoomContent = <div className="zoom">ZOOM!</div>;
     }
 
+    let chunkStyle = {};
     let chunks = [
       <InfoChunk key="Voc" k="Voc" v={sigmaNode.caption} />
     ]
     if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.caption)
       chunks.push(<InfoChunk key="Class" k="Class" v={conceptClasses[0]+''} />);
-    chunks = chunks.concat(
-      _.map(sigmaNode.counts||{},
-        (v,k) => <InfoChunk key={k} cls={k} k={k} v={v} vfmt={commify} />
-      )
-    );
-    return <div className="voc-node-content">
+
+    chunkStyle.display = hover ? 'flex' : 'none';
+    //if (hover) {
+      chunks = chunks.concat(
+        _.map(sigmaNode.counts||{},
+          (v,k) => <InfoChunk key={k} cls={k} k={k} v={v} vfmt={commify} style={chunkStyle}/>
+        )
+      );
+    //}
+    return <div className="voc-node-content" ref={d=>this.mainDiv=d}>
               <Icons hover={hover} />
-              {chunks}
+              <div className="info-chunks">
+                {chunks || <p>nothing yet</p>}
+              </div>
               {zoomContent}
-            </div>;
+           </div>;
   }
 }
 function InfoChunk(props) {
-  let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d} = props;
+  let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style} = props;
   kcls = kcls || cls;
   vcls = vcls || cls;
-  return <div className={cls + ' info'}>
+  return <div className={cls + ' info'} style={style}>
             <span className={kcls + ' key'}>{kfmt(k)}</span>
             <span className={vcls + ' val'}>{vfmt(v)}</span>
          </div>;
@@ -315,7 +373,7 @@ export class VocEdge extends Component {
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
     sigmaEdge.update = this.update.bind(this);
     let self = this;
-    AppState.ephemeralEventStream.subscribe(
+    sigmaEdge.nodeEventStream.subscribe(
       e => {
         // these (so far) are just node events
         let nodeId = e.jqEvt.target.closest('g.sigma-node').getAttribute('data-node-id');
@@ -353,10 +411,10 @@ export class VocEdge extends Component {
   }
   update(edge, el, source, target, settings) { 
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
-    if (edge !== sigmaEdge) throw new Error('is this right?');
-    if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
-    if (source !== sigmaSource) throw new Error('is this right?');
-    if (target !== sigmaTarget) throw new Error('is this right?');
+    //if (edge !== sigmaEdge) throw new Error('is this right?');
+    //if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
+    //if (source !== sigmaSource) throw new Error('is this right?');
+    //if (target !== sigmaTarget) throw new Error('is this right?');
     if (!this.path) return;
     let path = this.path;
     var prefix = sigmaSettings('prefix') || '';
@@ -418,12 +476,6 @@ function sigmaGraph(domnode, elements) {
   });
   s.camera.ratio = .9;
   s.refresh();
-  $('g.voc-node-container')
-    .on('click mouseover mouseout drag',
-        function(e) {
-          //console.log(e.type, this);
-          AppState.ephemeralEventStream.next({jqEvt:e, domNode:this});
-        });
   window.s = s;
   return s;
   /*

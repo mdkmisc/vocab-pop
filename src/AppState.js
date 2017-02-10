@@ -9,9 +9,6 @@ import yaml from 'js-yaml';
 import settingsYaml from './appSettings.yml';
 
 
-export var ephemeralEventStream = new Rx.Subject();
-
-
 //var d3 = require('d3');
 //import qs from 'qs';
 //var qs = require('qs');

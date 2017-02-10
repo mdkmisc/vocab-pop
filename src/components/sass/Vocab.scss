@@ -134,7 +134,7 @@ div.concept-browse {
             opacity: $mute_opacity;
           }
           rect {
-            fill: $white;
+            fill: blue;
           }
           cursor: pointer;
           font-size: small;
@@ -145,14 +145,34 @@ div.concept-browse {
             border: 1px solid $steel_blue;
           }
           foreignObject {
-
-
             div.voc-div {
+              display: inline-block;
               border: 1px solid gray;
               padding: 4px;
               //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
               border-radius: 8px;
               background-color: $white;
+              div.voc-node-content {
+                display: inline-block;
+                div.info {
+                  display: flex;
+                  flex-direction: row;
+                  align-items: flex-start;
+                  justify-content: space-between;
+                  margin: 2px 0px 1px 0px;
+                  span {
+                    &.key {
+                      margin-right: 4px;
+                      font-weight: bold;
+                      padding-left: 3px;
+                    }
+                    &.val {
+                      padding-right: 3px;
+                      text-align: right;
+                    }
+                  }
+                }
+              }
               span.icons > span.glyphicon {
                 margin-left: 5px;
                 position: static;
@@ -173,24 +193,6 @@ div.concept-browse {
         }
         &.dsrc {
           background-color: $color_claret_30_approx;
-        }
-        &.info {
-          display: flex;
-          flex-direction: row;
-          align-items: flex-start;
-          justify-content: space-between;
-          margin: 2px 0px 1px 0px;
-          span {
-            &.key {
-              margin-right: 4px;
-              font-weight: bold;
-              padding-left: 3px;
-            }
-            &.val {
-              padding-right: 3px;
-              text-align: right;
-            }
-          }
         }
       }
       .rc > div {
