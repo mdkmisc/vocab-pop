@@ -76,9 +76,16 @@ export default class VocabMap extends Component {
     super(props);
     this.state = {updates:0};
     this.nodeEventStream = new Rx.Subject();
+    this.msgInfoStream = new Rx.Subject();
   }
   componentDidMount() {
     this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
+    let self = this;
+    this.msgInfoStream.subscribe(
+      function(msgInfo) {
+        console.log(msgInfo);
+        self.setState({msgInfo});
+      });
   }
   componentDidUpdate() {
     const {sg, width, height} = this.props;
@@ -89,11 +96,13 @@ export default class VocabMap extends Component {
         d => {
           d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
           d.nodeEventStream = this.nodeEventStream;
+          d.msgInfoStream = this.msgInfoStream;
         });
       elements.edges.forEach(
         d => {
           d.ComponentClass = VocEdge;
           d.nodeEventStream = this.nodeEventStream;
+          d.msgInfoStream = this.msgInfoStream;
         });
       this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
       this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
@@ -102,16 +111,27 @@ export default class VocabMap extends Component {
       $('g.voc-node-container')
         .on('click mouseover mouseout drag',
             function(e) {
-              //console.log(e.type, this);
-              self.nodeEventStream.next({jqEvt:e, domNode:this});
+              let inodes = $(e.target).closest('[data-is-info=true]'),
+                  key, val;
+              if (inodes.length) {
+                let inode = inodes[0];
+                key = inode.getAttribute('data-key');
+                val = inode.getAttribute('data-val');
+                //console.log(e.type, e.target, key, val)
+              }
+              self.nodeEventStream.next({jqEvt:e, domNode:this, 
+                                        isInfo: !!inodes.length, key, val});
             });
     }
   }
   shouldComponentUpdate(nextProps, nextState) {
-    return !this.state.graphDrawn || this.props.sg !== nextProps.sg;
+    return !this.state.graphDrawn || 
+            this.props.sg !== nextProps.sg ||
+            this.state.msgInfo !== nextState.msgInfo;
   }
   render() {
     const {sg, width, height} = this.props;
+    const {msgInfo} = this.state;
     return (<div className="vocab-map"
                  style={{
                         float: 'left', 
@@ -120,11 +140,22 @@ export default class VocabMap extends Component {
                         position: 'relative',
                     }} >
               <h4><a href="#" onClick={()=>AppState.saveState({domain_id:sg.toString()})}> {sg.toString()}</a></h4>
-              <div className="vocab-map-msg-div" style={{ position: 'absolute', right: '10px',}} ref={div=>this.msgDiv=div} />
+              <MsgInfo info={msgInfo} />
               <div ref={div=>this.graphDiv=div} 
                    style={{ width: `${width}px`, height: `${height}px`, }}
               />
             </div>);
+  }
+}
+export class MsgInfo extends Component {
+  render() {
+    const {info} = this.props;
+    let msg = info ? <pre>{JSON.stringify(info)}</pre> : <div/>;
+    return <div className="vocab-map-msg-div" 
+                  style={{ position: 'absolute', right: '10px',}} 
+                  ref={div=>this.msgDiv=div}>
+              {msg}
+            </div>
   }
 }
 function eventPerspective(me, evt, neighbors) {
@@ -146,69 +177,82 @@ export class VocNode extends Component {
     let self = this;
     sigmaNode.nodeEventStream.subscribe(
       e => {
-        let eventNodeId = e.jqEvt.target.closest('g.sigma-node').getAttribute('data-node-id');
-        var neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
-        switch (eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id))) {
+        const {jqEvt, isInfo, key, val, domNode} = e;
+        const {target, type} = jqEvt;
+        let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
+        let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
+        let perspective = // self, neighbor, other
+          eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
+
+        let states = {};
+        if (isInfo) {
+          states.infoHover = {key, val};
+        }
+
+        switch (perspective) {
           case 'self':
-            switch (e.jqEvt.type) {
+            switch (type) {
               case 'mouseover':
-                self.setState({hover:true});
+                states.hover = true;
                 break;
               case 'mouseout':
-                self.setState({hover:false});
+                states.hover = false;
                 break;
               case 'click':
-                if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
-                  self.setState({zoom:true});
-                } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
-                  self.setState({list:true});
+                if (_.includes(target.classList,'glyphicon-zoom-in')) {
+                  states.zoom = true;
+                } else if (_.includes(target.classList,'glyphicon-list')) {
+                  states.list = true;
                 }
                 break;
               default:
-                console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+                console.log('unhandled', type, 'node event on', sigmaNode.id);
             }
             break;
           case 'neighbor':
-            switch (e.jqEvt.type) {
+            switch (type) {
               case 'mouseover':
-                self.setState({neighborHover:true, hover:false});
+                states.neighborHover = true;
+                states.hover = false;
                 break;
               case 'mouseout':
-                self.setState({neighborHover:false});
+                states.neighborHover = false;
                 break;
               case 'click':
-                if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
-                  self.setState({zoom:false});
-                } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
-                  self.setState({list:false});
+                if (_.includes(target.classList,'glyphicon-zoom-in'
+                    ||_.includes(target.classList,'glyphicon-list'))) {
+                  states.zoom = false;
+                  states.list = false;
                 }
                 break;
               default:
-                console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+                console.log('unhandled', type, 'node event on', sigmaNode.id);
             }
             break;
           case 'other':
-            switch (e.jqEvt.type) {
+            switch (type) {
               case 'mouseover':
-                self.setState({mute:true, hover:false});
+                states.mute = true;
+                states.hover = false;
                 break;
               case 'mouseout':
-                self.setState({mute:false});
+                states.mute = false;
                 break;
               case 'click':
-                if (_.includes(e.jqEvt.target.classList,'glyphicon-zoom-in')) {
-                  self.setState({zoom:false});
-                } else if (_.includes(e.jqEvt.target.classList,'glyphicon-list')) {
-                  self.setState({list:false});
+                if (_.includes(target.classList,'glyphicon-zoom-in'
+                    ||_.includes(target.classList,'glyphicon-list'))) {
+                  states.zoom = false;
+                  states.list = false;
                 }
                 break;
               default:
-                console.log('unhandled', e.jqEvt.type, 'node event on', sigmaNode.id);
+                console.log('unhandled', type, 'node event on', sigmaNode.id);
             }
             break;
           default:
             console.log('weird perspective in node event from', sigmaNode.id);
         }
+        self.setState(states);
       });
   }
   render() {
@@ -293,10 +337,18 @@ function Icons(props) {
 export class VocNodeContent extends Component {
   constructor(props) { super(props); this.state = {}; }
   shouldComponentUpdate(nextProps, nextState) {
+    let p = ['sigmaNode','hover','mute','zoom','list','msgInfo'];
+    let s = ['refresh', ];
+    return  !this.state.initialized ||
+            !_.isEqual(_.pick(this.state, s), _.pick(nextState, s)) ||
+            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
+
+    /*
     let p = ['sigmaNode','hover','mute','zoom','list'];
     return  !this.state.initialized ||
             this.state.refresh !== nextState.refresh ||
             !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
+    */
   }
   componentDidMount() {
     setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
@@ -315,7 +367,8 @@ export class VocNodeContent extends Component {
     this.setState({initialized: true});
   }
   render() {
-    const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = this.props;
+    const {sigmaNode, sigmaSettings, settings, 
+            hover, mute, zoom, list, infoHover, } = this.props;
     //const {icons, chunks, zoomContent} = this.state;
 
     if (sigmaNode.sgVal.records.length !== 1) throw new Error("expected one record");
@@ -340,9 +393,17 @@ export class VocNodeContent extends Component {
     //if (hover) {
       chunks = chunks.concat(
         _.map(sigmaNode.counts||{},
-          (v,k) => <InfoChunk key={k} cls={k} k={k} v={v} vfmt={commify} style={chunkStyle}/>
-        )
-      );
+          (v,k) => {
+            let trigger = d=>d;
+            if (infoHover && infoHover.key === k) {
+              trigger = ()=>this.infoTrigger(k,v);
+            }
+            return <InfoChunk key={k} cls={k} k={k} v={v} 
+                    vfmt={commify} style={chunkStyle}
+                    mouse={trigger}
+                    />
+          }
+        ));
     //}
     return <div className="voc-node-content" ref={d=>this.mainDiv=d}>
               <Icons hover={hover} />
@@ -352,12 +413,21 @@ export class VocNodeContent extends Component {
               {zoomContent}
            </div>;
   }
+  infoTrigger(k,v) {
+    const {sigmaNode} = this.props;
+    //console.log('infotrigger',k,v);
+    sigmaNode.msgInfoStream.next({id: sigmaNode.id, k, v});
+              //trigger = () => sigmaNode.msgInfoStream.next({k,v});
+  }
 }
 function InfoChunk(props) {
-  let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style} = props;
+  let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style, mouse} = props;
   kcls = kcls || cls;
   vcls = vcls || cls;
-  return <div className={cls + ' info'} style={style}>
+  return <div className={cls + ' info'} style={style} 
+          data-is-info={true} data-key={k} data-val={v}
+          onMouseOver={mouse}
+         >
             <span className={kcls + ' key'}>{kfmt(k)}</span>
             <span className={vcls + ' val'}>{vfmt(v)}</span>
          </div>;
@@ -375,8 +445,7 @@ export class VocEdge extends Component {
     let self = this;
     sigmaEdge.nodeEventStream.subscribe(
       e => {
-        // these (so far) are just node events
-        let nodeId = e.jqEvt.target.closest('g.sigma-node').getAttribute('data-node-id');
+        let nodeId = $(e.jqEvt.target).closest('g.sigma-node').attr('data-node-id');
         if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
           // event on this edge
           switch (e.jqEvt.type) {
