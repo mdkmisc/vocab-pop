@@ -467,12 +467,11 @@ export class VocNodeContent extends Component {
                                   vfmt={commify} style={chunkStyle} />
                               )}
                     </div>
+                  mouse={trigger}
             */
           }
-          return <InfoChunk key={k} cls={cls} k={k} v={v} 
-                  vfmt={commify} style={chunkStyle}
-                  mouse={trigger}
-                  />
+          return <InfoChunk key={k} cls={cls} k={k} v={v} sigmaNode={sigmaNode}
+                  vfmt={commify} style={chunkStyle} />
         }
       ));
             // in addition to infoTrigger on whole node,
@@ -494,17 +493,37 @@ export class VocNodeContent extends Component {
                                   k, v, notInGraph});
   }
 }
-function InfoChunk(props) {
-  let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style, mouse} = props;
-  kcls = kcls || cls;
-  vcls = vcls || cls;
-          //onMouseOver={mouse}
-  return <div className={cls + ' info'} style={style} 
-          data-is-info={true} data-key={k} data-val={v}
-         >
-            <span className={kcls + ' key'}>{kfmt(k)}</span>
-            <span className={vcls + ' val'}>{vfmt(v)}</span>
-         </div>;
+export class InfoChunk extends Component {
+  constructor(props) { super(props); this.state = {}; }
+  render() {
+    let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style, sigmaNode} = this.props;
+    const {hover} = this.state;
+    kcls = kcls || cls;
+    vcls = vcls || cls;
+    let moreInfo = '';
+    let listeners = {};
+    if (sigmaNode && k === 'rc') {
+      listeners.onMouseEnter = (()=>this.setState({hover:true})).bind(this);
+      listeners.onMouseLeave = (()=>this.setState({hover:false})).bind(this);
+      if (hover) {
+        moreInfo = _.toPairs(nodeInfo({sigmaNode,request:k}))
+                    .map(([k2,v2]=[])=>
+                          <InfoChunk key={k2} cls={k} k={k2} v={v2} 
+                            vfmt={commify} style={{display:'flex'}} />
+                        );
+      }
+    }
+            //onMouseOver={mouse}
+    return  <div className="info-chunk-wrapper" {...listeners} >
+              <div className={cls + ' info'} style={style} 
+                data-is-info={true} data-key={k} data-val={v} 
+              >
+                <span className={kcls + ' key'}>{kfmt(k)}</span>
+                <span className={vcls + ' val'}>{vfmt(v)}</span>
+              </div>
+              {moreInfo}
+            </div>;
+  }
 }
 
 export class VocEdge extends Component {
