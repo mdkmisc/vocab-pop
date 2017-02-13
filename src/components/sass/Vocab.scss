@@ -131,6 +131,9 @@ div.concept-browse {
           align-items: flex-start;
           justify-content: space-between;
           margin: 2px 0px 1px 0px;
+          &.info-hover {
+            border: 1px solid green;
+          }
           span {
             &.key {
               margin-right: 4px;

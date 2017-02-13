@@ -102,7 +102,6 @@ export default class VocabMap extends Component {
         d => {
           d.ComponentClass = VocEdge;
           d.nodeEventStream = this.nodeEventStream;
-          d.msgInfoStream = this.msgInfoStream;
         });
       this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
       this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
@@ -149,41 +148,45 @@ export default class VocabMap extends Component {
 }
 export class MsgInfo extends Component {
   render() {
-    const {info} = this.props;
-    if (!info) return <div/>;
+    const {info = {}} = this.props;
     const {sigmaNode, k, v} = info;
+    if (!info || !sigmaNode) return <div/>;
       //info ? <pre>{JSON.stringify(info)}</pre> : <div/>;
     return <div className="vocab-map-msg-div" 
                   style={{ position: 'absolute', right: '10px',}} 
                   ref={div=>this.msgDiv=div}>
-              <VocNode sigmaNode={sigmaNode} notInGraph={true} hover={true}/>
-              <NodeInfo sigmaNode={sigmaNode} request='cols' />
-            </div>
+              {sigmaNode.id} {' '}
+              {k ? `${k}: ${v}` : ''}
+            </div>;
   }
+  /*
+              <VocNode sigmaNode={sigmaNode} notInGraph={true} hover={true}>
+                <NodeInfo sigmaNode={sigmaNode} request='cols' />
+              </VocNode>
+  */
 }
-function NodeInfo(props) {
+function tblCols(rec) {
+  let colDrill = rec.drill.lookup("tbl,col,coltype");
+  if (!colDrill) return [];
+  return _.fromPairs(
+            colDrill.getChildren().map(
+              drillGroup => {
+                let k = drillGroup.toString();
+                let v = drillGroup.records[0].rc;
+                return [k, v];
+                //return <InfoChunk key={k} cls={'tblcol'} k={k} v={v} vfmt={commify} />
+              }));
+}
+function nodeInfo(props) {
   const {sigmaNode, request} = props;
   const sg = sigmaNode.sgVal;
   if (sg.records.length !== 1) throw new Error('confused');
   const rec = sg.records[0];
   switch (request) {
-    case 'cols':
-      return <div>TblCols: {TblCols(rec)}</div>;
+    case 'rc':
+      return tblCols(rec);
     default:
-      throw new Error(`unknown NodeInfo request ${request}`);
-  }
-  function TblCols(rec) {
-    let colDrill = rec.drill.lookup("tbl,col,coltype");
-    if (!colDrill) return <span/>;
-    return (<div>
-              {colDrill.getChildren().map(
-                drillGroup => {
-                  let k = drillGroup.toString();
-                  let v = drillGroup.records[0].rc;
-                  return <InfoChunk key={k} cls={'tblcol'} k={k} v={v} 
-                                vfmt={commify} />
-                })}
-            </div>);
+      throw new Error(`unknown nodeInfo request ${request}`);
   }
 }
 function eventPerspective(me, evt, neighbors) {
@@ -197,13 +200,13 @@ export class VocNode extends Component {
     super(props);
     this.state = {w:0, h:0, updates:0};
     this.nodeSizeStream = new Rx.Subject();
-    this.nodeSizeStream.debounceTime(100).subscribe(this.setSize.bind(this));
+    this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
   }
   componentDidMount() {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
     let self = this;
-    !notInGraph && sigmaNode.nodeEventStream.subscribe(
+    sigmaNode.nodeEventStream.subscribe(
       e => {
         const {jqEvt, isInfo, key, val, domNode} = e;
         const {target, type} = jqEvt;
@@ -216,6 +219,7 @@ export class VocNode extends Component {
         if (isInfo) {
           states.infoHover = {key, val};
         }
+        if (notInGraph) return;
 
         switch (perspective) {
           case 'self':
@@ -287,11 +291,14 @@ export class VocNode extends Component {
     const {sigmaNode, sigmaSettings, notInGraph=false} = this.props;
     const {w, h, hover, mute, zoom, list} = this.state;
 
+    /* this is to have the node be able to appear outside the graph, 
+     * was using for MsgInfo
     if (notInGraph)
       return <div className="voc-div not-in-graph">
                 <VocNodeContent {...this.props} {...this.state} 
-                          setVocNodeSize={this.setSize.bind(this)} />
+                          setVocNodeSize={this.setVocNodeSize.bind(this)} />
              </div>
+    */
     let prefix = sigmaSettings('prefix') || '';
     return (
             <g className={"voc-node-container " 
@@ -315,12 +322,17 @@ export class VocNode extends Component {
   }
   content() { // this is a method so it can be overridden
     return <VocNodeContent {...this.props} {...this.state} 
-                            setVocNodeSize={this.setSize.bind(this)} />
+                            setVocNodeSize={this.setVocNodeSize.bind(this)} />
   }
-  setSize(dn) {
-    //console.log('resize');
-    let cbr = dn.getBoundingClientRect(); 
-    this.setState({w:cbr.width, h:cbr.height, updates: this.state.updates+1});
+  setVocNodeSize(dn) {
+    const {w,h} = this.state;
+    let cbr = dn.getBoundingClientRect(), 
+        rw = Math.round(cbr.width),
+        rh = Math.round(cbr.height);
+    if (w !== rw || h !== rh) {
+      console.log(this.props.sigmaNode.id, w, rw, h, rh);
+      this.setState({w:rw, h:rh, updates: this.state.updates+1});
+    }
   }
   update(node, el, settings) {
     /*
@@ -366,6 +378,7 @@ function Icons(props) {
 }
 export class VocNodeContent extends Component {
   constructor(props) { super(props); this.state = {}; }
+  /*
   shouldComponentUpdate(nextProps, nextState) {
     let p = ['sigmaNode','hover','mute','zoom','list','msgInfo'];
     let s = ['refresh', ];
@@ -378,16 +391,10 @@ export class VocNodeContent extends Component {
     return  !this.state.initialized ||
             this.state.refresh !== nextState.refresh ||
             !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
-    */
+    * /
   }
   componentDidMount() {
     setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
-  }
-  componentDidUpdate() {
-    if (!this.mainDiv) {
-      setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
-    }
-    this.props.setVocNodeSize(this.mainDiv);
   }
   componentWillUpdate(nextProps) {
     const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = nextProps;
@@ -396,8 +403,17 @@ export class VocNodeContent extends Component {
     //this.setState({icons: <Icons hover={hover} />, chunks, zoomContent, initialized: true});
     this.setState({initialized: true});
   }
+  */
+  componentDidUpdate() {
+    /*
+    if (!this.mainDiv) {
+      setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
+    }
+    */
+    this.props.setVocNodeSize(this.mainDiv);
+  }
   render() {
-    const {sigmaNode, sigmaSettings, settings, 
+    const {sigmaNode, sigmaSettings, settings, children, notInGraph,
             hover, mute, zoom, list, infoHover, } = this.props;
     //const {icons, chunks, zoomContent} = this.state;
 
@@ -419,37 +435,56 @@ export class VocNodeContent extends Component {
     if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.caption)
       chunks.push(<InfoChunk key="Class" k="Class" v={conceptClasses[0]+''} />);
 
-    chunkStyle.display = hover ? 'flex' : 'none';
-    //if (hover) {
-      chunks = chunks.concat(
-        _.map(sigmaNode.counts||{},
-          (v,k) => {
-            let trigger = d=>d;
-            if (infoHover && infoHover.key === k) {
-              trigger = ()=>this.infoTrigger(k,v);
-            }
-            return <InfoChunk key={k} cls={k} k={k} v={v} 
-                    vfmt={commify} style={chunkStyle}
-                    mouse={trigger}
-                    />
+    //chunkStyle.display = hover ? 'flex' : 'none';
+    chunkStyle.display = 'flex';
+    chunks = chunks.concat(
+      _.map(sigmaNode.counts||{},
+        (v,k) => {
+          let trigger = d=>d;
+          let style = _.clone(chunkStyle);
+          let cls = k;
+          if (infoHover && infoHover.key === k) {
+            // put specific infoTriggers on each InfoChunk for more
+            // detailed information
+            trigger = ()=>this.infoTrigger(k,v);
+            style.fontSize = 'large';
+            cls += ' info-hover';
+            /* this doesn't work
+            return  <div>
+                      <InfoChunk key={k} cls={cls} k={k} v={v} 
+                        vfmt={commify} style={chunkStyle}
+                        mouse={trigger} />
+                      {_.toPairs(nodeInfo({sigmaNode,request:k}))
+                          .map(([k2,v2]=[])=>
+                                <InfoChunk key={k2} cls={k} k={k2} v={v2} 
+                                  vfmt={commify} style={chunkStyle} />
+                              )}
+                    </div>
+            */
           }
-        ));
-    //}
+          return <InfoChunk key={k} cls={cls} k={k} v={v} 
+                  vfmt={commify} style={chunkStyle}
+                  mouse={trigger}
+                  />
+        }
+      ));
+            // in addition to infoTrigger on whole node,
+                //onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
     return <div className="voc-node-content" ref={d=>this.mainDiv=d}
-                onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
+                onMouseOut={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
             >
               <Icons hover={hover} />
               <div className="info-chunks">
                 {chunks || <p>nothing yet</p>}
+                {children}
               </div>
               {zoomContent}
            </div>;
   }
-  infoTrigger(k,v) {
-    const {sigmaNode} = this.props;
-    //console.log('infotrigger',k,v);
-    sigmaNode.msgInfoStream.next({sigmaNode, k, v});
-              //trigger = () => sigmaNode.msgInfoStream.next({k,v});
+  infoTrigger(k,v,e,out=false) {
+    let {sigmaNode, notInGraph} = this.props;
+    sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, 
+                                  k, v, notInGraph});
   }
 }
 function InfoChunk(props) {
