@@ -24,6 +24,7 @@ $color_claret_approx: rgba(120,20,60,1);
 $alice_blue: aliceblue;
 $steel_blue:  steelblue;
 $mute_opacity: 0.3;
+$color_green_30: rgba(20,255,50,.3);
 
 UNDO A COUPLE TIMES TO FIX
 
@@ -111,6 +112,47 @@ div.concept-browse {
 
 div.concept-browse {
   div.vocab-map {
+    div.vocab-map-msg-div {
+      float: right;
+      z-index: 100;
+    }
+    div.voc-div {
+      display: inline-block;
+      border: 1px solid gray;
+      padding: 4px;
+      //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
+      border-radius: 8px;
+      background-color: $white;
+      div.voc-node-content {
+        display: inline-block;
+        div.info {
+          display: flex;
+          flex-direction: row;
+          align-items: flex-start;
+          justify-content: space-between;
+          margin: 2px 0px 1px 0px;
+          span {
+            &.key {
+              margin-right: 4px;
+              font-weight: bold;
+              padding-left: 3px;
+            }
+            &.val {
+              padding-right: 3px;
+              text-align: right;
+            }
+          }
+        }
+      }
+      span.icons > span.glyphicon {
+        margin-left: 5px;
+        position: static;
+        display: none;
+      }
+      &.hover span.icons > span.glyphicon {
+        display: inline;
+      }
+    }
     svg.sigma-svg {
 /*
       top: 0;
@@ -147,75 +189,8 @@ div.concept-browse {
             border: 1px solid $steel_blue;
           }
           foreignObject {
-            div.voc-div {
-              display: inline-block;
-              border: 1px solid gray;
-              padding: 4px;
-              //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
-              border-radius: 8px;
-              background-color: $white;
-              div.voc-node-content {
-                display: inline-block;
-                div.info {
-                  display: flex;
-                  flex-direction: row;
-                  align-items: flex-start;
-                  justify-content: space-between;
-                  margin: 2px 0px 1px 0px;
-                  span {
-                    &.key {
-                      margin-right: 4px;
-                      font-weight: bold;
-                      padding-left: 3px;
-                    }
-                    &.val {
-                      padding-right: 3px;
-                      text-align: right;
-                    }
-                  }
-                }
-              }
-              span.icons > span.glyphicon {
-                margin-left: 5px;
-                position: static;
-              }
-            }
           }
         }
-      }
-      div {
-        &.rc {
-          background-color: $color_lochmara_30_approx;
-        }
-        &.drc {
-          background-color: $color_amethyst_30_approx;
-        }
-        &.src {
-          background-color: $crimson_30;
-        }
-        &.dsrc {
-          background-color: $color_claret_30_approx;
-        }
-      }
-      .rc > div {
-        border-color: $color_lochmara_30_approx;
-        background-color: $color_lochmara_10_approx;
-      }
-      .drc > div {
-        border-color: $color_amethyst_30_approx;
-        background-color: $color_amethyst_10_approx;
-      }
-      .src > div {
-        border-color: $crimson_30;
-        background-color: $crimson_10;
-      }
-      .dsrc > div {
-        border-color: $color_claret_30_approx;
-        background-color: $color_claret_10_approx;
-      }
-      .norecs > div {
-        border-color: $black_30;
-        background-color: $black_10;
       }
       span.aside {
         font-weight: lighter;
@@ -231,6 +206,26 @@ div.concept-browse {
           font-size: 16px;
         }
       }
+    }
+    .rc {
+      background-color: $color_lochmara_30_approx;
+    }
+    .drc {
+      background-color: $color_amethyst_30_approx;
+    }
+    .src {
+      background-color: $crimson_30;
+    }
+    .dsrc {
+      background-color: $color_claret_30_approx;
+    }
+    .norecs {
+      background-color: $black_10;
+    }
+    .tblcol {
+      background-color: $color_green_30;
+      font-size: small;
+      font-style: small-caps;
     }
   }
 }

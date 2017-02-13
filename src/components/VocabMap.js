@@ -150,12 +150,40 @@ export default class VocabMap extends Component {
 export class MsgInfo extends Component {
   render() {
     const {info} = this.props;
-    let msg = info ? <pre>{JSON.stringify(info)}</pre> : <div/>;
+    if (!info) return <div/>;
+    const {sigmaNode, k, v} = info;
+      //info ? <pre>{JSON.stringify(info)}</pre> : <div/>;
     return <div className="vocab-map-msg-div" 
                   style={{ position: 'absolute', right: '10px',}} 
                   ref={div=>this.msgDiv=div}>
-              {msg}
+              <VocNode sigmaNode={sigmaNode} notInGraph={true} hover={true}/>
+              <NodeInfo sigmaNode={sigmaNode} request='cols' />
             </div>
+  }
+}
+function NodeInfo(props) {
+  const {sigmaNode, request} = props;
+  const sg = sigmaNode.sgVal;
+  if (sg.records.length !== 1) throw new Error('confused');
+  const rec = sg.records[0];
+  switch (request) {
+    case 'cols':
+      return <div>TblCols: {TblCols(rec)}</div>;
+    default:
+      throw new Error(`unknown NodeInfo request ${request}`);
+  }
+  function TblCols(rec) {
+    let colDrill = rec.drill.lookup("tbl,col,coltype");
+    if (!colDrill) return <span/>;
+    return (<div>
+              {colDrill.getChildren().map(
+                drillGroup => {
+                  let k = drillGroup.toString();
+                  let v = drillGroup.records[0].rc;
+                  return <InfoChunk key={k} cls={'tblcol'} k={k} v={v} 
+                                vfmt={commify} />
+                })}
+            </div>);
   }
 }
 function eventPerspective(me, evt, neighbors) {
@@ -172,10 +200,10 @@ export class VocNode extends Component {
     this.nodeSizeStream.debounceTime(100).subscribe(this.setSize.bind(this));
   }
   componentDidMount() {
-    const {sigmaNode, sigmaSettings} = this.props;
+    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
     let self = this;
-    sigmaNode.nodeEventStream.subscribe(
+    !notInGraph && sigmaNode.nodeEventStream.subscribe(
       e => {
         const {jqEvt, isInfo, key, val, domNode} = e;
         const {target, type} = jqEvt;
@@ -256,11 +284,15 @@ export class VocNode extends Component {
       });
   }
   render() {
-    const {sigmaNode, sigmaSettings} = this.props;
+    const {sigmaNode, sigmaSettings, notInGraph=false} = this.props;
     const {w, h, hover, mute, zoom, list} = this.state;
-    let prefix = sigmaSettings('prefix') || '';
 
-    //console.log(sigmaNode.id, hover, mute, 'vocnode');
+    if (notInGraph)
+      return <div className="voc-div not-in-graph">
+                <VocNodeContent {...this.props} {...this.state} 
+                          setVocNodeSize={this.setSize.bind(this)} />
+             </div>
+    let prefix = sigmaSettings('prefix') || '';
     return (
             <g className={"voc-node-container " 
                             + sigmaNode.classes
@@ -271,12 +303,9 @@ export class VocNode extends Component {
                 width={w}
                 height={h}
               />    
-              <foreignObject
-                className="voc-node-fo"
-                //width={w}
-                //height={h}
-              >
-                <div  className={"voc-div"} ref={d=>this.contentDiv=d} >
+              <foreignObject className="voc-node-fo">
+                <div  className={"voc-div" + (hover ? ' hover' : '')} 
+                    ref={d=>this.contentDiv=d} >
                   {this.content()}
                 </div>
               </foreignObject>
@@ -284,9 +313,9 @@ export class VocNode extends Component {
            );
 
   }
-  content() {
+  content() { // this is a method so it can be overridden
     return <VocNodeContent {...this.props} {...this.state} 
-              setVocNodeSize={this.setSize.bind(this)} />;
+                            setVocNodeSize={this.setSize.bind(this)} />
   }
   setSize(dn) {
     //console.log('resize');
@@ -324,8 +353,9 @@ export class VocGroupNode extends VocNode {
 }
 function Icons(props) {
   const {hover, } = props;
-  return <span className="icons" // sigma chokes on events for elements without classes
-                style={{display:hover ? 'inline' : 'none',}} >
+                //style={{display:hover ? 'inline' : 'none',}} >
+                // sigma chokes on events for elements without classes
+  return <span className="icons"> 
             <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
               title="Drill down to concept classes"
             />
@@ -405,7 +435,9 @@ export class VocNodeContent extends Component {
           }
         ));
     //}
-    return <div className="voc-node-content" ref={d=>this.mainDiv=d}>
+    return <div className="voc-node-content" ref={d=>this.mainDiv=d}
+                onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
+            >
               <Icons hover={hover} />
               <div className="info-chunks">
                 {chunks || <p>nothing yet</p>}
@@ -416,7 +448,7 @@ export class VocNodeContent extends Component {
   infoTrigger(k,v) {
     const {sigmaNode} = this.props;
     //console.log('infotrigger',k,v);
-    sigmaNode.msgInfoStream.next({id: sigmaNode.id, k, v});
+    sigmaNode.msgInfoStream.next({sigmaNode, k, v});
               //trigger = () => sigmaNode.msgInfoStream.next({k,v});
   }
 }

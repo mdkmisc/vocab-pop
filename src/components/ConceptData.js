@@ -140,31 +140,47 @@ export default class ConceptData extends Component {
       }
     })
     if (state.concept_groups && state.dcid_cnts_breakdown && !state.cgdc) {
-      state.cgdc = this.combineCgDc(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+      state.cgdc = this.combineCgDc(
+          _.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
     }
     this.setState(state);
     window.ConceptDataState = state;
   }
-  combineCgDc(cg, dc) { // for now just doing sc/dom/voc and desc/children
-    let byDgid = _.supergroup(dc.filter(d=>d.drc||d.dsrc),'dcid_grp_id');
+  combineCgDc(cgs, dcnts) { // for now just doing sc/dom/voc and desc/children
+    // this will all need optimization
+    let byDgid = _.supergroup(dcnts.filter(d=>d.drc||d.dsrc),'dcid_grp_id');
     let empty = []; // for debugging convenience, use the same empty array, allows checking w/ _.uniq
 
-    // add descendant concept groups
-    let wDc = cg.map(g => Object.assign(g, {dc:(byDgid.lookup(g.dcid_grp_id)||{}).records||empty}));
+    cgs = cgs.map( // add descendant concept groups to each concept group
+      cg => Object.assign(cg, {dcgs:(byDgid.lookup(cg.dcid_grp_id)||{}).records||empty}));
         
-    wDc
-      .filter(d=>d.grp === 15)
-      .forEach(g => {
-      let dcs = g.dc.filter(d=>d.grp===15);
-      g.linknodes = dcs.map(d=>d.vals.join(','));
+    cgs // add linknodes and drill info
+        // for now just do this to sc/dom/voc....but this will get more complex
+      .filter(d=>d.grp === 15)  
+      .forEach(cg => {
+        let dcs = cg.dcgs.filter(d=>d.grp===15);
+        // link nodes are only the descendant concept groups at the same level (sc/dom/voc)
+        cg.linknodes = dcs.map(d=>d.vals.join(','));
 
-      // add drilldown concept groups
-      let deeperGroups=wDc.filter(d=>_.compact(d.vals).join(',').match(g.vals.join(',')+'.'));
-      g.drill = _.supergroup(
+        let deeperGroups=
+          // for deeper groupings...
+          // like sc/dom/voc/tbl/col/coltype, this would just be the tbl/col/coltype vals
+          cgs.filter(
+            d=>(_.compact(d.vals) // only non-null grouping vals
+                .join(',')
+                .match(cg.vals.join(',')+'.')));
+        // so cg.drill is a supergroup of the values deeper than the level of this cg
+        // first level is grouping, like 'tbl,col,coltype'
+        // then each distinct set of deeperGroup vals in that grouping, like
+        // 'drug_exposure,drug_concept_id,target'
+        cg.drill = _.supergroup(
                     deeperGroups, 
                     [d=>d.grpset.slice(3).join(','), d=>d.vals.slice(3).join(',')]);
-    });
-    return wDc;
+        cg.drill.leafNodes().forEach(
+          drillGroup => { if (drillGroup.records.length !== 1)
+                            throw new Error("unexpected") });
+      });
+    return cgs;
   }
   fetchData() {
     const {filters, domain_id} = this.props;

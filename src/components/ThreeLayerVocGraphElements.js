@@ -8,6 +8,7 @@ let rowsBetweenLayers = 1;
 export default function makeElements(sg, domnode,) {
   let nodesInLayers = [0,0,0]; // counter for nodes in each layer
   let nodes = _.flatten(sg.map(sc=>sc.getChildren().map(voc=>{
+                    if (voc.records.length !== 1) throw new Error('should be one record exactly');
                     let counts = {};
                     ['rc','src','drc','dsrc']
                           .filter(fld=>voc.aggregate(_.sum,fld))
