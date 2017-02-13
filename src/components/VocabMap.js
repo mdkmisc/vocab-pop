@@ -81,9 +81,9 @@ export default class VocabMap extends Component {
   componentDidMount() {
     this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
     let self = this;
-    this.msgInfoStream.subscribe(
+    firstLastEvt(this.msgInfoStream,50).subscribe(
       function(msgInfo) {
-        console.log(msgInfo);
+        //console.log(msgInfo);
         self.setState({msgInfo});
       });
   }
@@ -110,6 +110,10 @@ export default class VocabMap extends Component {
       $('g.voc-node-container')
         .on('click mouseover mouseout drag',
             function(e) {
+              self.nodeEventStream.next({jqEvt:e, domNode:this, });
+            });
+            /*
+            function(e) {
               let inodes = $(e.target).closest('[data-is-info=true]'),
                   key, val;
               if (inodes.length) {
@@ -120,7 +124,7 @@ export default class VocabMap extends Component {
               }
               self.nodeEventStream.next({jqEvt:e, domNode:this, 
                                         isInfo: !!inodes.length, key, val});
-            });
+            }*/
     }
   }
   shouldComponentUpdate(nextProps, nextState) {
@@ -194,19 +198,22 @@ function eventPerspective(me, evt, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
+function firstLastEvt(rxSubj, ms) {
+  return Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms)).distinctUntilChanged()
+}
 export class VocNode extends Component {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
     this.state = {w:0, h:0, updates:0};
-    this.nodeSizeStream = new Rx.Subject();
-    this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
+    //this.nodeSizeStream = new Rx.Subject();
+    //this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
   }
   componentDidMount() {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
     let self = this;
-    sigmaNode.nodeEventStream.subscribe(
+    firstLastEvt(sigmaNode.nodeEventStream,50).subscribe(
       e => {
         const {jqEvt, isInfo, key, val, domNode} = e;
         const {target, type} = jqEvt;
@@ -330,7 +337,7 @@ export class VocNode extends Component {
         rw = Math.round(cbr.width),
         rh = Math.round(cbr.height);
     if (w !== rw || h !== rh) {
-      console.log(this.props.sigmaNode.id, w, rw, h, rh);
+      //console.log(this.props.sigmaNode.id, w, rw, h, rh);
       this.setState({w:rw, h:rh, updates: this.state.updates+1});
     }
   }
@@ -491,9 +498,9 @@ function InfoChunk(props) {
   let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style, mouse} = props;
   kcls = kcls || cls;
   vcls = vcls || cls;
+          //onMouseOver={mouse}
   return <div className={cls + ' info'} style={style} 
           data-is-info={true} data-key={k} data-val={v}
-          onMouseOver={mouse}
          >
             <span className={kcls + ' key'}>{kfmt(k)}</span>
             <span className={vcls + ' val'}>{vfmt(v)}</span>
@@ -510,7 +517,7 @@ export class VocEdge extends Component {
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
     sigmaEdge.update = this.update.bind(this);
     let self = this;
-    sigmaEdge.nodeEventStream.subscribe(
+    firstLastEvt(sigmaEdge.nodeEventStream,50).subscribe(
       e => {
         let nodeId = $(e.jqEvt.target).closest('g.sigma-node').attr('data-node-id');
         if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
