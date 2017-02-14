@@ -36,7 +36,8 @@ export default class ConceptData extends Component {
   }
   render() {
     const {filters} = this.props;
-    const {counts, agg, cgdc, concept_groups, dcid_cnts_breakdown} = this.state;
+    const {counts, agg, cgdc, concept_groups, dcid_cnts_breakdown, 
+            vocgroups} = this.state;
     return  <div style={{width:'100%', height:'100%'}}
                   className="concept-data">
               {React.cloneElement(this.props.children, {
@@ -44,6 +45,7 @@ export default class ConceptData extends Component {
                   counts,
                   agg,
                   concept_groups: cgdc,
+                  vocgroups,
                 })}
            </div>;
   }
@@ -142,9 +144,27 @@ export default class ConceptData extends Component {
     if (state.concept_groups && state.dcid_cnts_breakdown && !state.cgdc) {
       state.cgdc = this.combineCgDc(
           _.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+
+      state.vocgroups = this.vocgroups(
+          _.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+      // another structure
+      
     }
     this.setState(state);
     window.ConceptDataState = state;
+  }
+  vocgroups(cgs, dcnts) {
+    let byDcgId = _.supergroup(dcnts.filter(d=>d.grp===7), 'dcid_grp_id')
+    let empty = []; // for debugging convenience, use the same empty array, allows checking w/ _.uniq
+    let vgs = cgs
+              .filter(cg=>cg.grp===7)
+              .map( // add descendant concept groups to each concept group
+                  cg => Object.assign(cg, 
+                          {dcgs:(byDcgId.lookup(cg.dcid_grp_id)||{}).records||empty}));
+        
+    return vgs;
+    //let sg = _.supergroup(vgs, ["standard_concept", "domain_id", "vocabulary_id", "class_concept_id"]);
+    //debugger;
   }
   combineCgDc(cgs, dcnts) { // for now just doing sc/dom/voc and desc/children
     // this will all need optimization

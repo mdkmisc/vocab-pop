@@ -16,25 +16,24 @@ Copyright 2016 Sigfried Gold
 // @flow
 // npm run-script flow
 const DEBUG = true;
-var d3v4 = require('d3');
+var d3 = require('d3');
 var $ = require('jquery');
 import * as util from '../utils';
 //if (DEBUG) window.d3 = d3;
 if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 import ConceptData from './ConceptData';
-import {VocabMapByDomain} from './VocabMap';
+import {VocabMapByDomain, DomainMapNode} from './VocabMap';
 
 var sigma = require('sigma');
-var d3v3 = window.d3;
-//var d3v3 = d3v4;
-//var d3v3 = require('./d3.min');
+var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
+import sigmaReactRenderer, {SigmaReactGraph} from './sigmaSvgReactRenderer';
+sigmaReactRenderer(sigma);
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 //import 'tipsy/src/stylesheets/tipsy.css';
 require('./stylesheets/Vocab.css');
 require('tipsy/src/javascripts/jquery.tipsy');
-var dagreD3 = require('dagre-d3');
 //require('./VocabPop.css');
 
 
@@ -188,7 +187,6 @@ export class ConceptContainer extends Component {
       ].map(c => _.find(coldefs, {colId: c}));
     // all the important data fetching should be happening in ConceptData now
     if (!domain_id) {
-      //return <Junk/>;
       return  <ConceptData filters={filters} >
                 <DomainMap />
               </ConceptData>;
@@ -212,81 +210,23 @@ class DomainMap extends Component {
     let sg = _.supergroup(vocgroups, "domain_id");
     sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
                 {dimName:'ddom',multiValuedGroup:true});
-    let y = d3v4.scaleQuantize().domain(d3v4.extent(sg.map(d=>d.getChildren(true).length)))
+    let y = d3.scaleQuantize().domain(d3.extent(sg.map(d=>d.getChildren(true).length)))
                               .range(_.range(1,6).reverse());
 
-    var dagre = new dagreD3.graphlib.Graph().setGraph({});
-    window.dagre = dagre;
-    sg.forEach((d,i)=>{
-      let node = {
-              id:d.toString(), 
-              size:d.toString().length,
-              label:d.toString(),
-              //x: i % 5,
-              //y: y(d.getChildren(true).length),
-              val: d,
-              rx:5, ry:5,
-            }
-      dagre.setNode(node.id, node);
-    });
-    sg.leafNodes().filter(d=>d.parent).map(d=>{
-      let edge = {
-                id: d.namePath(),
-                source: d.parent.toString(),
-                target: d.toString(),
-                sval: d.parent,
-                tval: d,
-            }
-      dagre.setEdge(edge.source, edge.target, {label: ''});
-    });
-    // Create the renderer
-    var render = new dagreD3.render();
-    var svg = d3v3.select(this.graphDiv),
-        inner = svg.append("g");
-
-    // Set up zoom support
-    //var zoom = d3v3.behavior.zoom().on("zoom", function() {})
-    var zoom = d3v3.behavior.zoom().on("zoom", function() {
-        inner.attr("transform", "translate(" + d3v3.event.translate + ")" +
-                                    "scale(" + d3v3.event.scale + ")");
-      });
-    svg.call(zoom);
-
-    // Simple function to style the tooltip for the given node.
-    var styleTooltip = function(name, description) {
-      console.log(name);
-      return "<p class='name'>" + name + "</p>";
-      //return "<p class='name'>" + name + "</p><p class='description'>" + description + "</p>";
-    };
-
-    // Run the renderer. This is what draws the final graph.
-    render(inner, dagre);
-
-    inner.selectAll("g.node")
-      .attr("title", function(v) { return styleTooltip(v, dagre.node(v).description) })
-      .each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
-
-    // Center the graph
-    var initialScale = 0.75;
-    zoom
-      .translate([(svg.attr("width") - dagre.graph().width * initialScale) / 2, 20])
-      .scale(initialScale)
-      .event(svg);
-    svg.attr('height', dagre.graph().height * initialScale + 40);
-
-
-    /*
     let elements = {
       nodes: sg.map((d,i)=>{return {
                 id:d.toString(), 
+                ComponentClass: DomainMapNode,
                 size:d.toString().length,
                 label:d.toString(),
                 x: i % 5,
                 y: y(d.getChildren(true).length),
                 val: d,
+                type: 'react',
               }}),
       edges: sg.leafNodes().filter(d=>d.parent).map(d=>{return {
                   id: d.namePath(),
+                  type: 'curve',
                   source: d.parent.toString(),
                   target: d.toString(),
                   sval: d.parent,
@@ -294,17 +234,14 @@ class DomainMap extends Component {
               }}),
     };
     this.sigmaInstance = this.sigmaInstance || sigmaSimple(this.graphDiv, elements);
-    */
   }
   render() {
     const { vocgroups, concept_groups } = this.props;
     //console.log(vocgroups, concept_groups);
 
-    return <div className="junk">
-              <svg ref={div=>this.graphDiv=div} className="domain-map"
+    return <div ref={div=>this.graphDiv=div} className="domain-map"
                   style={{width:960, height:600}}
               />
-            </div>;
     /*
     return <pre>{
                 sg.sortBy(d=>-d.getChildren().length)
@@ -316,7 +253,7 @@ class DomainMap extends Component {
 }
 function sigmaSimple(domnode, elements) {
   let s = new sigma({
-    container: domnode,
+    //container: domnode,
     graph: { ...elements }, // should contain nodes and edges
     settings: {
       //enableHovering: false,
@@ -325,7 +262,6 @@ function sigmaSimple(domnode, elements) {
       //labelThreshold: 6,
     }
   });
-  /*
   let cam = s.addCamera();
   s.addRenderer({
     container: domnode,
@@ -340,7 +276,6 @@ function sigmaSimple(domnode, elements) {
       labelSize: 'proportional',
     }
   });
-  */
   //s.startForceAtlas2({worker: true, barnesHutOptimize: false});
   s.refresh();
   window.elements = elements;
@@ -822,7 +757,7 @@ export class Tables extends Component {
       return <h4>waiting for table stats</h4>;
 
     let rootVal = statsByTable.asRootVal('');
-    let fsScale = d3v4.scaleLinear().domain([0,6]).range([120,60]);
+    let fsScale = d3.scaleLinear().domain([0,6]).range([120,60]);
     let treeWalkerConfig = {
       nodeVal: rootVal,
       kids: root=>root.children.filter(c=>!(tableConfig[c.toString()]||{}).hidden),
@@ -1011,145 +946,3 @@ export class Search extends Component {
   }
 }
 */
-class Junk extends Component {
-  componentDidMount() {
-    // Create a new directed graph
-    var g = new dagreD3.graphlib.Graph().setGraph({});
-
-    // States and transitions from RFC 793
-    var states = {
-      CLOSED: {
-        description: "represents no connection state at all.",
-        style: "fill: #f77"
-      },
-
-      LISTEN: {
-        description: "represents waiting for a connection request from any " +
-                    "remote TCP and port."
-      },
-
-      "SYN SENT": {
-        description: "represents waiting for a matching connection " +
-                    "request after having sent a connection request."
-      },
-
-      "SYN RCVD": {
-        description: "represents waiting for a confirming connection " +
-                    "request acknowledgment after having both received and sent a " +
-                    "connection request."
-      },
-
-
-      ESTAB: {
-        description: "represents an open connection, data received " +
-                    "can be delivered to the user.  The normal state for the data " +
-                    "transfer phase of the connection.",
-        style: "fill: #7f7"
-      },
-
-      "FINWAIT-1": {
-        description: "represents waiting for a connection termination " +
-                    "request from the remote TCP, or an acknowledgment of the " +
-                    "connection termination request previously sent."
-
-      },
-
-      "FINWAIT-2": {
-        description: "represents waiting for a connection termination " +
-                    "request from the remote TCP."
-      },
-
-
-      "CLOSE WAIT": {
-        description: "represents waiting for a connection termination " +
-                    "request from the local user."
-      },
-
-      CLOSING: {
-        description: "represents waiting for a connection termination " +
-                    "request acknowledgment from the remote TCP."
-      },
-
-      "LAST-ACK": {
-        description: "represents waiting for an acknowledgment of the " +
-                    "connection termination request previously sent to the remote " +
-                    "TCP (which includes an acknowledgment of its connection " +
-                    "termination request)."
-      },
-
-      "TIME WAIT": {
-        description: "represents waiting for enough time to pass to be " +
-                    "sure the remote TCP received the acknowledgment of its " +
-                    "connection termination request."
-      }
-    };
-
-    // Add states to the graph, set labels, and style
-    Object.keys(states).forEach(function(state) {
-      var value = states[state];
-      value.label = state;
-      value.rx = value.ry = 5;
-      g.setNode(state, value);
-    });
-
-    // Set up the edges
-    g.setEdge("CLOSED",     "LISTEN",     { label: "open" });
-    g.setEdge("LISTEN",     "SYN RCVD",   { label: "rcv SYN" });
-    g.setEdge("LISTEN",     "SYN SENT",   { label: "send" });
-    g.setEdge("LISTEN",     "CLOSED",     { label: "close" });
-    g.setEdge("SYN RCVD",   "FINWAIT-1",  { label: "close" });
-    g.setEdge("SYN RCVD",   "ESTAB",      { label: "rcv ACK of SYN" });
-    g.setEdge("SYN SENT",   "SYN RCVD",   { label: "rcv SYN" });
-    g.setEdge("SYN SENT",   "ESTAB",      { label: "rcv SYN, ACK" });
-    g.setEdge("SYN SENT",   "CLOSED",     { label: "close" });
-    g.setEdge("ESTAB",      "FINWAIT-1",  { label: "close" });
-    g.setEdge("ESTAB",      "CLOSE WAIT", { label: "rcv FIN" });
-    g.setEdge("FINWAIT-1",  "FINWAIT-2",  { label: "rcv ACK of FIN" });
-    g.setEdge("FINWAIT-1",  "CLOSING",    { label: "rcv FIN" });
-    g.setEdge("CLOSE WAIT", "LAST-ACK",   { label: "close" });
-    g.setEdge("FINWAIT-2",  "TIME WAIT",  { label: "rcv FIN" });
-    g.setEdge("CLOSING",    "TIME WAIT",  { label: "rcv ACK of FIN" });
-    g.setEdge("LAST-ACK",   "CLOSED",     { label: "rcv ACK of FIN" });
-    g.setEdge("TIME WAIT",  "CLOSED",     { label: "timeout=2MSL" });
-
-    // Create the renderer
-    var render = new dagreD3.render();
-    var svg = d3v3.select(this.graphDiv),
-        inner = svg.append("g");
-
-    // Set up zoom support
-    var zoom = d3v3.behavior.zoom().on("zoom", function() {
-        inner.attr("transform", "translate(" + d3v3.event.translate + ")" +
-                                    "scale(" + d3v3.event.scale + ")");
-      });
-    svg.call(zoom);
-
-    // Simple function to style the tooltip for the given node.
-    var styleTooltip = function(name, description) {
-      return "<p class='name'>" + name + "</p><p class='description'>" + description + "</p>";
-    };
-
-    // Run the renderer. This is what draws the final graph.
-    render(inner, g);
-
-    inner.selectAll("g.node")
-      .attr("title", function(v) { return styleTooltip(v, g.node(v).description) })
-      .each(function(v) { $(this).tipsy({ gravity: "w", opacity: 1, html: true }); });
-
-    // Center the graph
-    var initialScale = 0.75;
-    zoom
-      .translate([(svg.attr("width") - g.graph().width * initialScale) / 2, 20])
-      .scale(initialScale)
-      .event(svg);
-    svg.attr('height', g.graph().height * initialScale + 40);
-  }
-  render() {
-    return <div className="junk">
-              <svg ref={div=>this.graphDiv=div} className="domain-map"
-                  style={{width:960, height:600}}
-              />
-            </div>;
-    //return <div>nothing yet</div>;
-  }
-}

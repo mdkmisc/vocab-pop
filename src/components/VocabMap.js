@@ -32,11 +32,14 @@ require('./stylesheets/Vocab.css');
 var sigma = require('sigma');
 window.sigma = sigma;
 var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
-
 import sigmaReactRenderer from './sigmaSvgReactRenderer';
 sigmaReactRenderer(sigma);
 
 export class VocabMapByDomain extends Component {
+  // this was giving one VocabMap is domain_id was specified
+  // and a grid of VocabMaps, one for each domain, if domain_id wasn't specified
+  // but now it's only going to get called for specific domains
+  // so having two levels might no longer be necessary
   constructor(props) { super(props); this.state = {}; }
   componentDidMount() {
     const {concept_groups, width, height} = this.props;
@@ -359,6 +362,27 @@ export class VocNode extends Component {
     */
     this.setState({updates: this.state.updates+1});
     //$('g.sigma-node').css('display','');
+  }
+}
+export class DomainMapNode extends VocNode {
+  constructor(props) {
+    super(props);
+    this.state = {w:0, h:0, updates:0};
+    //this.nodeSizeStream = new Rx.Subject();
+    //this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
+  }
+  componentDidMount() {
+    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
+    sigmaNode.update = this.update.bind(this);
+  }
+  componentDidUpdate() {
+    this.setVocNodeSize(this.mainDiv);
+  }
+  content() {
+    const {sigmaNode, sigmaSettings} = this.props;
+    return <div className="voc-node-content" ref={d=>this.mainDiv=d} >
+              {sigmaNode.label}
+           </div>;
   }
 }
 export class VocGroupNode extends VocNode {

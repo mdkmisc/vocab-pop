@@ -96,3 +96,121 @@ export default function(sigma) {
     }
   };
 }
+
+import Rx from 'rxjs/Rx';
+export class SigmaReactGraph extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {updates:0};
+    this.nodeEventStream = new Rx.Subject();
+    this.msgInfoStream = new Rx.Subject();
+  }
+  componentDidMount() {
+    this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
+    let self = this;
+    firstLastEvt(this.msgInfoStream,50).subscribe(
+      function(msgInfo) {
+        //console.log(msgInfo);
+        self.setState({msgInfo});
+      });
+  }
+  componentDidUpdate() {
+    const {NodeClass, nodes, edges, width, height} = this.props;
+    let self = this;
+    if (this.graphDiv && nodes && nodes.length) {
+      nodes.forEach(
+        d => {
+          d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
+          d.nodeEventStream = this.nodeEventStream;
+          d.msgInfoStream = this.msgInfoStream;
+        });
+      elements.edges.forEach(
+        d => {
+          d.ComponentClass = VocEdge;
+          d.nodeEventStream = this.nodeEventStream;
+        });
+      let nodeClassFunc = node=>NodeClass;
+      this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements, nodeClassFunc);
+      this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
+      this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
+      this.setState({graphDrawn:true, updates:this.state.updates+1});
+      $('g.voc-node-container')
+        .on('click mouseover mouseout drag',
+            function(e) {
+              self.nodeEventStream.next({jqEvt:e, domNode:this, });
+            });
+    }
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    return !this.state.graphDrawn || 
+            this.props.nodes !== nextProps.nodes ||
+            this.props.edges !== nextProps.edges ||
+            this.state.msgInfo !== nextState.msgInfo;
+  }
+  render() {
+    const {width, height} = this.props;
+    const {msgInfo} = this.state;
+    return (<div className="vocab-map"
+                 style={{
+                        float: 'left', 
+                        margin: 5,
+                        border: '1px solid blue',
+                        position: 'relative',
+                    }} >
+              <MsgInfo info={msgInfo} />
+              <div ref={div=>this.graphDiv=div} 
+                   style={{ width: `${width}px`, height: `${height}px`, }}
+              />
+            </div>);
+  }
+}
+function sigmaGraph(domnode, elements, nodeClassFunc) {
+  // Instantiate sigma:
+  let neigh = new sigma.plugins.neighborhoods();
+  let s = new sigma({
+    graph: { ...elements }, // should contain nodes and edges
+    settings: {
+      nodeClassFunc,
+      //enableHovering: false,
+      //mouseEnabled: false,
+      //eventsEnabled: false,
+      //labelSize: 'proportional',
+      //labelThreshold: 6,
+    }
+  });
+
+  s.addRenderer({
+    drawLabels: false,
+    drawEdgeLabels: false,
+    id: 'main',
+    type: 'svg',
+    container: domnode,
+    edgeColor: 'target',
+    //defaultNodeType: 'react', // doesn't seem to do anything, have to add it to nodes explicitly
+    //freeStyle: true
+  });
+  s.camera.ratio = .9;
+  s.refresh();
+  window.s = s;
+  return s;
+  /*
+  let rows = _.groupBy(s.graph.nodes(), d=>d.row);
+  _.each(rows, nodes => {
+    if (nodes && nodes.length && nodes[0].isParent) return;
+    let prevPositions = nodes.map(d=>d.x);
+    let widths = nodes.map(d=>parseInt(d.fo.style.width));
+    let centers = widths.map((w,i,a) => _.sum(a.slice(0,i)) + w/2);
+    let s = d3.scaleLinear().range([lowestX,1]).domain([0,_.sum(widths)]);
+    nodes.forEach((node,i) => node.x = s(centers[i]));
+  });
+  s.refresh();
+  window.s = s;
+  window.sg = sg;
+  window.waypoints = waypoints;
+  window.edge = edge;
+  window.edges = edges;
+  window.rotateRad = rotateRad;
+  window.perpendicular_coords = perpendicular_coords;
+  return s;
+  */
+}

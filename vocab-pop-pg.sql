@@ -229,8 +229,13 @@ CREATE OR REPLACE FUNCTION results2.array_unique(arr anyarray)
  RETURNS anyarray
  LANGUAGE sql
 AS $function$
-    select array( select distinct unnest($1) order by 1 )
+    select array_remove(array( select distinct unnest($1) order by 1 ),null)
 $function$;
+
+CREATE AGGREGATE array_cat_agg(anyarray) (
+  SFUNC=array_cat,
+  STYPE=anyarray
+);
 
 /* record_counts_agg
     groups by all the attribute columns we have and aggregates counts
@@ -250,11 +255,6 @@ create table record_counts_agg as
               ),null) cids
   from results2.record_counts rc
   group by  standard_concept, domain_id, vocabulary_id, class_concept_id, tbl, col, coltype ;
-
-CREATE AGGREGATE array_cat_agg(anyarray) (
-  SFUNC=array_cat,
-  STYPE=anyarray
-);
 
 /* concept_groups_w_cids
     creates different grouping sets including lower levels of granularity
@@ -543,3 +543,51 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
 
 select * from make_dcid_cnts_breakdown();
 
+
+
+create table domain_ancestors as
+  select  c1.domain_id ancestor_domain_id,
+          c2.domain_id descendant_domain_id,
+          apm.source,
+          count(*) cc
+  from ancestor_plus_mapsto apm 
+  join :cdm.concept c1 on apm.ancestor_concept_id=c1.concept_id 
+  join :cdm.concept c2 on apm.descendant_concept_id=c2.concept_id 
+  group by 3,1,2 
+  order by 3,1,2;
+
+
+-- same as above except counts:  (not sure which ones are right if any)
+drop table anc_groups;
+create table anc_groups as
+  select  cg.vals[2] adom, 
+          cg.vals[1] as asc,
+          cg.vals[3] avoc,
+          cg.vals[4] aclass,
+          dcg.vals[1] ddom, 
+          dcg.vals[2] as dsc,
+          dcg.vals[3] dvoc,
+          dcg.vals[4] dclass,
+          array_unique(array_agg(cg.cgid)) cgids,
+          array_unique(array_agg(dcg.dcid_grp_id)) dcgids, 
+          sum(cc) cc, sum(dcg.dcc) dcc
+  from concept_groups cg 
+  left join dcid_cnts_breakdown dcg on cg.cgid = any(dcg.cgids) and dcg.grp=7 
+  where cg.grp = 7 
+  group by 1,2,3,4,5,6,7,8;
+
+select  adom, 
+        array_unique(array_agg(ddom)) ddoms,
+        array_unique(array_agg(ag.asc)) ascs,
+        array_unique(array_agg(dsc)) dscs,
+        array_unique(array_agg(avoc)) avocs,
+        array_unique(array_agg(dvoc)) dvocs,
+        array_unique(array_agg(aclass)) aclasses,
+        array_unique(array_agg(dclass)) dclasses,
+        array_unique(array_cat_agg(cgids)) cgids,
+        array_unique(array_cat_agg(dcgids)) dcgids,
+        sum(cc) cc,
+        sum(dcc) dcc
+from anc_groups ag
+group by 1 
+order by coalesce(array_length(array_remove(array_unique(array_agg(ddom)),null),1),0), 1;

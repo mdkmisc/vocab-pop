@@ -54,7 +54,7 @@
     "ag-grid-react": "^7.0.0",
     "cy-viewer": "^2.0.1",
     "cytoscape": "^2.7.13",
-    "d3": "^4.3.0",
+    "d3": "^4.5.0",
     "lodash": "^4.17.2",
     "lz-string": "^1.4.4",
     "raw-loader": "^0.5.1",
@@ -69,7 +69,8 @@
     "react-spinner": "^0.2.6",
     "rxjs": "^5.0.0-rc.4",
     "sigma": "^1.2.0",
-    "supergroup": "^1.1.7"
+    "supergroup": "^1.1.7",
+    "tipsy": "^1.0.0"
   },
   "scripts": {
     "start": "node scripts/start.js",
