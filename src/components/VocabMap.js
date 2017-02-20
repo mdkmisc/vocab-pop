@@ -446,30 +446,16 @@ export class VocNode extends Component {
   }
 }
 export class DomainMapNode extends VocNode {
-  constructor(props) {
-    super(props);
-    this.state = {w:0, h:0, updates:0};
-    //this.nodeSizeStream = new Rx.Subject();
-    //this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
-  }
-  componentDidMount() {
-    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
-    sigmaNode.update = this.update.bind(this);
-  }
-  componentDidUpdate() {
-    console.log('resizing domainmapnode');
-    this.setVocNodeSize(this.mainDiv);
-  }
-  content() {
+  setEvents() { }
+  render() {
     const {sigmaNode, sigmaSettings} = this.props;
-    return <div className="voc-node-content" ref={d=>this.mainDiv=d} >
+    return <div className="voc-node-content" ref={d=>this.contentRef=d} >
               {sigmaNode.label}
            </div>;
   }
 }
 export class VocGroupNode extends VocNode {
-  setEvents() {
-  }
+  setEvents() { }
   render() {
     return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
             >{this.props.sigmaNode.caption}</h3>;

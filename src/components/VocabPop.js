@@ -213,6 +213,7 @@ class DomainMap extends Component {
     let elements = {
       nodes: sg.map((d,i)=>{return {
                 id:d.toString(), 
+                htmlContent:true,
                 ComponentClass: DomainMapNode,
                 size:d.toString().length,
                 label:d.toString(),

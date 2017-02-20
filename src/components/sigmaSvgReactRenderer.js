@@ -23,7 +23,7 @@ function sigmaReactRenderer(sigma) {
       g.setAttributeNS(null, 'data-node-id', node.id);
       g.setAttributeNS(null, 'class', 
               settings('classPrefix') + '-node'
-              + ' sigma-react ' + node.classes);
+              + ' sigma-react ' + (node.classes||''));
       //g.setAttributeNS(null, 'fill', node.color || settings('defaultNodeColor'));
       let Component = node.ComponentClass;
       let comp = <Component sigmaNode={node} sigmaSettings={settings} />;
@@ -100,7 +100,7 @@ function sigmaReactRenderer(sigma) {
       g.setAttributeNS(null, 'data-edge-id', edge.id);
       g.setAttributeNS(null, 'class', 
               settings('classPrefix') + '-edge'
-                          + ' sigma-react ' + edge.classes);
+                          + ' sigma-react ' + (edge.classes||''));
 
       let Component = edge.ComponentClass;
       render(<Component sigmaEdge={edge} sigmaSource={source} 
