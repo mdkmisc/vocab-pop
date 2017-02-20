@@ -7,7 +7,7 @@ import { createHistory } from 'history';
 import {App, Sidebar, ComponentWrapper} from './App';
 import * as AppState from './AppState';
 //import { DrugContainer, Search, Home /*ConceptsContainer, Tables, */ } from './components/VocabPop';
-import './index.css';
+//import './index.css';
 
 
 /* 

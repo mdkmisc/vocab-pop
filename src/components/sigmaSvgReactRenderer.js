@@ -3,7 +3,12 @@ import {render} from 'react-dom';
 //import {VocNode, VocEdge} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
-export default function(sigma) {
+let sigma = require('sigma');
+export {sigma as default};
+window.sigma = sigma;
+var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
+sigmaReactRenderer(sigma);
+function sigmaReactRenderer(sigma) {
   sigma.utils.pkg('sigma.svg.nodes');
   //labelRenderer(sigma);
 
@@ -14,15 +19,23 @@ export default function(sigma) {
      * @param  {configurable}             settings The settings function.
      */
     create: function(node, settings) {
-      let Component = node.ComponentClass;
       let g = document.createElementNS(d3.namespaces.svg, 'g');
       g.setAttributeNS(null, 'data-node-id', node.id);
-
       g.setAttributeNS(null, 'class', 
               settings('classPrefix') + '-node'
-              + ' sigma-react');
+              + ' sigma-react ' + node.classes);
       //g.setAttributeNS(null, 'fill', node.color || settings('defaultNodeColor'));
-      render(<Component sigmaNode={node} sigmaSettings={settings} />, g);
+      let Component = node.ComponentClass;
+      let comp = <Component sigmaNode={node} sigmaSettings={settings} />;
+      let NewNode = node.htmlContent 
+          ? <g>
+              <rect className="edge-cover" />    
+              <foreignObject className="voc-node-fo">
+                {comp}
+              </foreignObject>
+            </g>
+          : comp;
+      render(NewNode, g);
       return g;
     },
     /**
@@ -33,10 +46,24 @@ export default function(sigma) {
      */
     update: function(node, el, settings) {
       el.style.display = '';
+      let ref = node.getContentRef();
+      let [w,h] = getSize(ref);
       node.update(node, el, settings);
+      let prefix = settings('prefix') || '';
+      el.setAttributeNS(null, 'transform',
+          `translate(${node[prefix+'x'] - w/2},${node[prefix+'y'] - h/2})`);
+      if (node.htmlContent)
+        $(el).find('rect.edge-cover').width(w).height(h);
       return this;
     }
   };
+
+  function getSize(dn) {
+    let cbr = dn.getBoundingClientRect(), 
+        rw = Math.round(cbr.width),
+        rh = Math.round(cbr.height);
+    return [rw,rh];
+  }
 
   sigma.utils.pkg('sigma.svg.edges');
   sigma.svg.edges.react = {
@@ -72,7 +99,8 @@ export default function(sigma) {
       g.setAttributeNS(null, 'stroke', color);
       g.setAttributeNS(null, 'data-edge-id', edge.id);
       g.setAttributeNS(null, 'class', 
-              settings('classPrefix') + '-edge' + ' sigma-react');
+              settings('classPrefix') + '-edge'
+                          + ' sigma-react ' + edge.classes);
 
       let Component = edge.ComponentClass;
       render(<Component sigmaEdge={edge} sigmaSource={source} 
@@ -98,6 +126,9 @@ export default function(sigma) {
 }
 
 import Rx from 'rxjs/Rx';
+export function firstLastEvt(rxSubj, ms) {
+  return Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms)).distinctUntilChanged()
+}
 export class SigmaReactGraph extends Component {
   constructor(props) {
     super(props);
@@ -118,9 +149,10 @@ export class SigmaReactGraph extends Component {
     const {NodeClass, nodes, edges, width, height} = this.props;
     let self = this;
     if (this.graphDiv && nodes && nodes.length) {
+      /*
       nodes.forEach(
         d => {
-          d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
+          //d.ComponentClass = d.ComponentClass || (d.isParent ? VocGroupNode : VocNode);
           d.nodeEventStream = this.nodeEventStream;
           d.msgInfoStream = this.msgInfoStream;
         });
@@ -129,8 +161,10 @@ export class SigmaReactGraph extends Component {
           d.ComponentClass = VocEdge;
           d.nodeEventStream = this.nodeEventStream;
         });
+      */
       let nodeClassFunc = node=>NodeClass;
-      this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements, nodeClassFunc);
+      this.sigmaInstance = this.sigmaInstance || 
+        sigmaGraph(this.graphDiv, {nodes,edges}, nodeClassFunc);
       this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
       this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
       this.setState({graphDrawn:true, updates:this.state.updates+1});

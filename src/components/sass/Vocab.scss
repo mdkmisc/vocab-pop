@@ -116,15 +116,17 @@ div.concept-browse {
       float: right;
       z-index: 100;
     }
-    div.voc-div {
-      display: inline-block;
-      border: 1px solid gray;
-      padding: 4px;
-      //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
-      border-radius: 8px;
-      background-color: $white;
-      div.voc-node-content {
+    g.sigma-react {
+      rect {
+        fill: $color_green_30;
+      }
+      .voc-node-content {
         display: inline-block;
+        border: 1px solid gray;
+        padding: 4px;
+        //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
+        border-radius: 8px;
+        background-color: $white;
         div.info {
           display: flex;
           flex-direction: row;
@@ -185,6 +187,8 @@ div.concept-browse {
           }
           cursor: pointer;
           font-size: small;
+/*
+*/
           &.parent {
             font-size: large;
             background-color: $alice_blue;

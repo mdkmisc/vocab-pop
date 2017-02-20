@@ -25,10 +25,7 @@ import _ from 'supergroup'; // in global space anyway...
 import ConceptData from './ConceptData';
 import {VocabMapByDomain, DomainMapNode} from './VocabMap';
 
-var sigma = require('sigma');
-var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
-import sigmaReactRenderer, {SigmaReactGraph} from './sigmaSvgReactRenderer';
-sigmaReactRenderer(sigma);
+import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 //import 'tipsy/src/stylesheets/tipsy.css';

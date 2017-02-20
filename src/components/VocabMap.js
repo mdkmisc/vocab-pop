@@ -29,11 +29,7 @@ import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
 
-var sigma = require('sigma');
-window.sigma = sigma;
-var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
-import sigmaReactRenderer from './sigmaSvgReactRenderer';
-sigmaReactRenderer(sigma);
+import sigma from './sigmaSvgReactRenderer';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -98,6 +94,7 @@ export default class VocabMap extends Component {
       elements.nodes.forEach(
         d => {
           d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
+          d.htmlContent = true;
           d.nodeEventStream = this.nodeEventStream;
           d.msgInfoStream = this.msgInfoStream;
         });
@@ -201,7 +198,7 @@ function eventPerspective(me, evt, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-function firstLastEvt(rxSubj, ms) {
+export function firstLastEvt(rxSubj, ms) {
   return Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms)).distinctUntilChanged()
 }
 export class VocNode extends Component {
@@ -215,6 +212,11 @@ export class VocNode extends Component {
   componentDidMount() {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
+    sigmaNode.getContentRef = this.getContentRef.bind(this);
+    this.setEvents();
+  }
+  setEvents() {
+    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     let self = this;
     firstLastEvt(sigmaNode.nodeEventStream,50).subscribe(
       e => {
@@ -298,152 +300,6 @@ export class VocNode extends Component {
       });
   }
   render() {
-    const {sigmaNode, sigmaSettings, notInGraph=false} = this.props;
-    const {w, h, hover, mute, zoom, list} = this.state;
-
-    /* this is to have the node be able to appear outside the graph, 
-     * was using for MsgInfo
-    if (notInGraph)
-      return <div className="voc-div not-in-graph">
-                <VocNodeContent {...this.props} {...this.state} 
-                          setVocNodeSize={this.setVocNodeSize.bind(this)} />
-             </div>
-    */
-    let prefix = sigmaSettings('prefix') || '';
-    return (
-            <g className={"voc-node-container " 
-                            + sigmaNode.classes
-                            + (mute ? ' muted' : '')}
-              transform={`translate(${sigmaNode[prefix+'x'] - w/2},${sigmaNode[prefix+'y'] - h/2})`}
-            >
-              <rect className="edge-cover"
-                width={w}
-                height={h}
-              />    
-              <foreignObject className="voc-node-fo">
-                <div  className={"voc-div" + (hover ? ' hover' : '')} 
-                    ref={d=>this.contentDiv=d} >
-                  {this.content()}
-                </div>
-              </foreignObject>
-            </g>
-           );
-
-  }
-  content() { // this is a method so it can be overridden
-    return <VocNodeContent {...this.props} {...this.state} 
-                            setVocNodeSize={this.setVocNodeSize.bind(this)} />
-  }
-  setVocNodeSize(dn) {
-    const {w,h} = this.state;
-    let cbr = dn.getBoundingClientRect(), 
-        rw = Math.round(cbr.width),
-        rh = Math.round(cbr.height);
-    if (w !== rw || h !== rh) {
-      //console.log(this.props.sigmaNode.id, w, rw, h, rh);
-      this.setState({w:rw, h:rh, updates: this.state.updates+1});
-    }
-  }
-  update(node, el, settings) {
-    /*
-    const {sigmaNode, sigmaSettings} = this.props;
-    //if (node !== sigmaNode) throw new Error('is this right?');
-    //if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
-    let w=0,h=0;
-    if (this.contentDiv) {
-      this.contentDiv.style.position = 'absolute';
-      let cbr = this.contentDiv.getBoundingClientRect(); 
-      this.contentDiv.style.position = '';
-      w = cbr.width; 
-      h = cbr.height;
-      //console.log(cbr,w,h);
-    }
-    this.setState({w, h, updates: this.state.updates+1});
-    */
-    this.setState({updates: this.state.updates+1});
-    //$('g.sigma-node').css('display','');
-  }
-}
-export class DomainMapNode extends VocNode {
-  constructor(props) {
-    super(props);
-    this.state = {w:0, h:0, updates:0};
-    //this.nodeSizeStream = new Rx.Subject();
-    //this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
-  }
-  componentDidMount() {
-    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
-    sigmaNode.update = this.update.bind(this);
-  }
-  componentDidUpdate() {
-    this.setVocNodeSize(this.mainDiv);
-  }
-  content() {
-    const {sigmaNode, sigmaSettings} = this.props;
-    return <div className="voc-node-content" ref={d=>this.mainDiv=d} >
-              {sigmaNode.label}
-           </div>;
-  }
-}
-export class VocGroupNode extends VocNode {
-  componentDidMount() {
-    const {sigmaNode, sigmaSettings} = this.props;
-    sigmaNode.update = this.update.bind(this);
-  }
-  content() {
-    return <h3 className="sigma-fix">{this.props.sigmaNode.caption}</h3>;
-  }
-}
-function Icons(props) {
-  const {hover, } = props;
-                //style={{display:hover ? 'inline' : 'none',}} >
-                // sigma chokes on events for elements without classes
-  return <span className="icons"> 
-            <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
-              title="Drill down to concept classes"
-            />
-            <Glyphicon glyph="list" style={{pointerEvents:'auto'}} 
-              title="Show sample records"
-            />
-         </span>;
-}
-export class VocNodeContent extends Component {
-  constructor(props) { super(props); this.state = {}; }
-  /*
-  shouldComponentUpdate(nextProps, nextState) {
-    let p = ['sigmaNode','hover','mute','zoom','list','msgInfo'];
-    let s = ['refresh', ];
-    return  !this.state.initialized ||
-            !_.isEqual(_.pick(this.state, s), _.pick(nextState, s)) ||
-            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
-
-    /*
-    let p = ['sigmaNode','hover','mute','zoom','list'];
-    return  !this.state.initialized ||
-            this.state.refresh !== nextState.refresh ||
-            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
-    * /
-  }
-  componentDidMount() {
-    setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
-  }
-  componentWillUpdate(nextProps) {
-    const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = nextProps;
-    //console.log(sigmaNode.id, hover, mute, 'content update');
-
-    //this.setState({icons: <Icons hover={hover} />, chunks, zoomContent, initialized: true});
-    this.setState({initialized: true});
-  }
-  */
-  componentDidUpdate() {
-    /*
-    if (!this.mainDiv) {
-      setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
-    }
-    */
-    this.props.setVocNodeSize(this.mainDiv);
-  }
-  render() {
     const {sigmaNode, sigmaSettings, settings, children, notInGraph,
             hover, mute, zoom, list, infoHover, } = this.props;
     //const {icons, chunks, zoomContent} = this.state;
@@ -500,7 +356,7 @@ export class VocNodeContent extends Component {
       ));
             // in addition to infoTrigger on whole node,
                 //onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
-    return <div className="voc-node-content" ref={d=>this.mainDiv=d}
+    return <div className="voc-node-content" ref={d=>this.contentRef=d}
                 onMouseOut={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
             >
               <Icons hover={hover} />
@@ -511,12 +367,171 @@ export class VocNodeContent extends Component {
               {zoomContent}
            </div>;
   }
+  getContentRef() {
+    return this.contentRef;
+  }
   infoTrigger(k,v,e,out=false) {
     let {sigmaNode, notInGraph} = this.props;
     sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, 
                                   k, v, notInGraph});
   }
+  /*
+  render() {
+    const {sigmaNode, sigmaSettings, notInGraph=false} = this.props;
+    const {w, h, hover, mute, zoom, list} = this.state;
+
+    /* this is to have the node be able to appear outside the graph, 
+     * was using for MsgInfo
+    if (notInGraph)
+      return <div className="voc-div not-in-graph">
+                <VocNodeContent {...this.props} {...this.state} 
+                          setVocNodeSize={this.setVocNodeSize.bind(this)} />
+             </div>
+    *p/
+    let prefix = sigmaSettings('prefix') || '';
+    return this.content();
+
+
+    /*
+            <g className={"voc-node-container " 
+                            + sigmaNode.classes
+                            + (mute ? ' muted' : '')}
+              transform={`translate(${sigmaNode[prefix+'x'] - w/2},${sigmaNode[prefix+'y'] - h/2})`}
+            >
+              <rect className="edge-cover"
+                width={w}
+                height={h}
+              />    
+              <foreignObject className="voc-node-fo">
+                <div  className={"voc-div" + (hover ? ' hover' : '')} 
+                    ref={d=>this.contentDiv=d} >
+                  {this.content()}
+                </div>
+              </foreignObject>
+            </g>
+  }
+  content() { // this is a method so it can be overridden
+    return <VocNodeContent {...this.props} {...this.state} 
+                            setVocNodeSize={this.setVocNodeSize.bind(this)} />
+  }
+  setVocNodeSize(dn) {
+    const {w,h} = this.state;
+    let cbr = dn.getBoundingClientRect(), 
+        rw = Math.round(cbr.width),
+        rh = Math.round(cbr.height);
+    if (w !== rw || h !== rh) {
+      //console.log(this.props.sigmaNode.id, w, rw, h, rh);
+      this.setState({w:rw, h:rh, updates: this.state.updates+1});
+    }
+  }
+  */
+  update(node, el, settings) {
+    /*
+    const {sigmaNode, sigmaSettings} = this.props;
+    //if (node !== sigmaNode) throw new Error('is this right?');
+    //if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
+    let w=0,h=0;
+    if (this.contentDiv) {
+      this.contentDiv.style.position = 'absolute';
+      let cbr = this.contentDiv.getBoundingClientRect(); 
+      this.contentDiv.style.position = '';
+      w = cbr.width; 
+      h = cbr.height;
+      //console.log(cbr,w,h);
+    }
+    this.setState({w, h, updates: this.state.updates+1});
+    */
+    this.setState({updates: this.state.updates+1});
+    //$('g.sigma-node').css('display','');
+  }
 }
+export class DomainMapNode extends VocNode {
+  constructor(props) {
+    super(props);
+    this.state = {w:0, h:0, updates:0};
+    //this.nodeSizeStream = new Rx.Subject();
+    //this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
+  }
+  componentDidMount() {
+    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
+    sigmaNode.update = this.update.bind(this);
+  }
+  componentDidUpdate() {
+    console.log('resizing domainmapnode');
+    this.setVocNodeSize(this.mainDiv);
+  }
+  content() {
+    const {sigmaNode, sigmaSettings} = this.props;
+    return <div className="voc-node-content" ref={d=>this.mainDiv=d} >
+              {sigmaNode.label}
+           </div>;
+  }
+}
+export class VocGroupNode extends VocNode {
+  setEvents() {
+  }
+  render() {
+    return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
+            >{this.props.sigmaNode.caption}</h3>;
+  }
+  /*
+  content() { // this is a method so it can be overridden
+    return <VocNodeContent {...this.props} {...this.state} 
+                            setVocNodeSize={this.setVocNodeSize.bind(this)} />
+  }
+  */
+}
+function Icons(props) {
+  const {hover, } = props;
+                //style={{display:hover ? 'inline' : 'none',}} >
+                // sigma chokes on events for elements without classes
+  return <span className="icons"> 
+            <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
+              title="Drill down to concept classes"
+            />
+            <Glyphicon glyph="list" style={{pointerEvents:'auto'}} 
+              title="Show sample records"
+            />
+         </span>;
+}
+/*
+export class VocNodeContent extends Component {
+  constructor(props) { super(props); this.state = {}; }
+  shouldComponentUpdate(nextProps, nextState) {
+    let p = ['sigmaNode','hover','mute','zoom','list','msgInfo'];
+    let s = ['refresh', ];
+    return  !this.state.initialized ||
+            !_.isEqual(_.pick(this.state, s), _.pick(nextState, s)) ||
+            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
+
+    /*
+    let p = ['sigmaNode','hover','mute','zoom','list'];
+    return  !this.state.initialized ||
+            this.state.refresh !== nextState.refresh ||
+            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
+    * /
+  }
+  componentDidMount() {
+    setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
+  }
+  componentWillUpdate(nextProps) {
+    const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = nextProps;
+    //console.log(sigmaNode.id, hover, mute, 'content update');
+
+    //this.setState({icons: <Icons hover={hover} />, chunks, zoomContent, initialized: true});
+    this.setState({initialized: true});
+  }
+  * /
+  componentDidUpdate() {
+    /*
+    if (!this.mainDiv) {
+      setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
+    }
+    * /
+    this.props.setVocNodeSize(this.mainDiv);
+  }
+}
+*/
 export class InfoChunk extends Component {
   constructor(props) { super(props); this.state = {}; }
   render() {
