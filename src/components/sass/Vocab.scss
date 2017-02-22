@@ -26,11 +26,40 @@ $steel_blue:  steelblue;
 $mute_opacity: 0.3;
 $color_green_30: rgba(20,255,50,.3);
 
-UNDO A COUPLE TIMES TO FIX
+@media (min-width: 450px) {
+  .nav-bar {
+    max-width: 450px;
+  }
+}
+html, body, .height-100 {
+  height: 100%;
+}
+.flex-box {
+  display: flex;
+  flex-flow: column;
+  height: 100%;
+  //.flex-row { border: 1px dotted grey; }
+  .flex-content-height {
+    flex: 0 1 auto;
+    /* The above is shorthand for:
+    flex-grow: 0,
+    flex-shrink: 1,
+    flex-basis: auto
+    */
+  }
+  .flex-remaining-height {
+    flex: 1 1 auto;
+  }
+  .flex-fixed-height-40 {
+    flex: 0 1 40px;
+  }
+}
 
+/*
 div.concept-browse {
   height: 100vh;
 }
+*/
 .react-spinner {
 	position: relative;
 	width: 32px;
@@ -111,17 +140,22 @@ div.concept-browse {
 }
 
 div.vocab-map, div.domain-map {
+  //float: right; 
+  width: 100%;
+  margin: 5;
+  //border: 1px solid blue;
+  position: relative;
   div.vocab-map-msg-div {
     float: right;
     z-index: 100;
   }
-  g.sigma-react {
+  g.sigma-node, g.sigma-label {
     rect {
       fill: $color_green_30;
     }
     .voc-node-content {
       display: inline-block;
-      border: 1px solid gray;
+      //border: 1px solid gray;
       padding: 4px;
       //Instead of the line below you could use @include border-radius($radius, $vertical-radius)
       border-radius: 8px;

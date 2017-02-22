@@ -16,7 +16,7 @@ Copyright 2016 Sigfried Gold
 // @flow
 // npm run-script flow
 import React, { Component } from 'react';
-import { Glyphicon
+import { Glyphicon, Row, Col,
           //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label
        } from 'react-bootstrap';
 var d3 = require('d3');
@@ -38,31 +38,31 @@ export class VocabMapByDomain extends Component {
   // so having two levels might no longer be necessary
   constructor(props) { super(props); this.state = {}; }
   componentDidMount() {
-    const {concept_groups, width, height} = this.props;
-    if (concept_groups && concept_groups.length)
-      this.setState({sg: sgPrep(concept_groups)});
+    const {concept_groups_d, } = this.props;
+    if (concept_groups_d && concept_groups_d.length)
+      this.setState({sg: sgPrep(concept_groups_d)});
   }
   componentDidUpdate(prevProps, prevState) {
-    const {concept_groups, width, height} = this.props;
-    if (concept_groups && concept_groups.length && 
-        !_.isEqual(concept_groups, prevProps.concept_groups))
-      this.setState({sg: sgPrep(concept_groups)});
+    const {concept_groups_d, } = this.props;
+    if (concept_groups_d && concept_groups_d.length && 
+        !_.isEqual(concept_groups_d, prevProps.concept_groups_d))
+      this.setState({sg: sgPrep(concept_groups_d)});
   }
 
   render() {
-    const {concept_groups, width, height} = this.props;
+    const {concept_groups_d, width, height} = this.props;
     const {sg} = this.state;
 
     if (sg && sg.length) {
-      //let ignoreForNow = _.filter(concept_groups, {sc_1:'C', sc_2:null}) .concat( _.filter(concept_groups, {sc_2:'C', sc_1:null}));
-      //let recs = _.difference(concept_groups, ignoreForNow);
+      //let ignoreForNow = _.filter(concept_groups_d, {sc_1:'C', sc_2:null}) .concat( _.filter(concept_groups_d, {sc_2:'C', sc_1:null}));
+      //let recs = _.difference(concept_groups_d, ignoreForNow);
       let div = this.graphDiv;
-      let mapWidth = Math.max(250, width / Math.ceil(Math.sqrt(sg.length)));
-      let mapHeight = Math.max(250, height / Math.ceil(Math.sqrt(sg.length)));
+      //let mapWidth = Math.max(250, width / Math.ceil(Math.sqrt(sg.length)));
+      //let mapHeight = Math.max(250, height / Math.ceil(Math.sqrt(sg.length)));
       let maps = sg.map(domain => <VocabMap sg={domain} 
                                             key={domain.toString()}
-                                            width={mapWidth}
-                                            height={mapHeight} 
+                                            //width={mapWidth}
+                                            //height={mapHeight} 
                                    />);
       return <div className="vocab-map-by-domain">{maps}</div>;
     } else {
@@ -94,7 +94,8 @@ export default class VocabMap extends Component {
       elements.nodes.forEach(
         d => {
           d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
-          d.htmlContent = true;
+          //d.htmlContent = true;
+          d.type = 'html'; // triggers sigmaSvgReactRenderer label renderer
           d.nodeEventStream = this.nodeEventStream;
           d.msgInfoStream = this.msgInfoStream;
         });
@@ -103,6 +104,7 @@ export default class VocabMap extends Component {
           d.ComponentClass = VocEdge;
           d.nodeEventStream = this.nodeEventStream;
         });
+      $(this.graphDiv).height(this.props.h);
       this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
       this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
       this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
@@ -112,19 +114,6 @@ export default class VocabMap extends Component {
             function(e) {
               self.nodeEventStream.next({jqEvt:e, domNode:this, });
             });
-            /*
-            function(e) {
-              let inodes = $(e.target).closest('[data-is-info=true]'),
-                  key, val;
-              if (inodes.length) {
-                let inode = inodes[0];
-                key = inode.getAttribute('data-key');
-                val = inode.getAttribute('data-val');
-                //console.log(e.type, e.target, key, val)
-              }
-              self.nodeEventStream.next({jqEvt:e, domNode:this, 
-                                        isInfo: !!inodes.length, key, val});
-            }*/
     }
   }
   shouldComponentUpdate(nextProps, nextState) {
@@ -135,13 +124,7 @@ export default class VocabMap extends Component {
   render() {
     const {sg, width, height} = this.props;
     const {msgInfo} = this.state;
-    return (<div className="vocab-map"
-                 style={{
-                        float: 'left', 
-                        margin: 5,
-                        border: '1px solid blue',
-                        position: 'relative',
-                    }} >
+    return (<div className="vocab-map" >
               <h4><a href="#" onClick={()=>AppState.saveState({domain_id:sg.toString()})}> {sg.toString()}</a></h4>
               <MsgInfo info={msgInfo} />
               <div ref={div=>this.graphDiv=div} 
@@ -375,74 +358,9 @@ export class VocNode extends Component {
     sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, 
                                   k, v, notInGraph});
   }
-  /*
-  render() {
-    const {sigmaNode, sigmaSettings, notInGraph=false} = this.props;
-    const {w, h, hover, mute, zoom, list} = this.state;
-
-    /* this is to have the node be able to appear outside the graph, 
-     * was using for MsgInfo
-    if (notInGraph)
-      return <div className="voc-div not-in-graph">
-                <VocNodeContent {...this.props} {...this.state} 
-                          setVocNodeSize={this.setVocNodeSize.bind(this)} />
-             </div>
-    *p/
-    let prefix = sigmaSettings('prefix') || '';
-    return this.content();
-
-
-    /*
-            <g className={"voc-node-container " 
-                            + sigmaNode.classes
-                            + (mute ? ' muted' : '')}
-              transform={`translate(${sigmaNode[prefix+'x'] - w/2},${sigmaNode[prefix+'y'] - h/2})`}
-            >
-              <rect className="edge-cover"
-                width={w}
-                height={h}
-              />    
-              <foreignObject className="voc-node-fo">
-                <div  className={"voc-div" + (hover ? ' hover' : '')} 
-                    ref={d=>this.contentDiv=d} >
-                  {this.content()}
-                </div>
-              </foreignObject>
-            </g>
-  }
-  content() { // this is a method so it can be overridden
-    return <VocNodeContent {...this.props} {...this.state} 
-                            setVocNodeSize={this.setVocNodeSize.bind(this)} />
-  }
-  setVocNodeSize(dn) {
-    const {w,h} = this.state;
-    let cbr = dn.getBoundingClientRect(), 
-        rw = Math.round(cbr.width),
-        rh = Math.round(cbr.height);
-    if (w !== rw || h !== rh) {
-      //console.log(this.props.sigmaNode.id, w, rw, h, rh);
-      this.setState({w:rw, h:rh, updates: this.state.updates+1});
-    }
-  }
-  */
   update(node, el, settings) {
-    /*
-    const {sigmaNode, sigmaSettings} = this.props;
-    //if (node !== sigmaNode) throw new Error('is this right?');
-    //if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
-    let w=0,h=0;
-    if (this.contentDiv) {
-      this.contentDiv.style.position = 'absolute';
-      let cbr = this.contentDiv.getBoundingClientRect(); 
-      this.contentDiv.style.position = '';
-      w = cbr.width; 
-      h = cbr.height;
-      //console.log(cbr,w,h);
-    }
-    this.setState({w, h, updates: this.state.updates+1});
-    */
+    //console.log('update does nothing now, i think');
     this.setState({updates: this.state.updates+1});
-    //$('g.sigma-node').css('display','');
   }
 }
 export class DomainMapNode extends VocNode {
@@ -480,44 +398,6 @@ function Icons(props) {
             />
          </span>;
 }
-/*
-export class VocNodeContent extends Component {
-  constructor(props) { super(props); this.state = {}; }
-  shouldComponentUpdate(nextProps, nextState) {
-    let p = ['sigmaNode','hover','mute','zoom','list','msgInfo'];
-    let s = ['refresh', ];
-    return  !this.state.initialized ||
-            !_.isEqual(_.pick(this.state, s), _.pick(nextState, s)) ||
-            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
-
-    /*
-    let p = ['sigmaNode','hover','mute','zoom','list'];
-    return  !this.state.initialized ||
-            this.state.refresh !== nextState.refresh ||
-            !_.isEqual(_.pick(this.props, p), _.pick(nextProps, p));
-    * /
-  }
-  componentDidMount() {
-    setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
-  }
-  componentWillUpdate(nextProps) {
-    const {sigmaNode, sigmaSettings, settings, hover, mute, zoom, list} = nextProps;
-    //console.log(sigmaNode.id, hover, mute, 'content update');
-
-    //this.setState({icons: <Icons hover={hover} />, chunks, zoomContent, initialized: true});
-    this.setState({initialized: true});
-  }
-  * /
-  componentDidUpdate() {
-    /*
-    if (!this.mainDiv) {
-      setTimeout(()=>this.setState({refresh:!this.state.refresh}), 100);
-    }
-    * /
-    this.props.setVocNodeSize(this.mainDiv);
-  }
-}
-*/
 export class InfoChunk extends Component {
   constructor(props) { super(props); this.state = {}; }
   render() {
@@ -637,34 +517,117 @@ export class VocEdge extends Component {
   }
 }
 
+function sgPrep(concept_groups_d) {
+  if (!concept_groups_d.length) throw new Error("no concept_groups_d");
+  let cg = concept_groups_d.filter(
+    d=>d.grpset.join(',') === 'standard_concept,domain_id,vocabulary_id');
+  if (!cg.length) throw new Error("no cg");
+  //let grpsets = _.uniq(concept_groups_d.map(d=>d.grpset.join(',')));
+  //if (grpsets.length !== 1) throw new Error("expected 1 grpset");
+
+  let sg = _.supergroup(cg, ['domain_id','standard_concept','vocabulary_id']);
+  sg.addLevel('linknodes',{multiValuedGroup:true});
+  return sg;
+}
+export class DomainMap extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {updates:0};
+  }
+  componentDidMount() {
+    this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
+  }
+  componentDidUpdate() {
+    const { vocgroups } = this.props;
+    if (_.isEmpty(vocgroups)) return;
+    let sg = _.supergroup(vocgroups, "domain_id");
+    sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
+                {dimName:'ddom',multiValuedGroup:true});
+    let y = d3.scaleQuantize().domain(d3.extent(sg.map(d=>d.getChildren(true).length)))
+                              .range(_.range(1,6).reverse());
+
+    let elements = {
+      nodes: sg.map((d,i)=>{return {
+                id:d.toString(), 
+                //htmlContent:true,
+                type: 'react', // triggers sigmaSvgReactRenderer label renderer
+                ComponentClass: DomainMapNode,
+                size:d.records.length,
+                label:d.toString(),
+                x: i % 5,
+                y: y(d.getChildren(true).length),
+                val: d,
+                //type: 'react',
+              }}),
+      edges: sg.leafNodes().filter(d=>d.parent).map(d=>{return {
+                  id: d.namePath(),
+                  type: 'curve',
+                  source: d.parent.toString(),
+                  target: d.toString(),
+                  sval: d.parent,
+                  tval: d,
+              }}),
+    };
+    $(this.graphDiv).height(this.props.h);
+    this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
+  }
+  render() {
+    return <div ref={div=>this.graphDiv=div} className="domain-map " />
+  }
+}
 function sigmaGraph(domnode, elements) {
   // Instantiate sigma:
   let neigh = new sigma.plugins.neighborhoods();
+  console.log(domnode);
   let s = new sigma({
     graph: { ...elements }, // should contain nodes and edges
     settings: {
       //enableHovering: false,
       //mouseEnabled: false,
       //eventsEnabled: false,
-      //labelSize: 'proportional',
-      //labelThreshold: 6,
     }
   });
-
+  let cam = s.addCamera();
+  // biggest node will be 2.5 times bigger than smallest on this scale:
+  let nodeSizeScale = d3.scaleLinear()
+                        .domain(d3.extent(elements.nodes.map(d=>d.size)))
+                        .range([1,2.5]);  
+  let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
+                        .domain([2,0])
+                        .range([6,20]);
+  let fontFromSize = function(size) {
+                        return nodeSizeScale(size) * zoomFontScale(cam.ratio);
+                      };
   s.addRenderer({
-    drawLabels: false,
-    drawEdgeLabels: false,
-    id: 'main',
-    type: 'svg',
     container: domnode,
-    edgeColor: 'target',
-    //defaultNodeType: 'react', // doesn't seem to do anything, have to add it to nodes explicitly
+    type: 'svg',
+    camera: cam,
     //freeStyle: true
+    settings: {
+      drawLabels: false,
+      drawEdgeLabels: false,
+      id: 'main',
+      edgeColor: 'target',
+      hideEdgesOnMove: true,
+      defaultLabelColor: '#fff',
+      defaultNodeColor: '#999',
+      defaultEdgeColor: '#333',
+      edgeColor: 'default',
+      labelSize: 'proportional',
+      labelFontSizeThreshold: 7,
+      //labelThreshold: 7,
+      fontFromSize,
+      //defaultLabelSize: 22,
+      //labelSizeRatio: 4,
+    }
   });
-  s.camera.ratio = .9;
+  s.camera.ratio = .7;
   s.refresh();
   window.s = s;
+  window.elements = elements;
   return s;
+  //s.startForceAtlas2({worker: true, barnesHutOptimize: false});
+
   /*
   let rows = _.groupBy(s.graph.nodes(), d=>d.row);
   _.each(rows, nodes => {
@@ -685,16 +648,4 @@ function sigmaGraph(domnode, elements) {
   window.perpendicular_coords = perpendicular_coords;
   return s;
   */
-}
-function sgPrep(concept_groups) {
-  if (!concept_groups.length) throw new Error("no concept_groups");
-  let cg = concept_groups.filter(
-    d=>d.grpset.join(',') === 'standard_concept,domain_id,vocabulary_id');
-  if (!cg.length) throw new Error("no cg");
-  //let grpsets = _.uniq(concept_groups.map(d=>d.grpset.join(',')));
-  //if (grpsets.length !== 1) throw new Error("expected 1 grpset");
-
-  let sg = _.supergroup(cg, ['domain_id','standard_concept','vocabulary_id']);
-  sg.addLevel('linknodes',{multiValuedGroup:true});
-  return sg;
 }

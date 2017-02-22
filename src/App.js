@@ -27,10 +27,10 @@ import { LinkContainer } from 'react-router-bootstrap';
 //import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
-import { Home, Search, ConceptContainer,
-          /* DrugContainer, Tables, */
-        } from './components/VocabPop';
+import VocabPop from './components/VocabPop';
+          /* Search, DrugContainer, Tables, */
 import * as AppState from './AppState';
+var $ = require('jquery');
 
 
 //import logo from './logo.svg';
@@ -39,7 +39,36 @@ import './stylesheets/VocabPop.css';
 import _ from 'supergroup';
 //import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
+import {commify} from './utils';
 
+export class Home extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
+    this.stateSub = AppState.subscribeState('', state => this.setState(state));
+  }
+  componentWillUnmount() {
+    this.stateSub.unsubscribe();
+  }
+  render() {
+    //const {filters, domain_id} = this.props;
+    var conceptCount = this.state.conceptCount || 0;
+    console.log(this.props);
+    return  <div>
+              {/*
+              <div>
+                <VocabPop filters={filters} domain_id={domain_id} />
+              </div>
+              */}
+              <Inspector search={false} 
+                data={ AppState.getState() } />
+              <br/>
+              Current concepts: { commify(conceptCount) }
+            </div>;
+  }
+}
 function locPath(pathname, opts={}) {
   // not sure whether to get state from AppState.getState()
   // here. this does the same:
@@ -62,29 +91,34 @@ class DefaultNavBar extends Component {
           <Navbar.Header>
             <Navbar.Brand>
               <NavLink to={locPath('/',{clear:['domain_id']})} onlyActiveOnIndex>
-                Vocab Population Browser
+                Vocab Viz
               </NavLink>
             </Navbar.Brand>
+            <Navbar.Toggle />
           </Navbar.Header>
-          <Nav >
-            <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
-              <NavItem eventKey={1}>Drug</NavItem>
-            </LinkContainer>
-            <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
-              <NavItem eventKey={1}>Condition</NavItem>
-            </LinkContainer>
-            <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
-              <NavItem eventKey={1}>All Domains</NavItem>
-            </LinkContainer>
+          <Navbar.Collapse>
+            <Nav >
+              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
+                <NavItem eventKey={1}>Drug</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
+                <NavItem eventKey={1}>Condition</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
+                <NavItem eventKey={1}>All Domains</NavItem>
+              </LinkContainer>
+            </Nav>
+          </Navbar.Collapse>
+        </Navbar>
+    );
+    /*
             <LinkContainer to={locPath('/search')}>
               <NavItem eventKey={1}>Search</NavItem>
             </LinkContainer>
             <LinkContainer to={locPath('/appstate')}>
               <NavItem eventKey={5}>App State</NavItem>
             </LinkContainer>
-          </Nav>
-        </Navbar>
-    );
+    */
   }
 }
 class NavLink extends Component {
@@ -267,18 +301,49 @@ export class Sidebar extends Component {
   }
 }
 export class ComponentWrapper extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { comingFrom: "CompWrapper", updates: 0,};
+  }
+  componentDidMount() {
+    //this.setState({contentDiv:this.contentDiv});
+    this.getSize();
+  }
+  componentDidUpdate() {
+    this.getSize();
+  }
+  getSize() {
+    if (this.contentDiv) {
+      const {w,h} = this.state;
+      // maybe ComponentWrapper will end up too general for this
+      // specific way of getting div dimensions, but it should work
+      // for now
+      let cbr = this.contentDiv.getBoundingClientRect(),
+          rw = Math.round(cbr.width),
+
+          rh = Math.round($(this.contentDiv)
+                           .closest('.flex-remaining-height')
+                           .height());
+      if (w !== rw || h !== rh) {
+        this.setState({w:rw, h:rh, updates: this.state.updates+1});
+      }
+    }
+  }
   render() {
     let {filters} = AppState.getState();
     let domain_id = AppState.getState('domain_id');
     let props = {
       filters, domain_id,
     };
+    Object.assign(props, this.props, this.state);
     const Comp = ({
-      ConceptContainer: ConceptContainer,
+      VocabPop: VocabPop,
       Home: Home,
-      Search: Search,
+      //Search: Search,
     })[this.props.route.components.compName];
-    return <Comp {...props} />;
+    return  <div className="main-content" ref={d=>this.contentDiv=d} >
+              <Comp {...props} classNames="" />
+            </div>;
   }
 }
 export class App extends Component {
@@ -286,13 +351,13 @@ export class App extends Component {
     const {main, sidebar} = this.props;
     let NavBar = DefaultNavBar;
     return (
-      <div className="vocab-app">
-        <NavBar />
-        <Row>
-          <Col md={2} className="sidebar">
+      <div className="vocab-app flex-box">
+        <NavBar className="flex-content-height" />
+        <Row className="flex-remaining-height">
+          <Col xs={2} md={2} className="sidebar">
             {sidebar}
           </Col>
-          <Col md={10} className="main-content">
+          <Col xs={10} md={10} >
             {main}
           </Col>
         </Row>

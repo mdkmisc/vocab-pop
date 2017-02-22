@@ -254,4 +254,4 @@ function waypoints(from, to, rowContentsForWayPoints) {
       return [stubPoint];
   return points;
 }
- */
+*/

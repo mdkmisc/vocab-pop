@@ -35,18 +35,14 @@ export default class ConceptData extends Component {
     // All,Inv,NoMatch,NonStd, and ONLY current With filt
   }
   render() {
-    const {filters} = this.props;
-    const {counts, agg, cgdc, concept_groups, dcid_cnts_breakdown, 
-            vocgroups} = this.state;
-    return  <div style={{width:'100%', height:'100%'}}
-                  className="concept-data">
-              {React.cloneElement(this.props.children, {
-                  filters,
-                  counts,
-                  agg,
-                  concept_groups: cgdc,
-                  vocgroups,
-                })}
+    //const {filters} = this.props;
+    //const {counts, agg, concept_group_d, concept_groups, dcid_cnts_breakdown, vocgroups} = this.state;
+    let props = Object.assign({}, this.props, this.state);
+    let classNames = props.classNames || '';
+    delete props.classNames;
+    //filters, counts, agg, concept_groups: concept_group_d, vocgroups,
+    return  <div className={'concept-data ' + classNames}>
+              {React.cloneElement(this.props.children, props)}
            </div>;
   }
   componentDidMount() {
@@ -141,14 +137,9 @@ export default class ConceptData extends Component {
         _.set(state, stream.meta.statePath, stream.results);
       }
     })
-    if (state.concept_groups && state.dcid_cnts_breakdown && !state.cgdc) {
-      state.cgdc = this.combineCgDc(
-          _.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
-
-      state.vocgroups = this.vocgroups(
-          _.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
-      // another structure
-      
+    if (state.concept_groups && state.dcid_cnts_breakdown && !state.concept_group_d) {
+      state.concept_group_d = this.combineCgDc(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+      state.vocgroups = this.vocgroups(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
     }
     this.setState(state);
     window.ConceptDataState = state;

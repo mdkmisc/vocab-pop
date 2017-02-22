@@ -23,7 +23,7 @@ AppState.initialize({history:useRouterHistory(createHistory)()}) // set global h
     render((
       <Router history={AppState.history}>
         <Route path="/" component={App}>
-          <Route path="concepts" components={{main:ComponentWrapper, compName:'ConceptContainer', sidebar:Sidebar}} />
+          <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', sidebar:Sidebar}} />
           <IndexRoute        components={{main:ComponentWrapper, compName:'Home',          sidebar:Sidebar}}/>
           <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
           {/*
