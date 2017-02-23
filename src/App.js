@@ -23,8 +23,8 @@ import { Nav, Navbar, //Modal,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
-//import Inspector from 'react-json-inspector';
-//import 'react-json-inspector/json-inspector.css';
+import Inspector from 'react-json-inspector';
+import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
 import VocabPop from './components/VocabPop';
@@ -87,7 +87,7 @@ function locPath(pathname, opts={}) {
 class DefaultNavBar extends Component {
   render() {
     return (
-        <Navbar fluid={true} fixedTop={false}>
+        <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
           <Navbar.Header>
             <Navbar.Brand>
               <NavLink to={locPath('/',{clear:['domain_id']})} onlyActiveOnIndex>
@@ -111,14 +111,6 @@ class DefaultNavBar extends Component {
           </Navbar.Collapse>
         </Navbar>
     );
-    /*
-            <LinkContainer to={locPath('/search')}>
-              <NavItem eventKey={1}>Search</NavItem>
-            </LinkContainer>
-            <LinkContainer to={locPath('/appstate')}>
-              <NavItem eventKey={5}>App State</NavItem>
-            </LinkContainer>
-    */
   }
 }
 class NavLink extends Component {
@@ -341,6 +333,7 @@ export class ComponentWrapper extends Component {
       Home: Home,
       //Search: Search,
     })[this.props.route.components.compName];
+    // w,h will be sent down to Comp as props!!!! 
     return  <div className="main-content" ref={d=>this.contentDiv=d} >
               <Comp {...props} classNames="" />
             </div>;
@@ -352,7 +345,9 @@ export class App extends Component {
     let NavBar = DefaultNavBar;
     return (
       <div className="vocab-app flex-box">
-        <NavBar className="flex-content-height" />
+        <div className="flex-content-height" >
+          <NavBar />
+        </div>
         <Row className="flex-remaining-height">
           <Col xs={2} md={2} className="sidebar">
             {sidebar}

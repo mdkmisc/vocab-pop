@@ -36,11 +36,11 @@ export default class ConceptData extends Component {
   }
   render() {
     //const {filters} = this.props;
-    //const {counts, agg, concept_group_d, concept_groups, dcid_cnts_breakdown, vocgroups} = this.state;
+    //const {counts, agg, concept_groups_d, concept_groups, dcid_cnts_breakdown, vocgroups} = this.state;
     let props = Object.assign({}, this.props, this.state);
     let classNames = props.classNames || '';
     delete props.classNames;
-    //filters, counts, agg, concept_groups: concept_group_d, vocgroups,
+    //filters, counts, agg, concept_groups: concept_groups_d, vocgroups,
     return  <div className={'concept-data ' + classNames}>
               {React.cloneElement(this.props.children, props)}
            </div>;
@@ -137,12 +137,12 @@ export default class ConceptData extends Component {
         _.set(state, stream.meta.statePath, stream.results);
       }
     })
-    if (state.concept_groups && state.dcid_cnts_breakdown && !state.concept_group_d) {
-      state.concept_group_d = this.combineCgDc(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+    if (state.concept_groups && state.dcid_cnts_breakdown && !state.concept_groups_d) {
+      state.concept_groups_d = this.combineCgDc(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
       state.vocgroups = this.vocgroups(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
     }
-    this.setState(state);
     window.ConceptDataState = state;
+    this.setState(state);
   }
   vocgroups(cgs, dcnts) {
     let byDcgId = _.supergroup(dcnts.filter(d=>d.grp===7), 'dcid_grp_id')
@@ -173,20 +173,21 @@ export default class ConceptData extends Component {
         // link nodes are only the descendant concept groups at the same level (sc/dom/voc)
         cg.linknodes = dcs.map(d=>d.vals.join(','));
 
-        let deeperGroups=
+        let deeperGroups= cgs.filter(
           // for deeper groupings...
           // like sc/dom/voc/tbl/col/coltype, this would just be the tbl/col/coltype vals
-          cgs.filter(
-            d=>(_.compact(d.vals) // only non-null grouping vals
-                .join(',')
-                .match(cg.vals.join(',')+'.')));
+          d=>( d.grpset.length > cg.grpset.length &&
+                d.grpset.slice(cg.grpset.length).join(',') === cg.grpset.join(',') &&
+                d.vals.slice(cg.grpset.length).join(',') === cg.vals.join(',')
+              ));
         // so cg.drill is a supergroup of the values deeper than the level of this cg
         // first level is grouping, like 'tbl,col,coltype'
         // then each distinct set of deeperGroup vals in that grouping, like
         // 'drug_exposure,drug_concept_id,target'
-        cg.drill = _.supergroup(
-                    deeperGroups, 
-                    [d=>d.grpset.slice(3).join(','), d=>d.vals.slice(3).join(',')]);
+        cg.drill = _.supergroup(deeperGroups, 
+                                d=>d.grpset.slice(cg.grpset.length).join(','),
+                                {dimName:'subgroups'});
+        cg.drill.addLevel(d=>d.vals.slice(3).join(','), {dimName:'subvals'});
         cg.drill.leafNodes().forEach(
           drillGroup => { if (drillGroup.records.length !== 1)
                             throw new Error("unexpected") });

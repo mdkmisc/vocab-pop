@@ -6,6 +6,57 @@ set session my.vars.cdm = :cdm; -- lets me use it as string in query (as per htt
 \set results results2
 set session my.vars.results = :results;
 
+
+/* ancestor_plus_mapsto
+    extended version of concept_ancestor table including concept_relationship
+    'maps to' relationships and a single field telling which table the record
+    came from and, if it came from concept_ancestor, the min and max separation
+*/
+drop materialized view :results.ancestor_plus_mapsto;
+create materialized view :results.ancestor_plus_mapsto as
+  select
+          'ca ' || min_levels_of_separation || '-' 
+                || max_levels_of_separation as min_max,
+          'ca ' || min_levels_of_separation as source,
+          ca.descendant_concept_id,
+          ca.ancestor_concept_id
+  from :cdm.concept_ancestor ca
+  -- left join to cr is not necessary when min_levels_of_separation < 2
+  left join :cdm.concept_relationship cr on cr.relationship_id = 'Maps to'
+        and ((ca.ancestor_concept_id = cr.concept_id_2 and ca.descendant_concept_id = cr.concept_id_1)
+          or (ca.ancestor_concept_id = cr.concept_id_1 and ca.descendant_concept_id = cr.concept_id_2))
+  where ca.ancestor_concept_id != ca.descendant_concept_id 
+            --and min_levels_of_separation < 2
+    and cr.concept_id_1 is null
+  union
+  select  
+          'cr_mapsto' as source,
+          cr.concept_id_1,
+          cr.concept_id_2
+  from :cdm.concept_relationship cr
+  where cr.relationship_id = 'Maps to'
+    and cr.invalid_reason is null
+    and cr.concept_id_1 != cr.concept_id_2 ;
+create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
+
+create view ancestors as
+  select a.*,
+         ca.domain_id as a_domain_id,
+         ca.standard_concept as a_standard_concept,
+         ca.vocabulary_id as a_vocabulary_id,
+         ca.concept_class_id as a_concept_class_id,
+         ca.concept_level as a_concept_level,
+         ca.concept_name as a_concept_name,
+         cd.domain_id as d_domain_id,
+         cd.standard_concept as d_standard_concept,
+         cd.vocabulary_id as d_vocabulary_id,
+         cd.concept_class_id as d_concept_class_id,
+         cd.concept_level as d_concept_level,
+         cd.concept_name as d_concept_name
+  from ancestor_plus_mapsto a
+  join :cdm.concept ca on a.ancestor_concept_id = ca.concept_id
+  join :cdm.concept cd on a.descendant_concept_id = cd.concept_id;
+
 /* generate a list of all CDM columns containing concept ids
     that should be counted in record counts:
 
@@ -301,6 +352,7 @@ select grpset,count(*) from concept_groups_w_cids group by 1 order by 1;
  {standard_concept,domain_id,vocabulary_id,tbl,col,coltype}                  |   366
  {tbl,col,coltype}                                                           |    55
 */
+drop table concept_groups_w_cids;
 create table concept_groups_w_cids as
   select  row_number() over (order by grpset) as cgid, 
           grp, grpset, 
@@ -316,8 +368,8 @@ create table concept_groups_w_cids as
               coltype,
               grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
               (array_remove(array[
-                case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
                 case when grouping(domain_id) =     0 then 'domain_id'     else null end,
+                case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
                 case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
                 case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
                 case when grouping(tbl) =     0 then 'tbl'     else null end,
@@ -335,45 +387,14 @@ create table concept_groups_w_cids as
     from results2.record_counts_agg rc
     group by  grouping sets 
                 (rollup(
-                        standard_concept, domain_id, vocabulary_id, class_concept_id, 
+                        domain_id, standard_concept, vocabulary_id, class_concept_id, 
                         (tbl, col, coltype)
                         ),
                   (tbl,col,coltype),
-                  (standard_concept, domain_id, vocabulary_id, tbl,col,coltype)
+                  (domain_id, standard_concept, vocabulary_id, tbl,col,coltype)
                 )
   ) x;
 create unique index cgccidx on concept_groups_w_cids (cgid);
-
-/* ancestor_plus_mapsto
-    extended version of concept_ancestor table including concept_relationship
-    'maps to' relationships and a single field telling which table the record
-    came from and, if it came from concept_ancestor, the min and max separation
-*/
-drop materialized view :results.ancestor_plus_mapsto;
-create materialized view :results.ancestor_plus_mapsto as
-  select
-          'ca ' || min_levels_of_separation || '-' 
-                || max_levels_of_separation as source,
-          ca.descendant_concept_id,
-          ca.ancestor_concept_id
-  from :cdm.concept_ancestor ca
-  -- left join to cr is not necessary when min_levels_of_separation < 2
-  left join :cdm.concept_relationship cr on cr.relationship_id = 'Maps to'
-        and ((ca.ancestor_concept_id = cr.concept_id_2 and ca.descendant_concept_id = cr.concept_id_1)
-          or (ca.ancestor_concept_id = cr.concept_id_1 and ca.descendant_concept_id = cr.concept_id_2))
-  where ca.ancestor_concept_id != ca.descendant_concept_id 
-            --and min_levels_of_separation < 2
-    and cr.concept_id_1 is null
-  union
-  select  
-          'cr_mapsto' as source,
-          cr.concept_id_1,
-          cr.concept_id_2
-  from :cdm.concept_relationship cr
-  where cr.relationship_id = 'Maps to'
-    and cr.invalid_reason is null
-    and cr.concept_id_1 != cr.concept_id_2 ;
-create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
 
 
 /* cg_dcids
@@ -399,10 +420,13 @@ create table cg_dcids as
     left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
     where grpset != array[]::text[]
     group by 1; --,2;
+
+-- didn't run this insert last time, not sure if i need it for anything
 insert into cg_dcids  -- it should just be all desc ids, right?
   select cg.cgid, array_agg(apm.descendant_concept_id order by descendant_concept_id)
   from ancestor_plus_mapsto apm,
        (select distinct cgid from concept_groups_w_cids where grpset = array[]::text[]) cg
+  group by 1; --,2;
 
 /*
     cg_dcids (above) has one row for each concept group with an array of its
@@ -473,6 +497,7 @@ create table concept_groups as
 drop table if exists dcid_cnts_breakdown cascade;
 create table dcid_cnts_breakdown (
   dcid_grp_id integer,
+  cgids integer[],
   grp integer,
   grpset text[],
   vals text[],
@@ -493,7 +518,7 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
         array_length(dcid_group.dcids,1),
         array_length(dcid_group.cgids,1);
         insert into dcid_cnts_breakdown
-          select  dcid_group.dcid_grp_id,dcid_group.cgids,
+          select  dcid_group.dcid_grp_id, dcid_group.cgids,
                   x.grp, x.grpset, 
                   array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
                   cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids
@@ -529,11 +554,11 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
             where rc.concept_id = any(dcid_group.dcids)
             group by  grouping sets 
                         (rollup(
-                                standard_concept, domain_id, vocabulary_id, class_concept_id, 
+                                domain_id, standard_concept, vocabulary_id, class_concept_id, 
                                 (tbl, col, coltype)
                               ),
                         (tbl,col,coltype),
-                        (standard_concept, domain_id, vocabulary_id, tbl,col,coltype)
+                        (domain_id, standard_concept, vocabulary_id, tbl,col,coltype)
                       )
                     ) x;
     end loop;

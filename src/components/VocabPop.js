@@ -50,8 +50,6 @@ import * as AppState from '../AppState';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
 require('./fileBrowser.css');
 
 

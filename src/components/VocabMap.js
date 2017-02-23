@@ -40,34 +40,57 @@ export class VocabMapByDomain extends Component {
   componentDidMount() {
     const {concept_groups_d, } = this.props;
     if (concept_groups_d && concept_groups_d.length)
-      this.setState({sg: sgPrep(concept_groups_d)});
+      this.setState({forceUpdate:true});
   }
   componentDidUpdate(prevProps, prevState) {
-    const {concept_groups_d, } = this.props;
-    if (concept_groups_d && concept_groups_d.length && 
-        !_.isEqual(concept_groups_d, prevProps.concept_groups_d))
-      this.setState({sg: sgPrep(concept_groups_d)});
+    const {w, h, } = this.props;
+    const {width, height} = this.state;
+    if (w !== width || h !== height) {
+      this.setState({width:w,height:h});
+    }
+    this.dataPrep(prevProps, prevState);
+  }
+  dataPrep(prevProps, prevState) {
+    const {concept_groups_d, domain_id, } = this.props;
+    const oldSg = this.state.sg;
+    if (!domain_id) throw new Error("everything for all domains is probably still working except the check here for whether data needs to be refreshed. But all domains is going to DomainMap for now.");
+    if (!concept_groups_d || !concept_groups_d.length)
+      return;
+    if (oldSg) {
+      if (oldSg.toString() === domain_id &&
+          _.isEqual(concept_groups_d, prevProps.concept_groups_d)) 
+        return;
+    }
+    let cg = concept_groups_d
+              .filter(d=>d.grpset.join(',') === 'domain_id,standard_concept,vocabulary_id');
+    if (domain_id)
+      cg = cg.filter(d=>d.domain_id === domain_id);
+    if (!cg.length) throw new Error("no cg");
+    let sg = _.supergroup(cg, ['domain_id','standard_concept','vocabulary_id']);
+    sg.addLevel('linknodes',{multiValuedGroup:true});
+    this.setState({sg});
   }
 
   render() {
-    const {concept_groups_d, width, height} = this.props;
+    const {concept_groups_d, } = this.props;
+    const {width, height} = this.state;
     const {sg} = this.state;
+    let maps;
 
     if (sg && sg.length) {
       //let ignoreForNow = _.filter(concept_groups_d, {sc_1:'C', sc_2:null}) .concat( _.filter(concept_groups_d, {sc_2:'C', sc_1:null}));
       //let recs = _.difference(concept_groups_d, ignoreForNow);
-      let div = this.graphDiv;
-      //let mapWidth = Math.max(250, width / Math.ceil(Math.sqrt(sg.length)));
-      //let mapHeight = Math.max(250, height / Math.ceil(Math.sqrt(sg.length)));
-      let maps = sg.map(domain => <VocabMap sg={domain} 
+      let mapWidth = Math.max(250, width / Math.ceil(Math.sqrt(sg.length)));
+      let mapHeight = Math.max(250, height / Math.ceil(Math.sqrt(sg.length)));
+      maps = sg.map(domain => <VocabMap sg={domain} 
                                             key={domain.toString()}
-                                            //width={mapWidth}
-                                            //height={mapHeight} 
+                                            width={mapWidth}
+                                            height={mapHeight} 
                                    />);
-      return <div className="vocab-map-by-domain">{maps}</div>;
-    } else {
-      return <div/>;
     }
+    return  <div className="vocab-map-by-domain" ref={d=>this.graphDiv=d}>
+              {maps}
+            </div>;
   }
 }
 export default class VocabMap extends Component {
@@ -87,15 +110,22 @@ export default class VocabMap extends Component {
       });
   }
   componentDidUpdate() {
-    const {sg, width, height} = this.props;
+    const {sg, width, height } = this.props;
+    const {w, h} = this.state;
     let self = this;
     if (this.graphDiv && sg && sg.length) {
+      if (w !== width || h !== height) {
+        $(this.graphDiv).width(width);
+        $(this.graphDiv).height(height);
+        this.setState({w:width, h:height});
+      }
       let elements = makeElements(sg.getChildren());
       elements.nodes.forEach(
         d => {
           d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
           //d.htmlContent = true;
-          d.type = 'html'; // triggers sigmaSvgReactRenderer label renderer
+          //d.type = 'html'; // triggers sigmaSvgReactRenderer label renderer
+          d.type = 'react';
           d.nodeEventStream = this.nodeEventStream;
           d.msgInfoStream = this.msgInfoStream;
         });
@@ -104,7 +134,6 @@ export default class VocabMap extends Component {
           d.ComponentClass = VocEdge;
           d.nodeEventStream = this.nodeEventStream;
         });
-      $(this.graphDiv).height(this.props.h);
       this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
       this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
       this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
@@ -517,18 +546,6 @@ export class VocEdge extends Component {
   }
 }
 
-function sgPrep(concept_groups_d) {
-  if (!concept_groups_d.length) throw new Error("no concept_groups_d");
-  let cg = concept_groups_d.filter(
-    d=>d.grpset.join(',') === 'standard_concept,domain_id,vocabulary_id');
-  if (!cg.length) throw new Error("no cg");
-  //let grpsets = _.uniq(concept_groups_d.map(d=>d.grpset.join(',')));
-  //if (grpsets.length !== 1) throw new Error("expected 1 grpset");
-
-  let sg = _.supergroup(cg, ['domain_id','standard_concept','vocabulary_id']);
-  sg.addLevel('linknodes',{multiValuedGroup:true});
-  return sg;
-}
 export class DomainMap extends Component {
   constructor(props) {
     super(props);
@@ -538,7 +555,7 @@ export class DomainMap extends Component {
     this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
   }
   componentDidUpdate() {
-    const { vocgroups } = this.props;
+    const { vocgroups, w, h } = this.props;
     if (_.isEmpty(vocgroups)) return;
     let sg = _.supergroup(vocgroups, "domain_id");
     sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
@@ -557,7 +574,6 @@ export class DomainMap extends Component {
                 x: i % 5,
                 y: y(d.getChildren(true).length),
                 val: d,
-                //type: 'react',
               }}),
       edges: sg.leafNodes().filter(d=>d.parent).map(d=>{return {
                   id: d.namePath(),
@@ -568,7 +584,7 @@ export class DomainMap extends Component {
                   tval: d,
               }}),
     };
-    $(this.graphDiv).height(this.props.h);
+    $(this.graphDiv).height(h);
     this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
   }
   render() {

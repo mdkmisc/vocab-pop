@@ -24,12 +24,13 @@ class FoContainer extends Component {
     const {node, settings} = this.props;
     const {fontSize, fontColor, } = this.state.styles;
     let prefix = settings('prefix') || '',
-        size = node[prefix + 'size'];
+        size = node.size;
+        //size = node[prefix + 'size'];
     let fs = (settings('labelSize') === 'fixed')
                       ? settings('defaultLabelSize')
                       //: settings('labelSizeRatio') * size;
                       : settings('fontFromSize')(size);
-    console.log(`${node.id} size ${size}, fs ${fs}`);
+    //console.log(`${node.id} size ${size}, fs ${fs}`);
     let fc = (settings('labelColor') === 'node')
                       ? (node.color || settings('defaultNodeColor'))
                       : settings('defaultLabelColor');
