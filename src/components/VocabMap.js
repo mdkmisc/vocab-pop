@@ -28,8 +28,7 @@ import * as AppState from '../AppState';
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
-
-import sigma from './sigmaSvgReactRenderer';
+import SigmaReactGraph, {firstLastEvt} from './SigmaReactGraph';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -96,70 +95,104 @@ export class VocabMapByDomain extends Component {
 export default class VocabMap extends Component {
   constructor(props) {
     super(props);
-    this.state = {updates:0};
-    this.nodeEventStream = new Rx.Subject();
-    this.msgInfoStream = new Rx.Subject();
+    this.state = {  DefaultNodeClass: VocNode, 
+                    DefaultEdgeClass:VocEdge,
+                    cssClass: 'vocab-map',
+                    defaultNodeType: 'def_react_react',
+                    //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
+    };
+    //this.nodeEventStream = new Rx.Subject();
+    //this.msgInfoStream = new Rx.Subject();
   }
   componentDidMount() {
-    this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
+    this.dataPrep();
+    /*
     let self = this;
-    firstLastEvt(this.msgInfoStream,50).subscribe(
+    this.msgInfoStream && firstLastEvt(this.msgInfoStream,50).subscribe(
       function(msgInfo) {
         //console.log(msgInfo);
         self.setState({msgInfo});
       });
+    */
   }
-  componentDidUpdate() {
-    const {sg, width, height } = this.props;
-    const {w, h} = this.state;
+  dataPrep() {
+    const {sg} = this.props;
     let self = this;
-    if (this.graphDiv && sg && sg.length) {
-      if (w !== width || h !== height) {
-        $(this.graphDiv).width(width);
-        $(this.graphDiv).height(height);
-        this.setState({w:width, h:height});
-      }
+    if (sg && sg.length) {
+      console.log('dataprep in vocabmap');
       let elements = makeElements(sg.getChildren());
       elements.nodes.forEach(
         d => {
-          d.ComponentClass = d.isParent ? VocGroupNode : VocNode;
-          //d.htmlContent = true;
-          //d.type = 'html'; // triggers sigmaSvgReactRenderer label renderer
-          d.type = 'react';
-          d.nodeEventStream = this.nodeEventStream;
-          d.msgInfoStream = this.msgInfoStream;
+          if (d.isParent) d.NodeClass = VocGroupNode; // otherwise default
+          d.type = 'def_react_react';
+          //d.nodeEventStream = this.nodeEventStream;
+          //d.msgInfoStream = this.msgInfoStream;
         });
       elements.edges.forEach(
         d => {
-          d.ComponentClass = VocEdge;
-          d.nodeEventStream = this.nodeEventStream;
+          //d.nodeEventStream = this.nodeEventStream;
         });
-      this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
-      this.sigmaInstance.graph.nodes().forEach(n => n.sigmaInstance = this.sigmaInstance);
-      this.sigmaInstance.graph.edges().forEach(e => e.sigmaInstance = this.sigmaInstance);
-      this.setState({graphDrawn:true, updates:this.state.updates+1});
-      $('g.voc-node-container')
-        .on('click mouseover mouseout drag',
-            function(e) {
-              self.nodeEventStream.next({jqEvt:e, domNode:this, });
-            });
+      this.setState({
+        nodes: elements.nodes,
+        edges: elements.edges,
+      });
     }
   }
+  componentDidUpdate() {
+    if (!this.state.nodes)
+      this.dataPrep();
+  }
   shouldComponentUpdate(nextProps, nextState) {
-    return !this.state.graphDrawn || 
+    if (this.state.nodes !== nextState.nodes)
+      return true;
+    return  !nextState.nodes ||
             this.props.sg !== nextProps.sg ||
-            this.state.msgInfo !== nextState.msgInfo;
+            !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
   render() {
-    const {sg, width, height} = this.props;
-    const {msgInfo} = this.state;
-    return (<div className="vocab-map" >
-              <h4><a href="#" onClick={()=>AppState.saveState({domain_id:sg.toString()})}> {sg.toString()}</a></h4>
-              <MsgInfo info={msgInfo} />
-              <div ref={div=>this.graphDiv=div} 
-                   style={{ width: `${width}px`, height: `${height}px`, }}
-              />
-            </div>);
+    let props = Object.assign({}, this.props, this.state);
+    return  <SigmaReactGraph  {...props} />;
+  }
+}
+export class DomainMap extends VocabMap {
+  constructor(props) {
+    super(props);
+    this.state = {  DefaultNodeClass: DomainMapNode, 
+                    //DefaultEdgeClass:VocEdge,
+                    cssClass: 'domain-map',
+                    //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
+    };
+    //this.nodeEventStream = new Rx.Subject();
+    //this.msgInfoStream = new Rx.Subject();
+  }
+  componentDidUpdate() {
+    const { vocgroups, w, h } = this.props;
+    if (_.isEmpty(vocgroups)) return;
+    let sg = _.supergroup(vocgroups, "domain_id");
+    sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
+                {dimName:'ddom',multiValuedGroup:true});
+    let y = d3.scaleQuantize().domain(d3.extent(sg.map(d=>d.getChildren(true).length)))
+                              .range(_.range(1,6).reverse());
+
+    let nodes = sg.map((d,i)=>{return {
+                id:d.toString(), 
+                //htmlContent:true,
+                type: 'def_react_react',
+                size:d.records.length,
+                label:d.toString(),
+                x: i % 5,
+                y: y(d.getChildren(true).length),
+                val: d,
+              }});
+    let edges = sg.leafNodes().filter(d=>d.parent).map(d=>{return {
+                  id: d.namePath(),
+                  type: 'curve',
+                  source: d.parent.toString(),
+                  target: d.toString(),
+                  sval: d.parent,
+                  tval: d,
+              }});
+    this.setState({nodes, edges});
   }
 }
 export class MsgInfo extends Component {
@@ -210,9 +243,6 @@ function eventPerspective(me, evt, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-export function firstLastEvt(rxSubj, ms) {
-  return Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms)).distinctUntilChanged()
-}
 export class VocNode extends Component {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
@@ -225,91 +255,86 @@ export class VocNode extends Component {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
     sigmaNode.getContentRef = this.getContentRef.bind(this);
-    this.setEvents();
   }
-  setEvents() {
+  eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
-    let self = this;
-    firstLastEvt(sigmaNode.nodeEventStream,50).subscribe(
-      e => {
-        const {jqEvt, isInfo, key, val, domNode} = e;
-        const {target, type} = jqEvt;
-        let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
-        let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
-        let perspective = // self, neighbor, other
-          eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
+    const {target, type} = jqEvt;
+    console.log( jqEvt, isInfo, key, val, domNode);
+    let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
+    let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
+    let perspective = // self, neighbor, other
+      eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
 
-        let states = {};
-        if (isInfo) {
-          states.infoHover = {key, val};
-        }
-        if (notInGraph) return;
+    let states = {};
+    if (isInfo) {
+      states.infoHover = {key, val};
+    }
+    if (notInGraph) return;
 
-        switch (perspective) {
-          case 'self':
-            switch (type) {
-              case 'mouseover':
-                states.hover = true;
-                break;
-              case 'mouseout':
-                states.hover = false;
-                break;
-              case 'click':
-                if (_.includes(target.classList,'glyphicon-zoom-in')) {
-                  states.zoom = true;
-                } else if (_.includes(target.classList,'glyphicon-list')) {
-                  states.list = true;
-                }
-                break;
-              default:
-                console.log('unhandled', type, 'node event on', sigmaNode.id);
-            }
+    switch (perspective) {
+      case 'self':
+        switch (type) {
+          case 'mouseover':
+            states.hover = true;
             break;
-          case 'neighbor':
-            switch (type) {
-              case 'mouseover':
-                states.neighborHover = true;
-                states.hover = false;
-                break;
-              case 'mouseout':
-                states.neighborHover = false;
-                break;
-              case 'click':
-                if (_.includes(target.classList,'glyphicon-zoom-in'
-                    ||_.includes(target.classList,'glyphicon-list'))) {
-                  states.zoom = false;
-                  states.list = false;
-                }
-                break;
-              default:
-                console.log('unhandled', type, 'node event on', sigmaNode.id);
-            }
+          case 'mouseout':
+            states.hover = false;
             break;
-          case 'other':
-            switch (type) {
-              case 'mouseover':
-                states.mute = true;
-                states.hover = false;
-                break;
-              case 'mouseout':
-                states.mute = false;
-                break;
-              case 'click':
-                if (_.includes(target.classList,'glyphicon-zoom-in'
-                    ||_.includes(target.classList,'glyphicon-list'))) {
-                  states.zoom = false;
-                  states.list = false;
-                }
-                break;
-              default:
-                console.log('unhandled', type, 'node event on', sigmaNode.id);
+          case 'click':
+            if (_.includes(target.classList,'glyphicon-zoom-in')) {
+              states.zoom = true;
+            } else if (_.includes(target.classList,'glyphicon-list')) {
+              states.list = true;
             }
             break;
           default:
-            console.log('weird perspective in node event from', sigmaNode.id);
+            console.log('unhandled', type, 'node event on', sigmaNode.id);
         }
-        self.setState(states);
-      });
+        break;
+      case 'neighbor':
+        switch (type) {
+          case 'mouseover':
+            states.neighborHover = true;
+            states.hover = false;
+            break;
+          case 'mouseout':
+            states.neighborHover = false;
+            break;
+          case 'click':
+            if (_.includes(target.classList,'glyphicon-zoom-in'
+                ||_.includes(target.classList,'glyphicon-list'))) {
+              states.zoom = false;
+              states.list = false;
+            }
+            break;
+          default:
+            console.log('unhandled', type, 'node event on', sigmaNode.id);
+        }
+        break;
+      case 'other':
+        switch (type) {
+          case 'mouseover':
+            states.mute = true;
+            states.hover = false;
+            break;
+          case 'mouseout':
+            states.mute = false;
+            break;
+          case 'click':
+            if (_.includes(target.classList,'glyphicon-zoom-in'
+                ||_.includes(target.classList,'glyphicon-list'))) {
+              states.zoom = false;
+              states.list = false;
+            }
+            break;
+          default:
+            console.log('unhandled', type, 'node event on', sigmaNode.id);
+        }
+        break;
+      default:
+        console.log('weird perspective in node event from', sigmaNode.id);
+    }
+    self.setState(states);
   }
   render() {
     const {sigmaNode, sigmaSettings, settings, children, notInGraph,
@@ -369,7 +394,8 @@ export class VocNode extends Component {
             // in addition to infoTrigger on whole node,
                 //onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
     return <div className="voc-node-content" ref={d=>this.contentRef=d}
-                onMouseOut={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
+                onMouseEnter={(e=>this.infoTrigger(null,null,e)).bind(this)}
+                onMouseLeave={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
             >
               <Icons hover={hover} />
               <div className="info-chunks">
@@ -384,8 +410,8 @@ export class VocNode extends Component {
   }
   infoTrigger(k,v,e,out=false) {
     let {sigmaNode, notInGraph} = this.props;
-    sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, 
-                                  k, v, notInGraph});
+    console.log('FIX THIS    infoTrigger', e.type, k);
+    //sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, k, v, notInGraph});
   }
   update(node, el, settings) {
     //console.log('update does nothing now, i think');
@@ -393,7 +419,9 @@ export class VocNode extends Component {
   }
 }
 export class DomainMapNode extends VocNode {
-  setEvents() { }
+  eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
+    console.log('no domainmapnode evt handler yet');
+  }
   render() {
     const {sigmaNode, sigmaSettings} = this.props;
     return <div className="voc-node-content" ref={d=>this.contentRef=d} >
@@ -402,7 +430,9 @@ export class DomainMapNode extends VocNode {
   }
 }
 export class VocGroupNode extends VocNode {
-  setEvents() { }
+  eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
+    console.log('no vocgroupnode evt handler yet');
+  }
   render() {
     return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
             >{this.props.sigmaNode.caption}</h3>;
@@ -466,43 +496,51 @@ export class VocEdge extends Component {
     super(props);
     this.state = {updates:0};
   }
+  eventHandler(e) {
+    let {jqEvt, isInfo, key, val, domNode} = e;
+    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
+    const {target, type} = jqEvt;
+    console.log( jqEvt, isInfo, key, val, domNode);
+    let states = {};
+    if (isInfo) {
+      states.infoHover = {key, val};
+    }
+
+    let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
+    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
+      // event on this edge
+      switch (e.jqEvt.type) {
+        case 'mouseover':
+          states.hover = true;
+          break;
+        case 'mouseout':
+          states.hover = false;
+          break;
+        case 'click':
+          break;
+        default:
+          console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
+      }
+    } else {
+      // event on another edge
+      switch (e.jqEvt.type) {
+        case 'mouseover':
+          states.mute = true;
+          break;
+        case 'mouseout':
+          states.mute = false;
+          break;
+        case 'click':
+          break;
+        default:
+          console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
+      }
+    }
+    self.setState(states);
+  }
   componentDidMount() {
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
     sigmaEdge.update = this.update.bind(this);
-    let self = this;
-    firstLastEvt(sigmaEdge.nodeEventStream,50).subscribe(
-      e => {
-        let nodeId = $(e.jqEvt.target).closest('g.sigma-node').attr('data-node-id');
-        if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
-          // event on this edge
-          switch (e.jqEvt.type) {
-            case 'mouseover':
-              self.setState({hover:true});
-              break;
-            case 'mouseout':
-              self.setState({hover:false});
-              break;
-            case 'click':
-              break;
-            default:
-              console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
-          }
-        } else {
-          // event on another edge
-          switch (e.jqEvt.type) {
-            case 'mouseover':
-              self.setState({mute:true});
-              break;
-            case 'mouseout':
-              self.setState({mute:false});
-              break;
-            case 'click':
-              break;
-            default:
-              console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
-          }
-        }
-      });
     this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
   }
   update(edge, el, source, target, settings) { 
@@ -546,122 +584,3 @@ export class VocEdge extends Component {
   }
 }
 
-export class DomainMap extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {updates:0};
-  }
-  componentDidMount() {
-    this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
-  }
-  componentDidUpdate() {
-    const { vocgroups, w, h } = this.props;
-    if (_.isEmpty(vocgroups)) return;
-    let sg = _.supergroup(vocgroups, "domain_id");
-    sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
-                {dimName:'ddom',multiValuedGroup:true});
-    let y = d3.scaleQuantize().domain(d3.extent(sg.map(d=>d.getChildren(true).length)))
-                              .range(_.range(1,6).reverse());
-
-    let elements = {
-      nodes: sg.map((d,i)=>{return {
-                id:d.toString(), 
-                //htmlContent:true,
-                type: 'react', // triggers sigmaSvgReactRenderer label renderer
-                ComponentClass: DomainMapNode,
-                size:d.records.length,
-                label:d.toString(),
-                x: i % 5,
-                y: y(d.getChildren(true).length),
-                val: d,
-              }}),
-      edges: sg.leafNodes().filter(d=>d.parent).map(d=>{return {
-                  id: d.namePath(),
-                  type: 'curve',
-                  source: d.parent.toString(),
-                  target: d.toString(),
-                  sval: d.parent,
-                  tval: d,
-              }}),
-    };
-    $(this.graphDiv).height(h);
-    this.sigmaInstance = this.sigmaInstance || sigmaGraph(this.graphDiv, elements);
-  }
-  render() {
-    return <div ref={div=>this.graphDiv=div} className="domain-map " />
-  }
-}
-function sigmaGraph(domnode, elements) {
-  // Instantiate sigma:
-  let neigh = new sigma.plugins.neighborhoods();
-  console.log(domnode);
-  let s = new sigma({
-    graph: { ...elements }, // should contain nodes and edges
-    settings: {
-      //enableHovering: false,
-      //mouseEnabled: false,
-      //eventsEnabled: false,
-    }
-  });
-  let cam = s.addCamera();
-  // biggest node will be 2.5 times bigger than smallest on this scale:
-  let nodeSizeScale = d3.scaleLinear()
-                        .domain(d3.extent(elements.nodes.map(d=>d.size)))
-                        .range([1,2.5]);  
-  let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
-                        .domain([2,0])
-                        .range([6,20]);
-  let fontFromSize = function(size) {
-                        return nodeSizeScale(size) * zoomFontScale(cam.ratio);
-                      };
-  s.addRenderer({
-    container: domnode,
-    type: 'svg',
-    camera: cam,
-    //freeStyle: true
-    settings: {
-      drawLabels: false,
-      drawEdgeLabels: false,
-      id: 'main',
-      edgeColor: 'target',
-      hideEdgesOnMove: true,
-      defaultLabelColor: '#fff',
-      defaultNodeColor: '#999',
-      defaultEdgeColor: '#333',
-      edgeColor: 'default',
-      labelSize: 'proportional',
-      labelFontSizeThreshold: 7,
-      //labelThreshold: 7,
-      fontFromSize,
-      //defaultLabelSize: 22,
-      //labelSizeRatio: 4,
-    }
-  });
-  s.camera.ratio = .7;
-  s.refresh();
-  window.s = s;
-  window.elements = elements;
-  return s;
-  //s.startForceAtlas2({worker: true, barnesHutOptimize: false});
-
-  /*
-  let rows = _.groupBy(s.graph.nodes(), d=>d.row);
-  _.each(rows, nodes => {
-    if (nodes && nodes.length && nodes[0].isParent) return;
-    let prevPositions = nodes.map(d=>d.x);
-    let widths = nodes.map(d=>parseInt(d.fo.style.width));
-    let centers = widths.map((w,i,a) => _.sum(a.slice(0,i)) + w/2);
-    let s = d3.scaleLinear().range([lowestX,1]).domain([0,_.sum(widths)]);
-    nodes.forEach((node,i) => node.x = s(centers[i]));
-  });
-  s.refresh();
-  window.s = s;
-  window.sg = sg;
-  window.waypoints = waypoints;
-  window.edge = edge;
-  window.edges = edges;
-  window.rotateRad = rotateRad;
-  window.perpendicular_coords = perpendicular_coords;
-  return s;
-  */
-}
