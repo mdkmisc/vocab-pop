@@ -28,7 +28,7 @@ var $ = require('jquery'); window.$ = $;
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
-import SigmaReactGraph, {MacroNode, } from './SigmaReactGraph';
+import SigmaReactGraph, { ListenerNode } from './SigmaReactGraph';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -95,9 +95,11 @@ export default class VocabMap extends Component {
   constructor(props) {
     super(props);
     this.state = {  DefaultNodeClass: VocNode, 
+                    DefaultLabelClass:VocLabel,
+                    DefaultHoverClass:VocHover,
                     DefaultEdgeClass:VocEdge,
                     cssClass: 'vocab-map',
-                    defaultNodeType: 'def_react_react',
+                    defaultNodeType: 'circle_label_drill',
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
     };
@@ -113,7 +115,10 @@ export default class VocabMap extends Component {
       let elements = makeElements(sg.getChildren());
       elements.nodes.forEach(
         d => {
-          if (d.isParent) d.NodeClass = VocGroupNode; // otherwise default
+          if (d.isParent) {
+            d.NodeClass = VocGroupNode; // otherwise default
+            d.type = 'groupLabel';
+          }
         });
       this.setState({
         nodes: elements.nodes,
@@ -224,100 +229,35 @@ function eventPerspective(me, evt, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-class VocNode extends MacroNode {
+class VocNode extends Component {
+  render() {
+    const { sigmaNode, children } = this.props;
+    return <ListenerNode wrapperTag="g" {...this.props} >
+              {children}
+           </ListenerNode>;
+  }
+}
+class VocLabel extends Component {
+  render() {
+    const { sigmaNode, children, evt } = this.props;
+    evt && console.log('VocLabel', evt);
+    return <ListenerNode wrapperTag="g" {...this.props} >
+              {children}
+           </ListenerNode>;
+  }
+}
+class VocHover extends Component {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
     this.state = Object.assign(this.state,{w:0, h:0, updates:0});
   }
   componentDidMount() {
-    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
+    const {sigmaNode, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
   }
-  /*
-  eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
-    const {sigmaNode, sigmaSettings, notInGraph} = this.props;
-    const {target, type} = jqEvt;
-    console.log( jqEvt, isInfo, key, val, domNode);
-    let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
-    let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
-    let perspective = // self, neighbor, other
-      eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
-
-    let states = {};
-    if (isInfo) {
-      states.infoHover = {key, val};
-    }
-    if (notInGraph) return;
-
-    switch (perspective) {
-      case 'self':
-        switch (type) {
-          case 'mouseover':
-            states.hover = true;
-            break;
-          case 'mouseout':
-            states.hover = false;
-            break;
-          case 'click':
-            if (_.includes(target.classList,'glyphicon-zoom-in')) {
-              states.zoom = true;
-            } else if (_.includes(target.classList,'glyphicon-list')) {
-              states.list = true;
-            }
-            break;
-          default:
-            console.log('unhandled', type, 'node event on', sigmaNode.id);
-        }
-        break;
-      case 'neighbor':
-        switch (type) {
-          case 'mouseover':
-            states.neighborHover = true;
-            states.hover = false;
-            break;
-          case 'mouseout':
-            states.neighborHover = false;
-            break;
-          case 'click':
-            if (_.includes(target.classList,'glyphicon-zoom-in'
-                ||_.includes(target.classList,'glyphicon-list'))) {
-              states.zoom = false;
-              states.list = false;
-            }
-            break;
-          default:
-            console.log('unhandled', type, 'node event on', sigmaNode.id);
-        }
-        break;
-      case 'other':
-        switch (type) {
-          case 'mouseover':
-            states.mute = true;
-            states.hover = false;
-            break;
-          case 'mouseout':
-            states.mute = false;
-            break;
-          case 'click':
-            if (_.includes(target.classList,'glyphicon-zoom-in'
-                ||_.includes(target.classList,'glyphicon-list'))) {
-              states.zoom = false;
-              states.list = false;
-            }
-            break;
-          default:
-            console.log('unhandled', type, 'node event on', sigmaNode.id);
-        }
-        break;
-      default:
-        console.log('weird perspective in node event from', sigmaNode.id);
-    }
-    self.setState(states);
-  }
-  */
   render() {
-    const {sigmaNode, sigmaSettings, settings, children, notInGraph,
+    const {sigmaNode, children, notInGraph,
             hover, mute, zoom, list, infoHover, } = this.props;
     //const {icons, chunks, zoomContent} = this.state;
 
@@ -334,9 +274,9 @@ class VocNode extends MacroNode {
 
     let chunkStyle = {};
     let chunks = [
-      <InfoChunk key="Voc" k="Voc" v={sigmaNode.caption} />
+      <InfoChunk key="Voc" k="Voc" v={sigmaNode.label} />
     ]
-    if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.caption)
+    if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.label)
       chunks.push(<InfoChunk key="Class" k="Class" v={conceptClasses[0]+''} />);
 
     //chunkStyle.display = hover ? 'flex' : 'none';
@@ -358,26 +298,19 @@ class VocNode extends MacroNode {
                   vfmt={commify} style={chunkStyle} />
         }
       ));
-            // in addition to infoTrigger on whole node,
-                //onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
-    return super.render({
-              content: [
-                        <Icons key="Icons" hover={hover} />,
-                        <div key="chunks" className="info-chunks">
-                          {chunks || <p>nothing yet</p>}
-                          {children}
-                        </div>,
-                        zoomContent ], 
-              wrapper: 'div'});
+                //{children} don't think I need this, right?
+    return <SigmaReactNode {...this.props} >
+              <Icons key="Icons" hover={hover} />,
+              <div key="chunks" className="info-chunks">
+                {chunks || <p>nothing yet</p>}
+              </div>
+              {zoomContent}
+           </SigmaReactNode>;
   }
   infoTrigger(k,v,e,out=false) {
     let {sigmaNode, notInGraph, sigmaEventHandler} = this.props;
     
     console.log('FIX THIS    infoTrigger', e.type, k);
-  }
-  update(node, el, settings) {
-    console.log('update does nothing now, i think');
-    this.setState({updates: this.state.updates+1});
   }
 }
 class DomainMapNode extends VocNode {
@@ -391,7 +324,7 @@ class DomainMapNode extends VocNode {
 class VocGroupNode extends VocNode {
   render() {
     return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
-            >{this.props.sigmaNode.caption}</h3>;
+            >{this.props.sigmaNode.label}</h3>;
   }
 }
 function Icons(props) {

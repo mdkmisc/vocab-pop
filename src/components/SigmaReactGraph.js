@@ -28,63 +28,38 @@ import _ from 'supergroup'; // just for lodash
     and then inside that will be a ReactInsideSigmaNode component
 */
 
-export class MacroNode extends Component { // abstract class
+export class ListenerNode extends Component {
   constructor(props) {
-    // $FlowIssue: https://github.com/facebook/flow/issues/1152
-    if (new.target === MacroNode) {
-      throw new TypeError("Cannot construct MacroNode instances directly");
-    }
     super(props);
     // react events to handle -- https://facebook.github.io/react/docs/events.html#mouse-events
     let eventsToHandle = props.eventsToHandle || [ 'onClick', 'onMouseEnter', 'onMouseLeave',];
-
     this.state = {
       eventsToHandle,
     };
   }
-  render(content) {
-    const {sigmaNode, sigmaSettings, sigmaEventHandler} = this.props;
-    const {eventsToHandle} = this.state;
-    return <div className="macronode" ref={d=>this.contentRef=d}
-                {..._.fromPairs(eventsToHandle.map(type=>[type,sigmaEventHandler]))}
-            >{content}</div>;
+  reactCompListener(e) {
+    const {sigmaNode, sigmaSettings, rerender, sigmaDomEl, evtHandler} = this.props;
+    evtHandler(e, this.props);
+    //rerender(sigmaNode, sigmaDomEl, sigmaSettings, e);
+  }
+  render() {
+    const {wrapperTag='g', children } = this.props;
+    let eventsToHandle = this.props.eventsToHandle || 
+          [ 'onClick', 'onMouseEnter', 'onMouseLeave',];
+    const listeners = 
+      _.fromPairs(eventsToHandle.map(
+          evtType=>[evtType,this.reactCompListener.bind(this)]));
+    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
+    return  <Tag className="listener-node" {...listeners}>
+              {children}
+            </Tag>;
   }
 }
-
-class ReactEl extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-  }
-  externalReactComponent() {
-    const {node, settings} = this.props;
-    let Component = node.NodeClass || settings('DefaultNodeClass');
-    return <Component sigmaNode={node} sigmaSettings={settings} 
-                      sigmaEventHandler={this.reactComponentEventHandler.bind(this)}/>;
-  }
-  reactComponentEventHandler(e) {
-    console.log(e);
-    /*
-    let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
-    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {}
-    let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
-    let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
-    let perspective = // self, neighbor, other
-      eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
-    */
-  }
+class FoHover extends Component {
 }
-class ReactNode extends ReactEl {
-  constructor(props) {
-    super(props);
-  }
+class FoLabel extends Component {
 }
-class ReactEdge extends ReactEl {
-  constructor(props) {
-    super(props);
-  }
-}
-class FoNode extends ReactNode {
+class FoNode extends Component {
   constructor(props) {
     super(props);
     this.state = Object.assign(this.state, {w:0, h:0, updates:0, styles: {}});
@@ -140,8 +115,18 @@ class FoNode extends ReactNode {
       return  <g><rect className="edge-cover" />{fo}</g>;
     }
     return fo;
+    /*
+    return super.render([
+              <Icons key="Icons" hover={hover} />,
+              <div key="chunks" className="info-chunks">
+                {chunks || <p>nothing yet</p>}
+                {children}
+              </div>,
+              zoomContent ]);
+              */
   }
 }
+
 function getSize(dn) {
   let cbr = dn.getBoundingClientRect(), 
       rw = Math.round(cbr.width),
@@ -152,52 +137,101 @@ function getSize(dn) {
 
 function sigmaReactRenderer() {
   var sigma = require('sigma');
-  neighborhoodPlugin(sigma);
+  //neighborhoodPlugin(sigma);
   sigma.utils.pkg('sigma.svg.nodes');
   sigma.utils.pkg('sigma.svg.labels');
   sigma.utils.pkg('sigma.svg.hovers');
 
-  sigma.svg.nodes.react = { // works, but not using at moment
+  sigma.svg.nodes.circle_label_drill = {
     create: function(node, settings) {
+      const prefix = settings('prefix');
       let g = document.createElementNS(d3.namespaces.svg, 'g');
+      let className = settings('classPrefix') + '-label';
       g.setAttributeNS(null, 'data-node-id', node.id);
-      g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
-      render(<FoNode needsRect={true} node={node} settings={settings}/>, g);
+      g.setAttributeNS(null, 'class', className);
+      //g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
       return g;
     },
     update: function(node, el, settings) {
       let prefix = settings('prefix') || '';
-      el.style.display = '';  // must do this before calling resizeFo
-      const {w,h,styles} = node.resizeFo();
-      // this should center the fo on the node location
+      let NodeClass = node.NodeClass || settings('DefaultNodeClass');
+      let fill = node.color || settings('defaultNodeColor');
+      let r = node[prefix + 'size'];
+
       el.setAttributeNS(null, 'transform',
-          `translate(${node[prefix+'x'] - w/2},${node[prefix+'y'] - h/2})`);
+          `translate(${node[prefix+'x']},${node[prefix+'y']})`);
+      /*
+      const circleSizeRange = [3,10];
+      const size = d3.scaleLinear().domain(settings('sizeDomain'))
+                                   .range(circleSizeRange);
+      const scaleFactor = node[`${prefix}size`] / node.size;
+      */
+
+      el.style.display = '';
+      render(<NodeClass sigmaNode={node} sigmaSettings={settings}
+                rerender={thisUpdate} sigmaDomEl={g} evt={evt} evtHandler={evtHandler} >
+                <circle {...{r, fill, className}} data-node-id={node.id} />
+             </NodeClass>, g);
       return this;
     }
   };
-  sigma.svg.labels.def_react_react = {
-    // node.type of def_react_react should mean 
-    //    node renderer=def, label renderer is this one, hover renderer...
+  sigma.svg.labels.circle_label_drill = {
     create: function(node, settings) {
-      const prefix = settings('prefix') || '';
-      let g = document.createElementNS(d3.namespaces.svg, 'g');
+      console.log('label create', node.id);
+      var prefix = settings('prefix') || '',
+          size = node[prefix + 'size'],
+          g = document.createElementNS(d3.namespaces.svg, 'g'),
+          className = settings('classPrefix') + '-label';
       g.setAttributeNS(null, 'data-label-target', node.id);
-      g.setAttributeNS(null, 'class', `${settings('classPrefix')}-label ${node.classes||''}`);
-      render(<FoNode needsRect={false} node={node} settings={settings}/>, g);
+      g.setAttributeNS(null, 'class', className);
       return g;
     },
-    update: function(node, el, settings) {
-      const prefix = settings('prefix') || '';
-      const size = node[prefix + 'size'];
-      el.style.display = '';  // must do this before calling resizeFo
-      const {w,h,styles} = node.resizeFo();
-      const {fontSize, fontColor, fontFamily} = styles;
-      el.setAttributeNS(null, 'transform',
+
+    update: function(node, g, settings, evt) {
+      console.log('label update', node.id);
+      let thisUpdate = sigma.svg.labels.circle_label_drill.update;
+
+      var prefix = settings('prefix') || '',
+          size = node[prefix + 'size'],
+          className = settings('classPrefix') + '-label',
+          evtHandler = settings('reactCompEventHandler');
+      var fontSize = (settings('labelSize') === 'fixed') ?
+            settings('defaultLabelSize') :
+            settings('labelSizeRatio') * size;
+
+      let LabelClass = node.LabelClass || settings('DefaultLabelClass');
+
+      var fontSize = (settings('labelSize') === 'fixed') ?
+        settings('defaultLabelSize') :
+        settings('labelSizeRatio') * size;
+
+      var fill = (settings('labelColor') === 'node') ?
+                        (node.color || settings('defaultNodeColor')) :
+                        settings('defaultLabelColor');
+      let fontFamily = settings('font');
+
+      // Case when we don't want to display the label
+      if (!settings('forceLabels') && size < settings('labelThreshold'))
+        return;
+      if (typeof node.label !== 'string')
+        return;
+      g.setAttributeNS(null, 'transform',
           `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + fontSize / 3})`);
+      g.style.display = '';
+
+      render(<LabelClass sigmaNode={node} sigmaSettings={settings} 
+                rerender={thisUpdate} sigmaDomEl={g} evt={evt} evtHandler={evtHandler}
+              >
+                <text {...{fontSize, fill, fontFamily, className}} data-label-target={node.id} >
+                  {node.label}
+                </text>
+             </LabelClass>, g);
       return this;
     }
   };
-  sigma.svg.hovers.html = {
+
+
+  sigma.svg.hovers.circle_label_drill = {
     create: function(node, nodeCircle, measurementCanvas, settings) {
       // Defining visual properties
       var x, y, w, h, e, d,
@@ -353,17 +387,49 @@ export default class SigmaReactGraph extends Component { // started making this,
     this.setState({forceUpdate: true});
     //firstLastEvt(this.msgInfoStream,50).subscribe( function(msgInfo) { //console.log(msgInfo); self.setState({msgInfo}); });
   }
-  componentDidUpdate() {
-    const {width, height} = this.props;
-    const {w, h} = this.state;
+  componentDidUpdate(prevProps, prevState) {
+    const {width, height, nodes, edges} = this.props;
+    const {w, h, sigmaInstance, cam, renderer, sizeDomain} = this.state;
+    if (!nodes || !nodes.length) {
+      if (prevProps.nodes && prevProps.nodes.length)
+        throw new Error("what happened to the nodes?");
+      return;
+    }
     if (w !== width || h !== height) {
       $(this.graphDiv).width(width);
       $(this.graphDiv).height(height);
-      console.log('setting dims');
       this.setState({w:width, h:height});
+      return;
     }
-    if (!this.sigmaInstance)
-      this.makeGraph();
+    if (!sigmaInstance) {
+      let { sigmaInstance, cam, renderer } = this.makeGraph();
+      this.setState({sigmaInstance, cam, renderer});
+      return;
+    }
+    if (!_.isEqual(nodes, prevProps.nodes)) {
+      sigmaInstance.graph.clear();
+      sigmaInstance.graph.read({nodes,edges});
+    }
+    if (cam && !sizeDomain) {
+      let sizeDomain = d3.extent(nodes.map(d=>d.size));
+      renderer.settings('sizeDomain', sizeDomain);
+      this.setState({ sizeDomain });
+      /*
+      let nodeSizeScale = d3.scaleLinear()
+                            .domain(sizeDomain)
+                            .range([1,2.5]);  
+      let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
+                            .domain([2,0])
+                            .range([6,20]);
+      let fontFromSize = function(size) {
+                            return nodeSizeScale(size) * zoomFontScale(this.cam.ratio);
+                          };
+      this.renderer.settings('nodeSizeScale', nodeSizeScale);
+      this.renderer.settings('zoomFontScale', zoomFontScale);
+      this.renderer.settings('fontFromSize', fontFromSize);
+      */
+    }
+    sigmaInstance && sigmaInstance.refresh();
   }
   shouldComponentUpdate(nextProps, nextState) {
     if (this.props.nodes &&
@@ -373,8 +439,21 @@ export default class SigmaReactGraph extends Component { // started making this,
     return $(this.graphDiv).find('.sigma-node').length < 100;
   }
   makeGraph() {
-    let {nodes=[], edges=[], DefaultNodeClass, 
-          defaultNodeType, defaultEdgeType} = this.props;
+    let {nodes=[], edges=[], 
+          DefaultNodeClass, 
+          DefaultLabelClass,
+          DefaultHoverClass,
+          DefaultEdgeClass,
+          defaultNodeType, defaultEdgeType,
+          defaultNodeColor='darkkhaki',
+          defaultLabelColor='darkred',
+          defaultEdgeColor='darkslateblue',
+          defaultLabelSize=16,
+          labelSize='proportional',
+          labelThreshold=2,
+          //labelFontSizeThreshold=2,
+          labelSizeRatio=3,
+        } = this.props;
     console.log('making graph');
     if (!nodes.length) return;
     if (defaultNodeType)
@@ -382,63 +461,67 @@ export default class SigmaReactGraph extends Component { // started making this,
     if (defaultEdgeType)
       edges.forEach(edge=>edge.type=edge.type||defaultEdgeType);
     let sigma = sigmaReactRenderer();
-    let s = new sigma({graph:{nodes,edges}});
-    let cam = s.addCamera();
-    // biggest node will be 2.5 times bigger than smallest on this scale:
-    let nodeSizeScale = d3.scaleLinear()
-                          .domain(d3.extent(nodes.map(d=>d.size)))
-                          .range([1,2.5]);  
-    let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
-                          .domain([2,0])
-                          .range([6,20]);
-    let fontFromSize = function(size) {
-                          return nodeSizeScale(size) * zoomFontScale(cam.ratio);
-                        };
-    s.addRenderer({
+    let sigmaInstance = new sigma({graph:{nodes,edges}});
+    let cam = sigmaInstance.addCamera();
+    let renderer = sigmaInstance.addRenderer({
       container: this.graphDiv,
       type: 'svg',
       camera: cam,
       //freeStyle: true
       settings: {
+        reactCompEventHandler: this.reactCompEventHandler.bind(this),
         DefaultNodeClass,
-        //defaultNodeType,
+        DefaultLabelClass,
+        DefaultHoverClass,
+        DefaultEdgeClass,
         drawLabels: false,
         drawEdgeLabels: false,
         id: 'main',
         edgeColor: 'target',
         hideEdgesOnMove: true,
-        defaultLabelColor: '#fff',
-        defaultNodeColor: '#999',
-        defaultEdgeColor: '#333',
-        edgeColor: 'default',
-        labelSize: 'proportional',
-        labelFontSizeThreshold: 7,
-        //labelThreshold: 7,
-        fontFromSize,
-        //defaultLabelSize: 22,
-        //labelSizeRatio: 4,
+        defaultLabelColor,
+        defaultNodeColor,
+        defaultEdgeColor,
+        labelSize,
+        //labelFontSizeThreshold: 2,
+        labelThreshold,
+        defaultLabelSize,
+        labelSizeRatio,
       }
     });
     //https://github.com/jacomyal/sigma.js/wiki/Events-API
-    s.bind('clickNode clickEdge clickStage overNode overEdge outNode outEdge',
+    sigmaInstance.bind('clickNode clickEdge clickStage overNode overEdge outNode outEdge',
            this.sigmaEventHandler.bind(this));
-    s.camera.ratio = .7;
-    s.refresh();
-    this.setState({graphDrawn:true, });
-    window.s = this.sigmaInstance = s;
+    sigmaInstance.camera.ratio = .7;
+    return { sigmaInstance, cam, renderer };
   }
   render() {
-    const {cssClass='', style={}} = this.props;
+    let {cssClass='', style={}} = this.props;
     const {w,h} = this.state;
+    //console.log(this.props.nodes);
     //const {msgInfo=''} = this.state;
     //<MsgInfo info={msgInfo} />
+    style = Object.assign({}, style, { width: `${w}px`, height: `${h}px`, });
     return <div className={cssClass} style={style} 
                   ref={div=>this.graphDiv=div} 
-                   style={{ width: `${w}px`, height: `${h}px`, }}
               />;
   }
   sigmaEventHandler(e) {
-    console.log('sigmaEventHandler',e);
+    this.commonEventHandler(e, 'sigma');
+  }
+  reactCompEventHandler(e) {
+    this.commonEventHandler(e, 'react');
+  }
+  commonEventHandler(e, source) {
+    console.log(source, e.type);
+    /*
+    let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
+    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {}
+    let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
+    let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
+    let perspective = // self, neighbor, other
+      eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
+    */
   }
 }
 SigmaReactGraph.propTypes = {

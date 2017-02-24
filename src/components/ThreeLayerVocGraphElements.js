@@ -19,13 +19,13 @@ export default function makeElements(sg) {
                           'norecs' : _.last(_.sortBy(_.toPairs(counts), 1))[0];
 
                     let id = voc.namePath(','),
-                        caption = voc.toString(), // + ' ' + biggest,
+                        label = voc.toString(), // + ' ' + biggest,
                         layer = ({'C': 0, 'S': 1, 'X': 2})[sc.toString()],
                         parent = ['Classification','Standard','Source'][layer],
                         biggestCount = biggest,
                         classes = `${biggest} voc-node`,
                         nodeData = voc,
-                        node = makeNode({id, caption,layer, parent,
+                        node = makeNode({id, label,layer, parent,
                                          counts,biggestCount,classes,nodeData
                                         }, nodesInLayers);
                     return node;
@@ -139,8 +139,8 @@ function makeNode(opts, nodesInLayers) {
   if (typeof node.id === 'undefined')
     throw new Error('node needs an id');
 
-  if (typeof node.caption === 'undefined')
-    node.caption = node.id;
+  if (typeof node.label === 'undefined')
+    node.label = node.id;
 
   if (typeof node.size === 'undefined')
     node.size = 1;
