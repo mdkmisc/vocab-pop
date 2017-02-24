@@ -125,12 +125,6 @@ export default class VocabMap extends Component {
         d => {
           if (d.isParent) d.NodeClass = VocGroupNode; // otherwise default
           d.type = 'def_react_react';
-          //d.nodeEventStream = this.nodeEventStream;
-          //d.msgInfoStream = this.msgInfoStream;
-        });
-      elements.edges.forEach(
-        d => {
-          //d.nodeEventStream = this.nodeEventStream;
         });
       this.setState({
         nodes: elements.nodes,
@@ -228,7 +222,7 @@ function tblCols(rec) {
 }
 function nodeInfo(props) {
   const {sigmaNode, request} = props;
-  const sg = sigmaNode.sgVal;
+  const sg = sigmaNode.nodeData;
   if (sg.records.length !== 1) throw new Error('confused');
   const rec = sg.records[0];
   switch (request) {
@@ -243,7 +237,7 @@ function eventPerspective(me, evt, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-export class VocNode extends Component {
+class VocNode extends ReactInsideSigmaNode {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
@@ -254,8 +248,8 @@ export class VocNode extends Component {
   componentDidMount() {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
-    sigmaNode.getContentRef = this.getContentRef.bind(this);
   }
+  /*
   eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
     const {target, type} = jqEvt;
@@ -336,13 +330,14 @@ export class VocNode extends Component {
     }
     self.setState(states);
   }
+  */
   render() {
     const {sigmaNode, sigmaSettings, settings, children, notInGraph,
             hover, mute, zoom, list, infoHover, } = this.props;
     //const {icons, chunks, zoomContent} = this.state;
 
-    if (sigmaNode.sgVal.records.length !== 1) throw new Error("expected one record");
-    let rec = sigmaNode.sgVal.records[0];
+    if (sigmaNode.nodeData.records.length !== 1) throw new Error("expected one record");
+    let rec = sigmaNode.nodeData.records[0];
     let classVal = rec.drill.lookup('class_concept_id');
     let conceptClasses = classVal ? classVal.getChildren() : [];
     //console.log(conceptClasses.join('\n'));
@@ -373,19 +368,6 @@ export class VocNode extends Component {
             trigger = ()=>this.infoTrigger(k,v);
             style.fontSize = 'large';
             cls += ' info-hover';
-            /* this doesn't work
-            return  <div>
-                      <InfoChunk key={k} cls={cls} k={k} v={v} 
-                        vfmt={commify} style={chunkStyle}
-                        mouse={trigger} />
-                      {_.toPairs(nodeInfo({sigmaNode,request:k}))
-                          .map(([k2,v2]=[])=>
-                                <InfoChunk key={k2} cls={k} k={k2} v={v2} 
-                                  vfmt={commify} style={chunkStyle} />
-                              )}
-                    </div>
-                  mouse={trigger}
-            */
           }
           return <InfoChunk key={k} cls={cls} k={k} v={v} sigmaNode={sigmaNode}
                   vfmt={commify} style={chunkStyle} />
@@ -393,10 +375,7 @@ export class VocNode extends Component {
       ));
             // in addition to infoTrigger on whole node,
                 //onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
-    return <div className="voc-node-content" ref={d=>this.contentRef=d}
-                onMouseEnter={(e=>this.infoTrigger(null,null,e)).bind(this)}
-                onMouseLeave={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
-            >
+    return super.render(
               <Icons hover={hover} />
               <div className="info-chunks">
                 {chunks || <p>nothing yet</p>}
@@ -405,11 +384,9 @@ export class VocNode extends Component {
               {zoomContent}
            </div>;
   }
-  getContentRef() {
-    return this.contentRef;
-  }
   infoTrigger(k,v,e,out=false) {
-    let {sigmaNode, notInGraph} = this.props;
+    let {sigmaNode, notInGraph, sigmaEventHandler} = this.props;
+    
     console.log('FIX THIS    infoTrigger', e.type, k);
     //sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, k, v, notInGraph});
   }
@@ -418,10 +395,7 @@ export class VocNode extends Component {
     this.setState({updates: this.state.updates+1});
   }
 }
-export class DomainMapNode extends VocNode {
-  eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
-    console.log('no domainmapnode evt handler yet');
-  }
+class DomainMapNode extends VocNode {
   render() {
     const {sigmaNode, sigmaSettings} = this.props;
     return <div className="voc-node-content" ref={d=>this.contentRef=d} >
@@ -429,20 +403,11 @@ export class DomainMapNode extends VocNode {
            </div>;
   }
 }
-export class VocGroupNode extends VocNode {
-  eventHandler({jqEvt, isInfo, key, val, domNode} = {}) {
-    console.log('no vocgroupnode evt handler yet');
-  }
+class VocGroupNode extends VocNode {
   render() {
     return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
             >{this.props.sigmaNode.caption}</h3>;
   }
-  /*
-  content() { // this is a method so it can be overridden
-    return <VocNodeContent {...this.props} {...this.state} 
-                            setVocNodeSize={this.setVocNodeSize.bind(this)} />
-  }
-  */
 }
 function Icons(props) {
   const {hover, } = props;
@@ -457,10 +422,11 @@ function Icons(props) {
             />
          </span>;
 }
-export class InfoChunk extends Component {
+class InfoChunk extends Component {
   constructor(props) { super(props); this.state = {}; }
   render() {
-    let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, style, sigmaNode} = this.props;
+    let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, 
+          style, sigmaNode, nodeData} = this.props;
     const {hover} = this.state;
     kcls = kcls || cls;
     vcls = vcls || cls;
@@ -490,12 +456,13 @@ export class InfoChunk extends Component {
   }
 }
 
-export class VocEdge extends Component {
+class VocEdge extends Component {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
     this.state = {updates:0};
   }
+  /*
   eventHandler(e) {
     let {jqEvt, isInfo, key, val, domNode} = e;
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
@@ -538,6 +505,7 @@ export class VocEdge extends Component {
     }
     self.setState(states);
   }
+  */
   componentDidMount() {
     const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
     sigmaEdge.update = this.update.bind(this);

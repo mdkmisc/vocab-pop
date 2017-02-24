@@ -4,15 +4,60 @@ import {render} from 'react-dom';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
-let sigma = require('sigma');
-window.sigma = sigmaReactRenderer(sigma);
-var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
-let neigh = new sigma.plugins.neighborhoods();
 
-class ReactNode extends Component {
+
+/*
+    confusing, but here's what I think is happening:
+
+    data composed into plain js nodes/edges with x,y,label props and stuff
+    those are passed to SigmaReactGraph
+    assuming the 'type' property of the nodes (or edges) is one defined
+    in sigmaReactRenderer, the renderer will render it with a ReactEl
+    component inside it
+
+    and then inside that will be a ReactInsideSigmaNode component
+*/
+
+export class ReactInsideSigmaNode extends Component {
+  // this is an abstract class. a component of this type
+  // will be the externalReactComponent inside a ReactEl component
+  render(content) {
+    const {sigmaNode, sigmaSettings, sigmaEventHandler} = this.props;
+    return <div className="voc-node-content" ref={d=>this.contentRef=d}
+                onMouseEnter={(e=>sigmaEventHandler
+                onMouseLeave={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
+            >{content}</div>;
+  }
+}
+class ReactEl extends Component {
   constructor(props) {
     super(props);
     this.state = {};
+  }
+  externalReactComponent() {
+    const {node, settings} = this.props;
+    let Component = node.NodeClass || settings('DefaultNodeClass');
+    return <Component sigmaNode={node} sigmaSettings={settings} 
+                      sigmaEventHandler={this.reactComponentEventHandler.bind(this)}/>;
+  }
+  reactComponentEventHandler(e) {
+    console.log(e);
+    let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
+    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
+    let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
+    let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
+    let perspective = // self, neighbor, other
+      eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
+  }
+}
+class ReactNode extends ReactEl {
+  constructor(props) {
+    super(props);
+  }
+}
+class ReactEdge extends ReactEl {
+  constructor(props) {
+    super(props);
   }
 }
 class FoNode extends ReactNode {
@@ -65,7 +110,7 @@ class FoNode extends ReactNode {
     let fo =  <foreignObject className="sigma-react-fo" ref={d=>this.foRef=d}
                   style={this.state.styles} width={w} height={h}
               >
-                {this.props.children}
+                {this.externalReactComponent}
               </foreignObject>
     if (this.props.needsRect) {
       return  <g><rect className="edge-cover" />{fo}</g>;
@@ -81,7 +126,10 @@ function getSize(dn) {
 }
 
 
-function sigmaReactRenderer(sigma) {
+function sigmaReactRenderer() {
+  let sigma = require('sigma');
+  var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
+  let neigh = new sigma.plugins.neighborhoods();
   sigma.utils.pkg('sigma.svg.nodes');
   sigma.utils.pkg('sigma.svg.labels');
   sigma.utils.pkg('sigma.svg.hovers');
@@ -91,11 +139,7 @@ function sigmaReactRenderer(sigma) {
       let g = document.createElementNS(d3.namespaces.svg, 'g');
       g.setAttributeNS(null, 'data-node-id', node.id);
       g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
-      let Component = node.ComponentClass;
-      let comp = <Component sigmaNode={node} sigmaSettings={settings} />;
-      render( <FoNode needsRect={true} node={node} settings={settings}>
-                {comp}
-              </FoNode>, g);
+      render(<FoNode needsRect={true} node={node} settings={settings}/>, g);
       return g;
     },
     update: function(node, el, settings) {
@@ -116,11 +160,7 @@ function sigmaReactRenderer(sigma) {
       let g = document.createElementNS(d3.namespaces.svg, 'g');
       g.setAttributeNS(null, 'data-label-target', node.id);
       g.setAttributeNS(null, 'class', `${settings('classPrefix')}-label ${node.classes||''}`);
-      let Component = node.NodeClass || settings('DefaultNodeClass');
-      let comp = <Component sigmaNode={node} sigmaSettings={settings} />;
-      render( <FoNode needsRect={false} node={node} settings={settings}>
-                {comp}
-              </FoNode>, g);
+      render(<FoNode needsRect={false} node={node} settings={settings}/>, g);
       return g;
     },
     update: function(node, el, settings) {
@@ -251,7 +291,7 @@ function sigmaReactRenderer(sigma) {
               settings('classPrefix') + '-edge'
                           + (edge.classes||''));
 
-      let Component = edge.ComponentClass;
+      let Component = edge.EdgeClass || settings('DefaultEdgeClass');
       render(<Component sigmaEdge={edge} sigmaSource={source} 
               sigmaTarget={target} sigmaSettings={settings} />, g);
       return g;
@@ -310,9 +350,14 @@ export default class SigmaReactGraph extends Component { // started making this,
     return $(this.graphDiv).find('.sigma-node').length < 100;
   }
   makeGraph() {
-    const {nodes=[], edges=[], DefaultNodeClass, defaultNodeType} = this.props;
+    let {nodes=[], edges=[], DefaultNodeClass, defaultNodeType} = this.props;
     console.log('making graph');
     if (!nodes.length) return;
+    if (defaultNodeType)
+      nodes.forEach(node=>node.type=node.type||defaultNodeType);
+    if (defaultEdgeType)
+      edges.forEach(edge=>edge.type=edge.type||defaultEdgeType);
+    let sigma = sigmaReactRenderer();
     let s = new sigma({graph:{nodes,edges}});
     let cam = s.addCamera();
     // biggest node will be 2.5 times bigger than smallest on this scale:
@@ -332,7 +377,7 @@ export default class SigmaReactGraph extends Component { // started making this,
       //freeStyle: true
       settings: {
         DefaultNodeClass,
-        defaultNodeType,
+        //defaultNodeType,
         drawLabels: false,
         drawEdgeLabels: false,
         id: 'main',

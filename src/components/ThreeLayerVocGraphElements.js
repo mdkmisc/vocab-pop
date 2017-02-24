@@ -5,7 +5,7 @@ let maxNodesPerRow = 5; // actual rows will have twice this to make room for stu
                         // though not using stubs right now (they're for wayppoints,
                         // which are for drawing edges between nodes)
 let rowsBetweenLayers = 1;
-export default function makeElements(sg, domnode,) {
+export default function makeElements(sg) {
   let nodesInLayers = [0,0,0]; // counter for nodes in each layer
   let nodes = _.flatten(sg.map(sc=>sc.getChildren().map(voc=>{
                     if (voc.records.length !== 1) throw new Error('should be one record exactly');
@@ -23,9 +23,9 @@ export default function makeElements(sg, domnode,) {
                         parent = ['Classification','Standard','Source'][layer],
                         biggestCount = biggest,
                         classes = `${biggest} voc-node`,
-                        sgVal = voc,
+                        nodeData = voc,
                         node = makeNode({id, caption,layer, parent,
-                                         counts,biggestCount,classes,sgVal
+                                         counts,biggestCount,classes,nodeData
                                         }, nodesInLayers);
                     return node;
                   })));
