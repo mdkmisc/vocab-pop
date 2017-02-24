@@ -1,34 +1,56 @@
+// @ flow // flow breaking on new.target, so not using right now
+
 import React, { Component } from 'react';
 import {render} from 'react-dom';
 //import {VocNode, VocEdge} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
-
-
 /*
     confusing, but here's what I think is happening:
 
-    data composed into plain js nodes/edges with x,y,label props and stuff
-    those are passed to SigmaReactGraph
-    assuming the 'type' property of the nodes (or edges) is one defined
-    in sigmaReactRenderer, the renderer will render it with a ReactEl
-    component inside it
+    - data is composed into plain js node/edge objects
+      - nodes generally have 
+        - a nodeData property containing the actual data the node represents
+        - id, x, y, label, and stuff nodes need for rendering
+        - optionally, a NodeClass property with the react component class
+          to be rendered inside the dom element sigma creates for that node;
+          NodeClass should subclass MacroNode
+        - optionally, a type property; IF the node/edge type has a definition
+          in sigmaReactRenderer, it will be rendered with the NodeClass (or EdgeClass);
+          if not, it will just be a regular sigma node/edge
+      - edges have a source node id and target node id
+
+    - a SigmaReactGraph is made with properties:
+      - nodes/edges described above
+
 
     and then inside that will be a ReactInsideSigmaNode component
 */
 
-export class ReactInsideSigmaNode extends Component {
-  // this is an abstract class. a component of this type
-  // will be the externalReactComponent inside a ReactEl component
+export class MacroNode extends Component { // abstract class
+  constructor(props) {
+    // $FlowIssue: https://github.com/facebook/flow/issues/1152
+    if (new.target === MacroNode) {
+      throw new TypeError("Cannot construct MacroNode instances directly");
+    }
+    super(props);
+    // react events to handle -- https://facebook.github.io/react/docs/events.html#mouse-events
+    let eventsToHandle = props.eventsToHandle || [ 'onClick', 'onMouseEnter', 'onMouseLeave',];
+
+    this.state = {
+      eventsToHandle,
+    };
+  }
   render(content) {
     const {sigmaNode, sigmaSettings, sigmaEventHandler} = this.props;
-    return <div className="voc-node-content" ref={d=>this.contentRef=d}
-                onMouseEnter={(e=>sigmaEventHandler
-                onMouseLeave={(e=>this.infoTrigger(null,null,e,'out')).bind(this)}
+    const {eventsToHandle} = this.state;
+    return <div className="macronode" ref={d=>this.contentRef=d}
+                {..._.fromPairs(eventsToHandle.map(type=>[type,sigmaEventHandler]))}
             >{content}</div>;
   }
 }
+
 class ReactEl extends Component {
   constructor(props) {
     super(props);
@@ -42,12 +64,14 @@ class ReactEl extends Component {
   }
   reactComponentEventHandler(e) {
     console.log(e);
+    /*
     let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
-    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {
+    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {}
     let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
     let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
     let perspective = // self, neighbor, other
       eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
+    */
   }
 }
 class ReactNode extends ReactEl {
@@ -110,7 +134,7 @@ class FoNode extends ReactNode {
     let fo =  <foreignObject className="sigma-react-fo" ref={d=>this.foRef=d}
                   style={this.state.styles} width={w} height={h}
               >
-                {this.externalReactComponent}
+                {this.externalReactComponent()}
               </foreignObject>
     if (this.props.needsRect) {
       return  <g><rect className="edge-cover" />{fo}</g>;
@@ -127,9 +151,8 @@ function getSize(dn) {
 
 
 function sigmaReactRenderer() {
-  let sigma = require('sigma');
-  var neighborhoods = require('sigma/build/plugins/sigma.plugins.neighborhoods.min');
-  let neigh = new sigma.plugins.neighborhoods();
+  var sigma = require('sigma');
+  neighborhoodPlugin(sigma);
   sigma.utils.pkg('sigma.svg.nodes');
   sigma.utils.pkg('sigma.svg.labels');
   sigma.utils.pkg('sigma.svg.hovers');
@@ -331,7 +354,7 @@ export default class SigmaReactGraph extends Component { // started making this,
     //firstLastEvt(this.msgInfoStream,50).subscribe( function(msgInfo) { //console.log(msgInfo); self.setState({msgInfo}); });
   }
   componentDidUpdate() {
-    const {NodeClass, nodes, edges, width, height} = this.props;
+    const {width, height} = this.props;
     const {w, h} = this.state;
     if (w !== width || h !== height) {
       $(this.graphDiv).width(width);
@@ -350,7 +373,8 @@ export default class SigmaReactGraph extends Component { // started making this,
     return $(this.graphDiv).find('.sigma-node').length < 100;
   }
   makeGraph() {
-    let {nodes=[], edges=[], DefaultNodeClass, defaultNodeType} = this.props;
+    let {nodes=[], edges=[], DefaultNodeClass, 
+          defaultNodeType, defaultEdgeType} = this.props;
     console.log('making graph');
     if (!nodes.length) return;
     if (defaultNodeType)
@@ -413,7 +437,127 @@ export default class SigmaReactGraph extends Component { // started making this,
                    style={{ width: `${w}px`, height: `${h}px`, }}
               />;
   }
-  sigmaEventHandler() {
-    console.log(arguments);
+  sigmaEventHandler(e) {
+    console.log('sigmaEventHandler',e);
   }
+}
+SigmaReactGraph.propTypes = {
+  nodes: React.PropTypes.array.isRequired,
+};
+/*
+export class GNode extends Object {
+  constructor(props) {
+    super();
+    let cls = new.target.name;
+    console.log(this.propsRequired);
+    console.log(this.propsRequired());
+    _.extend(this, props);
+    console.log(this.propsRequired);
+    console.log(this.propsRequired());
+    _.each(this.propsRequired(),
+      (v,k) => {
+        if (typeof v === 'string') {
+          if (typeof this[k] !== v) 
+            throw new Error(`${cls} requires ${k} ${v} prop`);
+        } else if (typeof v === 'function') {
+          if (!(this[k] instanceof v)) 
+            throw new Error(`${cls} requires ${k.name} prop`);
+        } else {
+          throw new Error("weird requirement");
+        }
+    });
+  }
+  propsRequired() {
+    return {
+      id: 'string',
+    }
+  }
+  toString() {
+    return this.id;
+  }
+}
+export class Edge extends Node {
+  constructor(props) {
+    super(props);
+    this.id = this.id || `${this.source}->${this.target}`;
+  }
+  propsRequired() {
+    return {
+      source: Node,
+      target: Node,
+    }
+  }
+}
+*/
+
+/* sigma.plugins.neighborhoods constructor.
+   from https://github.com/jacomyal/sigma.js/tree/master/plugins/sigma.plugins.neighborhoods
+   but that version required a global sigma, which i didn't want to have necessarily
+*/
+function neighborhoodPlugin(sigma) {
+  sigma.classes.graph.addMethod(
+    'neighborhood',
+    function(centerId) {
+      var k1,
+          k2,
+          k3,
+          node,
+          center,
+          // Those two local indexes are here just to avoid duplicates:
+          localNodesIndex = {},
+          localEdgesIndex = {},
+          // And here is the resulted graph, empty at the moment:
+          graph = {
+            nodes: [],
+            edges: []
+          };
+
+      // Check that the exists:
+      if (!this.nodes(centerId))
+        return graph;
+
+      // Add center. It has to be cloned to add it the "center" attribute
+      // without altering the current graph:
+      node = this.nodes(centerId);
+      center = {};
+      center.center = true;
+      for (k1 in node)
+        center[k1] = node[k1];
+
+      localNodesIndex[centerId] = true;
+      graph.nodes.push(center);
+
+      // Add neighbors and edges between the center and the neighbors:
+      for (k1 in this.allNeighborsIndex[centerId]) {
+        if (!localNodesIndex[k1]) {
+          localNodesIndex[k1] = true;
+          graph.nodes.push(this.nodesIndex[k1]);
+        }
+
+        for (k2 in this.allNeighborsIndex[centerId][k1])
+          if (!localEdgesIndex[k2]) {
+            localEdgesIndex[k2] = true;
+            graph.edges.push(this.edgesIndex[k2]);
+          }
+      }
+
+      // Add edges connecting two neighbors:
+      for (k1 in localNodesIndex)
+        if (k1 !== centerId)
+          for (k2 in localNodesIndex)
+            if (
+              k2 !== centerId &&
+              k1 !== k2 &&
+              this.allNeighborsIndex[k1][k2]
+            )
+              for (k3 in this.allNeighborsIndex[k1][k2])
+                if (!localEdgesIndex[k3]) {
+                  localEdgesIndex[k3] = true;
+                  graph.edges.push(this.edgesIndex[k3]);
+                }
+
+      // Finally, let's return the final graph:
+      return graph;
+    }
+  );
 }

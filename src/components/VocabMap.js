@@ -16,19 +16,19 @@ Copyright 2016 Sigfried Gold
 // @flow
 // npm run-script flow
 import React, { Component } from 'react';
-import { Glyphicon, Row, Col,
+import { Glyphicon, //Row, Col,
           //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label
        } from 'react-bootstrap';
 var d3 = require('d3');
 import _ from 'supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
-import Rx from 'rxjs/Rx';
+//import Rx from 'rxjs/Rx';
 
-import * as AppState from '../AppState';
+//import * as AppState from '../AppState';
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
-import SigmaReactGraph, {firstLastEvt} from './SigmaReactGraph';
+import SigmaReactGraph, {MacroNode, } from './SigmaReactGraph';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -71,7 +71,6 @@ export class VocabMapByDomain extends Component {
   }
 
   render() {
-    const {concept_groups_d, } = this.props;
     const {width, height} = this.state;
     const {sg} = this.state;
     let maps;
@@ -99,21 +98,12 @@ export default class VocabMap extends Component {
                     DefaultEdgeClass:VocEdge,
                     cssClass: 'vocab-map',
                     defaultNodeType: 'def_react_react',
+                    nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
     };
-    //this.nodeEventStream = new Rx.Subject();
-    //this.msgInfoStream = new Rx.Subject();
   }
   componentDidMount() {
     this.dataPrep();
-    /*
-    let self = this;
-    this.msgInfoStream && firstLastEvt(this.msgInfoStream,50).subscribe(
-      function(msgInfo) {
-        //console.log(msgInfo);
-        self.setState({msgInfo});
-      });
-    */
   }
   dataPrep() {
     const {sg} = this.props;
@@ -124,7 +114,6 @@ export default class VocabMap extends Component {
       elements.nodes.forEach(
         d => {
           if (d.isParent) d.NodeClass = VocGroupNode; // otherwise default
-          d.type = 'def_react_react';
         });
       this.setState({
         nodes: elements.nodes,
@@ -155,9 +144,9 @@ export class DomainMap extends VocabMap {
                     //DefaultEdgeClass:VocEdge,
                     cssClass: 'domain-map',
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
+                    defaultNodeType: 'def_react_react',
+                    nodes:[], edges: [],
     };
-    //this.nodeEventStream = new Rx.Subject();
-    //this.msgInfoStream = new Rx.Subject();
   }
   componentDidUpdate() {
     const { vocgroups, w, h } = this.props;
@@ -170,8 +159,6 @@ export class DomainMap extends VocabMap {
 
     let nodes = sg.map((d,i)=>{return {
                 id:d.toString(), 
-                //htmlContent:true,
-                type: 'def_react_react',
                 size:d.records.length,
                 label:d.toString(),
                 x: i % 5,
@@ -237,13 +224,11 @@ function eventPerspective(me, evt, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-class VocNode extends ReactInsideSigmaNode {
+class VocNode extends MacroNode {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
-    this.state = {w:0, h:0, updates:0};
-    //this.nodeSizeStream = new Rx.Subject();
-    //this.nodeSizeStream.debounceTime(100).subscribe(this.setVocNodeSize.bind(this));
+    this.state = Object.assign(this.state,{w:0, h:0, updates:0});
   }
   componentDidMount() {
     const {sigmaNode, sigmaSettings, notInGraph} = this.props;
@@ -344,7 +329,7 @@ class VocNode extends ReactInsideSigmaNode {
 
     let zoomContent = '';
     if (zoom) {
-      zoomContent = <div className="zoom">ZOOM!</div>;
+      zoomContent = <div key="zoomContent" className="zoom">ZOOM!</div>;
     }
 
     let chunkStyle = {};
@@ -375,23 +360,23 @@ class VocNode extends ReactInsideSigmaNode {
       ));
             // in addition to infoTrigger on whole node,
                 //onMouseOver={(e=>this.infoTrigger(null,null,e)).bind(this)}
-    return super.render(
-              <Icons hover={hover} />
-              <div className="info-chunks">
-                {chunks || <p>nothing yet</p>}
-                {children}
-              </div>
-              {zoomContent}
-           </div>;
+    return super.render({
+              content: [
+                        <Icons key="Icons" hover={hover} />,
+                        <div key="chunks" className="info-chunks">
+                          {chunks || <p>nothing yet</p>}
+                          {children}
+                        </div>,
+                        zoomContent ], 
+              wrapper: 'div'});
   }
   infoTrigger(k,v,e,out=false) {
     let {sigmaNode, notInGraph, sigmaEventHandler} = this.props;
     
     console.log('FIX THIS    infoTrigger', e.type, k);
-    //sigmaNode.msgInfoStream.next({sigmaNode: out ? undefined : sigmaNode, k, v, notInGraph});
   }
   update(node, el, settings) {
-    //console.log('update does nothing now, i think');
+    console.log('update does nothing now, i think');
     this.setState({updates: this.state.updates+1});
   }
 }

@@ -13,8 +13,6 @@ Copyright 2016 Sigfried Gold
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-// @flow
-// npm run-script flow
 //import * as util from '../utils';
 import React, { Component } from 'react';
 import * as AppState from '../AppState';

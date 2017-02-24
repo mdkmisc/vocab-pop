@@ -35,7 +35,7 @@
       - intersecion of subpopulations
     - Patrick's SNOMED navigation strategy: 
       - using related concepts filter on Class, choose Has ancestor of from Relationship facet, filter on Distance facet
-    - compare vocabulary version as per [[http://forums.ohdsi.org/t/new-vocabulary-population-visualization-working-group/2187/17?u=sigfried_gold|Peter's post]]
+    - compare vocabulary version as per (http://forums.ohdsi.org/t/new-vocabulary-population-visualization-working-group/2187/17?u=sigfried_gold)[Peter's post]
   - notes and to-dos:
     - other systems to get ideas from:
       - http://outins.com/

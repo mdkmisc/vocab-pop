@@ -30,7 +30,7 @@ import {VocabMapByDomain, DomainMap} from './VocabMap';
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 //import 'tipsy/src/stylesheets/tipsy.css';
 require('./stylesheets/Vocab.css');
-require('tipsy/src/javascripts/jquery.tipsy');
+//require('tipsy/src/javascripts/jquery.tipsy');
 //require('./VocabPop.css');
 
 

@@ -1,5 +1,6 @@
 var d3 = require('d3');
 import _ from 'supergroup';
+import {GNode, Edge} from './SigmaReactGraph';
 
 let maxNodesPerRow = 5; // actual rows will have twice this to make room for stubs
                         // though not using stubs right now (they're for wayppoints,
@@ -147,7 +148,7 @@ function makeNode(opts, nodesInLayers) {
   if (typeof node.layer !== 'undefined')
     node.layerIdx = nodesInLayers[node.layer]++;
 
-  node.type = node.type || 'react';
+  //node.type = node.type || 'react';
   return node;
 }
 function makeEdge(from, to) {
@@ -159,7 +160,7 @@ function makeEdge(from, to) {
     id: `${from}:${to}`,
     source: from,
     target: to,
-    type: 'react',
+    //type: 'react',
     //color: function(e) { console.log(e); return 'green'; } // doesn't seem to work
     //color: 'steelblue',
     classes: `voc-edge`,
