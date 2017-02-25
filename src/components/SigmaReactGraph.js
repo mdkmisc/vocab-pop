@@ -1,11 +1,17 @@
 // @ flow // flow breaking on new.target, so not using right now
 
+const DEBUG = true;
 import React, { Component } from 'react';
 import {render} from 'react-dom';
 //import {VocNode, VocEdge} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
+import Rx from 'rxjs/Rx';
+export function firstLastEvt(rxSubj, ms) {
+  return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
+          .distinctUntilChanged());
+}
 /*
     confusing, but here's what I think is happening:
 
@@ -28,103 +34,74 @@ import _ from 'supergroup'; // just for lodash
     and then inside that will be a ReactInsideSigmaNode component
 */
 
-export class ListenerNode extends Component {
+export class FoNode extends Component {
+}
+export class FoLabel extends Component {
+}
+export class FoHover extends Component {
   constructor(props) {
     super(props);
-    // react events to handle -- https://facebook.github.io/react/docs/events.html#mouse-events
-    let eventsToHandle = props.eventsToHandle || [ 'onClick', 'onMouseEnter', 'onMouseLeave',];
-    this.state = {
-      eventsToHandle,
-    };
-  }
-  reactCompListener(e) {
-    const {sigmaNode, sigmaSettings, rerender, sigmaDomEl, evtHandler} = this.props;
-    evtHandler(e, this.props);
-    //rerender(sigmaNode, sigmaDomEl, sigmaSettings, e);
-  }
-  render() {
-    const {wrapperTag='g', children } = this.props;
-    let eventsToHandle = this.props.eventsToHandle || 
-          [ 'onClick', 'onMouseEnter', 'onMouseLeave',];
-    const listeners = 
-      _.fromPairs(eventsToHandle.map(
-          evtType=>[evtType,this.reactCompListener.bind(this)]));
-    //{...listeners}
-    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-    return  <Tag className="listener-node" >
-              {children}
-            </Tag>;
-  }
-}
-class FoHover extends Component {
-}
-class FoLabel extends Component {
-}
-class FoNode extends Component {
-  constructor(props) {
-    super(props);
-    this.state = Object.assign(this.state, {w:0, h:0, updates:0, styles: {}});
+    this.state = {w:0, h:0, updates:0, styles: {}};
   }
   componentDidMount() {
     const {node, } = this.props;
-    node.resizeFo = this.resizeFo.bind(this);
+    //this.resizeFo();
+    //node.resizeFo = this.resizeFo.bind(this);
   }
   resizeFo() {
-    const {node, settings} = this.props;
+    const {sigmaNode, sigmaSettings} = this.props;
     let {w, h, styles} = this.state;
     styles = _.cloneDeep(styles); // not to mutate existing state...probably doesn't matter
     //const {fontSize, fontColor, fontFamily} = styles;
-    if (!this.foRef) {
-      console.log('no foRef for resizing', node.id);
+    if (!this.foDiv) {
+      console.log('no foDiv for resizing', sigmaNode.id);
       return {w:0,h:0};
     }
     const fontStyles = this.fontStyles();
     Object.assign(styles, fontStyles);
     const {fontSize, fontColor, fontFamily} = fontStyles;
     // Case when we don't want to display the fo
-    if (!settings('forceLabels') && 
-          fontSize < settings('labelFontSizeThreshold')) {
+    if (!sigmaSettings('forceLabels') && 
+          fontSize < sigmaSettings('labelFontSizeThreshold')) {
       styles.display = 'none';
       [w,h] = [0,0];
     } else {
-      [w,h] = getSize(this.foRef.childNodes[0]);
+      [w,h] = getSize(this.foDiv);
     }
     this.setState({styles, w, h});
     return {w,h, styles};
   }
   fontStyles() {
-    const {node, settings} = this.props;
+    const {sigmaNode, sigmaSettings} = this.props;
     const {fontSize, fontColor, } = this.state.styles;
-    let size = node.size;
-    let fs = (settings('labelSize') === 'fixed')
-                      ? settings('defaultLabelSize')
-                      : settings('fontFromSize')(size);
-    let fc = (settings('labelColor') === 'node')
-                      ? (node.color || settings('defaultNodeColor'))
-                      : settings('defaultLabelColor');
-    let fontFamily = settings('font');
+    let size = sigmaNode.size;
+    let fs = (sigmaSettings('labelSize') === 'fixed')
+                      ? sigmaSettings('defaultLabelSize')
+                      : sigmaSettings('fontFromSize')(size);
+    let fc = (sigmaSettings('labelColor') === 'node')
+                      ? (sigmaNode.color || sigmaSettings('defaultNodeColor'))
+                      : sigmaSettings('defaultLabelColor');
+    let fontFamily = sigmaSettings('font');
     return {fontSize:fs, fontColor:fc, fontFamily};
   }
   render() {
+    const {children, reactNodeEvtHandlers=[], sigmaSettings} = this.props;
     const {w,h} = this.state;
-    let fo =  <foreignObject className="sigma-react-fo" ref={d=>this.foRef=d}
-                  style={this.state.styles} width={w} height={h}
-              >
-                {this.externalReactComponent()}
+    const className = sigmaSettings('classPrefix') + '-fo';
+    return <ListenerNode wrapperTag="g" {...this.props} 
+              reactNodeEvtHandlers={reactNodeEvtHandlers.concat(this.resizeFo.bind(this))}
+            >
+              <foreignObject className={className} width={w} height={h} >
+                <div className={className + '-div'}
+                      ref={d=>this.foDiv=d} style={this.state.styles} >
+                  {children}
+                </div>
               </foreignObject>
+           </ListenerNode>;
     if (this.props.needsRect) {
-      return  <g><rect className="edge-cover" />{fo}</g>;
+      throw new Error("fix this");
+      //return  <g><rect className="edge-cover" />{fo}</g>;
     }
-    return fo;
-    /*
-    return super.render([
-              <Icons key="Icons" hover={hover} />,
-              <div key="chunks" className="info-chunks">
-                {chunks || <p>nothing yet</p>}
-                {children}
-              </div>,
-              zoomContent ]);
-              */
   }
 }
 
@@ -137,30 +114,30 @@ function getSize(dn) {
 
 
 function sigmaReactRenderer() {
+  console.log('loading sigmaReactRenderer!!!!');
   var sigma = require('sigma');
-  //neighborhoodPlugin(sigma);
+  neighborhoodPlugin(sigma);
   sigma.utils.pkg('sigma.svg.nodes');
   sigma.utils.pkg('sigma.svg.labels');
   sigma.utils.pkg('sigma.svg.hovers');
 
-  sigma.svg.nodes.XXXcircle_label_drill = {
+  sigma.svg.nodes.circle_label_drill = {
     create: function(node, settings) {
       const prefix = settings('prefix');
       let g = document.createElementNS(d3.namespaces.svg, 'g');
-      let className = settings('classPrefix') + '-label';
+      let className = settings('classPrefix') + '-node';
       g.setAttributeNS(null, 'data-node-id', node.id);
       g.setAttributeNS(null, 'class', className);
       //g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
       return g;
     },
     update: function(node, g, settings, evt) {
-      let thisUpdate = sigma.svg.labels.circle_label_drill.update;
       let prefix = settings('prefix') || '';
       let NodeClass = node.NodeClass || settings('DefaultNodeClass');
       let fill = node.color || settings('defaultNodeColor');
       let r = node[prefix + 'size'];
-      let className = settings('classPrefix') + '-label',
-          evtHandler = settings('reactCompEventHandler');
+      let className = settings('classPrefix') + '-node-circle',
+          srgReactEvtCb = settings('srgReactEvtCb');
 
       g.setAttributeNS(null, 'transform',
           `translate(${node[prefix+'x']},${node[prefix+'y']})`);
@@ -172,16 +149,19 @@ function sigmaReactRenderer() {
       */
 
       g.style.display = '';
-      render(<NodeClass sigmaNode={node} sigmaSettings={settings}
-                rerender={thisUpdate} sigmaDomEl={g} evt={evt} evtHandler={evtHandler} >
-                <circle {...{r, fill, className}} data-node-id={node.id} />
-             </NodeClass>, g);
+      function renderToSigma(evtProps) {
+        render(<NodeClass sigmaNode={node} sigmaSettings={settings}
+                    evtProps={evtProps} 
+                  sigmaDomEl={g} evt={evt} srgReactEvtCb={srgReactEvtCb} >
+                  <circle {...{r, fill, className}} data-node-id={node.id} />
+              </NodeClass>, g);
+      }
+      renderToSigma();
       return this;
     }
   };
   sigma.svg.labels.circle_label_drill = {
     create: function(node, settings) {
-      console.log('label create', node.id);
       var prefix = settings('prefix') || '',
           size = node[prefix + 'size'],
           g = document.createElementNS(d3.namespaces.svg, 'g'),
@@ -192,13 +172,12 @@ function sigmaReactRenderer() {
     },
 
     update: function(node, g, settings, evt) {
-      console.log('label update', node.id);
-      let thisUpdate = sigma.svg.labels.circle_label_drill.update;
+      if (node.hideLabel) return;
 
       var prefix = settings('prefix') || '',
           size = node[prefix + 'size'],
           className = settings('classPrefix') + '-label',
-          evtHandler = settings('reactCompEventHandler');
+          srgReactEvtCb = settings('srgReactEvtCb');
       var fontSize = (settings('labelSize') === 'fixed') ?
             settings('defaultLabelSize') :
             settings('labelSizeRatio') * size;
@@ -223,177 +202,66 @@ function sigmaReactRenderer() {
           `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + fontSize / 3})`);
       g.style.display = '';
 
-      render(<LabelClass sigmaNode={node} sigmaSettings={settings} 
-                rerender={thisUpdate} sigmaDomEl={g} evt={evt} evtHandler={evtHandler}
-              >
-                <text {...{fontSize, fill, fontFamily, className}} data-label-target={node.id} >
-                  {node.label}
-                </text>
-             </LabelClass>, g);
+      function renderToSigma(evtProps) {
+        render(<LabelClass sigmaNode={node} sigmaSettings={settings} 
+                    sigmaDomEl={g} evt={evt} srgReactEvtCb={srgReactEvtCb}
+                    evtProps={evtProps} >
+                  <text {...{fontSize, fill, fontFamily, className}} data-label-target={node.id} >
+                    {node.label}
+                  </text>
+              </LabelClass>, g);
+      }
+      renderToSigma();
       return this;
     }
   };
-
-
-  sigma.svg.hovers.XXXcircle_label_drill = {
-    create: function(node, nodeCircle, measurementCanvas, settings) {
-      // Defining visual properties
-      var x, y, w, h, e, d,
-          fontStyle = settings('hoverFontStyle') || settings('fontStyle'),
-          prefix = settings('prefix') || '',
+  sigma.svg.hovers.groupLabel = sigma.svg.hovers.circle_label_drill = {
+    create: function(node, el, measurementCanvas, settings) {
+      console.log('in hover create');
+      let thisUpdate = sigma.svg.hovers.circle_label_drill.create;
+      var prefix = settings('prefix') || '',
           size = node[prefix + 'size'],
-          fontSize = (settings('labelSize') === 'fixed') ?
-            settings('defaultLabelSize') :
-            settings('labelSizeRatio') * size,
-          fontColor = (settings('labelHoverColor') === 'node') ?
-                        (node.color || settings('DefaultNodeColor')) :
-                        settings('defaultLabelHoverColor');
-      var group = document.createElementNS(settings('xmlns'), 'g'),
-          rectangle = document.createElementNS(settings('xmlns'), 'rect'),
-          circle = document.createElementNS(settings('xmlns'), 'circle'),
-          text = document.createElementNS(settings('xmlns'), 'text');
-      group.setAttributeNS(null, 'class', settings('classPrefix') + '-hover');
-      //g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
-      group.setAttributeNS(null, 'data-node-id', node.id);
+          g = document.createElementNS(d3.namespaces.svg, 'g'),
+          className = settings('classPrefix') + '-hover',
+          srgReactEvtCb = settings('srgReactEvtCb');
+      g.setAttributeNS(null, 'data-node-id', node.id);
+      g.setAttributeNS(null, 'class', className);
 
-      if (typeof node.label === 'string') {
-        text.innerHTML = node.label;
-        text.textContent = node.label;
-        text.setAttributeNS(
-            null,
-            'class',
-            settings('classPrefix') + '-hover-label');
-        text.setAttributeNS(null, 'font-size', fontSize);
-        text.setAttributeNS(null, 'font-family', settings('font'));
-        text.setAttributeNS(null, 'fill', fontColor);
-        text.setAttributeNS(null, 'x',
-          Math.round(node[prefix + 'x'] + size + 3));
-        text.setAttributeNS(null, 'y',
-          Math.round(node[prefix + 'y'] + fontSize / 3));
+      let HoverClass = node.HoverClass || settings('DefaultHoverClass');
 
-        // Measures
-        // OPTIMIZE: Find a better way than a measurement canvas
-        x = Math.round(node[prefix + 'x'] - fontSize / 2 - 2);
-        y = Math.round(node[prefix + 'y'] - fontSize / 2 - 2);
-        w = Math.round(
-          measurementCanvas.measureText(node.label).width +
-            fontSize / 2 + size + 9
-        );
-        h = Math.round(fontSize + 4);
-        e = Math.round(fontSize / 2 + 2);
+      g.setAttributeNS(null, 'transform',
+          `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + size / 3})`);
+      g.style.display = '';
 
-        // Circle
-        circle.setAttributeNS(
-            null,
-            'class',
-            settings('classPrefix') + '-hover-area');
-        circle.setAttributeNS(null, 'fill', '#fff');
-        circle.setAttributeNS(null, 'cx', node[prefix + 'x']);
-        circle.setAttributeNS(null, 'cy', node[prefix + 'y']);
-        circle.setAttributeNS(null, 'r', e);
-
-        // Rectangle
-        rectangle.setAttributeNS(
-            null,
-            'class',
-            settings('classPrefix') + '-hover-area');
-        rectangle.setAttributeNS(null, 'fill', '#fff');
-        rectangle.setAttributeNS(null, 'x', node[prefix + 'x'] + e / 4);
-        rectangle.setAttributeNS(null, 'y', node[prefix + 'y'] - e);
-        rectangle.setAttributeNS(null, 'width', w);
-        rectangle.setAttributeNS(null, 'height', h);
+      function renderToSigma(evtProps) {
+        render(<HoverClass sigmaNode={node} sigmaSettings={settings} 
+                  renderToSigma={renderToSigma} sigmaDomEl={g} evtProps={evtProps}
+                  srgReactEvtCb={srgReactEvtCb} />, g);
       }
-
-      // Appending childs
-      group.appendChild(circle);
-      group.appendChild(rectangle);
-      group.appendChild(text);
-      group.appendChild(nodeCircle);
-
-      return group;
+      renderToSigma();
+      return g;
     }
   };
   return sigma;
-  /*   not using at the moment
-  sigma.utils.pkg('sigma.svg.edges');
-  sigma.svg.edges.react = {
-    /**
-     * SVG Element creation.
-     *
-     * @param  {object}                   edge       The edge object.
-     * @param  {object}                   source     The source node object.
-     * @param  {object}                   target     The target node object.
-     * @param  {configurable}             settings   The settings function.
-     * /
-    create: function(edge, source, target, settings) {
-      let g = document.createElementNS(d3.namespaces.svg, 'g');
-
-      var color = edge.color,
-          prefix = settings('prefix') || '',
-          edgeColor = settings('edgeColor'),
-          defaultNodeColor = settings('defaultNodeColor'),
-          defaultEdgeColor = settings('defaultEdgeColor');
-
-      if (!color)
-        switch (edgeColor) {
-          case 'source':
-            color = source.color || defaultNodeColor;
-            break;
-          case 'target':
-            color = target.color || defaultNodeColor;
-            break;
-          default:
-            color = defaultEdgeColor;
-            break;
-        }
-      g.setAttributeNS(null, 'stroke', color);
-      g.setAttributeNS(null, 'data-edge-id', edge.id);
-      g.setAttributeNS(null, 'class', 
-              settings('classPrefix') + '-edge'
-                          + (edge.classes||''));
-
-      let Component = edge.EdgeClass || settings('DefaultEdgeClass');
-      render(<Component sigmaEdge={edge} sigmaSource={source} 
-              sigmaTarget={target} sigmaSettings={settings} />, g);
-      return g;
-    },
-
-    /**
-     * SVG Element update.
-     *
-     * @param  {object}                   edge       The edge object.
-     * @param  {DOMElement}               line       The line DOM Element.
-     * @param  {object}                   source     The source node object.
-     * @param  {object}                   target     The target node object.
-     * @param  {configurable}             settings   The settings function.
-     * /  
-    update: function(edge, el, source, target, settings) {
-      el.style.display = '';
-      edge.update(edge, el, source, target, settings);
-      return this;
-    }
-  };
-  */
 }
 
-import Rx from 'rxjs/Rx';
-export function firstLastEvt(rxSubj, ms) {
-  return Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms)).distinctUntilChanged()
-}
 export default class SigmaReactGraph extends Component { // started making this, but not using yet...finish?
   constructor(props) {
     super(props);
     this.state = {updates:0};
-    this.nodeEventStream = new Rx.Subject();
+    this.reactNodeEvtStream = new Rx.Subject();
+    this.sigmaNodeEvtStream = new Rx.Subject();
     //this.msgInfoStream = new Rx.Subject();
   }
   componentDidMount() {
     this.setState({forceUpdate: true});
-    //firstLastEvt(this.msgInfoStream,50).subscribe( function(msgInfo) { //console.log(msgInfo); self.setState({msgInfo}); });
+    firstLastEvt(this.reactNodeEvtStream,50).subscribe(this.reactNodeEvt.bind(this));
+    firstLastEvt(this.sigmaNodeEvtStream,50).subscribe(this.sigmaNodeEvt.bind(this));
   }
   componentDidUpdate(prevProps, prevState) {
     const {width, height, nodes, edges} = this.props;
     const {w, h, sigmaInstance, cam, renderer, sizeDomain} = this.state;
+    DEBUG && (window.srgState = this.state);
     if (!nodes || !nodes.length) {
       if (prevProps.nodes && prevProps.nodes.length)
         throw new Error("what happened to the nodes?");
@@ -418,7 +286,6 @@ export default class SigmaReactGraph extends Component { // started making this,
       let sizeDomain = d3.extent(nodes.map(d=>d.size));
       renderer.settings('sizeDomain', sizeDomain);
       this.setState({ sizeDomain });
-      /*
       let nodeSizeScale = d3.scaleLinear()
                             .domain(sizeDomain)
                             .range([1,2.5]);  
@@ -426,12 +293,11 @@ export default class SigmaReactGraph extends Component { // started making this,
                             .domain([2,0])
                             .range([6,20]);
       let fontFromSize = function(size) {
-                            return nodeSizeScale(size) * zoomFontScale(this.cam.ratio);
+                            return nodeSizeScale(size) * zoomFontScale(cam.ratio);
                           };
-      this.renderer.settings('nodeSizeScale', nodeSizeScale);
-      this.renderer.settings('zoomFontScale', zoomFontScale);
-      this.renderer.settings('fontFromSize', fontFromSize);
-      */
+      renderer.settings('nodeSizeScale', nodeSizeScale);
+      renderer.settings('zoomFontScale', zoomFontScale);
+      renderer.settings('fontFromSize', fontFromSize);
     }
     sigmaInstance && sigmaInstance.refresh();
   }
@@ -457,6 +323,7 @@ export default class SigmaReactGraph extends Component { // started making this,
           labelThreshold=2,
           //labelFontSizeThreshold=2,
           labelSizeRatio=3,
+          cameraRatio=.7,
         } = this.props;
     console.log('making graph');
     if (!nodes.length) return;
@@ -473,7 +340,7 @@ export default class SigmaReactGraph extends Component { // started making this,
       camera: cam,
       //freeStyle: true
       settings: {
-        reactCompEventHandler: this.reactCompEventHandler.bind(this),
+        srgReactEvtCb: this.srgReactEvtCb.bind(this),
         DefaultNodeClass,
         DefaultLabelClass,
         DefaultHoverClass,
@@ -495,8 +362,8 @@ export default class SigmaReactGraph extends Component { // started making this,
     });
     //https://github.com/jacomyal/sigma.js/wiki/Events-API
     sigmaInstance.bind('clickNode clickEdge clickStage overNode overEdge outNode outEdge',
-           this.sigmaEventHandler.bind(this));
-    sigmaInstance.camera.ratio = .7;
+           this.srgSigmaEvtCb.bind(this));
+    sigmaInstance.camera.ratio = cameraRatio;
     return { sigmaInstance, cam, renderer };
   }
   render() {
@@ -510,23 +377,122 @@ export default class SigmaReactGraph extends Component { // started making this,
                   ref={div=>this.graphDiv=div} 
               />;
   }
-  sigmaEventHandler(e) {
-    this.commonEventHandler(e, 'sigma');
+  srgSigmaEvtCb(e) {
+    this.sigmaNodeEvtStream.next({node:e.data.node, type:e.type, source:'sigma', 
+                              isRedispatched: e.data.isRedispatched });
+    //this.commonEventHandler(e, 'sigma', e.data.node);
   }
-  reactCompEventHandler(e, props) {
-    let {sigmaDomEl, sigmaNode, rerender} = props;
-    this.commonEventHandler(e, 'react', sigmaDomEl, sigmaNode, rerender, props);
-  }
-  commonEventHandler(e, source, el, node, rerender, props) {
-    console.log(source, e.type, node?node.id:'nonode');
+  srgReactEvtCb(e, props) {
+    let {sigmaDomEl, sigmaNode, renderToSigma} = props;
     /*
+    if (e.type === 'mouseleave' && e.target !== e.currentTarget) {
+      //e.preventDefault();
+      console.log('left', sigmaNode.id);
+      return;
+    }
+    */
+    this.reactNodeEvtStream.next({
+      type:e.type, 
+      target:e.target, 
+      currentTarget:e.currentTarget, 
+      node:sigmaNode, source:'react', renderToSigma, props,
+    });
+  }
+  setHoverNode(node, source, renderToSigma) {
+    const {renderer, sigmaInstance} = this.state;
+    if (this.hoverNode !== node) {
+      if (node) node.hideLabel = true;
+      //this.hoverNode && renderer.dispatchEvent( 'outNode', { renderToSigma, node: this.hoverNode, renderer, isRedispatched: true });
+      //node && renderer.dispatchEvent( 'overNode', { renderToSigma, node, isRedispatched: true });
+      this.hoverNode = node;
+      console.log('hoverNode', node && node.id);
+      sigmaInstance.refresh();
+    }
+  }
+  // this method (and next) is tied to a debounced rxJs subscription
+  //    it didn't solve the problem it was meant to solve, so it may
+  //    not be necessary, but it's not harmful at the moment, maybe
+  //    beneficial, so leaving it in
+  reactNodeEvt({node, source, type, isRedispatched, target, currentTarget, renderToSigma, props} = {}) {
+    // fix params
+    const {sigmaInstance} = this.state;
+    console.log(type, node.id, target, currentTarget);
+    switch (type) {
+      case 'mouseenter':
+        this.setHoverNode(node, source, renderToSigma, props);
+        break;
+      case 'mouseleave':
+        //this.setHoverNode(null, source, renderToSigma, props);
+        break;
+      case 'mousemove':
+        console.log(type, node.id, target, currentTarget);
+        break;
+      default:
+        return;
+        //console.log('unhandled react evt', type, node.id);
+    }
+  }
+  sigmaNodeEvt({node, source, type, isRedispatched, target, currentTarget, renderToSigma, props} = {}) {
+    const {sigmaInstance} = this.state;
+    // fix params
+    if (!node) return;
+    if (isRedispatched) return;
+    let neighbors = sigmaInstance.graph.neighborhood(node.id);
+    let evtProps = {evtType:type, node, neighbors};
+    /*
+    console.log(source, e.type, node?node.id:'nonode');
     let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
     if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {}
     let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
-    let neighbors = sigmaNode.sigmaInstance.graph.neighborhood(eventNodeId);
     let perspective = // self, neighbor, other
       eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
     */
+    //console.log(type, node.id, neighbors, 'redispatch:', isRedispatched);
+    switch (type) {
+      case 'overNode':
+        evtProps.hovered = true;
+        break;
+      case 'outNode':
+        evtProps.hovered = false;
+        break;
+      default:
+        //console.log('unhandled sigma evt', type, node.id);
+        return;
+    }
+    renderToSigma(evtProps);
+  }
+}
+export class ListenerNode extends Component {
+  constructor(props) {
+    super(props);
+    // react events to handle -- https://facebook.github.io/react/docs/events.html#mouse-events
+    let eventsToHandle = props.eventsToHandle || 
+      [ 'onClick', 'onMouseEnter', 'onMouseLeave', 'onMouseMove'];
+    this.state = {
+      eventsToHandle,
+    };
+  }
+  redispatchReactEvt(e) {
+    const {sigmaNode, sigmaSettings, renderToSigma, sigmaDomEl, 
+            srgReactEvtCb, reactNodeEvtHandlers=[]} = this.props;
+    console.log('ListenerNode', e.type, sigmaNode.id, e.target, e.currentTarget);
+    srgReactEvtCb(e, this.props);
+    if (document.body.contains(sigmaDomEl)) {
+      reactNodeEvtHandlers.forEach( l => l(e, this.props));
+    } else {
+      console.log('not updating react node because no longer on page', sigmaNode.id);
+    }
+    //renderToSigma(sigmaNode, sigmaDomEl, sigmaSettings, e);
+  }
+  render() {
+    const {wrapperTag='g', children } = this.props;
+    let eventsToHandle = this.props.eventsToHandle || this.state.eventsToHandle;
+    const reactEvtTypes = _.fromPairs(
+      eventsToHandle.map(evtType=> [evtType,this.redispatchReactEvt.bind(this)]));
+    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
+    return  <Tag className="listener-node" {...reactEvtTypes} >
+              {children}
+            </Tag>;
   }
 }
 SigmaReactGraph.propTypes = {

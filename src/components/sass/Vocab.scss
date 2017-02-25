@@ -149,11 +149,11 @@ div.vocab-map, div.domain-map {
     float: right;
     z-index: 100;
   }
-  g.sigma-node, g.sigma-label {
+  svg.sigma-svg { //g.sigma-node, g.sigma-label 
     rect {
       fill: $color_green_30;
     }
-    .voc-node-content {
+    .sigma-fo-div {
       display: inline-block;
       //border: 1px solid gray;
       padding: 4px;

@@ -28,7 +28,7 @@ var $ = require('jquery'); window.$ = $;
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
-import SigmaReactGraph, { ListenerNode } from './SigmaReactGraph';
+import SigmaReactGraph, { ListenerNode, FoHover } from './SigmaReactGraph';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -100,6 +100,7 @@ export default class VocabMap extends Component {
                     DefaultEdgeClass:VocEdge,
                     cssClass: 'vocab-map',
                     defaultNodeType: 'circle_label_drill',
+                    cameraRatio: 1.4,
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
     };
@@ -250,16 +251,17 @@ class VocHover extends Component {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
     super(props);
-    this.state = Object.assign(this.state,{w:0, h:0, updates:0});
+    this.state = {updates:0};
   }
+  /*
   componentDidMount() {
     const {sigmaNode, notInGraph} = this.props;
     sigmaNode.update = this.update.bind(this);
   }
+  */
   render() {
     const {sigmaNode, children, notInGraph,
             hover, mute, zoom, list, infoHover, } = this.props;
-    //const {icons, chunks, zoomContent} = this.state;
 
     if (sigmaNode.nodeData.records.length !== 1) throw new Error("expected one record");
     let rec = sigmaNode.nodeData.records[0];
@@ -298,17 +300,16 @@ class VocHover extends Component {
                   vfmt={commify} style={chunkStyle} />
         }
       ));
-                //{children} don't think I need this, right?
-    return <SigmaReactNode {...this.props} >
+    return <FoHover {...this.props} >
               <Icons key="Icons" hover={hover} />,
               <div key="chunks" className="info-chunks">
                 {chunks || <p>nothing yet</p>}
               </div>
               {zoomContent}
-           </SigmaReactNode>;
+           </FoHover>;
   }
   infoTrigger(k,v,e,out=false) {
-    let {sigmaNode, notInGraph, sigmaEventHandler} = this.props;
+    let {sigmaNode, notInGraph, srgSigmaEvtCb} = this.props;
     
     console.log('FIX THIS    infoTrigger', e.type, k);
   }
@@ -349,10 +350,10 @@ class InfoChunk extends Component {
     kcls = kcls || cls;
     vcls = vcls || cls;
     let moreInfo = '';
-    let listeners = {};
+    let infoChunkListeners = {};
     if (sigmaNode && k === 'rc') {
-      listeners.onMouseEnter = (()=>this.setState({hover:true})).bind(this);
-      listeners.onMouseLeave = (()=>this.setState({hover:false})).bind(this);
+      infoChunkListeners.onMouseEnter = (()=>this.setState({hover:true})).bind(this);
+      infoChunkListeners.onMouseLeave = (()=>this.setState({hover:false})).bind(this);
       if (hover) {
         moreInfo = _.toPairs(nodeInfo({sigmaNode,request:k}))
                     .map(([k2,v2]=[])=>
@@ -362,7 +363,7 @@ class InfoChunk extends Component {
       }
     }
             //onMouseOver={mouse}
-    return  <div className="info-chunk-wrapper" {...listeners} >
+    return  <div className="info-chunk-wrapper" {...infoChunkListeners} >
               <div className={cls + ' info'} style={style} 
                 data-is-info={true} data-key={k} data-val={v} 
               >
