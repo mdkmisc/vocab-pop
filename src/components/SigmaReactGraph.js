@@ -49,8 +49,9 @@ export class ListenerNode extends Component {
     const listeners = 
       _.fromPairs(eventsToHandle.map(
           evtType=>[evtType,this.reactCompListener.bind(this)]));
+    //{...listeners}
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-    return  <Tag className="listener-node" {...listeners}>
+    return  <Tag className="listener-node" >
               {children}
             </Tag>;
   }
@@ -142,7 +143,7 @@ function sigmaReactRenderer() {
   sigma.utils.pkg('sigma.svg.labels');
   sigma.utils.pkg('sigma.svg.hovers');
 
-  sigma.svg.nodes.circle_label_drill = {
+  sigma.svg.nodes.XXXcircle_label_drill = {
     create: function(node, settings) {
       const prefix = settings('prefix');
       let g = document.createElementNS(d3.namespaces.svg, 'g');
@@ -152,13 +153,16 @@ function sigmaReactRenderer() {
       //g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
       return g;
     },
-    update: function(node, el, settings) {
+    update: function(node, g, settings, evt) {
+      let thisUpdate = sigma.svg.labels.circle_label_drill.update;
       let prefix = settings('prefix') || '';
       let NodeClass = node.NodeClass || settings('DefaultNodeClass');
       let fill = node.color || settings('defaultNodeColor');
       let r = node[prefix + 'size'];
+      let className = settings('classPrefix') + '-label',
+          evtHandler = settings('reactCompEventHandler');
 
-      el.setAttributeNS(null, 'transform',
+      g.setAttributeNS(null, 'transform',
           `translate(${node[prefix+'x']},${node[prefix+'y']})`);
       /*
       const circleSizeRange = [3,10];
@@ -167,7 +171,7 @@ function sigmaReactRenderer() {
       const scaleFactor = node[`${prefix}size`] / node.size;
       */
 
-      el.style.display = '';
+      g.style.display = '';
       render(<NodeClass sigmaNode={node} sigmaSettings={settings}
                 rerender={thisUpdate} sigmaDomEl={g} evt={evt} evtHandler={evtHandler} >
                 <circle {...{r, fill, className}} data-node-id={node.id} />
@@ -231,7 +235,7 @@ function sigmaReactRenderer() {
   };
 
 
-  sigma.svg.hovers.circle_label_drill = {
+  sigma.svg.hovers.XXXcircle_label_drill = {
     create: function(node, nodeCircle, measurementCanvas, settings) {
       // Defining visual properties
       var x, y, w, h, e, d,
@@ -509,11 +513,12 @@ export default class SigmaReactGraph extends Component { // started making this,
   sigmaEventHandler(e) {
     this.commonEventHandler(e, 'sigma');
   }
-  reactCompEventHandler(e) {
-    this.commonEventHandler(e, 'react');
+  reactCompEventHandler(e, props) {
+    let {sigmaDomEl, sigmaNode, rerender} = props;
+    this.commonEventHandler(e, 'react', sigmaDomEl, sigmaNode, rerender, props);
   }
-  commonEventHandler(e, source) {
-    console.log(source, e.type);
+  commonEventHandler(e, source, el, node, rerender, props) {
+    console.log(source, e.type, node?node.id:'nonode');
     /*
     let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
     if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {}
