@@ -28,7 +28,7 @@ var $ = require('jquery'); window.$ = $;
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
-import SigmaReactGraph, { ListenerNode, FoHover } from './SigmaReactGraph';
+import SigmaReactGraph, { ListenerTarget, FoHover } from './SigmaReactGraph';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -118,7 +118,10 @@ export default class VocabMap extends Component {
         d => {
           if (d.isParent) {
             d.NodeClass = VocGroupNode; // otherwise default
-            d.type = 'groupLabel';
+            d.LabelClass = VocGroupLabel;
+            d.HoverClass = VocGroupHover;
+            //d.EdgeClass:VocGroupEdge,
+            //d.type = 'groupLabel';
           }
         });
       this.setState({
@@ -233,18 +236,18 @@ function eventPerspective(me, evt, neighbors) {
 class VocNode extends Component {
   render() {
     const { sigmaNode, children } = this.props;
-    return <ListenerNode wrapperTag="g" {...this.props} >
-              {children}
-           </ListenerNode>;
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
+    //return <g>{children}</g>;
+    //return <ListenerNode wrapperTag="g" {...this.props} > {children} </ListenerNode>;
   }
 }
 class VocLabel extends Component {
   render() {
     const { sigmaNode, children, evt } = this.props;
     evt && console.log('VocLabel', evt);
-    return <ListenerNode wrapperTag="g" {...this.props} >
-              {children}
-           </ListenerNode>;
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
+    //return <g data-node-id={sigmaNode.id} data-sigma-el-type="label" data-react-type="VocLabel">{children}</g>;
+    //return <ListenerNode wrapperTag="g" {...this.props} >{children}</ListenerNode>;
   }
 }
 class VocHover extends Component {
@@ -316,7 +319,8 @@ class VocHover extends Component {
 }
 class DomainMapNode extends VocNode {
   render() {
-    const {sigmaNode, sigmaSettings} = this.props;
+    const {sigmaNode, sigmaSettings, children} = this.props;
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
     return <div className="voc-node-content" ref={d=>this.contentRef=d} >
               {sigmaNode.label}
            </div>;
@@ -324,8 +328,22 @@ class DomainMapNode extends VocNode {
 }
 class VocGroupNode extends VocNode {
   render() {
+    const {sigmaNode, sigmaSettings, children} = this.props;
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
     return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
             >{this.props.sigmaNode.label}</h3>;
+  }
+}
+class VocGroupLabel extends VocNode {
+  render() {
+    const {sigmaNode, sigmaSettings, children} = this.props;
+    return <ListenerTarget wrapperTag="g" rNode={this} >{children}</ListenerTarget>;
+  }
+}
+class VocGroupHover extends VocNode {
+  render() {
+    const {sigmaNode, sigmaSettings, children} = this.props;
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
   }
 }
 function Icons(props) {

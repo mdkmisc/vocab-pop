@@ -85,11 +85,21 @@ export class FoHover extends Component {
     return {fontSize:fs, fontColor:fc, fontFamily};
   }
   render() {
-    const {children, reactNodeEvtHandlers=[], sigmaSettings} = this.props;
+    const {children, evtHandlers=[], sigmaSettings, sigmaNode} = this.props;
     const {w,h} = this.state;
     const className = sigmaSettings('classPrefix') + '-fo';
-    return <ListenerNode wrapperTag="g" {...this.props} 
-              reactNodeEvtHandlers={reactNodeEvtHandlers.concat(this.resizeFo.bind(this))}
+    /*
+    return <g data-node-id={sigmaNode.id} data-el={this}>
+              <foreignObject className={className} width={w} height={h} >
+                <div className={className + '-div'}
+                      ref={d=>this.foDiv=d} style={this.state.styles} >
+                  {children}
+                </div>
+              </foreignObject>
+           </g>;
+    */
+    return <ListenerTarget wrapperTag="g" 
+              evtHandlers={evtHandlers.concat(this.resizeFo.bind(this))}
             >
               <foreignObject className={className} width={w} height={h} >
                 <div className={className + '-div'}
@@ -97,7 +107,7 @@ export class FoHover extends Component {
                   {children}
                 </div>
               </foreignObject>
-           </ListenerNode>;
+           </ListenerTarget>;
     if (this.props.needsRect) {
       throw new Error("fix this");
       //return  <g><rect className="edge-cover" />{fo}</g>;
@@ -136,8 +146,7 @@ function sigmaReactRenderer() {
       let NodeClass = node.NodeClass || settings('DefaultNodeClass');
       let fill = node.color || settings('defaultNodeColor');
       let r = node[prefix + 'size'];
-      let className = settings('classPrefix') + '-node-circle',
-          srgReactEvtCb = settings('srgReactEvtCb');
+      let className = settings('classPrefix') + '-node-circle';
 
       g.setAttributeNS(null, 'transform',
           `translate(${node[prefix+'x']},${node[prefix+'y']})`);
@@ -152,7 +161,7 @@ function sigmaReactRenderer() {
       function renderToSigma(evtProps) {
         render(<NodeClass sigmaNode={node} sigmaSettings={settings}
                     evtProps={evtProps} 
-                  sigmaDomEl={g} evt={evt} srgReactEvtCb={srgReactEvtCb} >
+                  sigmaDomEl={g} evt={evt}  >
                   <circle {...{r, fill, className}} data-node-id={node.id} />
               </NodeClass>, g);
       }
@@ -176,8 +185,7 @@ function sigmaReactRenderer() {
 
       var prefix = settings('prefix') || '',
           size = node[prefix + 'size'],
-          className = settings('classPrefix') + '-label',
-          srgReactEvtCb = settings('srgReactEvtCb');
+          className = settings('classPrefix') + '-label';
       var fontSize = (settings('labelSize') === 'fixed') ?
             settings('defaultLabelSize') :
             settings('labelSizeRatio') * size;
@@ -204,9 +212,11 @@ function sigmaReactRenderer() {
 
       function renderToSigma(evtProps) {
         render(<LabelClass sigmaNode={node} sigmaSettings={settings} 
-                    sigmaDomEl={g} evt={evt} srgReactEvtCb={srgReactEvtCb}
-                    evtProps={evtProps} >
-                  <text {...{fontSize, fill, fontFamily, className}} data-label-target={node.id} >
+                    sigmaDomEl={g} evt={evt} evtProps={evtProps} >
+                  <text {...{fontSize, fill, fontFamily, className}} 
+                      data-label-target={node.id} 
+                      data-node-id={node.id} 
+                  >
                     {node.label}
                   </text>
               </LabelClass>, g);
@@ -222,8 +232,7 @@ function sigmaReactRenderer() {
       var prefix = settings('prefix') || '',
           size = node[prefix + 'size'],
           g = document.createElementNS(d3.namespaces.svg, 'g'),
-          className = settings('classPrefix') + '-hover',
-          srgReactEvtCb = settings('srgReactEvtCb');
+          className = settings('classPrefix') + '-hover';
       g.setAttributeNS(null, 'data-node-id', node.id);
       g.setAttributeNS(null, 'class', className);
 
@@ -236,7 +245,7 @@ function sigmaReactRenderer() {
       function renderToSigma(evtProps) {
         render(<HoverClass sigmaNode={node} sigmaSettings={settings} 
                   renderToSigma={renderToSigma} sigmaDomEl={g} evtProps={evtProps}
-                  srgReactEvtCb={srgReactEvtCb} />, g);
+                />, g);
       }
       renderToSigma();
       return g;
@@ -249,14 +258,14 @@ export default class SigmaReactGraph extends Component { // started making this,
   constructor(props) {
     super(props);
     this.state = {updates:0};
-    this.reactNodeEvtStream = new Rx.Subject();
-    this.sigmaNodeEvtStream = new Rx.Subject();
+    //this.reactNodeEvtStream = new Rx.Subject();
+    //this.sigmaNodeEvtStream = new Rx.Subject();
     //this.msgInfoStream = new Rx.Subject();
   }
   componentDidMount() {
     this.setState({forceUpdate: true});
-    firstLastEvt(this.reactNodeEvtStream,50).subscribe(this.reactNodeEvt.bind(this));
-    firstLastEvt(this.sigmaNodeEvtStream,50).subscribe(this.sigmaNodeEvt.bind(this));
+    //firstLastEvt(this.reactNodeEvtStream,50).subscribe(this.reactNodeEvt.bind(this));
+    //firstLastEvt(this.sigmaNodeEvtStream,50).subscribe(this.sigmaNodeEvt.bind(this));
   }
   componentDidUpdate(prevProps, prevState) {
     const {width, height, nodes, edges} = this.props;
@@ -340,7 +349,6 @@ export default class SigmaReactGraph extends Component { // started making this,
       camera: cam,
       //freeStyle: true
       settings: {
-        srgReactEvtCb: this.srgReactEvtCb.bind(this),
         DefaultNodeClass,
         DefaultLabelClass,
         DefaultHoverClass,
@@ -361,8 +369,7 @@ export default class SigmaReactGraph extends Component { // started making this,
       }
     });
     //https://github.com/jacomyal/sigma.js/wiki/Events-API
-    sigmaInstance.bind('clickNode clickEdge clickStage overNode overEdge outNode outEdge',
-           this.srgSigmaEvtCb.bind(this));
+    //sigmaInstance.bind('clickNode clickEdge clickStage overNode overEdge outNode outEdge', this.srgSigmaEvtCb.bind(this));
     sigmaInstance.camera.ratio = cameraRatio;
     return { sigmaInstance, cam, renderer };
   }
@@ -373,30 +380,12 @@ export default class SigmaReactGraph extends Component { // started making this,
     //const {msgInfo=''} = this.state;
     //<MsgInfo info={msgInfo} />
     style = Object.assign({}, style, { width: `${w}px`, height: `${h}px`, });
+    return  <ListenerNode wrapperTag="div" className={cssClass} style={style} 
+                  eventsToHandle={['onMouseMove']}
+                  refFunc={(div=>this.graphDiv=div).bind(this)}  />;
     return <div className={cssClass} style={style} 
                   ref={div=>this.graphDiv=div} 
               />;
-  }
-  srgSigmaEvtCb(e) {
-    this.sigmaNodeEvtStream.next({node:e.data.node, type:e.type, source:'sigma', 
-                              isRedispatched: e.data.isRedispatched });
-    //this.commonEventHandler(e, 'sigma', e.data.node);
-  }
-  srgReactEvtCb(e, props) {
-    let {sigmaDomEl, sigmaNode, renderToSigma} = props;
-    /*
-    if (e.type === 'mouseleave' && e.target !== e.currentTarget) {
-      //e.preventDefault();
-      console.log('left', sigmaNode.id);
-      return;
-    }
-    */
-    this.reactNodeEvtStream.next({
-      type:e.type, 
-      target:e.target, 
-      currentTarget:e.currentTarget, 
-      node:sigmaNode, source:'react', renderToSigma, props,
-    });
   }
   setHoverNode(node, source, renderToSigma) {
     const {renderer, sigmaInstance} = this.state;
@@ -409,59 +398,34 @@ export default class SigmaReactGraph extends Component { // started making this,
       sigmaInstance.refresh();
     }
   }
-  // this method (and next) is tied to a debounced rxJs subscription
-  //    it didn't solve the problem it was meant to solve, so it may
-  //    not be necessary, but it's not harmful at the moment, maybe
-  //    beneficial, so leaving it in
-  reactNodeEvt({node, source, type, isRedispatched, target, currentTarget, renderToSigma, props} = {}) {
-    // fix params
-    const {sigmaInstance} = this.state;
-    console.log(type, node.id, target, currentTarget);
-    switch (type) {
-      case 'mouseenter':
-        this.setHoverNode(node, source, renderToSigma, props);
-        break;
-      case 'mouseleave':
-        //this.setHoverNode(null, source, renderToSigma, props);
-        break;
-      case 'mousemove':
-        console.log(type, node.id, target, currentTarget);
-        break;
-      default:
-        return;
-        //console.log('unhandled react evt', type, node.id);
-    }
+}
+export class ListenerTarget extends Component {
+  constructor(props) {
+    super();
+    this.targetId = ListenerTarget.nextId++;
+    ListenerTarget.targets[this.targetId] = this;
   }
-  sigmaNodeEvt({node, source, type, isRedispatched, target, currentTarget, renderToSigma, props} = {}) {
-    const {sigmaInstance} = this.state;
-    // fix params
-    if (!node) return;
-    if (isRedispatched) return;
-    let neighbors = sigmaInstance.graph.neighborhood(node.id);
-    let evtProps = {evtType:type, node, neighbors};
-    /*
-    console.log(source, e.type, node?node.id:'nonode');
-    let nodeId = $(jqEvt.target).closest('g.sigma-node').attr('data-node-id');
-    if (sigmaSource.id === nodeId || sigmaTarget.id === nodeId) {}
-    let eventNodeId = $(target).closest('g.sigma-node').attr('data-node-id');
-    let perspective = // self, neighbor, other
-      eventPerspective(sigmaNode.id, eventNodeId, neighbors.nodes.map(d=>d.id));
-    */
-    //console.log(type, node.id, neighbors, 'redispatch:', isRedispatched);
-    switch (type) {
-      case 'overNode':
-        evtProps.hovered = true;
-        break;
-      case 'outNode':
-        evtProps.hovered = false;
-        break;
-      default:
-        //console.log('unhandled sigma evt', type, node.id);
-        return;
-    }
-    renderToSigma(evtProps);
+  render() {
+    const {wrapperTag='g', children, refFunc=d=>this.elRef=d, className } = this.props;
+    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
+              //{React.cloneElement(this.props.children, this.props)}
+    return  <Tag className={(className||'')+" listener-target"} ref={refFunc} 
+                  data-target-id={this.targetId} >
+              {children}
+            </Tag>;
   }
 }
+ListenerTarget.nextId = 0;
+ListenerTarget.targets = [];
+function findTarget(el) {
+  if (el.classList.contains('listener-target'))
+    return ListenerTarget.targets[el.getAttribute('data-target-id')];
+  if (el.classList.contains('listener-node'))
+    return null;
+  if (el.parentNode)
+    return findTarget(el.parentNode);
+}
+
 export class ListenerNode extends Component {
   constructor(props) {
     super(props);
@@ -472,25 +436,26 @@ export class ListenerNode extends Component {
       eventsToHandle,
     };
   }
-  redispatchReactEvt(e) {
-    const {sigmaNode, sigmaSettings, renderToSigma, sigmaDomEl, 
-            srgReactEvtCb, reactNodeEvtHandlers=[]} = this.props;
-    console.log('ListenerNode', e.type, sigmaNode.id, e.target, e.currentTarget);
-    srgReactEvtCb(e, this.props);
-    if (document.body.contains(sigmaDomEl)) {
-      reactNodeEvtHandlers.forEach( l => l(e, this.props));
+  dispatch(e) {
+    const {evtHandlers=[], } = this.props;
+      //sigmaNode, sigmaSettings, renderToSigma, sigmaDomEl, 
+    let target = findTarget(e.target);
+    console.log('node', target||'none',);
+    /*
+    if (!sigmaDomEl || document.body.contains(sigmaDomEl)) {
+      evtHandlers.forEach( l => l(e, this.props));
     } else {
-      console.log('not updating react node because no longer on page', sigmaNode.id);
+      console.log(`can't handle ${e.type} because ListenerNode no longer on page`);
     }
-    //renderToSigma(sigmaNode, sigmaDomEl, sigmaSettings, e);
+    */
   }
   render() {
-    const {wrapperTag='g', children } = this.props;
+    const {wrapperTag='g', children, refFunc=d=>d } = this.props;
     let eventsToHandle = this.props.eventsToHandle || this.state.eventsToHandle;
     const reactEvtTypes = _.fromPairs(
-      eventsToHandle.map(evtType=> [evtType,this.redispatchReactEvt.bind(this)]));
+      eventsToHandle.map(evtType=> [evtType,this.dispatch.bind(this)]));
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-    return  <Tag className="listener-node" {...reactEvtTypes} >
+    return  <Tag className="listener-node" {...reactEvtTypes} ref={refFunc}>
               {children}
             </Tag>;
   }
