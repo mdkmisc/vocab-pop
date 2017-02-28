@@ -102,7 +102,7 @@ export default class VocabMap extends Component {
                     DefaultHoverClass:VocHover,
                     DefaultEdgeClass:VocEdge,
                     */
-                    cssClass: 'vocab-map',
+                    className: 'vocab-map',
                     //defaultNodeType: 'circle_label_drill',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
@@ -118,21 +118,24 @@ export default class VocabMap extends Component {
     if (sg && sg.length) {
       console.log('dataprep in vocabmap');
       let elements = makeElements(sg.getChildren());
-      /*
       elements.nodes.forEach(
         d => {
           if (d.isParent) {
+            d.hideNode = true;
+            /*
             d.NodeClass = VocGroupNode; // otherwise default
             d.LabelClass = VocGroupLabel;
             d.HoverClass = VocGroupHover;
             //d.EdgeClass:VocGroupEdge,
             //d.type = 'groupLabel';
+            */
+          } else {
+            d.HoverClass = VocHover;
           }
         });
-      */
       this.setState({
-        nodes: elements.nodes.map(n=>new VocabMapNode(n)),
-        edges: elements.edges.map(e=>new VocabMapEdge(e)),
+        nodes: elements.nodes,//.map(n=>new VocabMapNode(n)),
+        edges: elements.edges,//.map(e=>new VocabMapEdge(e)),
       });
     }
   }
@@ -149,28 +152,16 @@ export default class VocabMap extends Component {
   }
   render() {
     let props = Object.assign({}, this.props, this.state);
-    return  <SigmaReactGraph  {...props} />;
+    return  <SigmaReactGraph {...props} />;
   }
 }
+/*
 class VocabMapNode {
   constructor(props) {
     Object.assign(this, props);
   }
 }
-class VocabMapEdge {
-  constructor(props) {
-    Object.assign(this, props);
-  }
-}
-class VocLabel extends Component {
-  render() {
-    const { sigmaNode, children, event } = this.props;
-    event && console.log('VocLabel', event);
-    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
-    //return <g data-node-id={sigmaNode.id} data-sigma-el-type="label" data-react-type="VocLabel">{children}</g>;
-    //return <ListenerNode wrapperTag="g" {...this.props} >{children}</ListenerNode>;
-  }
-}
+*/
 class VocHover extends Component {
   // these get made by sigmaSvgReactRenderer
   constructor(props) {
@@ -179,16 +170,16 @@ class VocHover extends Component {
   }
   /*
   componentDidMount() {
-    const {sigmaNode, notInGraph} = this.props;
-    sigmaNode.update = this.update.bind(this);
+    const {node, notInGraph} = this.props;
+    node.update = this.update.bind(this);
   }
   */
   render() {
-    const {sigmaNode, children, notInGraph,
+    const {node, children, notInGraph,
             hover, mute, zoom, list, infoHover, } = this.props;
 
-    if (sigmaNode.nodeData.records.length !== 1) throw new Error("expected one record");
-    let rec = sigmaNode.nodeData.records[0];
+    if (node.nodeData.records.length !== 1) throw new Error("expected one record");
+    let rec = node.nodeData.records[0];
     let classVal = rec.drill.lookup('class_concept_id');
     let conceptClasses = classVal ? classVal.getChildren() : [];
     //console.log(conceptClasses.join('\n'));
@@ -200,15 +191,15 @@ class VocHover extends Component {
 
     let chunkStyle = {};
     let chunks = [
-      <InfoChunk key="Voc" k="Voc" v={sigmaNode.label} />
+      <InfoChunk key="Voc" k="Voc" v={node.label} />
     ]
-    if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.label)
+    if (conceptClasses.length === 1 && conceptClasses[0]+'' !== node.label)
       chunks.push(<InfoChunk key="Class" k="Class" v={conceptClasses[0]+''} />);
 
     //chunkStyle.display = hover ? 'flex' : 'none';
     chunkStyle.display = 'flex';
     chunks = chunks.concat(
-      _.map(sigmaNode.counts||{},
+      _.map(node.counts||{},
         (v,k) => {
           let trigger = d=>d;
           let style = _.clone(chunkStyle);
@@ -220,7 +211,7 @@ class VocHover extends Component {
             style.fontSize = 'large';
             cls += ' info-hover';
           }
-          return <InfoChunk key={k} cls={cls} k={k} v={v} sigmaNode={sigmaNode}
+          return <InfoChunk key={k} cls={cls} k={k} v={v} node={node}
                   vfmt={commify} style={chunkStyle} />
         }
       ));
@@ -233,24 +224,34 @@ class VocHover extends Component {
            </FoHover>;
   }
   infoTrigger(k,v,e,out=false) {
-    let {sigmaNode, notInGraph, srgSigmaEvtCb} = this.props;
+    let {node, notInGraph, srgSigmaEvtCb} = this.props;
     
     console.log('FIX THIS    infoTrigger', e.type, k);
   }
 }
-export class DomainMap extends VocabMap {
+export class DomainMap extends Component {
   constructor(props) {
     super(props);
-    this.state = {  DefaultNodeClass: DomainMapNode, 
-                    //DefaultEdgeClass:VocEdge,
-                    cssClass: 'domain-map',
-                    //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
-                    defaultNodeType: 'def_react_react',
+    this.state = {  //DefaultNodeClass: DomainMapNode, 
+                    className: 'domain-map',
+                    cameraRatio: 1.4,
                     nodes:[], edges: [],
+                    //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
     };
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    if (this.state.nodes !== nextState.nodes)
+      return true;
+    return  !nextState.nodes || !nextState.nodes.length ||
+              this.props.sg !== nextProps.sg ||
+              !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
   componentDidUpdate() {
     const { vocgroups, w, h } = this.props;
+    const {width, height} = this.state;
+    if (w !== width || h !== height) {
+      this.setState({width:w,height:h});
+    }
     if (_.isEmpty(vocgroups)) return;
     let sg = _.supergroup(vocgroups, "domain_id");
     sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
@@ -276,23 +277,27 @@ export class DomainMap extends VocabMap {
               }});
     this.setState({nodes, edges});
   }
+  render() {
+    let props = Object.assign({}, this.props, this.state);
+    return  <SigmaReactGraph {...props} />;
+  }
 }
 export class MsgInfo extends Component {
   render() {
     const {info = {}} = this.props;
-    const {sigmaNode, k, v} = info;
-    if (!info || !sigmaNode) return <div/>;
+    const {node, k, v} = info;
+    if (!info || !node) return <div/>;
       //info ? <pre>{JSON.stringify(info)}</pre> : <div/>;
     return <div className="vocab-map-msg-div" 
                   style={{ position: 'absolute', right: '10px',}} 
                   ref={div=>this.msgDiv=div}>
-              {sigmaNode.id} {' '}
+              {node.id} {' '}
               {k ? `${k}: ${v}` : ''}
             </div>;
   }
   /*
-              <VocNode sigmaNode={sigmaNode} notInGraph={true} hover={true}>
-                <NodeInfo sigmaNode={sigmaNode} request='cols' />
+              <VocNode node={node} notInGraph={true} hover={true}>
+                <NodeInfo node={node} request='cols' />
               </VocNode>
   */
 }
@@ -309,8 +314,8 @@ function tblCols(rec) {
               }));
 }
 function nodeInfo(props) {
-  const {sigmaNode, request} = props;
-  const sg = sigmaNode.nodeData;
+  const {node, request} = props;
+  const sg = node.nodeData;
   if (sg.records.length !== 1) throw new Error('confused');
   const rec = sg.records[0];
   switch (request) {
@@ -325,33 +330,16 @@ function eventPerspective(me, event, neighbors) {
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-class DomainMapNode extends Component {
-  render() {
-    const {sigmaNode, sigmaSettings, children} = this.props;
-    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
-    return <div className="voc-node-content" ref={d=>this.contentRef=d} >
-              {sigmaNode.label}
-           </div>;
-  }
-}
-class VocGroupNode extends Component {
-  render() {
-    const {sigmaNode, sigmaSettings, children} = this.props;
-    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
-    return <h3 className="voc-node-content" ref={d=>this.contentRef=d}
-            >{this.props.sigmaNode.label}</h3>;
-  }
-}
 /*
 class VocGroupLabel extends VocNode {
   render() {
-    const {sigmaNode, sigmaSettings, children} = this.props;
+    const {node, settings, children} = this.props;
     return <ListenerTarget wrapperTag="g" rNode={this} >{children}</ListenerTarget>;
   }
 }
 class VocGroupHover extends VocNode {
   render() {
-    const {sigmaNode, sigmaSettings, children} = this.props;
+    const {node, settings, children} = this.props;
     return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
   }
 }
@@ -373,17 +361,17 @@ class InfoChunk extends Component {
   constructor(props) { super(props); this.state = {}; }
   render() {
     let {cls='', kcls, vcls, k, v, kfmt=d=>d, vfmt=d=>d, 
-          style, sigmaNode, nodeData} = this.props;
+          style, node, nodeData} = this.props;
     const {hover} = this.state;
     kcls = kcls || cls;
     vcls = vcls || cls;
     let moreInfo = '';
     let infoChunkListeners = {};
-    if (sigmaNode && k === 'rc') {
+    if (node && k === 'rc') {
       infoChunkListeners.onMouseEnter = (()=>this.setState({hover:true})).bind(this);
       infoChunkListeners.onMouseLeave = (()=>this.setState({hover:false})).bind(this);
       if (hover) {
-        moreInfo = _.toPairs(nodeInfo({sigmaNode,request:k}))
+        moreInfo = _.toPairs(nodeInfo({node,request:k}))
                     .map(([k2,v2]=[])=>
                           <InfoChunk key={k2} cls={k} k={k2} v={v2} 
                             vfmt={commify} style={{display:'flex'}} />
@@ -412,7 +400,7 @@ class VocEdge extends Component {
   /*
   eventHandler(e) {
     let {jqEvt, isInfo, key, val, domNode} = e;
-    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
+    const {edge, sigmaSource, sigmaTarget, settings} = this.props;
     const {target, type} = jqEvt;
     console.log( jqEvt, isInfo, key, val, domNode);
     let states = {};
@@ -433,7 +421,7 @@ class VocEdge extends Component {
         case 'click':
           break;
         default:
-          console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
+          console.log('unhandled', e.jqEvt.type, 'edge event on', edge.id);
       }
     } else {
       // event on another edge
@@ -447,26 +435,27 @@ class VocEdge extends Component {
         case 'click':
           break;
         default:
-          console.log('unhandled', e.jqEvt.type, 'edge event on', sigmaEdge.id);
+          console.log('unhandled', e.jqEvt.type, 'edge event on', edge.id);
       }
     }
     self.setState(states);
   }
   */
   componentDidMount() {
-    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
-    sigmaEdge.update = this.update.bind(this);
+    //const {edge, sigmaSource, sigmaTarget, settings} = this.props;
+    //edge.update = this.update.bind(this);
     this.setState({updates: this.state.updates+1}); // force a rerender after div ref available
   }
-  update(edge, el, source, target, settings) { 
-    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings} = this.props;
-    //if (edge !== sigmaEdge) throw new Error('is this right?');
-    //if (!_.isEqual(settings(), sigmaSettings())) throw new Error('is this right?');
+  /*
+  update(edge, el, source, target, settings) {
+    const {edge, sigmaSource, sigmaTarget, settings} = this.props;
+    //if (edge !== edge) throw new Error('is this right?');
+    //if (!_.isEqual(settings(), settings())) throw new Error('is this right?');
     //if (source !== sigmaSource) throw new Error('is this right?');
     //if (target !== sigmaTarget) throw new Error('is this right?');
     if (!this.path) return;
     let path = this.path;
-    var prefix = sigmaSettings('prefix') || '';
+    var prefix = settings('prefix') || '';
     path.setAttributeNS(null, 'stroke-width', edge[prefix + 'size'] || 1);
 
     // Control point
@@ -488,13 +477,14 @@ class VocEdge extends Component {
     //path.style.display = '';
     this.setState({updates: this.state.updates+1}); // force a rerender
   }
+  */
   render() {
-    const {sigmaEdge, sigmaSource, sigmaTarget, sigmaSettings, } = this.props;
+    const {edge, sigmaSource, sigmaTarget, settings, } = this.props;
     const {hover, mute} = this.state;
-    let prefix = sigmaSettings('prefix') || '';
+    let prefix = settings('prefix') || '';
     return <path ref={p=>this.path=p} 
-            data-edge-id={sigmaEdge.id}
-            className={ (sigmaEdge.classes || '') + (mute ? ' muted' : '')}
+            data-edge-id={edge.id}
+            className={ (edge.classes || '') + (mute ? ' muted' : '')}
             />;
   }
 }

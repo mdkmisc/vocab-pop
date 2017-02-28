@@ -7,10 +7,11 @@ import {render} from 'react-dom';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
-import { ListenerTarget, FoHover, ListenerNode, SigmaNode, SigmaGroup,
-          SigmaEdge, } from '../SigmaReactGraph';
+import { ListenerTarget, ListenerNode, SigmaNode, SigmaGroup,
+          SigmaEdge, SigmaLabel, SigmaHover, } from '../SigmaReactGraph';
 
 export default class SigmaReactGraph extends Component {
+  // refactor things into reasonable places
   constructor(props) {
     super(props);
 
@@ -41,12 +42,16 @@ export default class SigmaReactGraph extends Component {
           DefaultEdgeClass,
           */
           defaultNodeType, defaultEdgeType,
+
+          // FIX ALL THIS
           defaultNodeColor='darkkhaki',
           defaultNodeHoverColor='crimson',
           defaultNodeHoverStrokeColor='green',
           defaultNodeMuteColor='#AAA',
           defaultLabelColor='darkred',
+          defaultLabelNeighborColor='crimson',
           defaultEdgeColor='darkslateblue',
+
           defaultLabelSize=16,
           labelSize='proportional',
           labelThreshold=2,
@@ -71,12 +76,15 @@ export default class SigmaReactGraph extends Component {
                       id: 'main',
                       edgeColor: 'target',
                       hideEdgesOnMove: true,
-                      defaultLabelColor,
+
                       defaultNodeColor,
                       defaultNodeHoverColor,
                       defaultNodeHoverStrokeColor,
                       defaultNodeMuteColor,
+                      defaultLabelColor,
+                      defaultLabelNeighborColor,
                       defaultEdgeColor,
+
                       labelSize,
                       //labelFontSizeThreshold: 2,
                       labelThreshold,
@@ -116,10 +124,11 @@ export default class SigmaReactGraph extends Component {
         throw new Error("what happened to the nodes?");
       return;
     }
-    if (w !== width || h !== height) {
+    if (w !== width || h !== height || typeof w === 'undefined') {
       $(this.graphDiv).width(width);
       $(this.graphDiv).height(height);
       this.setState({w:width, h:height});
+      this.sigmaInstance.refresh();
       return;
     }
     if (!this.makeSigmaInstance()) {
@@ -133,6 +142,7 @@ export default class SigmaReactGraph extends Component {
     if (!_.isEqual(nodes, prevProps.nodes)) {
       this.sigmaInstance.graph.clear();
       this.sigmaInstance.graph.read({nodes,edges});
+      this.sigmaInstance.refresh();
     }
     if (this.cam && !sizeDomain) {
       let sizeDomain = d3.extent(nodes.map(d=>d.size));
@@ -144,16 +154,15 @@ export default class SigmaReactGraph extends Component {
       let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
                             .domain([2,0])
                             .range([6,20]);
-      let fontFromSize = function(size) {
-                            return nodeSizeScale(size) * zoomFontScale(this.cam.ratio);
-                          };
+      let fontFromSize = size => nodeSizeScale(size) * zoomFontScale(this.cam.ratio);
       this.renderer.settings('nodeSizeScale', nodeSizeScale);
       this.renderer.settings('zoomFontScale', zoomFontScale);
       this.renderer.settings('fontFromSize', fontFromSize);
     }
-    if (this.renderer) {
+    if (this.renderer && !this.finishedRendering) {
       this.sigmaInstance.refresh();
       this.finishSigmaRender(this.renderer);
+      this.finishedRendering = true;
     }
   }
   shouldComponentUpdate(nextProps, nextState) {
@@ -163,63 +172,11 @@ export default class SigmaReactGraph extends Component {
       debugger; // too many nodes!  (had a memory leak with this for a while)
     return $(this.graphDiv).find('.sigma-node').length < 100;
   }
-  render() {
-    let {renderer, settings} = this;
-    let {cssClass='', style={}, } = this.props;
-    const {w,h} = this.state;
-    let svg = '';
-
-    if (renderer) {
-      let c = settings('classPrefix');
-      cssClass += ` ${c}-react`;
-      /*
-      // Setting SVG namespace
-      dom.setAttribute('xmlns', this.settings('xmlns'));
-      dom.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
-      dom.setAttribute('version', '1.1');
-      */
-
-      // Creating the measurement canvas
-      var canvas = <canvas className={c + '-measurement-canvas'} />;
-
-      //this.measurementCanvas = canvas.getContext('2d');
-      //this.groups = ['edges', 'nodes', 'labels', 'hovers'].map(
-      svg =   <svg ref={d=>this.svgRef} width={w} height={h}>
-                <SigmaGroup grp='nodes' settings={settings} >
-                  {renderer.graph.nodes().map(
-                    node => <SigmaNode key={node.id} node={node} settings={settings} 
-                                       getNodeState={this.getNodeState.bind(this)}
-                              />)}
-                </SigmaGroup>
-                <SigmaGroup grp='edges' settings={settings} >
-                  {renderer.graph.edges().map(
-                    edge => <SigmaEdge key={edge.id} edge={edge} settings={settings} 
-                                source={renderer.graph.nodes(edge.source)}
-                                target={renderer.graph.nodes(edge.target)}
-                                getEdgeState={this.getEdgeState.bind(this)}
-                              />)}
-                </SigmaGroup>
-                {canvas}
-              </svg>
-    }
-
-    style = Object.assign({}, style, { width: `${w}px`, height: `${h}px`, });
-    // svg ? style.position = 'absolute'; // from svg renderer
-
-    return  <ListenerNode wrapperTag="div" className={cssClass} style={style} 
-                  eventsToHandle={['onMouseMove']}
-                  eventHandlers={[this.setHoverNode.bind(this)]}
-                  refFunc={(div=>this.graphDiv=div).bind(this)} >
-              {svg}
-            </ListenerNode>;
-  }
   setHoverNode(e, node, target, listenerProps) {
     let {settings} = this;
     let {hoverNode, hoverNeighbors} = this.state;
     if (hoverNode !== node) {
-      if (node) {
-        node.hideLabel = true;
-      }
+      //if (node) { node.hideLabel = true; }
       //this.hoverNode && renderer.dispatchEvent( 'outNode', { renderToSigma, node: this.hoverNode, renderer, isRedispatched: true });
       //node && renderer.dispatchEvent( 'overNode', { renderToSigma, node, isRedispatched: true });
       hoverNode = node;
@@ -377,6 +334,69 @@ export default class SigmaReactGraph extends Component {
 
     return renderer;
   };
+  render() {
+    let {renderer, settings} = this;
+    let {className='', style={}, } = this.props;
+    const {w,h, hoverNode, hoverNeighbors} = this.state;
+    let svg = '';
+
+    if (renderer) {
+      let c = settings('classPrefix');
+      className += ` ${c}-react`;
+      /*
+      // Setting SVG namespace
+      dom.setAttribute('xmlns', this.settings('xmlns'));
+      dom.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+      dom.setAttribute('version', '1.1');
+      */
+
+      // Creating the measurement canvas
+      var canvas = <canvas className={c + '-measurement-canvas'} />;
+
+      //this.measurementCanvas = canvas.getContext('2d');
+      //this.groups = ['edges', 'nodes', 'labels', 'hovers'].map(
+      svg =   <svg ref={d=>this.svgRef} width={w} height={h} className={settings('classPrefix')+'-svg'}>
+                <SigmaGroup grp='nodes' settings={settings} >
+                  {renderer.graph.nodes().map(
+                    node => <SigmaNode key={node.id} node={node} settings={settings} 
+                                       getNodeState={this.getNodeState.bind(this)}
+                              />)}
+                </SigmaGroup>
+                <SigmaGroup grp='edges' settings={settings} >
+                  {renderer.graph.edges().map(
+                    edge => <SigmaEdge key={edge.id} edge={edge} settings={settings} 
+                                source={renderer.graph.nodes(edge.source)}
+                                target={renderer.graph.nodes(edge.target)}
+                                getEdgeState={this.getEdgeState.bind(this)}
+                              />)}
+                </SigmaGroup>
+                <SigmaGroup grp='labels' settings={settings} >
+                  {renderer.graph.nodes().map(
+                    node => <SigmaLabel key={node.id} node={node} settings={settings} 
+                                       getNodeState={this.getNodeState.bind(this)}
+                              />)}
+                </SigmaGroup>
+                <SigmaGroup grp='hovers' settings={settings} >
+                  <text>hi</text>
+                  { hoverNode &&
+                      <SigmaHover node={hoverNode} settings={settings} 
+                          getNodeState={this.getNodeState.bind(this)}
+                      /> || 'urp'}
+                </SigmaGroup>
+                {canvas}
+              </svg>
+    }
+
+    style = Object.assign({}, style, { width: `${w}px`, height: `${h}px`, });
+    // svg ? style.position = 'absolute'; // from svg renderer
+
+    return  <ListenerNode wrapperTag="div" className={className} style={style} 
+                  eventsToHandle={['onMouseMove']}
+                  eventHandlers={[this.setHoverNode.bind(this)]}
+                  refFunc={(div=>this.graphDiv=div).bind(this)} >
+              {svg}
+            </ListenerNode>;
+  }
 }
 SigmaReactGraph.propTypes = {
   nodes: React.PropTypes.array.isRequired,
@@ -400,7 +420,7 @@ function sigmaReactRenderer() {
   edgesCurveRenderer(sigma);
   //edgesRenderer(sigma);
   neighborhoodPlugin(sigma);
-  addSpecificRenderers(sigma);
+  //addSpecificRenderers(sigma);
   sigma.utils.pkg('sigma.renderers');
   /**
    * @param  {sigma.classes.graph}            graph    The graph to render.
@@ -721,95 +741,6 @@ function sigmaReactRenderer() {
   sigma.utils.pkg('sigma.react.nodes');
   sigma.utils.pkg('sigma.react.labels');
   sigma.utils.pkg('sigma.react.hovers');
-  return sigma;
-}
-function addSpecificRenderers(sigma) {
-  console.log('loading addSpecificRenderers!!!!');
-  sigma.utils.pkg('sigma.react.nodes');
-  sigma.utils.pkg('sigma.react.labels');
-  sigma.utils.pkg('sigma.react.hovers');
-
-  sigma.react.labels.def = {
-    create: function(node, settings) {
-      var prefix = settings('prefix') || '',
-          size = node[prefix + 'size'],
-          g = document.createElementNS(d3.namespaces.svg, 'g'),
-          className = settings('classPrefix') + '-label';
-      g.setAttributeNS(null, 'data-label-target', node.id);
-      g.setAttributeNS(null, 'class', className);
-      return g;
-    },
-
-    update: function(node, g, settings, evt) {
-      if (node.hideLabel) return;
-
-      var prefix = settings('prefix') || '',
-          size = node[prefix + 'size'],
-          className = settings('classPrefix') + '-label';
-      var fontSize = (settings('labelSize') === 'fixed') ?
-            settings('defaultLabelSize') :
-            settings('labelSizeRatio') * size;
-
-      let LabelClass = node.LabelClass || settings('DefaultLabelClass');
-
-      var fontSize = (settings('labelSize') === 'fixed') ?
-        settings('defaultLabelSize') :
-        settings('labelSizeRatio') * size;
-
-      var fill = (settings('labelColor') === 'node') ?
-                        (node.color || settings('defaultNodeColor')) :
-                        settings('defaultLabelColor');
-      let fontFamily = settings('font');
-
-      // Case when we don't want to display the label
-      if (!settings('forceLabels') && size < settings('labelThreshold'))
-        return;
-      if (typeof node.label !== 'string')
-        return;
-      g.setAttributeNS(null, 'transform',
-          `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + fontSize / 3})`);
-      g.style.display = '';
-
-      function renderToSigma(evtProps) {
-        render(<LabelClass sigmaNode={node} sigmaSettings={settings} 
-                    sigmaDomEl={g} evt={evt} evtProps={evtProps} >
-                  <text {...{fontSize, fill, fontFamily, className}} 
-                      data-label-target={node.id} 
-                      data-node-id={node.id} 
-                  >
-                    {node.label}
-                  </text>
-              </LabelClass>, g);
-      }
-      renderToSigma();
-      return this;
-    }
-  };
-  sigma.react.hovers.groupLabel = sigma.react.hovers.def = {
-    create: function(node, el, measurementCanvas, settings) {
-      console.log('in hover create');
-      var prefix = settings('prefix') || '',
-          size = node[prefix + 'size'],
-          g = document.createElementNS(d3.namespaces.svg, 'g'),
-          className = settings('classPrefix') + '-hover';
-      g.setAttributeNS(null, 'data-node-id', node.id);
-      g.setAttributeNS(null, 'class', className);
-
-      let HoverClass = node.HoverClass || settings('DefaultHoverClass');
-
-      g.setAttributeNS(null, 'transform',
-          `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + size / 3})`);
-      g.style.display = '';
-
-      function renderToSigma(evtProps) {
-        render(<HoverClass sigmaNode={node} sigmaSettings={settings} 
-                  renderToSigma={renderToSigma} sigmaDomEl={g} evtProps={evtProps}
-                />, g);
-      }
-      renderToSigma();
-      return g;
-    }
-  };
   return sigma;
 }
 

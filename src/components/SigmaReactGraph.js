@@ -39,6 +39,7 @@ export class SigmaNode extends Component {
   //constructor(props) { super(props); this.state = {}; }
   render() {
     const {node, settings, eventProps, getNodeState} = this.props;
+    if (node.hideNode) return null;
     let prefix = settings('prefix');
     let gClass = settings('classPrefix') + '-node'
                   + (node.classes ? ' ' + node.classes : '');
@@ -55,11 +56,11 @@ export class SigmaNode extends Component {
                 || nodeState.hoverNeighbor && 'purple';
     //console.log(node.id, nodeState);
     let r = node[prefix + 'size'];
-    let NodeClass = node.NodeClass || ListenerTarget;
     let x = node[prefix+'x'];
     let y = node[prefix+'y'];
     if (typeof x === 'undefined') throw new Error('no x');
 
+    let NodeClass = node.NodeClass || ListenerTarget;
     return  <NodeClass {...this.props}  className={gClass} 
                 wrapperProps={{ ['data-node-id']:node.id,
                                 transform:`translate(${x},${y})`, }}
@@ -72,6 +73,95 @@ export class SigmaNode extends Component {
                                    .range(circleSizeRange);
       const scaleFactor = node[`${prefix}size`] / node.size;
       */
+  }
+}
+export class SigmaLabel extends Component {
+  //constructor(props) { super(props); this.state = {}; }
+  render() {
+    const {node, settings, eventProps, getNodeState} = this.props;
+    let prefix = settings('prefix');
+    let size = node[prefix + 'size'];
+    let gClass = settings('classPrefix') + '-label'
+                  + (node.classes ? ' ' + node.classes : '');
+    let textClass = settings('classPrefix') + '-node-text';
+
+    let nodeState = getNodeState(node);
+    if (nodeState.hover) return null;
+    if (!settings('forceLabels') && size < settings('labelThreshold'))
+      return null;
+
+    var fontSize = (settings('labelSize') === 'fixed') ?
+          settings('defaultLabelSize') :
+          settings('labelSizeRatio') * size;
+    fontSize = fontSize * (nodeState.hoverNeighbor && 1.2 
+                            || nodeState.muted && 0.8
+                            || 1);
+    let fontFamily = settings('font');
+    var normalLabelColor = (settings('labelColor') === 'node') ?
+                              (node.color || settings('defaultNodeColor')) :
+                              settings('defaultLabelColor');
+
+    // FIX COLOR STUFF!  css?
+    let fill =  nodeState.hoverNeighbor && settings('defaultLabelNeighborColor')
+                || nodeState.muted && settings('defaultNodeMuteColor')
+                || normalLabelColor;
+    //console.log(node.id, nodeState);
+    let x = node[prefix+'x'] + size + 3;
+    let y = node[prefix+'y'] + fontSize / 3;
+    if (typeof x === 'undefined') throw new Error('no x');
+
+    let LabelClass = node.LabelClass || ListenerTarget;
+    return  <LabelClass wrapperTag='g' {...this.props}  className={gClass} 
+                wrapperProps={{ ['data-label-target']:node.id,
+                                transform:`translate(${x},${y})`, }}
+                  eventProps={eventProps} >
+                <text {...{fontSize, fill, fontFamily,}} className={textClass} 
+                    data-label-target={node.id} 
+                    data-node-id={node.id} 
+                >
+                  {node.label}
+                </text>
+            </LabelClass>;
+  }
+}
+export class SigmaHover extends Component {
+  render() {
+    const {node, settings, eventProps, getNodeState, children} = this.props;
+    var prefix = settings('prefix') || '',
+        size = node[prefix + 'size'],
+        gClass = settings('classPrefix') + '-hover'
+                  + (node.classes ? ' ' + node.classes : '');
+
+    /*
+
+    //let nodeState = getNodeState(node);
+    //if (nodeState.hover) return null;
+
+    var fontSize = (settings('labelSize') === 'fixed') ?
+          settings('defaultLabelSize') :
+          settings('labelSizeRatio') * size;
+    fontSize = fontSize * (nodeState.hoverNeighbor && 1.2 
+                            || nodeState.muted && 0.8
+                            || 1);
+    let fontFamily = settings('font');
+    var normalLabelColor = (settings('labelColor') === 'node') ?
+                              (node.color || settings('defaultNodeColor')) :
+                              settings('defaultLabelColor');
+
+    // FIX COLOR STUFF!  css?
+    let fill =  nodeState.hoverNeighbor && settings('defaultLabelNeighborColor')
+                || nodeState.muted && settings('defaultNodeMuteColor')
+                || normalLabelColor;
+    //console.log(node.id, nodeState);
+    let x = node[prefix+'x'];
+    let y = node[prefix+'y'];
+    */
+
+    let HoverClass = node.HoverClass || ListenerTarget; // expected to be FoHover for now
+    return  <HoverClass
+              {...Object.assign({},this.props, {className:gClass})} >
+              {children}
+            </HoverClass>;
   }
 }
 export class SigmaEdge extends Component {
@@ -123,10 +213,12 @@ export class SigmaGroup extends Component {
             </g>);
   }
 }
+/*
 export class FoNode extends Component {
 }
 export class FoLabel extends Component {
 }
+*/
 export class FoHover extends Component {
   constructor(props) {
     super(props);
@@ -134,51 +226,56 @@ export class FoHover extends Component {
   }
   componentDidMount() {
     const {node, } = this.props;
-    //this.resizeFo();
+    this.resizeFo();
     //node.resizeFo = this.resizeFo.bind(this);
   }
   resizeFo() {
-    const {sigmaNode, sigmaSettings} = this.props;
+    const {node, settings} = this.props;
     let {w, h, styles} = this.state;
     styles = _.cloneDeep(styles); // not to mutate existing state...probably doesn't matter
     //const {fontSize, fontColor, fontFamily} = styles;
     if (!this.foDiv) {
-      console.log('no foDiv for resizing', sigmaNode.id);
+      console.log('no foDiv for resizing', node.id);
       return {w:0,h:0};
     }
     const fontStyles = this.fontStyles();
     Object.assign(styles, fontStyles);
     const {fontSize, fontColor, fontFamily} = fontStyles;
     // Case when we don't want to display the fo
-    if (!sigmaSettings('forceLabels') && 
-          fontSize < sigmaSettings('labelFontSizeThreshold')) {
+    if (!settings('forceLabels') && 
+          fontSize < settings('labelFontSizeThreshold')) {
       styles.display = 'none';
       [w,h] = [0,0];
     } else {
       [w,h] = getSize(this.foDiv);
     }
+    console.log(w,h);
     this.setState({styles, w, h});
     return {w,h, styles};
   }
   fontStyles() {
-    const {sigmaNode, sigmaSettings} = this.props;
+    const {node, settings} = this.props;
     const {fontSize, fontColor, } = this.state.styles;
-    let size = sigmaNode.size;
-    let fs = (sigmaSettings('labelSize') === 'fixed')
-                      ? sigmaSettings('defaultLabelSize')
-                      : sigmaSettings('fontFromSize')(size);
-    let fc = (sigmaSettings('labelColor') === 'node')
-                      ? (sigmaNode.color || sigmaSettings('defaultNodeColor'))
-                      : sigmaSettings('defaultLabelColor');
-    let fontFamily = sigmaSettings('font');
+    let size = node.size;
+    let fs = (settings('labelSize') === 'fixed')
+                      ? settings('defaultLabelSize')
+                      : settings('fontFromSize')(size);
+    let fc = (settings('labelColor') === 'node')
+                      ? (node.color || settings('defaultNodeColor'))
+                      : settings('defaultLabelColor');
+    let fontFamily = settings('font');
     return {fontSize:fs, fontColor:fc, fontFamily};
   }
   render() {
-    const {children, eventHandlers=[], sigmaSettings, sigmaNode} = this.props;
-    const {w,h} = this.state;
-    const className = sigmaSettings('classPrefix') + '-fo';
+    const {children, eventHandlers=[], settings, node, wrapperProps} = this.props;
+    let {w, h, styles} = this.state;
+    const {fontSize, fontColor, } = styles;
+    const foClass = settings('classPrefix') + '-fo';
+    const divClass = settings('classPrefix') + '-fo-div';
+    let prefix = settings('prefix');
+    let size = node[prefix + 'size'];
     /*
-    return <g data-node-id={sigmaNode.id} data-el={this}>
+    return <g data-node-id={node.id} data-el={this}>
               <foreignObject className={className} width={w} height={h} >
                 <div className={className + '-div'}
                       ref={d=>this.foDiv=d} style={this.state.styles} >
@@ -187,16 +284,19 @@ export class FoHover extends Component {
               </foreignObject>
            </g>;
     */
-    return <ListenerTarget wrapperTag="g" 
-              eventHandlers={eventHandlers.concat(this.resizeFo.bind(this))}
-            >
-              <foreignObject className={className} width={w} height={h} >
-                <div className={className + '-div'}
-                      ref={d=>this.foDiv=d} style={this.state.styles} >
+    let x = node[prefix+'x'] - w / 2;
+    let y = node[prefix+'y'] - h / 2;
+    if (typeof x === 'undefined') throw new Error('no x');
+    return  <g transform={`translate(${x},${y})`} >
+              <foreignObject className={foClass} width={w} height={h} >
+                <ListenerTarget wrapperTag="div" {...wrapperProps} style={styles}
+                      className={divClass} refFunc={(d=>this.foDiv=d).bind(this)}
+                      eventHandlers={eventHandlers.concat(this.resizeFo.bind(this))} >
                   {children}
-                </div>
-              </foreignObject>
-           </ListenerTarget>;
+                </ListenerTarget>;
+            </foreignObject>
+          </g>;
+    //<div className={className + '-div'} ref={d=>this.foDiv=d} style={styles} > </div>
     if (this.props.needsRect) {
       throw new Error("fix this");
       //return  <g><rect className="edge-cover" />{fo}</g>;
@@ -250,7 +350,6 @@ export class ListenerNode extends Component {
   }
   dispatch(e) {
     const {eventHandlers=[], } = this.props;
-      //sigmaNode, sigmaSettings, renderToSigma, sigmaDomEl, 
     let target = findTarget(e.target);
     let node = target && target.props.node || null;
     //console.log('node', target||'none',);
@@ -264,12 +363,12 @@ export class ListenerNode extends Component {
     */
   }
   render() {
-    const {wrapperTag='g', children, refFunc=d=>d } = this.props;
+    const {wrapperTag='g', children, refFunc=d=>d, className } = this.props;
     let eventsToHandle = this.props.eventsToHandle || this.state.eventsToHandle;
     const reactEventypes = _.fromPairs(
       eventsToHandle.map(eventType=> [eventType,this.dispatch.bind(this)]));
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-    return  <Tag className="listener-node" {...reactEventypes} ref={refFunc}>
+    return  <Tag className={'listener-node ' + (className||'') } {...reactEventypes} ref={refFunc}>
               {children}
             </Tag>;
   }
