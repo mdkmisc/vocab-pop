@@ -128,7 +128,7 @@ export default class SigmaReactGraph extends Component {
       $(this.graphDiv).width(width);
       $(this.graphDiv).height(height);
       this.setState({w:width, h:height});
-      this.sigmaInstance.refresh();
+      this.sigmaInstance && this.sigmaInstance.refresh();
       return;
     }
     if (!this.makeSigmaInstance()) {
@@ -335,7 +335,7 @@ export default class SigmaReactGraph extends Component {
     return renderer;
   };
   render() {
-    let {renderer, settings} = this;
+    let {renderer, settings, sigma} = this;
     let {className='', style={}, } = this.props;
     const {w,h, hoverNode, hoverNeighbors} = this.state;
     let svg = '';
@@ -381,16 +381,22 @@ export default class SigmaReactGraph extends Component {
                   { hoverNode &&
                       <SigmaHover node={hoverNode} settings={settings} 
                           getNodeState={this.getNodeState.bind(this)}
-                      /> || 'urp'}
+                      /> || ''}
                 </SigmaGroup>
                 {canvas}
               </svg>
     }
-
+    /*
+                  { hoverNeighbors && hoverNeighbors.nodes &&
+                    hoverNeighbors.nodes.map(
+                      node => <SigmaHover key={node.id} node={hoverNode} settings={settings} 
+                                getNodeState={this.getNodeState.bind(this)} />)}
+    */
     style = Object.assign({}, style, { width: `${w}px`, height: `${h}px`, });
     // svg ? style.position = 'absolute'; // from svg renderer
 
     return  <ListenerNode wrapperTag="div" className={className} style={style} 
+                  renderer={renderer}
                   eventsToHandle={['onMouseMove']}
                   eventHandlers={[this.setHoverNode.bind(this)]}
                   refFunc={(div=>this.graphDiv=div).bind(this)} >

@@ -290,6 +290,7 @@ export class FoHover extends Component {
     return  <g transform={`translate(${x},${y})`} >
               <foreignObject className={foClass} width={w} height={h} >
                 <ListenerTarget wrapperTag="div" {...wrapperProps} style={styles}
+                      data-node-id={node.id}
                       className={divClass} refFunc={(d=>this.foDiv=d).bind(this)}
                       eventHandlers={eventHandlers.concat(this.resizeFo.bind(this))} >
                   {children}
@@ -331,9 +332,9 @@ ListenerTarget.nextId = 0;
 ListenerTarget.targets = [];
 function findTarget(el) {
   if (el.classList.contains('listener-target'))
-    return ListenerTarget.targets[el.getAttribute('data-target-id')];
+    return [ListenerTarget.targets[el.getAttribute('data-target-id')], el];
   if (el.classList.contains('listener-node'))
-    return null;
+    return [null,null];
   if (el.parentNode)
     return findTarget(el.parentNode);
 }
@@ -349,9 +350,16 @@ export class ListenerNode extends Component {
     };
   }
   dispatch(e) {
-    const {eventHandlers=[], } = this.props;
-    let target = findTarget(e.target);
-    let node = target && target.props.node || null;
+    const {eventHandlers=[], renderer } = this.props;
+    let [target,targetEl] = findTarget(e.target);
+    let node;
+    if (target && target.props.node) {
+      node = target.props.node;
+    } else if (target && target.props["data-node-id"]) {
+      node = renderer.graph.nodes(target.props["data-node-id"]);
+    } else if (targetEl && targetEl.getAttribute('data-node-id')) {
+      node = renderer.graph.nodes(targetEl.getAttribute('data-node-id'));
+    }
     //console.log('node', target||'none',);
     eventHandlers.forEach( l => l(e, node, target, this.props));
     /*
