@@ -28,7 +28,8 @@ var $ = require('jquery'); window.$ = $;
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 require('./stylesheets/Vocab.css');
-import SigmaReactGraph, { ListenerTarget, FoHover } from './SigmaReactGraph';
+import SigmaReactGraph from './sigma-react/sigma.renderers.react';
+import { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -94,12 +95,15 @@ export class VocabMapByDomain extends Component {
 export default class VocabMap extends Component {
   constructor(props) {
     super(props);
-    this.state = {  DefaultNodeClass: VocNode, 
+    this.state = {  
+                    /*
+                    DefaultNodeClass: VocNode, 
                     DefaultLabelClass:VocLabel,
                     DefaultHoverClass:VocHover,
                     DefaultEdgeClass:VocEdge,
+                    */
                     cssClass: 'vocab-map',
-                    defaultNodeType: 'circle_label_drill',
+                    //defaultNodeType: 'circle_label_drill',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
@@ -114,6 +118,7 @@ export default class VocabMap extends Component {
     if (sg && sg.length) {
       console.log('dataprep in vocabmap');
       let elements = makeElements(sg.getChildren());
+      /*
       elements.nodes.forEach(
         d => {
           if (d.isParent) {
@@ -124,9 +129,10 @@ export default class VocabMap extends Component {
             //d.type = 'groupLabel';
           }
         });
+      */
       this.setState({
-        nodes: elements.nodes,
-        edges: elements.edges,
+        nodes: elements.nodes.map(n=>new VocabMapNode(n)),
+        edges: elements.edges.map(e=>new VocabMapEdge(e)),
       });
     }
   }
@@ -144,6 +150,92 @@ export default class VocabMap extends Component {
   render() {
     let props = Object.assign({}, this.props, this.state);
     return  <SigmaReactGraph  {...props} />;
+  }
+}
+class VocabMapNode {
+  constructor(props) {
+    Object.assign(this, props);
+  }
+}
+class VocabMapEdge {
+  constructor(props) {
+    Object.assign(this, props);
+  }
+}
+class VocLabel extends Component {
+  render() {
+    const { sigmaNode, children, event } = this.props;
+    event && console.log('VocLabel', event);
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
+    //return <g data-node-id={sigmaNode.id} data-sigma-el-type="label" data-react-type="VocLabel">{children}</g>;
+    //return <ListenerNode wrapperTag="g" {...this.props} >{children}</ListenerNode>;
+  }
+}
+class VocHover extends Component {
+  // these get made by sigmaSvgReactRenderer
+  constructor(props) {
+    super(props);
+    this.state = {updates:0};
+  }
+  /*
+  componentDidMount() {
+    const {sigmaNode, notInGraph} = this.props;
+    sigmaNode.update = this.update.bind(this);
+  }
+  */
+  render() {
+    const {sigmaNode, children, notInGraph,
+            hover, mute, zoom, list, infoHover, } = this.props;
+
+    if (sigmaNode.nodeData.records.length !== 1) throw new Error("expected one record");
+    let rec = sigmaNode.nodeData.records[0];
+    let classVal = rec.drill.lookup('class_concept_id');
+    let conceptClasses = classVal ? classVal.getChildren() : [];
+    //console.log(conceptClasses.join('\n'));
+
+    let zoomContent = '';
+    if (zoom) {
+      zoomContent = <div key="zoomContent" className="zoom">ZOOM!</div>;
+    }
+
+    let chunkStyle = {};
+    let chunks = [
+      <InfoChunk key="Voc" k="Voc" v={sigmaNode.label} />
+    ]
+    if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.label)
+      chunks.push(<InfoChunk key="Class" k="Class" v={conceptClasses[0]+''} />);
+
+    //chunkStyle.display = hover ? 'flex' : 'none';
+    chunkStyle.display = 'flex';
+    chunks = chunks.concat(
+      _.map(sigmaNode.counts||{},
+        (v,k) => {
+          let trigger = d=>d;
+          let style = _.clone(chunkStyle);
+          let cls = k;
+          if (infoHover && infoHover.key === k) {
+            // put specific infoTriggers on each InfoChunk for more
+            // detailed information
+            trigger = ()=>this.infoTrigger(k,v);
+            style.fontSize = 'large';
+            cls += ' info-hover';
+          }
+          return <InfoChunk key={k} cls={cls} k={k} v={v} sigmaNode={sigmaNode}
+                  vfmt={commify} style={chunkStyle} />
+        }
+      ));
+    return <FoHover {...this.props} >
+              <Icons key="Icons" hover={hover} />,
+              <div key="chunks" className="info-chunks">
+                {chunks || <p>nothing yet</p>}
+              </div>
+              {zoomContent}
+           </FoHover>;
+  }
+  infoTrigger(k,v,e,out=false) {
+    let {sigmaNode, notInGraph, srgSigmaEvtCb} = this.props;
+    
+    console.log('FIX THIS    infoTrigger', e.type, k);
   }
 }
 export class DomainMap extends VocabMap {
@@ -228,96 +320,12 @@ function nodeInfo(props) {
       throw new Error(`unknown nodeInfo request ${request}`);
   }
 }
-function eventPerspective(me, evt, neighbors) {
-  if (me === evt) return 'self';
+function eventPerspective(me, event, neighbors) {
+  if (me === event) return 'self';
   if (_.includes(neighbors, me)) return 'neighbor';
   return 'other';
 }
-class VocNode extends Component {
-  render() {
-    const { sigmaNode, children } = this.props;
-    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
-    //return <g>{children}</g>;
-    //return <ListenerNode wrapperTag="g" {...this.props} > {children} </ListenerNode>;
-  }
-}
-class VocLabel extends Component {
-  render() {
-    const { sigmaNode, children, evt } = this.props;
-    evt && console.log('VocLabel', evt);
-    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
-    //return <g data-node-id={sigmaNode.id} data-sigma-el-type="label" data-react-type="VocLabel">{children}</g>;
-    //return <ListenerNode wrapperTag="g" {...this.props} >{children}</ListenerNode>;
-  }
-}
-class VocHover extends Component {
-  // these get made by sigmaSvgReactRenderer
-  constructor(props) {
-    super(props);
-    this.state = {updates:0};
-  }
-  /*
-  componentDidMount() {
-    const {sigmaNode, notInGraph} = this.props;
-    sigmaNode.update = this.update.bind(this);
-  }
-  */
-  render() {
-    const {sigmaNode, children, notInGraph,
-            hover, mute, zoom, list, infoHover, } = this.props;
-
-    if (sigmaNode.nodeData.records.length !== 1) throw new Error("expected one record");
-    let rec = sigmaNode.nodeData.records[0];
-    let classVal = rec.drill.lookup('class_concept_id');
-    let conceptClasses = classVal ? classVal.getChildren() : [];
-    //console.log(conceptClasses.join('\n'));
-
-    let zoomContent = '';
-    if (zoom) {
-      zoomContent = <div key="zoomContent" className="zoom">ZOOM!</div>;
-    }
-
-    let chunkStyle = {};
-    let chunks = [
-      <InfoChunk key="Voc" k="Voc" v={sigmaNode.label} />
-    ]
-    if (conceptClasses.length === 1 && conceptClasses[0]+'' !== sigmaNode.label)
-      chunks.push(<InfoChunk key="Class" k="Class" v={conceptClasses[0]+''} />);
-
-    //chunkStyle.display = hover ? 'flex' : 'none';
-    chunkStyle.display = 'flex';
-    chunks = chunks.concat(
-      _.map(sigmaNode.counts||{},
-        (v,k) => {
-          let trigger = d=>d;
-          let style = _.clone(chunkStyle);
-          let cls = k;
-          if (infoHover && infoHover.key === k) {
-            // put specific infoTriggers on each InfoChunk for more
-            // detailed information
-            trigger = ()=>this.infoTrigger(k,v);
-            style.fontSize = 'large';
-            cls += ' info-hover';
-          }
-          return <InfoChunk key={k} cls={cls} k={k} v={v} sigmaNode={sigmaNode}
-                  vfmt={commify} style={chunkStyle} />
-        }
-      ));
-    return <FoHover {...this.props} >
-              <Icons key="Icons" hover={hover} />,
-              <div key="chunks" className="info-chunks">
-                {chunks || <p>nothing yet</p>}
-              </div>
-              {zoomContent}
-           </FoHover>;
-  }
-  infoTrigger(k,v,e,out=false) {
-    let {sigmaNode, notInGraph, srgSigmaEvtCb} = this.props;
-    
-    console.log('FIX THIS    infoTrigger', e.type, k);
-  }
-}
-class DomainMapNode extends VocNode {
+class DomainMapNode extends Component {
   render() {
     const {sigmaNode, sigmaSettings, children} = this.props;
     return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
@@ -326,7 +334,7 @@ class DomainMapNode extends VocNode {
            </div>;
   }
 }
-class VocGroupNode extends VocNode {
+class VocGroupNode extends Component {
   render() {
     const {sigmaNode, sigmaSettings, children} = this.props;
     return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
@@ -334,6 +342,7 @@ class VocGroupNode extends VocNode {
             >{this.props.sigmaNode.label}</h3>;
   }
 }
+/*
 class VocGroupLabel extends VocNode {
   render() {
     const {sigmaNode, sigmaSettings, children} = this.props;
@@ -346,6 +355,7 @@ class VocGroupHover extends VocNode {
     return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
   }
 }
+*/
 function Icons(props) {
   const {hover, } = props;
                 //style={{display:hover ? 'inline' : 'none',}} >

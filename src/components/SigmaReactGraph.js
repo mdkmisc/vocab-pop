@@ -8,7 +8,8 @@ var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
-export function firstLastEvt(rxSubj, ms) {
+
+export function firstLastEvent(rxSubj, ms) {
   return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
           .distinctUntilChanged());
 }
@@ -34,6 +35,94 @@ export function firstLastEvt(rxSubj, ms) {
     and then inside that will be a ReactInsideSigmaNode component
 */
 
+export class SigmaNode extends Component {
+  //constructor(props) { super(props); this.state = {}; }
+  render() {
+    const {node, settings, eventProps, getNodeState} = this.props;
+    let prefix = settings('prefix');
+    let gClass = settings('classPrefix') + '-node'
+                  + (node.classes ? ' ' + node.classes : '');
+    let circleClass = settings('classPrefix') + '-node-circle';
+
+    let nodeState = getNodeState(node);
+    // FIX COLOR STUFF!  css?
+    let fill = nodeState.hover && settings('defaultNodeHoverColor') 
+                || nodeState.hoverNeighbor && 'pink' 
+                || nodeState.muted && settings('defaultNodeMuteColor')
+                || node.color || settings('defaultNodeColor');
+    let strokeWidth = nodeState.hover || nodeState.hoverNeighbor ? 4 : 0;
+    let stroke = nodeState.hover && settings('defaultNodeHoverStrokeColor') 
+                || nodeState.hoverNeighbor && 'purple';
+    //console.log(node.id, nodeState);
+    let r = node[prefix + 'size'];
+    let NodeClass = node.NodeClass || ListenerTarget;
+    let x = node[prefix+'x'];
+    let y = node[prefix+'y'];
+    if (typeof x === 'undefined') throw new Error('no x');
+
+    return  <NodeClass {...this.props}  className={gClass} 
+                wrapperProps={{ ['data-node-id']:node.id,
+                                transform:`translate(${x},${y})`, }}
+                  eventProps={eventProps} wrapperTag='g'>
+                <circle {...{r, fill, stroke, strokeWidth}} className={circleClass} data-node-id={node.id} />
+            </NodeClass>;
+      /*
+      const circleSizeRange = [3,10];
+      const size = d3.scaleLinear().domain(settings('sizeDomain'))
+                                   .range(circleSizeRange);
+      const scaleFactor = node[`${prefix}size`] / node.size;
+      */
+  }
+}
+export class SigmaEdge extends Component {
+  render() {
+    const {edge, source, target, settings, eventProps, getEdgeState, } = this.props;
+    //let circleClass = settings('classPrefix') + '-node-circle';
+    var color = edge.color,
+        prefix = settings('prefix') || '',
+        edgeColor = settings('edgeColor'),
+        defaultNodeColor = settings('defaultNodeColor'),
+        defaultEdgeColor = settings('defaultEdgeColor');
+    let gClass = settings('classPrefix') + '-edge';
+    let lClass = settings('classPrefix') + '-edge-line';
+
+    let edgeState = getEdgeState(edge);
+    let strokeWidth = (edge[`${prefix}size`] || 1) / (edgeState.muted ? 2 : 1);
+    let stroke = edgeState.sourceHover && settings('defaultNodeHoverColor') 
+                || edgeState.targetHover && 'pink' 
+                || edgeState.muted && settings('defaultNodeMuteColor')
+                || edge.color || settings('defaultEdgeColor');
+
+    let EdgeClass = edge.EdgeClass || ListenerTarget;
+
+    return  <EdgeClass {...this.props} wrapperTag='g' className={gClass} data-edge-id={edge.id} >
+              <line   {...{stroke, strokeWidth}}
+                      className={lClass} data-node-id={edge.id} 
+                      x1={source[prefix + 'x']}
+                      y1={source[prefix + 'y']}
+                      x2={target[prefix + 'x']}
+                      y2={target[prefix + 'y']}
+              />
+            </EdgeClass>;
+              
+      /*
+        line.style.display = '';
+      const circleSizeRange = [3,10];
+      const size = d3.scaleLinear().domain(settings('sizeDomain'))
+                                   .range(circleSizeRange);
+      const scaleFactor = node[`${prefix}size`] / node.size;
+      */
+  }
+}
+export class SigmaGroup extends Component {
+  render() {
+    const {grp, settings, children} = this.props;
+    let c = settings('classPrefix');
+    return (<g id={`${c}-group-${grp}`} className={`${c}-group`} >
+              {children}
+            </g>);
+  }
+}
 export class FoNode extends Component {
 }
 export class FoLabel extends Component {
@@ -85,7 +174,7 @@ export class FoHover extends Component {
     return {fontSize:fs, fontColor:fc, fontFamily};
   }
   render() {
-    const {children, evtHandlers=[], sigmaSettings, sigmaNode} = this.props;
+    const {children, eventHandlers=[], sigmaSettings, sigmaNode} = this.props;
     const {w,h} = this.state;
     const className = sigmaSettings('classPrefix') + '-fo';
     /*
@@ -99,7 +188,7 @@ export class FoHover extends Component {
            </g>;
     */
     return <ListenerTarget wrapperTag="g" 
-              evtHandlers={evtHandlers.concat(this.resizeFo.bind(this))}
+              eventHandlers={eventHandlers.concat(this.resizeFo.bind(this))}
             >
               <foreignObject className={className} width={w} height={h} >
                 <div className={className + '-div'}
@@ -122,283 +211,6 @@ function getSize(dn) {
   return [rw,rh];
 }
 
-
-function sigmaReactRenderer() {
-  console.log('loading sigmaReactRenderer!!!!');
-  var sigma = require('sigma');
-  neighborhoodPlugin(sigma);
-  sigma.utils.pkg('sigma.svg.nodes');
-  sigma.utils.pkg('sigma.svg.labels');
-  sigma.utils.pkg('sigma.svg.hovers');
-
-  sigma.svg.nodes.circle_label_drill = {
-    create: function(node, settings) {
-      const prefix = settings('prefix');
-      let g = document.createElementNS(d3.namespaces.svg, 'g');
-      let className = settings('classPrefix') + '-node';
-      g.setAttributeNS(null, 'data-node-id', node.id);
-      g.setAttributeNS(null, 'class', className);
-      //g.setAttributeNS(null, 'class', `${settings('classPrefix')}-node ${node.classes||''}`);
-      return g;
-    },
-    update: function(node, g, settings, evt) {
-      let prefix = settings('prefix') || '';
-      let NodeClass = node.NodeClass || settings('DefaultNodeClass');
-      let fill = node.color || settings('defaultNodeColor');
-      let r = node[prefix + 'size'];
-      let className = settings('classPrefix') + '-node-circle';
-
-      g.setAttributeNS(null, 'transform',
-          `translate(${node[prefix+'x']},${node[prefix+'y']})`);
-      /*
-      const circleSizeRange = [3,10];
-      const size = d3.scaleLinear().domain(settings('sizeDomain'))
-                                   .range(circleSizeRange);
-      const scaleFactor = node[`${prefix}size`] / node.size;
-      */
-
-      g.style.display = '';
-      function renderToSigma(evtProps) {
-        render(<NodeClass sigmaNode={node} sigmaSettings={settings}
-                    evtProps={evtProps} 
-                  sigmaDomEl={g} evt={evt}  >
-                  <circle {...{r, fill, className}} data-node-id={node.id} />
-              </NodeClass>, g);
-      }
-      renderToSigma();
-      return this;
-    }
-  };
-  sigma.svg.labels.circle_label_drill = {
-    create: function(node, settings) {
-      var prefix = settings('prefix') || '',
-          size = node[prefix + 'size'],
-          g = document.createElementNS(d3.namespaces.svg, 'g'),
-          className = settings('classPrefix') + '-label';
-      g.setAttributeNS(null, 'data-label-target', node.id);
-      g.setAttributeNS(null, 'class', className);
-      return g;
-    },
-
-    update: function(node, g, settings, evt) {
-      if (node.hideLabel) return;
-
-      var prefix = settings('prefix') || '',
-          size = node[prefix + 'size'],
-          className = settings('classPrefix') + '-label';
-      var fontSize = (settings('labelSize') === 'fixed') ?
-            settings('defaultLabelSize') :
-            settings('labelSizeRatio') * size;
-
-      let LabelClass = node.LabelClass || settings('DefaultLabelClass');
-
-      var fontSize = (settings('labelSize') === 'fixed') ?
-        settings('defaultLabelSize') :
-        settings('labelSizeRatio') * size;
-
-      var fill = (settings('labelColor') === 'node') ?
-                        (node.color || settings('defaultNodeColor')) :
-                        settings('defaultLabelColor');
-      let fontFamily = settings('font');
-
-      // Case when we don't want to display the label
-      if (!settings('forceLabels') && size < settings('labelThreshold'))
-        return;
-      if (typeof node.label !== 'string')
-        return;
-      g.setAttributeNS(null, 'transform',
-          `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + fontSize / 3})`);
-      g.style.display = '';
-
-      function renderToSigma(evtProps) {
-        render(<LabelClass sigmaNode={node} sigmaSettings={settings} 
-                    sigmaDomEl={g} evt={evt} evtProps={evtProps} >
-                  <text {...{fontSize, fill, fontFamily, className}} 
-                      data-label-target={node.id} 
-                      data-node-id={node.id} 
-                  >
-                    {node.label}
-                  </text>
-              </LabelClass>, g);
-      }
-      renderToSigma();
-      return this;
-    }
-  };
-  sigma.svg.hovers.groupLabel = sigma.svg.hovers.circle_label_drill = {
-    create: function(node, el, measurementCanvas, settings) {
-      console.log('in hover create');
-      let thisUpdate = sigma.svg.hovers.circle_label_drill.create;
-      var prefix = settings('prefix') || '',
-          size = node[prefix + 'size'],
-          g = document.createElementNS(d3.namespaces.svg, 'g'),
-          className = settings('classPrefix') + '-hover';
-      g.setAttributeNS(null, 'data-node-id', node.id);
-      g.setAttributeNS(null, 'class', className);
-
-      let HoverClass = node.HoverClass || settings('DefaultHoverClass');
-
-      g.setAttributeNS(null, 'transform',
-          `translate(${node[prefix+'x'] + size + 3},${node[prefix+'y'] + size / 3})`);
-      g.style.display = '';
-
-      function renderToSigma(evtProps) {
-        render(<HoverClass sigmaNode={node} sigmaSettings={settings} 
-                  renderToSigma={renderToSigma} sigmaDomEl={g} evtProps={evtProps}
-                />, g);
-      }
-      renderToSigma();
-      return g;
-    }
-  };
-  return sigma;
-}
-
-export default class SigmaReactGraph extends Component { // started making this, but not using yet...finish?
-  constructor(props) {
-    super(props);
-    this.state = {updates:0};
-    //this.reactNodeEvtStream = new Rx.Subject();
-    //this.sigmaNodeEvtStream = new Rx.Subject();
-    //this.msgInfoStream = new Rx.Subject();
-  }
-  componentDidMount() {
-    this.setState({forceUpdate: true});
-    //firstLastEvt(this.reactNodeEvtStream,50).subscribe(this.reactNodeEvt.bind(this));
-    //firstLastEvt(this.sigmaNodeEvtStream,50).subscribe(this.sigmaNodeEvt.bind(this));
-  }
-  componentDidUpdate(prevProps, prevState) {
-    const {width, height, nodes, edges} = this.props;
-    const {w, h, sigmaInstance, cam, renderer, sizeDomain} = this.state;
-    DEBUG && (window.srgState = this.state);
-    if (!nodes || !nodes.length) {
-      if (prevProps.nodes && prevProps.nodes.length)
-        throw new Error("what happened to the nodes?");
-      return;
-    }
-    if (w !== width || h !== height) {
-      $(this.graphDiv).width(width);
-      $(this.graphDiv).height(height);
-      this.setState({w:width, h:height});
-      return;
-    }
-    if (!sigmaInstance) {
-      let { sigmaInstance, cam, renderer } = this.makeGraph();
-      this.setState({sigmaInstance, cam, renderer});
-      return;
-    }
-    if (!_.isEqual(nodes, prevProps.nodes)) {
-      sigmaInstance.graph.clear();
-      sigmaInstance.graph.read({nodes,edges});
-    }
-    if (cam && !sizeDomain) {
-      let sizeDomain = d3.extent(nodes.map(d=>d.size));
-      renderer.settings('sizeDomain', sizeDomain);
-      this.setState({ sizeDomain });
-      let nodeSizeScale = d3.scaleLinear()
-                            .domain(sizeDomain)
-                            .range([1,2.5]);  
-      let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
-                            .domain([2,0])
-                            .range([6,20]);
-      let fontFromSize = function(size) {
-                            return nodeSizeScale(size) * zoomFontScale(cam.ratio);
-                          };
-      renderer.settings('nodeSizeScale', nodeSizeScale);
-      renderer.settings('zoomFontScale', zoomFontScale);
-      renderer.settings('fontFromSize', fontFromSize);
-    }
-    sigmaInstance && sigmaInstance.refresh();
-  }
-  shouldComponentUpdate(nextProps, nextState) {
-    if (this.props.nodes &&
-        $(this.graphDiv).find('.sigma-node').length 
-          > this.props.nodes.length * 1.5)
-      debugger; // too many nodes!  (had a memory leak with this for a while)
-    return $(this.graphDiv).find('.sigma-node').length < 100;
-  }
-  makeGraph() {
-    let {nodes=[], edges=[], 
-          DefaultNodeClass, 
-          DefaultLabelClass,
-          DefaultHoverClass,
-          DefaultEdgeClass,
-          defaultNodeType, defaultEdgeType,
-          defaultNodeColor='darkkhaki',
-          defaultLabelColor='darkred',
-          defaultEdgeColor='darkslateblue',
-          defaultLabelSize=16,
-          labelSize='proportional',
-          labelThreshold=2,
-          //labelFontSizeThreshold=2,
-          labelSizeRatio=3,
-          cameraRatio=.7,
-        } = this.props;
-    console.log('making graph');
-    if (!nodes.length) return;
-    if (defaultNodeType)
-      nodes.forEach(node=>node.type=node.type||defaultNodeType);
-    if (defaultEdgeType)
-      edges.forEach(edge=>edge.type=edge.type||defaultEdgeType);
-    let sigma = sigmaReactRenderer();
-    let sigmaInstance = new sigma({graph:{nodes,edges}});
-    let cam = sigmaInstance.addCamera();
-    let renderer = sigmaInstance.addRenderer({
-      container: this.graphDiv,
-      type: 'svg',
-      camera: cam,
-      //freeStyle: true
-      settings: {
-        DefaultNodeClass,
-        DefaultLabelClass,
-        DefaultHoverClass,
-        DefaultEdgeClass,
-        drawLabels: false,
-        drawEdgeLabels: false,
-        id: 'main',
-        edgeColor: 'target',
-        hideEdgesOnMove: true,
-        defaultLabelColor,
-        defaultNodeColor,
-        defaultEdgeColor,
-        labelSize,
-        //labelFontSizeThreshold: 2,
-        labelThreshold,
-        defaultLabelSize,
-        labelSizeRatio,
-      }
-    });
-    //https://github.com/jacomyal/sigma.js/wiki/Events-API
-    //sigmaInstance.bind('clickNode clickEdge clickStage overNode overEdge outNode outEdge', this.srgSigmaEvtCb.bind(this));
-    sigmaInstance.camera.ratio = cameraRatio;
-    return { sigmaInstance, cam, renderer };
-  }
-  render() {
-    let {cssClass='', style={}} = this.props;
-    const {w,h} = this.state;
-    //console.log(this.props.nodes);
-    //const {msgInfo=''} = this.state;
-    //<MsgInfo info={msgInfo} />
-    style = Object.assign({}, style, { width: `${w}px`, height: `${h}px`, });
-    return  <ListenerNode wrapperTag="div" className={cssClass} style={style} 
-                  eventsToHandle={['onMouseMove']}
-                  refFunc={(div=>this.graphDiv=div).bind(this)}  />;
-    return <div className={cssClass} style={style} 
-                  ref={div=>this.graphDiv=div} 
-              />;
-  }
-  setHoverNode(node, source, renderToSigma) {
-    const {renderer, sigmaInstance} = this.state;
-    if (this.hoverNode !== node) {
-      if (node) node.hideLabel = true;
-      //this.hoverNode && renderer.dispatchEvent( 'outNode', { renderToSigma, node: this.hoverNode, renderer, isRedispatched: true });
-      //node && renderer.dispatchEvent( 'overNode', { renderToSigma, node, isRedispatched: true });
-      this.hoverNode = node;
-      console.log('hoverNode', node && node.id);
-      sigmaInstance.refresh();
-    }
-  }
-}
 export class ListenerTarget extends Component {
   constructor(props) {
     super();
@@ -406,11 +218,11 @@ export class ListenerTarget extends Component {
     ListenerTarget.targets[this.targetId] = this;
   }
   render() {
-    const {wrapperTag='g', children, refFunc=d=>this.elRef=d, className } = this.props;
+    const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
               //{React.cloneElement(this.props.children, this.props)}
     return  <Tag className={(className||'')+" listener-target"} ref={refFunc} 
-                  data-target-id={this.targetId} >
+                  data-target-id={this.targetId} {...wrapperProps}>
               {children}
             </Tag>;
   }
@@ -437,13 +249,15 @@ export class ListenerNode extends Component {
     };
   }
   dispatch(e) {
-    const {evtHandlers=[], } = this.props;
+    const {eventHandlers=[], } = this.props;
       //sigmaNode, sigmaSettings, renderToSigma, sigmaDomEl, 
     let target = findTarget(e.target);
-    console.log('node', target||'none',);
+    let node = target && target.props.node || null;
+    //console.log('node', target||'none',);
+    eventHandlers.forEach( l => l(e, node, target, this.props));
     /*
     if (!sigmaDomEl || document.body.contains(sigmaDomEl)) {
-      evtHandlers.forEach( l => l(e, this.props));
+      eventHandlers.forEach( l => l(e, this.props));
     } else {
       console.log(`can't handle ${e.type} because ListenerNode no longer on page`);
     }
@@ -452,17 +266,14 @@ export class ListenerNode extends Component {
   render() {
     const {wrapperTag='g', children, refFunc=d=>d } = this.props;
     let eventsToHandle = this.props.eventsToHandle || this.state.eventsToHandle;
-    const reactEvtTypes = _.fromPairs(
-      eventsToHandle.map(evtType=> [evtType,this.dispatch.bind(this)]));
+    const reactEventypes = _.fromPairs(
+      eventsToHandle.map(eventType=> [eventType,this.dispatch.bind(this)]));
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-    return  <Tag className="listener-node" {...reactEvtTypes} ref={refFunc}>
+    return  <Tag className="listener-node" {...reactEventypes} ref={refFunc}>
               {children}
             </Tag>;
   }
 }
-SigmaReactGraph.propTypes = {
-  nodes: React.PropTypes.array.isRequired,
-};
 /*
 export class GNode extends Object {
   constructor(props) {
@@ -509,74 +320,3 @@ export class Edge extends Node {
 }
 */
 
-/* sigma.plugins.neighborhoods constructor.
-   from https://github.com/jacomyal/sigma.js/tree/master/plugins/sigma.plugins.neighborhoods
-   but that version required a global sigma, which i didn't want to have necessarily
-*/
-function neighborhoodPlugin(sigma) {
-  sigma.classes.graph.addMethod(
-    'neighborhood',
-    function(centerId) {
-      var k1,
-          k2,
-          k3,
-          node,
-          center,
-          // Those two local indexes are here just to avoid duplicates:
-          localNodesIndex = {},
-          localEdgesIndex = {},
-          // And here is the resulted graph, empty at the moment:
-          graph = {
-            nodes: [],
-            edges: []
-          };
-
-      // Check that the exists:
-      if (!this.nodes(centerId))
-        return graph;
-
-      // Add center. It has to be cloned to add it the "center" attribute
-      // without altering the current graph:
-      node = this.nodes(centerId);
-      center = {};
-      center.center = true;
-      for (k1 in node)
-        center[k1] = node[k1];
-
-      localNodesIndex[centerId] = true;
-      graph.nodes.push(center);
-
-      // Add neighbors and edges between the center and the neighbors:
-      for (k1 in this.allNeighborsIndex[centerId]) {
-        if (!localNodesIndex[k1]) {
-          localNodesIndex[k1] = true;
-          graph.nodes.push(this.nodesIndex[k1]);
-        }
-
-        for (k2 in this.allNeighborsIndex[centerId][k1])
-          if (!localEdgesIndex[k2]) {
-            localEdgesIndex[k2] = true;
-            graph.edges.push(this.edgesIndex[k2]);
-          }
-      }
-
-      // Add edges connecting two neighbors:
-      for (k1 in localNodesIndex)
-        if (k1 !== centerId)
-          for (k2 in localNodesIndex)
-            if (
-              k2 !== centerId &&
-              k1 !== k2 &&
-              this.allNeighborsIndex[k1][k2]
-            )
-              for (k3 in this.allNeighborsIndex[k1][k2])
-                if (!localEdgesIndex[k3]) {
-                  localEdgesIndex[k3] = true;
-                  graph.edges.push(this.edgesIndex[k3]);
-                }
-
-      // Finally, let's return the final graph:
-      return graph;
-    }
-  );
-}
