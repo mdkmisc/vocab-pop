@@ -23,11 +23,6 @@ var env = getClientEnvironment(publicUrl);
 // It is focused on developer experience and fast rebuilds.
 // The production configuration is different and lives in a separate file.
 module.exports = {
-  devServer: {
-    historyApiFallback:{
-        index:'index.html'
-    },
-  },
   // This makes the bundle appear split into separate modules in the devtools.
   // We don't use source maps here because they can be confusing:
   // https://github.com/facebookincubator/create-react-app/issues/343#issuecomment-237241875
@@ -68,6 +63,11 @@ module.exports = {
     // This is the URL that app is served from. We use "/" in development.
     publicPath: publicPath
   },
+  devServer: {
+    historyApiFallback:{
+        index: '/',
+    },
+  },
   resolve: {
     // This allows you to set a fallback for where Webpack should look for modules.
     // We read `NODE_PATH` environment variable in `paths.js` and pass paths here.
@@ -80,7 +80,7 @@ module.exports = {
     //fallback: paths.nodePaths,
     modules: [
       //paths.nodePaths,
-      //path.join(__dirname, "src"),
+      path.join(__dirname, "src"),
       "node_modules"
     ],
     // These are the reasonable defaults supported by the Node ecosystem.

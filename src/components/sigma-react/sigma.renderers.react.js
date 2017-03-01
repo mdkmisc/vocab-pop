@@ -755,6 +755,7 @@ function sigmaReactRenderer() {
    but that version required a global sigma, which i didn't want to have necessarily
 */
 function neighborhoodPlugin(sigma) {
+  if (sigma.classes.graph.hasMethod('neighborhood')) return;
   sigma.classes.graph.addMethod(
     'neighborhood',
     function(centerId) {

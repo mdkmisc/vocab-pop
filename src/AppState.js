@@ -122,8 +122,6 @@ export function initialize({history:_history}) {
   let urlStateOnLoadingPage = getState();
   let appDefaults = { filters: _appSettings.filters, };
   saveState(_.merge({}, appDefaults, urlStateOnLoadingPage));
-
-
   return AppData.cacheDirty();
 }
 

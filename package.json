@@ -70,8 +70,9 @@
     "supergroup": "^1.1.7"
   },
   "scripts": {
-    "start": "compass watch src/components & node scripts/start.js",
-    "webpack-dev-maybe-cleaner-than-start.js": "NODE_ENV=development webpack-dev-server --config config/webpack.config.dev.js",
+    "start-react-version": "node scripts/start.js",
+    "start-react-version-dont-need-anymore-i-think": "compass watch src/components & node scripts/start.js",
+    "start": "NODE_ENV=development webpack-dev-server --config config/webpack.config.dev.js",
     "build": "node scripts/build.js",
     "test": "node scripts/test.js --env=jsdom",
     "flow": "flow; test $? -eq 0 -o $? -eq 2"
