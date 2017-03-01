@@ -27,7 +27,7 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
-import VocabPop from './components/VocabPop';
+import VocabPop, {ConceptView} from './components/VocabPop';
           /* Search, DrugContainer, Tables, */
 import * as AppState from './AppState';
 var $ = require('jquery');
@@ -102,10 +102,13 @@ class DefaultNavBar extends Component {
                 <NavItem eventKey={1}>Drug</NavItem>
               </LinkContainer>
               <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
-                <NavItem eventKey={1}>Condition</NavItem>
+                <NavItem eventKey={2}>Condition</NavItem>
               </LinkContainer>
               <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
-                <NavItem eventKey={1}>All Domains</NavItem>
+                <NavItem eventKey={3}>All Domains</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/conceptview',)}>
+                <NavItem eventKey={4}>Concept View</NavItem>
               </LinkContainer>
             </Nav>
           </Navbar.Collapse>
@@ -330,6 +333,7 @@ export class ComponentWrapper extends Component {
     Object.assign(props, this.props, this.state);
     const Comp = ({
       VocabPop: VocabPop,
+      ConceptView: ConceptView,
       Home: Home,
       //Search: Search,
     })[this.props.route.components.compName];
@@ -343,12 +347,8 @@ export class App extends Component {
   render() {
     const {main, sidebar} = this.props;
     let NavBar = DefaultNavBar;
-    return (
-      <div className="vocab-app flex-box">
-        <div className="flex-content-height" >
-          <NavBar />
-        </div>
-        <Row className="flex-remaining-height">
+    let belowNav = sidebar
+      ? <Row className="flex-remaining-height">
           <Col xs={2} md={2} className="sidebar">
             {sidebar}
           </Col>
@@ -356,6 +356,17 @@ export class App extends Component {
             {main}
           </Col>
         </Row>
+      : <Row className="flex-remaining-height">
+          <Col xs={12} md={12} >
+            {main}
+          </Col>
+        </Row>;
+    return (
+      <div className="vocab-app flex-box">
+        <div className="flex-content-height" >
+          <NavBar />
+        </div>
+        {belowNav}
       </div>
     );
   }

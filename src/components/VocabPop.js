@@ -29,7 +29,8 @@ import {VocabMapByDomain, DomainMap} from './VocabMap';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 //import 'tipsy/src/stylesheets/tipsy.css';
-require('./stylesheets/Vocab.css');
+//require('./stylesheets/Vocab.css');
+require('./sass/Vocab.scss');
 //require('tipsy/src/javascripts/jquery.tipsy');
 //require('./VocabPop.css');
 
@@ -66,6 +67,19 @@ export default class VocabPop extends Component {
     // all the important data fetching should be happening in ConceptData now
     if (!this.props.domain_id) {
       return  <ConceptData {...this.props}>
+                <DomainMap {...this.props}/>
+              </ConceptData>;
+    }
+    return  <ConceptData {...this.props}>
+              <VocabMapByDomain {...this.props}/>
+            </ConceptData>;
+  }
+}
+export class ConceptView extends Component {
+  render() {
+    if (!this.props.concept_id) {
+      return  <ConceptData {...this.props}>
+                
                 <DomainMap {...this.props}/>
               </ConceptData>;
     }

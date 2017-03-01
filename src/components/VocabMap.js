@@ -27,7 +27,8 @@ var $ = require('jquery'); window.$ = $;
 //import * as AppState from '../AppState';
 import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
-require('./stylesheets/Vocab.css');
+//require('./stylesheets/Vocab.css');
+require('./sass/Vocab.scss');
 import SigmaReactGraph from './sigma-react/sigma.renderers.react';
 import { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
 

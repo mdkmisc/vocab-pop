@@ -16,17 +16,28 @@ app.get('*', function (req, res) {
   res.sendFile(path.join(__dirname, 'public', 'index.html'))
 })
 */
-
+console.log(Router.run);
           //<Route path="search" components={{main:ComponentWrapper, compName:'Search', sidebar:Sidebar}} />
+//AppState.initialize({history:useRouterHistory(createHistory)()}) // set global history object
 AppState.initialize({history:useRouterHistory(createHistory)()}) // set global history object
   .then(() => {
     render((
       <Router history={AppState.history}>
         <Route path="/" component={App}>
+          <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
+          <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
+          <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
+
+          <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptView', }} />
+
+          {/*
+
           <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', sidebar:Sidebar}} />
           <IndexRoute        components={{main:ComponentWrapper, compName:'Home',          sidebar:Sidebar}}/>
-          <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
-          {/*
+
+
+
+
           <Route path="/concepts" component={ConceptsContainer} />
           <Route path="/tables" component={Tables} >
             <Route path=":table" component={Tables}/>

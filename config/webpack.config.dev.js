@@ -4,8 +4,8 @@ var webpack = require('webpack');
 var findCacheDir = require('find-cache-dir');
 var HtmlWebpackPlugin = require('html-webpack-plugin');
 var CaseSensitivePathsPlugin = require('case-sensitive-paths-webpack-plugin');
-var InterpolateHtmlPlugin = require('react-dev-utils/InterpolateHtmlPlugin');
-var WatchMissingNodeModulesPlugin = require('react-dev-utils/WatchMissingNodeModulesPlugin');
+//var InterpolateHtmlPlugin = require('react-dev-utils/InterpolateHtmlPlugin');
+//var WatchMissingNodeModulesPlugin = require('react-dev-utils/WatchMissingNodeModulesPlugin');
 var getClientEnvironment = require('./env');
 var paths = require('./paths');
 
@@ -23,6 +23,11 @@ var env = getClientEnvironment(publicUrl);
 // It is focused on developer experience and fast rebuilds.
 // The production configuration is different and lives in a separate file.
 module.exports = {
+  devServer: {
+    historyApiFallback:{
+        index:'index.html'
+    },
+  },
   // This makes the bundle appear split into separate modules in the devtools.
   // We don't use source maps here because they can be confusing:
   // https://github.com/facebookincubator/create-react-app/issues/343#issuecomment-237241875
@@ -44,9 +49,7 @@ module.exports = {
     // the line below with these two lines if you prefer the stock client:
     // require.resolve('webpack-dev-server/client') + '?/',
     // require.resolve('webpack/hot/dev-server'),
-    require.resolve('react-dev-utils/webpackHotDevClient'),
-    // We ship a few polyfills by default:
-    require.resolve('./polyfills'),
+    //require.resolve('react-dev-utils/webpackHotDevClient'),
     // Finally, this is your app's code:
     paths.appIndexJs
     // We include the app code last so that if there is a runtime error during
@@ -71,35 +74,42 @@ module.exports = {
     // We use `fallback` instead of `root` because we want `node_modules` to "win"
     // if there any conflicts. This matches Node resolution mechanism.
     // https://github.com/facebookincubator/create-react-app/issues/253
-    fallback: paths.nodePaths,
+    //
+    //
+    // webpack 2 fix from https://webpack.js.org/guides/migrating/
+    //fallback: paths.nodePaths,
+    modules: [
+      //paths.nodePaths,
+      //path.join(__dirname, "src"),
+      "node_modules"
+    ],
     // These are the reasonable defaults supported by the Node ecosystem.
     // We also include JSX as a common component filename extension to support
     // some tools, although we do not recommend using it, see:
     // https://github.com/facebookincubator/create-react-app/issues/290
-    extensions: ['.js', '.json', '.jsx', ''],
+    extensions: ['.js', '.json', '.jsx'],
     alias: {
       // Support React Native Web
       // https://www.smashingmagazine.com/2016/08/a-glimpse-into-the-future-with-react-native-for-web/
-      'react-native': 'react-native-web'
+      //'react-native': 'react-native-web'
     }
   },
   
   module: {
     // First, run the linter.
     // It's important to do this before Babel processes the JS.
-    preLoaders: [
+    rules: [
       {
         test: /\.(js|jsx)$/,
-        loader: 'eslint',
+        loader: 'eslint-loader',
+        enforce: "pre",
         include: paths.appSrc,
-      }
-    ],
-    loaders: [
+      },
       // Process JS with Babel.
       {
         test: /\.(js|jsx)$/,
         include: paths.appSrc,
-        loader: 'babel',
+        loader: 'babel-loader',
         query: {
           
           // This is a feature of `babel-loader` for webpack (not Babel itself).
@@ -111,21 +121,14 @@ module.exports = {
           })
         }
       },
-      // "postcss" loader applies autoprefixer to our CSS.
-      // "css" loader resolves paths in CSS and adds assets as dependencies.
-      // "style" loader turns CSS into JS modules that inject <style> tags.
-      // In production, we use a plugin to extract that CSS to a file, but
-      // in development "style" loader enables hot editing of CSS.
-      {
-        test: /\.css$/,
-        loader: 'style!css?importLoaders=1!postcss'
-      },
       // JSON is not enabled by default in Webpack but both Node and Browserify
       // allow it implicitly so we also enable it.
+      /* not needed in webpack2: https://webpack.js.org/guides/migrating/#json-loader-is-not-required-anymore
       {
         test: /\.json$/,
         loader: 'json'
       },
+      */
       // "file" loader makes sure those assets get served by WebpackDevServer.
       // When you `import` an asset, you get its (virtual) filename.
       // In production, they would get copied to the `build` folder.
@@ -146,20 +149,41 @@ module.exports = {
           name: 'static/media/[name].[hash:8].[ext]'
         }
       },
-      // sigfried adding yaml loader
-      /* didn't work, trying text instead
       {
         test: /\.yml$/,
-        loader: 'yaml-loader'
-      }
+        loader: 'raw-loader'
+      },
+      {
+        // don't understand what I'm doing, but tried to copy from https://github.com/postcss/postcss-loader/issues/99#issuecomment-260163296
+        test: /\.scss$/,
+        use: [{
+                  loader: "style-loader" // creates style nodes from JS strings
+              }, {
+                  loader: "css-loader" // translates CSS into CommonJS
+              }, {
+                  loader: "sass-loader" // compiles Sass to CSS
+              }]
+      },
+      {
+        // don't understand what I'm doing, but tried to copy from https://github.com/postcss/postcss-loader/issues/99#issuecomment-260163296
+        test: /\.css$/,
+        use: [{
+                  loader: "style-loader" // creates style nodes from JS strings
+              }, {
+                  loader: "css-loader" // translates CSS into CommonJS
+              }]
+      },
+      /*
+      {
+        loader: 'postcss-loader',
+        options: {  options: { /* PostCSS Options * / }, 
+                    plugins: () => [ /* PostCSS Plugins * / ]  }
+      },
       */
-      {
-        test: /\.yml$/,
-        loader: 'raw'
-      }
-    ]
+    ],
   },
   
+  /*
   // We use PostCSS for autoprefixing only.
   postcss: function() {
     return [
@@ -173,13 +197,12 @@ module.exports = {
       }),
     ];
   },
+  */
   plugins: [
     // Makes the public URL available as %PUBLIC_URL% in index.html, e.g.:
     // <link rel="shortcut icon" href="%PUBLIC_URL%/favicon.ico">
     // In development, this will be an empty string.
-    new InterpolateHtmlPlugin({
-      PUBLIC_URL: publicUrl
-    }),
+    //new InterpolateHtmlPlugin({ PUBLIC_URL: publicUrl }),
     // Generates an `index.html` file with the <script> injected.
     new HtmlWebpackPlugin({
       inject: true,
@@ -198,7 +221,7 @@ module.exports = {
     // to restart the development server for Webpack to discover it. This plugin
     // makes the discovery automatic so you don't have to restart.
     // See https://github.com/facebookincubator/create-react-app/issues/186
-    new WatchMissingNodeModulesPlugin(paths.appNodeModules)
+    //new WatchMissingNodeModulesPlugin(paths.appNodeModules)
   ],
   // Some libraries import Node modules but don't use them in the browser.
   // Tell Webpack to provide empty mocks for them so importing them works.
