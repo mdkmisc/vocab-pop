@@ -240,7 +240,7 @@ export class DomainMap extends Component {
     };
   }
   shouldComponentUpdate(nextProps, nextState) {
-    if (this.state.nodes !== nextState.nodes)
+    if (!_.isEqual(this.state.nodes, nextState.nodes))
       return true;
     return  !nextState.nodes || !nextState.nodes.length ||
               this.props.sg !== nextProps.sg ||
@@ -251,8 +251,10 @@ export class DomainMap extends Component {
     const {width, height} = this.state;
     if (w !== width || h !== height) {
       this.setState({width:w,height:h});
+      return;
     }
     if (_.isEmpty(vocgroups)) return;
+    //console.log('domainmap', vocgroups, w, h);
     let sg = _.supergroup(vocgroups, "domain_id");
     sg.addLevel(d=>_.uniq(d.dcgs.map(e=>e.vals[0])).sort(),
                 {dimName:'ddom',multiValuedGroup:true});
