@@ -109,12 +109,14 @@ export function getState(path) {
   var state = myqs.parse(loc.search.substr(1));
   return _.getPath(state, path);
 }
-export function subscribeState(path, cb) {
+export function stateStream(path) {
   return (
     stateChange
         .filter(change => _.getPath(change, path))
-        .map(change => _.getPath(change, path))
-        .subscribe(cb));
+        .map(change => _.getPath(change, path)));
+}
+export function subscribeState(path, cb) {
+  return stateStream(path).subscribe(cb);
 }
 
 export function initialize({history:_history}) {

@@ -27,7 +27,7 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
-import VocabPop, {ConceptView} from './components/VocabPop';
+import VocabPop, {ConceptViewPage} from './components/VocabPop';
           /* Search, DrugContainer, Tables, */
 import * as AppState from './AppState';
 var $ = require('jquery');
@@ -107,7 +107,7 @@ class DefaultNavBar extends Component {
               <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
                 <NavItem eventKey={3}>All Domains</NavItem>
               </LinkContainer>
-              <LinkContainer to={locPath('/conceptview',)}>
+              <LinkContainer to={locPath('/conceptview',{clear:['domain_id']})}>
                 <NavItem eventKey={4}>Concept View</NavItem>
               </LinkContainer>
             </Nav>
@@ -333,7 +333,7 @@ export class ComponentWrapper extends Component {
     Object.assign(props, this.props, this.state);
     const Comp = ({
       VocabPop: VocabPop,
-      ConceptView: ConceptView,
+      ConceptViewPage: ConceptViewPage,
       Home: Home,
       //Search: Search,
     })[this.props.route.components.compName];

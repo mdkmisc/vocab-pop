@@ -30,6 +30,7 @@ create materialized view :results.ancestor_plus_mapsto as
     and cr.concept_id_1 is null
   union
   select  
+          '' as min_max,
           'cr_mapsto' as source,
           cr.concept_id_1,
           cr.concept_id_2
@@ -39,7 +40,8 @@ create materialized view :results.ancestor_plus_mapsto as
     and cr.concept_id_1 != cr.concept_id_2 ;
 create unique index apmidx on ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
 
-create view ancestors as
+drop table if exists ancestors;
+create table ancestors as
   select a.*,
          ca.domain_id as a_domain_id,
          ca.standard_concept as a_standard_concept,
@@ -53,9 +55,11 @@ create view ancestors as
          cd.concept_class_id as d_concept_class_id,
          cd.concept_level as d_concept_level,
          cd.concept_name as d_concept_name
-  from ancestor_plus_mapsto a
+  from :results.ancestor_plus_mapsto a
   join :cdm.concept ca on a.ancestor_concept_id = ca.concept_id
   join :cdm.concept cd on a.descendant_concept_id = cd.concept_id;
+create index anc1idx on ancestors (ancestor_concept_id);
+create index anc2idx on ancestors (descendant_concept_id);
 
 /* generate a list of all CDM columns containing concept ids
     that should be counted in record counts:
@@ -202,7 +206,7 @@ select store_concept_id_counts(
           column_type,
           current_setting('my.vars.results')::text target_schema, 
           'concept_id_occurrence'::text target_table
-    from concept_cols cc) x;
+    from :results.concept_cols cc) x;
 alter table :results.concept_id_occurrence add primary key (table_name, column_name, concept_id);
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
 
@@ -213,7 +217,7 @@ create index cio_idx1 on :results.concept_id_occurrence (concept_id);
     (though some of the vocab-pop code assumes that there will be invalid
     concepts and allows them to be counted or filtered out)
 */
-delete from concept_id_occurrence cio
+delete from :results.concept_id_occurrence cio
 using cdm2.concept c
 where cio.concept_id = c.concept_id and c.invalid_reason is not null;
 
@@ -416,7 +420,7 @@ create table cg_dcids as
             array_remove(array_unique(
                     array_agg(apm.descendant_concept_id order by descendant_concept_id)
                   ),null) dcids
-    from concept_groups_w_cids cgwc
+    from :results.concept_groups_w_cids cgwc
     left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
     where grpset != array[]::text[]
     group by 1; --,2;
@@ -424,8 +428,8 @@ create table cg_dcids as
 -- didn't run this insert last time, not sure if i need it for anything
 insert into cg_dcids  -- it should just be all desc ids, right?
   select cg.cgid, array_agg(apm.descendant_concept_id order by descendant_concept_id)
-  from ancestor_plus_mapsto apm,
-       (select distinct cgid from concept_groups_w_cids where grpset = array[]::text[]) cg
+  from :results.ancestor_plus_mapsto apm,
+       (select distinct cgid from :results.concept_groups_w_cids where grpset = array[]::text[]) cg
   group by 1; --,2;
 
 /*
@@ -440,7 +444,7 @@ create table dcid_groups as
   select  row_number() over () as dcid_grp_id,
           array_agg(cgid) cgids,
           dcids
-  from cg_dcids group by dcids;
+  from :results.cg_dcids group by dcids;
 
 /* dcid_cnts
     now, for each descendant group, go back to the record_counts table
@@ -462,7 +466,7 @@ create table dcid_cnts as
           count(distinct rc.tbl||rc.col) dtblcols,
           sum(rc.rc) drc,
           sum(rc.src) dsrc
-  from dcid_groups dg
+  from :results.dcid_groups dg
   left join record_counts rc on rc.concept_id = any(dg.dcids)
   group by 1,2;
 
@@ -481,7 +485,7 @@ create table concept_groups as
           dg.dtblcols,
           dg.drc,
           dg.dsrc
-  from concept_groups_w_cids cgw
+  from :results.concept_groups_w_cids cgw
   join dcid_cnts dg on cgw.cgid = any(dg.cgids);
 
 
@@ -509,10 +513,10 @@ create table dcid_cnts_breakdown (
   dcids integer[]
 );
 
-CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
+CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer AS $func$
   declare dcid_group record;
   BEGIN
-    for dcid_group in select * from dcid_groups loop
+    for dcid_group in select * from :results.dcid_groups loop
       RAISE NOTICE 'dcid_group %: % cids, % dcids', 
         dcid_group.dcid_grp_id, 
         array_length(dcid_group.dcids,1),
@@ -566,7 +570,7 @@ CREATE OR REPLACE FUNCTION make_dcid_cnts_breakdown() returns integer AS $func$
   END;
   $func$ LANGUAGE plpgsql;
 
-select * from make_dcid_cnts_breakdown();
+select * from :results.make_dcid_cnts_breakdown();
 
 
 
@@ -616,3 +620,36 @@ select  adom,
 from anc_groups ag
 group by 1 
 order by coalesce(array_length(array_remove(array_unique(array_agg(ddom)),null),1),0), 1;
+
+
+
+
+
+-- trying to understand non-standard concepts:
+
+select c.concept_id,c.concept_name,c.domain_id,c.vocabulary_id,
+        count(cr.concept_id_1) crs,count(distinct cr.concept_id_1) id1s, count(distinct cr.concept_id_2) id2s,
+        array_agg(distinct r.defines_ancestry||' '||r.is_hierarchical||' '||cr.relationship_id) rels,
+        array_agg(distinct c2.concept_class_id) relclasses
+from cdm2.concept c
+join cdm2.concept_relationship cr on c.concept_id=cr.concept_id_1 and cr.invalid_reason is null
+join cdm2.concept c2 on cr.concept_id_2=c2.concept_id and c2.invalid_reason is null
+join cdm2.relationship r on cr.relationship_id=r.relationship_id
+where c.standard_concept is null and c.invalid_reason is null
+group by 1,2,3,4
+order by 5 desc, 8 desc, 6 desc, 7 desc
+limit 20;
+
+-- realizing that relationship_name does have vital information for understanding relationships
+select r.defines_ancestry da, r.is_hierarchical ish, r.relationship_name, c.concept_id, 
+        c.concept_code,
+        c.concept_name, 
+        c.standard_concept sc, c.domain_id, c.vocabulary_id, c.concept_class_id
+from cdm2.concept_relationship cr
+join cdm2.concept c on cr.concept_id_2 = c.concept_id
+join cdm2.relationship r on cr.relationship_id=r.relationship_id
+where cr.concept_id_1 = 44824072 --and c.vocabulary_id='ICD9CM'
+and   cr.invalid_reason is null
+order by 3, sc, domain_id, vocabulary_id;
+
+

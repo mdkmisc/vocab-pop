@@ -38,7 +38,8 @@ require('./sass/Vocab.scss');
 window._ = _; 
 
 import React, { Component } from 'react';
-//import { Panel, Accordion, Label, Row, Col, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio } from 'react-bootstrap';
+//import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
+import {Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock} from 'react-bootstrap';
 
 import {commify} from '../utils';
 
@@ -51,7 +52,7 @@ import * as AppState from '../AppState';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
-require('./fileBrowser.css');
+//require('./fileBrowser.css');
 
 
 export default class VocabPop extends Component {
@@ -76,15 +77,93 @@ export default class VocabPop extends Component {
   }
 }
 export class ConceptView extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
+    this.concept_id_sub = 
+      AppState.stateStream('concept_id')
+              .debounceTime(1000)
+              .subscribe(
+                concept_id => { 
+                  if (concept_id !== this.state.concept_id) {
+                    this.setState({concept_id});
+                  }
+                });
+  }
+  componentWillUnmount() {
+    this.concept_id_sub && this.concept_id_sub.unsubscribe();
+  }
   render() {
-    if (!this.props.concept_id) {
-      return  <ConceptData {...this.props}>
-                
-                <DomainMap {...this.props}/>
-              </ConceptData>;
+    const {concept_id} = this.state;
+    return  <pre>
+              concept_id: {concept_id} {'\n'}
+              props: {_.keys(this.props).join(',')}
+            </pre>
+  }
+}
+export class ConceptViewPage extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {concept_id:''};
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (this.state.concept_id !== prevState.concept_id) {
+      AppState.saveState({concept_id: this.state.concept_id});
     }
-    return  <ConceptData {...this.props}>
-              <VocabMapByDomain {...this.props}/>
+    let concept_id_as = AppState.getState('concept_id');
+    if (concept_id_as && concept_id_as !== this.state.concept_id) {
+      this.setState({concept_id: concept_id_as});
+    }
+  }
+  getValidationState() {
+    const {concept_id} = this.state;
+    if (concept_id > 0) {
+      return 'success';
+    }
+    else if (concept_id === '') return 'warning';
+    else return 'error';
+  }
+  handleChange(e) {
+    let concept_id = e.target.value;
+    if (concept_id.length) {
+      concept_id = parseInt(concept_id,10);
+      if (isNaN(concept_id)) return;
+    }
+    this.setState({concept_id});
+    e.preventDefault();
+  }
+  render() {
+    const {concept_id} = this.state;
+    console.log('rendering with', concept_id);
+    let cv = 'hi ';
+    if (concept_id) {
+      cv =  <ConceptData {...this.props}>
+              <ConceptView  />
             </ConceptData>;
+    }
+    return  <Row>
+              <Col md={2} sm={2} className="short-input">
+                <FormGroup
+                  controlId="concept_id_input"
+                  validationState={this.getValidationState()}
+                >
+                  <ControlLabel>Concept Id</ControlLabel>
+                  <FormControl
+                    type="number" step="1"
+                    value={concept_id}
+                    placeholder="Concept Id"
+                    inputRef={d=>this.cidInput=d}
+                    onChange={this.handleChange.bind(this)}
+                  />
+                  <FormControl.Feedback />
+                </FormGroup>
+              </Col>
+              <Col md={9} sm={9} mdOffset={1} smOffset={1}>
+                {cv}
+              </Col>
+            </Row>
+                  //<HelpBlock>Validation is based on string length.</HelpBlock>
   }
 }
