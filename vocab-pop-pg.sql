@@ -40,7 +40,7 @@ create materialized view :results.ancestor_plus_mapsto as
     and cr.concept_id_1 != cr.concept_id_2 ;
 create unique index apmidx on :results.ancestor_plus_mapsto (ancestor_concept_id,descendant_concept_id);
 
-drop table if exists ancestors;
+drop table if exists :results.ancestors;
 create table :results.ancestors as
   select a.*,
          ca.domain_id as a_domain_id,
@@ -145,7 +145,7 @@ create table :results.concept_id_occurrence (
 );
 
 CREATE OR REPLACE 
-  FUNCTION store_concept_id_counts(
+  FUNCTION :results.store_concept_id_counts(
               _schema text,
               _tbl text,
               _col text, 
@@ -356,7 +356,7 @@ select grpset,count(*) from concept_groups_w_cids group by 1 order by 1;
  {standard_concept,domain_id,vocabulary_id,tbl,col,coltype}                  |   366
  {tbl,col,coltype}                                                           |    55
 */
-drop table concept_groups_w_cids;
+drop table :results.concept_groups_w_cids;
 create table :results.concept_groups_w_cids as
   select  row_number() over (order by grpset) as cgid, 
           grp, grpset, 
@@ -414,7 +414,7 @@ create unique index cgccidx on :results.concept_groups_w_cids (cgid);
     also, doing the total group with every concept id (grpset = {}) separately
     for performance reasons
 */
-drop table if exists cg_dcids;
+drop table if exists :results.cg_dcids;
 create table :results.cg_dcids as
     select  cgwc.cgid, --source, 
             array_remove(array_unique(
@@ -439,7 +439,7 @@ insert into cg_dcids  -- it should just be all desc ids, right?
     one row per distinct descendant id set and a list of all the concept group
     ids having that descendant group for its descendants
 */
-drop table if exists dcid_groups;
+drop table if exists :results.dcid_groups;
 create table :results.dcid_groups as
   select  row_number() over () as dcid_grp_id,
           array_agg(cgid) cgids,
@@ -459,7 +459,7 @@ create table :results.dcid_groups as
            4 | {609,1320}                               |      10 |        1 |         0 |        0
            5 | {705,1494}                               |   15031 |        5 |   3758970 |        0
 */
-drop table if exists dcid_cnts;
+drop table if exists :results.dcid_cnts;
 create table :results.dcid_cnts as
   select  dcid_grp_id, cgids, 
           count(rc.concept_id) dcc,
@@ -476,7 +476,7 @@ create table :results.dcid_cnts as
     about concept groups with descendant counts. as mentioned above, these
     descendant counts can be misleading, but they'll do for a first pass
 */
-drop table if exists concept_groups cascade;
+drop table if exists :results.concept_groups cascade;
 create table :results.concept_groups as
   select  cgw.cgid, cgw.grp, cgw.grpset, cgw.vals, 
           cgw.cc, cgw.rc_rowcnt, cgw.tblcols, cgw.rc, cgw.src, 
@@ -498,7 +498,7 @@ create table :results.concept_groups as
     be important, but I think others will be as well, if we can make a
     reasonable ui for navigating them.
 */
-drop table if exists dcid_cnts_breakdown cascade;
+drop table if exists :results.dcid_cnts_breakdown cascade;
 create table :results.dcid_cnts_breakdown (
   dcid_grp_id integer,
   cgids integer[],
@@ -573,7 +573,7 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
 select * from :results.make_dcid_cnts_breakdown();
 
 
-
+/*
 create table :results.domain_ancestors as
   select  c1.domain_id ancestor_domain_id,
           c2.domain_id descendant_domain_id,
@@ -584,7 +584,6 @@ create table :results.domain_ancestors as
   join :cdm.concept c2 on apm.descendant_concept_id=c2.concept_id 
   group by 3,1,2 
   order by 3,1,2;
-
 
 -- same as above except counts:  (not sure which ones are right if any)
 drop table :results.anc_groups;
@@ -653,3 +652,4 @@ and   cr.invalid_reason is null
 order by 3, sc, domain_id, vocabulary_id;
 
 
+*/
