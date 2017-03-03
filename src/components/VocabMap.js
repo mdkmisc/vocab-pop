@@ -29,8 +29,11 @@ import {commify} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 //require('./stylesheets/Vocab.css');
 require('./sass/Vocab.scss');
-import SigmaReactGraph from './sigma-react/sigma.renderers.react';
-import { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
+//import from './sigma-react/sigma.renderers.react';
+import SigmaReactGraph, { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
+import {setToAncestorSize, getAncestorSize} from '../App';
+import Spinner from 'react-spinner';
+//require('react-spinner/react-spinner.css');
 
 export class VocabMapByDomain extends Component {
   // this was giving one VocabMap is domain_id was specified
@@ -44,15 +47,16 @@ export class VocabMapByDomain extends Component {
       this.setState({forceUpdate:true});
   }
   componentDidUpdate(prevProps, prevState) {
-    const {w, h, } = this.props;
+    const {w, h, fullyRenderedCb, } = this.props;
     const {width, height} = this.state;
     if (w !== width || h !== height) {
       this.setState({width:w,height:h});
     }
+    //fullyRenderedCb(false);
     this.dataPrep(prevProps, prevState);
   }
   dataPrep(prevProps, prevState) {
-    const {concept_groups_d, domain_id, } = this.props;
+    const {concept_groups_d, domain_id, fullyRenderedCb} = this.props;
     const oldSg = this.state.sg;
     if (!domain_id) throw new Error("everything for all domains is probably still working except the check here for whether data needs to be refreshed. But all domains is going to DomainMap for now.");
     if (!concept_groups_d || !concept_groups_d.length)
@@ -70,6 +74,7 @@ export class VocabMapByDomain extends Component {
     let sg = _.supergroup(cg, ['domain_id','standard_concept','vocabulary_id']);
     sg.addLevel('linknodes',{multiValuedGroup:true});
     this.setState({sg});
+    fullyRenderedCb(true);
   }
 
   render() {
@@ -112,6 +117,19 @@ export default class VocabMap extends Component {
   }
   componentDidMount() {
     this.dataPrep();
+    this.setGetSize();
+  }
+  componentDidUpdate() {
+    if (!this.state.nodes)
+      this.dataPrep();
+    this.setGetSize();
+  }
+  setGetSize() {
+    let {width,height} = setToAncestorSize(this.divRef, ".main-content");
+    if (height && height !== this.state.height &&
+        width && width !== this.state.width) {
+      this.setState({width,height});
+    }
   }
   dataPrep() {
     const {sg} = this.props;
@@ -140,10 +158,6 @@ export default class VocabMap extends Component {
       });
     }
   }
-  componentDidUpdate() {
-    if (!this.state.nodes)
-      this.dataPrep();
-  }
   shouldComponentUpdate(nextProps, nextState) {
     if (this.state.nodes !== nextState.nodes)
       return true;
@@ -152,8 +166,8 @@ export default class VocabMap extends Component {
             !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
   render() {
-    let props = Object.assign({}, this.props, this.state);
-    return  <SigmaReactGraph {...props} />;
+    let props = Object.assign({refFunc:(d=>this.divRef=d).bind(this)}, this.props, this.state);
+    return  <SigmaReactGraph {...props} ><Spinner/></SigmaReactGraph>;
   }
 }
 /*
@@ -247,13 +261,25 @@ export class DomainMap extends Component {
               this.props.sg !== nextProps.sg ||
               !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
+  componentDidMount() {
+    this.setGetSize();
+  }
+  setGetSize() {
+    let {width,height} = setToAncestorSize(this.divRef, ".main-content");
+    if ((height && height !== this.state.height) ||
+        (width && width !== this.state.width)) {
+      this.setState({width,height});
+    }
+  }
   componentDidUpdate() {
     const { vocgroups, w, h } = this.props;
     const {width, height} = this.state;
+    /*
     if (w !== width || h !== height) {
       this.setState({width:w,height:h});
       return;
     }
+    */
     if (_.isEmpty(vocgroups)) return;
     //console.log('domainmap', vocgroups, w, h);
     let sg = _.supergroup(vocgroups, "domain_id");
@@ -278,11 +304,13 @@ export class DomainMap extends Component {
                   sval: d.parent,
                   tval: d,
               }});
+    this.setGetSize();
     this.setState({nodes, edges});
   }
   render() {
-    let props = Object.assign({}, this.props, this.state);
-    return  <SigmaReactGraph {...props} />;
+    let props = Object.assign({refFunc:(d=>this.divRef=d).bind(this)}, 
+                              this.props, this.state);
+    return  <SigmaReactGraph {...props} ><Spinner/></SigmaReactGraph>;
   }
 }
 export class MsgInfo extends Component {

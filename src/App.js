@@ -31,6 +31,8 @@ import VocabPop, {ConceptViewPage} from './components/VocabPop';
           /* Search, DrugContainer, Tables, */
 import * as AppState from './AppState';
 var $ = require('jquery');
+import Spinner from 'react-spinner';
+//require('react-spinner/react-spinner.css');
 
 
 //import logo from './logo.svg';
@@ -220,6 +222,37 @@ const Settings = ({props}) => <h4>Settings</h4>;
 const History = ({props}) => <h4>History</h4>;
 const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
 
+export function getAncestorHeight(el, selector) {
+  let height = Math.round($(el).closest(selector).height());
+  if (isNaN(height)) debugger;
+  return height;
+}
+export function setToAncestorHeight(el, selector) {
+  let height = getAncestorHeight(el, selector);
+  $(el).height(height);
+  return height;
+}
+export function getAncestorWidth(el, selector) {
+  let width = Math.round($(el).closest(selector).width());
+  if (isNaN(width)) debugger;
+  return width;
+}
+export function setToAncestorWidth(el, selector) {
+  let width = getAncestorWidth(el, selector);
+  $(el).width(width);
+  return width;
+}
+export function getAncestorSize(el, selector) {
+  return { width:getAncestorWidth(el, selector),
+           height:getAncestorHeight(el, selector)
+  };
+}
+export function setToAncestorSize(el, selector) {
+  let {width,height} = getAncestorSize(el, selector);
+  $(el).width(width);
+  $(el).height(height);
+  return {width,height}
+}
   
 
 export class Sidebar extends Component {
@@ -298,7 +331,7 @@ export class Sidebar extends Component {
 export class ComponentWrapper extends Component {
   constructor(props) {
     super(props);
-    this.state = { comingFrom: "CompWrapper", updates: 0,};
+    this.state = { childReady: false, updates: 0,};
   }
   componentDidMount() {
     //this.setState({contentDiv:this.contentDiv});
@@ -315,30 +348,39 @@ export class ComponentWrapper extends Component {
       // for now
       let cbr = this.contentDiv.getBoundingClientRect(),
           rw = Math.round(cbr.width),
+          rh = getAncestorHeight(this.contentDiv, '.flex-remaining-height');
 
-          rh = Math.round($(this.contentDiv)
-                           .closest('.flex-remaining-height')
-                           .height());
       if (w !== rw || h !== rh) {
         this.setState({w:rw, h:rh, updates: this.state.updates+1});
       }
     }
   }
   render() {
+    const {w:width, h:height} = this.state;
     let {filters} = AppState.getState();
     let domain_id = AppState.getState('domain_id');
     let props = {
       filters, domain_id,
     };
-    Object.assign(props, this.props, this.state);
+    //Object.assign(props, this.props, this.state);
+    Object.assign(props, this.props);
+    //delete props.childReady;
+    // not using fullyRendered thing at moment, but might bring it back
+    props.fullyRenderedCb=(childReady=>this.setState({childReady})).bind(this);
     const Comp = ({
       VocabPop: VocabPop,
       ConceptViewPage: ConceptViewPage,
       Home: Home,
       //Search: Search,
     })[this.props.route.components.compName];
+    let spinner = this.state.childReady ? '' : <Spinner />;
     // w,h will be sent down to Comp as props!!!! 
-    return  <div className="main-content" ref={d=>this.contentDiv=d} >
+    //{spinner}  was screwing up height calcs and 
+    // making infinite loop with page growing longer and longer
+// passing w,h not working so well...
+    return  <div className="main-content" ref={d=>this.contentDiv=d} 
+                  style={{width,height}}
+            >
               <Comp {...props} classNames="" />
             </div>;
   }

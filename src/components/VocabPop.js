@@ -26,6 +26,8 @@ import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
+import SigmaReactGraph, { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
+import {setToAncestorSize, getAncestorSize} from '../App';
 
 //import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
@@ -52,8 +54,6 @@ import 'ag-grid/dist/styles/theme-fresh.css';
 
 import * as AppState from '../AppState';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
-import Spinner from 'react-spinner';
-//require('react-spinner/react-spinner.css');
 //require('./fileBrowser.css');
 
 
@@ -78,16 +78,50 @@ export default class VocabPop extends Component {
             </ConceptData>;
   }
 }
+function expandSc(sc, out="title") { // out = title or className
+  return ({
+            S: {title:'Standard Concept', className: 'standard-concept'},
+            C: {title:'Classification Concept', className: 'classification-concept'},
+            X: {title:'Non-Standard Concept', className: 'non-standard-concept'},
+      })[sc][out];
+}
 export class ConceptView extends Component {
   constructor(props) {
     super(props);
     this.state = {};
   }
   componentDidMount() {
+    //setToAncestorHeight(this.divRef, "concept-view-container");
+    this.setGetSize();
+    //this.setState({height});
+  }
+  componentDidUpdate() {
+    this.setGetSize();
+  }
+  setGetSize() {
+    let {width,height} = setToAncestorSize(this.divRef, ".main-content");
+    if (height && height !== this.state.height &&
+        width && width !== this.state.width) {
+      this.setState({width,height});
+    }
   }
   render() {
-    const {concept_id, conceptInfo } = this.props;
-    return  <div>
+    const {concept_id, conceptInfo, } = this.props;
+    //const {height} = this.state;
+    let cr = conceptInfo && conceptInfo.conceptRecord
+              ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} />
+              : '';
+    let graphProps = {
+      width: this.state.width, 
+      height: this.state.height,
+      nodes: [{id:'testing', x:200, y:100, size: 5}],
+      //getHeight: (() => getAncestorHeight(this.divRef, ".main-content")).bind(this),
+      //refFunc: (ref=>{ this.srgRef=ref; console.log('got a ref from SRG'); }).bind(this),
+    };
+    return  <div ref={d=>this.divRef=d}><SigmaReactGraph {...graphProps} /></div>;
+    return  <div ref={d=>this.divRef=d}>
+              {cr}
+              <SigmaReactGraph {...graphProps} />
               <pre>
                 concept_id: {concept_id} {'\n'}
                 props: {_.keys(this.props).join(',')}
@@ -97,13 +131,40 @@ export class ConceptView extends Component {
             </div>
   }
 }
+class ConceptRecord extends Component {
+  render() {
+    const {concept_class_id, concept_code, concept_id, concept_name,
+            domain_id, invalid_reason, standard_concept, 
+            vocabulary_id} = this.props.conceptRecord;
+    let className = [ "concept-record",
+                      invalid_reason ? "invalid" : '',
+                      expandSc(standard_concept, 'className'),
+                    ].join(' ');
+
+    return  <div className={className} >
+              <div className="domain">{domain_id}</div>
+              <div className="class">{concept_class_id}</div>
+              <div className="name">{concept_name}</div>
+              <div className="vocab">{vocabulary_id}</div>
+              <div className="code">{concept_code}</div>
+              {this.props.children}
+            </div>;
+  }
+}
 export class ConceptViewPage extends Component {
   constructor(props) {
     super(props);
     this.state = {concept_id:''};
   }
+  componentDidMount() {
+    console.log('ConceptViewPage mounting');
+  }
+  componentWillUnmount() {
+    console.log('ConceptViewPage unmounting');
+  }
   componentDidUpdate(prevProps, prevState) {
     if (this.state.concept_id !== prevState.concept_id) {
+      this.state.concept_id && this.props.fullyRenderedCb(false);
       AppState.saveState({concept_id: this.state.concept_id});
     }
     let concept_id_as = AppState.getState('concept_id');
@@ -129,9 +190,11 @@ export class ConceptViewPage extends Component {
     e.preventDefault();
   }
   newDataFromWrapper(cvState) {
-    //console.log('new conceptInfo data', cvState);
+    console.log('new conceptInfo data', cvState);
+    this.props.fullyRenderedCb(true);
   }
   render() {
+    const {w,h} = this.props; // from ComponentWrapper
     const {concept_id} = this.state;
     let cv = 'hi ';
     if (concept_id) {
@@ -142,7 +205,8 @@ export class ConceptViewPage extends Component {
                                 ]} 
                           parentCb={this.newDataFromWrapper.bind(this)}
             >
-              <ConceptView  concept_id={concept_id}/>
+              <ConceptView  concept_id={concept_id}
+              />
             </DataWrapper>;
     }
     return  <Row>
@@ -161,9 +225,8 @@ export class ConceptViewPage extends Component {
                   />
                   <FormControl.Feedback />
                 </FormGroup>
-                <Spinner className="hide"/>
               </Col>
-              <Col md={9} sm={9} mdOffset={1} smOffset={1}>
+              <Col className="concept-view-container" md={9} sm={9} mdOffset={1} smOffset={1}>
                 {cv}
               </Col>
             </Row>

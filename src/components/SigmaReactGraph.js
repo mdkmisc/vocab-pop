@@ -9,6 +9,8 @@ var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
 
+export {default} from './sigma-react/sigma.renderers.react';
+
 export function firstLastEvent(rxSubj, ms) {
   return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
           .distinctUntilChanged());
@@ -220,6 +222,11 @@ export class FoLabel extends Component {
 }
 */
 export class FoHover extends Component {
+  render() {
+    return <ForeignObject {...this.props} />;
+  }
+}
+export class ForeignObject extends Component {
   constructor(props) {
     super(props);
     this.state = {w:0, h:0, updates:0, styles: {}};

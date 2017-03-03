@@ -92,7 +92,7 @@ export class DataWrapper extends Component {
     }
     */
     //window.ConceptDataState = state;
-    this.setState(state);
+    this.setState(state); // make a way to cancel if obsolete
     parentCb(state);
   }
   fetchData() {

@@ -116,7 +116,9 @@ export default class SigmaReactGraph extends Component {
     this.setState({updates: this.state.updates + 1});
   }
   componentDidUpdate(prevProps, prevState) {
-    const {width, height, nodes, edges} = this.props;
+    let {width, height, nodes, edges, getHeight} = this.props;
+    //width = width || this.props.w;  // just in case parent passed w instead of width
+    //height = height || this.props.h;
     const {w, h, sizeDomain} = this.state;
     DEBUG && (window.srg = this);
     if (!nodes || !nodes.length) {
@@ -127,6 +129,7 @@ export default class SigmaReactGraph extends Component {
     if (w !== width || h !== height || typeof w === 'undefined') {
       $(this.graphDiv).width(width);
       $(this.graphDiv).height(height);
+      if (!width || !height) { debugger; return; }
       this.setState({w:width, h:height});
       this.sigmaInstance && this.sigmaInstance.refresh();
       return;
@@ -237,7 +240,7 @@ export default class SigmaReactGraph extends Component {
     subrenderers = this.sigma.react.labels;
 
     //-- First we create the nodes which are not already created
-    console.log('already creating nodes');
+    //console.log('already creating nodes');
     /*
     if (drawNodes)
       for (a = renderer.nodesOnScreen, i = 0, l = a.length; i < l; i++) {
@@ -265,7 +268,7 @@ export default class SigmaReactGraph extends Component {
       */
 
     //-- Second we update the nodes
-    console.log('already rendering nodes');
+    //console.log('already rendering nodes');
     /*
     if (drawNodes)
       for (a = renderer.nodesOnScreen, i = 0, l = a.length; i < l; i++) {
@@ -336,9 +339,9 @@ export default class SigmaReactGraph extends Component {
   };
   render() {
     let {renderer, settings, sigma} = this;
-    let {className='', style={}, } = this.props;
+    let {className='', style={}, refFunc, } = this.props;
     const {w,h, hoverNode, hoverNeighbors} = this.state;
-    let svg = '';
+    let contents = this.props.children || null; // allow caller to provide contents when no graph to show
 
     if (renderer) {
       let c = settings('classPrefix');
@@ -355,7 +358,8 @@ export default class SigmaReactGraph extends Component {
 
       //this.measurementCanvas = canvas.getContext('2d');
       //this.groups = ['edges', 'nodes', 'labels', 'hovers'].map(
-      svg =   <svg ref={d=>this.svgRef} width={w} height={h} className={settings('classPrefix')+'-svg'}>
+      contents =   
+              <svg ref={d=>this.svgRef} width={w} height={h} className={settings('classPrefix')+'-svg'}>
                 <SigmaGroup grp='nodes' settings={settings} >
                   {renderer.graph.nodes().map(
                     node => <SigmaNode key={node.id} node={node} settings={settings} 
@@ -399,8 +403,11 @@ export default class SigmaReactGraph extends Component {
                   renderer={renderer}
                   eventsToHandle={['onMouseMove']}
                   eventHandlers={[this.setHoverNode.bind(this)]}
-                  refFunc={(div=>this.graphDiv=div).bind(this)} >
-              {svg}
+                  refFunc={(div=>{
+                              this.graphDiv=div;
+                              if (refFunc) refFunc(div);
+                            }).bind(this)} >
+              {contents}
             </ListenerNode>;
   }
 }
@@ -592,7 +599,7 @@ function sigmaReactRenderer() {
       )
         this.edgesOnScreen.push(o);
     }
-    console.log("can't append. finish rendering in the react comp");
+    //console.log("can't append. finish rendering in the react comp");
   }
 
   /**
