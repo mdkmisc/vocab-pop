@@ -70,6 +70,11 @@ div.concept-browse {
 	top: 50%;
 	left: 50%;
 }
+
+.react-spinner.hide {
+  display: none;
+}
+
 .react-spinner_bar {
 	animation: react-spinner_spin 1.2s linear infinite;
 	//Instead of the line below you could use @include border-radius($radius, $vertical-radius)
@@ -105,6 +110,11 @@ div.concept-browse {
 		opacity: 0.15;
 	}
 }
+
+
+
+
+
 .standard-concept {
 	background-color: $color_granny_smith_apple_approx;
 }

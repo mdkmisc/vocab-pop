@@ -85,7 +85,7 @@ export function saveState(key, val) {
                 };
   //console.log('new location', newLoc);
   history.push(newLoc);
-  console.log('state change', change);
+  //console.log('state change', change);
   stateChange.next(change);
   /*
   console.warn('get rid of userSettings');
@@ -153,6 +153,10 @@ export class ApiStream extends AppData.ApiFetcher {
         if (transformResults)
           results = transformResults(results);
         this.results = results;
+        if (this.behaviorSubj.isStopped) {
+          console.warn("got results for unsubscribed ApiStream", results);
+          return;
+        }
         this.behaviorSubj.next(this);
         if (cb) {
           cb(this.results);

@@ -15,12 +15,100 @@ Copyright 2016 Sigfried Gold
 */
 //import * as util from '../utils';
 import React, { Component } from 'react';
+import Rx from 'rxjs/Rx';
 import * as AppState from '../AppState';
 //import * as VocabPop from './VocabPop';
 import _ from 'supergroup'; // in global space anyway...
 import {commify} from '../utils';
 
+export function firstLastEvent(rxSubj, ms) {
+  return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
+          .distinctUntilChanged());
+}
 
+export class DataWrapper extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { };
+    this.streamsToWatch = {}; 
+  }
+  render() {
+    let props = Object.assign({}, this.props, this.state);
+    //console.log('DataWrapper', props);
+    let classNames = props.classNames || '';
+    delete props.classNames;
+    return  <div className={'data-wrapper ' + classNames}>
+              {React.cloneElement(this.props.children, props)}
+           </div>;
+  }
+  requestStream(opts, apiParams) {
+    let {apiCall, statePath, transformResults=d=>d} = opts;
+    statePath = statePath || apiCall;
+    let stream = new AppState.ApiStream({
+        apiCall,
+        params:apiParams,
+        meta: { statePath },
+        transformResults,
+      });
+    if (this.streamsToWatch[statePath] &&
+        this.streamsToWatch[statePath] !== stream) {
+      //console.log('replacing', statePath);
+      this.streamsToWatch[statePath].unsubscribe();
+    }
+    this.streamsToWatch[statePath] = stream;
+    stream.subscribe(this.newData);
+  }
+  componentDidMount() {
+    this.newData = this.newData.bind(this);
+    this.newPropsSubj = new Rx.BehaviorSubject();
+    this.newPropsSub = firstLastEvent(this.newPropsSubj, 200)
+                          .subscribe(calls => this.fetchData())
+    this.setState({forceUpdate:true});
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (!_.isEqual(prevProps.calls, this.props.calls)) {
+      this.newPropsSubj.next(this.props.calls);
+    }
+  }
+  componentWillUnmount() {
+    _.each(this.streamsToWatch, s => s.unsubscribe());
+    this.newPropsSubj.unsubscribe();
+  }
+  newData() {
+    const {parentCb=d=>d} = this.props;
+    let state = Object.assign({}, this.state);
+    //console.log('newData', _.keys(this.streamsToWatch));
+    _.each(this.streamsToWatch, (stream,name) => {
+      if (stream.results && 
+          !_.isEqual(_.get(state, stream.meta.statePath), stream.results)) {
+        //console.log('newData for', stream.meta.statePath);
+        _.set(state, stream.meta.statePath, stream.results);
+      }
+    })
+    /*
+    if (state.concept_groups && state.dcid_cnts_breakdown && !state.concept_groups_d) {
+      state.concept_groups_d = this.combineCgDc(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+      state.vocgroups = this.vocgroups(_.cloneDeep(state.concept_groups), state.dcid_cnts_breakdown);
+    }
+    */
+    //window.ConceptDataState = state;
+    this.setState(state);
+    parentCb(state);
+  }
+  fetchData() {
+    const {calls} = this.props;
+    console.log('fetching data', calls[0].apiParams.concept_id);
+    calls.forEach(ac=>{
+      let {apiParams, ...opts} = ac;
+      this.requestStream(opts, apiParams);
+    });
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    let stateChange = !_.isEqual(this.state, nextState);
+    let propsChange = !_.isEqual(this.props, nextProps);
+    return stateChange || propsChange;
+  }
+}
 export default class ConceptData extends Component {
   constructor(props) {
     super(props);

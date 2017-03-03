@@ -22,8 +22,10 @@ import * as util from '../utils';
 //if (DEBUG) window.d3 = d3;
 if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
-import ConceptData from './ConceptData';
+import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
+import Inspector from 'react-json-inspector';
+import 'react-json-inspector/json-inspector.css';
 
 //import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
@@ -82,25 +84,17 @@ export class ConceptView extends Component {
     this.state = {};
   }
   componentDidMount() {
-    this.concept_id_sub = 
-      AppState.stateStream('concept_id')
-              .debounceTime(1000)
-              .subscribe(
-                concept_id => { 
-                  if (concept_id !== this.state.concept_id) {
-                    this.setState({concept_id});
-                  }
-                });
-  }
-  componentWillUnmount() {
-    this.concept_id_sub && this.concept_id_sub.unsubscribe();
   }
   render() {
-    const {concept_id} = this.state;
-    return  <pre>
-              concept_id: {concept_id} {'\n'}
-              props: {_.keys(this.props).join(',')}
-            </pre>
+    const {concept_id, conceptInfo } = this.props;
+    return  <div>
+              <pre>
+                concept_id: {concept_id} {'\n'}
+                props: {_.keys(this.props).join(',')}
+              </pre>
+              <Inspector search={false} 
+                data={ conceptInfo||{} } />
+            </div>
   }
 }
 export class ConceptViewPage extends Component {
@@ -134,14 +128,22 @@ export class ConceptViewPage extends Component {
     this.setState({concept_id});
     e.preventDefault();
   }
+  newDataFromWrapper(cvState) {
+    //console.log('new conceptInfo data', cvState);
+  }
   render() {
     const {concept_id} = this.state;
-    console.log('rendering with', concept_id);
     let cv = 'hi ';
     if (concept_id) {
-      cv =  <ConceptData {...this.props}>
-              <ConceptView  />
-            </ConceptData>;
+      cv =  <DataWrapper calls={[ {
+                                    apiCall: 'conceptInfo',
+                                    apiParams: {concept_id},
+                                  },
+                                ]} 
+                          parentCb={this.newDataFromWrapper.bind(this)}
+            >
+              <ConceptView  concept_id={concept_id}/>
+            </DataWrapper>;
     }
     return  <Row>
               <Col md={2} sm={2} className="short-input">
@@ -159,6 +161,7 @@ export class ConceptViewPage extends Component {
                   />
                   <FormControl.Feedback />
                 </FormGroup>
+                <Spinner className="hide"/>
               </Col>
               <Col md={9} sm={9} mdOffset={1} smOffset={1}>
                 {cv}
