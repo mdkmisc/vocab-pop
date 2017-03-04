@@ -57,19 +57,22 @@ export class SigmaNode extends Component {
     let stroke = nodeState.hover && settings('defaultNodeHoverStrokeColor') 
                 || nodeState.hoverNeighbor && 'purple';
     //console.log(node.id, nodeState);
-    let r = node[prefix + 'size'];
+    let size = node[prefix + 'size'];
     let x = node[prefix+'x'];
     let y = node[prefix+'y'];
     if (typeof x === 'undefined') throw new Error('no x');
 
     let NodeClass = node.NodeClass || ListenerTarget;
-    return  <NodeClass {...this.props}  className={gClass} 
+    let content = node.NodeClass ? ''
+          : <circle {...{fill, stroke, strokeWidth}} r={size} className={circleClass} data-node-id={node.id} />;
+    return  <NodeClass {...this.props} size={size}  className={gClass} 
                 wrapperProps={{ ['data-node-id']:node.id,
                                 transform:`translate(${x},${y})`, }}
                   eventProps={eventProps} wrapperTag='g'>
-                <circle {...{r, fill, stroke, strokeWidth}} className={circleClass} data-node-id={node.id} />
+              {content}
             </NodeClass>;
       /*
+      ?  <NodeClass {...{node, size, fill, stroke, strokeWidth}} data-node-id={node.id} />
       const circleSizeRange = [3,10];
       const size = d3.scaleLinear().domain(settings('sizeDomain'))
                                    .range(circleSizeRange);
@@ -215,12 +218,16 @@ export class SigmaGroup extends Component {
             </g>);
   }
 }
-/*
-export class FoNode extends Component {
-}
 export class FoLabel extends Component {
+  render() {
+    return <ForeignObject {...this.props} />;
+  }
 }
-*/
+export class FoNode extends Component {
+  render() {
+    return <ForeignObject {...this.props} />;
+  }
+}
 export class FoHover extends Component {
   render() {
     return <ForeignObject {...this.props} />;
@@ -326,6 +333,7 @@ export class ListenerTarget extends Component {
     ListenerTarget.targets[this.targetId] = this;
   }
   render() {
+    //const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
     const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
               //{React.cloneElement(this.props.children, this.props)}

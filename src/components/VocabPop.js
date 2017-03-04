@@ -26,7 +26,7 @@ import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-import SigmaReactGraph, { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
+import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
 import {setToAncestorSize, getAncestorSize} from '../App';
 
 //import sigma from './sigmaSvgReactRenderer';
@@ -85,6 +85,30 @@ function expandSc(sc, out="title") { // out = title or className
             X: {title:'Non-Standard Concept', className: 'non-standard-concept'},
       })[sc][out];
 }
+class ConceptRecord extends Component {
+  render() {
+    //const {node} = this.props;
+    const {node, settings, eventProps, getNodeState} = this.props;
+    if (!this.props.conceptRecord) return null;
+    console.log('conceptRecord', this.props);
+    const {concept_class_id, concept_code, concept_id, concept_name,
+            domain_id, invalid_reason, standard_concept, 
+            vocabulary_id} = this.props.conceptRecord;
+    let className = [ "concept-record",
+                      invalid_reason ? "invalid" : '',
+                      expandSc(standard_concept, 'className'),
+                    ].join(' ');
+
+    return  <div className={className} >
+              <div className="domain">{domain_id}</div>
+              <div className="class">{concept_class_id}</div>
+              <div className="name">{concept_name}</div>
+              <div className="vocab">{vocabulary_id}</div>
+              <div className="code">{concept_code}</div>
+              {this.props.children}
+            </div>;
+  }
+}
 export class ConceptView extends Component {
   constructor(props) {
     super(props);
@@ -108,17 +132,19 @@ export class ConceptView extends Component {
   render() {
     const {concept_id, conceptInfo, } = this.props;
     //const {height} = this.state;
-    let cr = conceptInfo && conceptInfo.conceptRecord
-              ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} />
-              : '';
+    //let cr = conceptInfo && conceptInfo.conceptRecord ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} /> : '';
+    let node = {id:'testing', x:200, y:100, size: 5, NodeClass: ConceptRecord, };
+    if (conceptInfo) node.conceptRecord = conceptInfo.conceptRecord;
+    console.log('conceptView', node);
     let graphProps = {
       width: this.state.width, 
       height: this.state.height,
-      nodes: [{id:'testing', x:200, y:100, size: 5}],
+      nodes: [node],
       //getHeight: (() => getAncestorHeight(this.divRef, ".main-content")).bind(this),
       //refFunc: (ref=>{ this.srgRef=ref; console.log('got a ref from SRG'); }).bind(this),
     };
     return  <div ref={d=>this.divRef=d}><SigmaReactGraph {...graphProps} /></div>;
+    /*
     return  <div ref={d=>this.divRef=d}>
               {cr}
               <SigmaReactGraph {...graphProps} />
@@ -129,26 +155,7 @@ export class ConceptView extends Component {
               <Inspector search={false} 
                 data={ conceptInfo||{} } />
             </div>
-  }
-}
-class ConceptRecord extends Component {
-  render() {
-    const {concept_class_id, concept_code, concept_id, concept_name,
-            domain_id, invalid_reason, standard_concept, 
-            vocabulary_id} = this.props.conceptRecord;
-    let className = [ "concept-record",
-                      invalid_reason ? "invalid" : '',
-                      expandSc(standard_concept, 'className'),
-                    ].join(' ');
-
-    return  <div className={className} >
-              <div className="domain">{domain_id}</div>
-              <div className="class">{concept_class_id}</div>
-              <div className="name">{concept_name}</div>
-              <div className="vocab">{vocabulary_id}</div>
-              <div className="code">{concept_code}</div>
-              {this.props.children}
-            </div>;
+    */
   }
 }
 export class ConceptViewPage extends Component {

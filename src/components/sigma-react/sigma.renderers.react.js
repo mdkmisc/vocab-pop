@@ -20,6 +20,7 @@ export default class SigmaReactGraph extends Component {
     this.state = {
       updates:0, hoverNode: null, hoverNeighbors: [],
     };
+    DEBUG && (window.srg = this);
   }
   makeSigmaInstance() {
     if (this.sigmaInstance) return true;
@@ -117,10 +118,15 @@ export default class SigmaReactGraph extends Component {
   }
   componentDidUpdate(prevProps, prevState) {
     let {width, height, nodes, edges, getHeight} = this.props;
-    //width = width || this.props.w;  // just in case parent passed w instead of width
-    //height = height || this.props.h;
+    console.log(`graph updated with ${nodes ? nodes.length : 0} nodes`);
+    width = width || this.props.w;  // just in case parent passed w instead of width
+    height = height || this.props.h;
+    if (!width || !height) {
+      console.log(`can't display graph with dims (${width},${height})`);
+      return;
+    }
+
     const {w, h, sizeDomain} = this.state;
-    DEBUG && (window.srg = this);
     if (!nodes || !nodes.length) {
       if (prevProps.nodes && prevProps.nodes.length)
         throw new Error("what happened to the nodes?");
@@ -129,7 +135,6 @@ export default class SigmaReactGraph extends Component {
     if (w !== width || h !== height || typeof w === 'undefined') {
       $(this.graphDiv).width(width);
       $(this.graphDiv).height(height);
-      if (!width || !height) { debugger; return; }
       this.setState({w:width, h:height});
       this.sigmaInstance && this.sigmaInstance.refresh();
       return;
@@ -141,11 +146,6 @@ export default class SigmaReactGraph extends Component {
     if (!this.makeRenderer()) {
       this.setState({updates: this.state.updates + 1});
       return;
-    }
-    if (!_.isEqual(nodes, prevProps.nodes)) {
-      this.sigmaInstance.graph.clear();
-      this.sigmaInstance.graph.read({nodes,edges});
-      this.sigmaInstance.refresh();
     }
     if (this.cam && !sizeDomain) {
       let sizeDomain = d3.extent(nodes.map(d=>d.size));
@@ -166,6 +166,12 @@ export default class SigmaReactGraph extends Component {
       this.sigmaInstance.refresh();
       this.finishSigmaRender(this.renderer);
       this.finishedRendering = true;
+      return;
+    }
+    if (!_.isEqual(nodes, prevProps.nodes)) {
+      this.sigmaInstance.graph.clear();
+      this.sigmaInstance.graph.read({nodes,edges});
+      this.sigmaInstance.refresh();
     }
   }
   shouldComponentUpdate(nextProps, nextState) {
