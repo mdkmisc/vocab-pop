@@ -97,7 +97,7 @@ export class DataWrapper extends Component {
   }
   fetchData() {
     const {calls} = this.props;
-    console.log('fetching data', calls[0].apiParams.concept_id);
+    //console.log('fetching data', calls[0].apiParams.concept_id);
     calls.forEach(ac=>{
       let {apiParams, ...opts} = ac;
       this.requestStream(opts, apiParams);
@@ -187,7 +187,7 @@ export default class ConceptData extends Component {
       });
     if (this.streamsToWatch[statePath] &&
         this.streamsToWatch[statePath] !== stream) {
-      console.log('replacing', statePath);
+      //console.log('replacing', statePath);
       this.streamsToWatch[statePath].unsubscribe();
     }
     this.streamsToWatch[statePath] = stream;

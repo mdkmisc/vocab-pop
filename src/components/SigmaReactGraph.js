@@ -8,9 +8,177 @@ var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
+import {sigmaReactRenderer} from './sigma-react/sigma.renderers.react_second_try';
 
-export {default} from './sigma-react/sigma.renderers.react';
+//export {default} from './sigma-react/sigma.renderers.react';
+function getObjectDiff(obj1, obj2) {
+    const diff = Object.keys(obj1).reduce((result, key) => {
+        if (!obj2.hasOwnProperty(key)) {
+            result.push(key);
+        } else if (_.isEqual(obj1[key], obj2[key])) {
+            const resultKeyIndex = result.indexOf(key);
+            result.splice(resultKeyIndex, 1);
+        }
+        return result;
+    }, Object.keys(obj2));
 
+    return diff;
+}
+
+export default class SigmaReactGraph extends Component {
+  constructor(props) {
+    super(props);
+    this.sigma = sigmaReactRenderer();
+    //this.sigmaInstance = new this.sigma({graph:{nodes,edges}});
+    this.sigmaInstance = new this.sigma();
+    this.cam = this.sigmaInstance.addCamera();
+    /*
+    this.renderer.settings = 
+      this.renderer.settings.embedObjects(options, {
+          prefix: this.renderer.saveParams.options.prefix,
+          forceLabels: this.renderer.saveParams.options.forceLabels
+        });
+    */
+    this.state = {};
+    DEBUG && (window.srg = this);
+  }
+  options(domRefs) {
+    let rendererOpts = Object.assign(
+      { id:'main',
+        //defaultNodeType, defaultEdgeType,
+        // FIX ALL THIS
+        defaultNodeColor:'darkkhaki',
+        defaultNodeHoverColor:'crimson',
+        defaultNodeHoverStrokeColor:'green',
+        defaultNodeMuteColor:'#AAA',
+        defaultLabelColor:'darkred',
+        defaultLabelNeighborColor:'crimson',
+        defaultEdgeColor:'darkslateblue',
+
+        defaultLabelSize:16,
+        labelSize:'proportional',
+        labelThreshold:2,
+        //labelFontSizeThreshold:2,
+        labelSizeRatio:3,
+        cameraRatio:.7,
+        drawLabels:false,
+        drawEdgeLabels:false,
+        edgeColor:'target',
+        hideEdgesOnMove:true, }, this.props);
+    let opts = {  //container: this.graphDiv,
+                  type: 'react',
+                  camera: this.cam,
+                  //freeStyle: true
+                  settings: rendererOpts,
+                  domRefs,
+                  };
+    return opts;
+  }
+  componentDidMount() {
+    const {width, height, nodes} = this.props;
+    if (width && height && nodes) {
+      this.setState({forceUpdate:true});
+    }
+  }
+  componentDidUpdate(prevProps, prevState) {
+    // too many updates, need to fix
+    console.log('prop/state diffs', 
+                getObjectDiff(prevProps, this.props),
+                getObjectDiff(prevState, this.state));
+    let {nodes=[], edges=[], className='',style='',
+          width, height} = this.props;
+    if (!this.renderer) {
+      if (nodes.length && width && height) {
+        this.renderer = 
+          this.sigmaInstance.addRenderer(
+            this.options({
+              div: this.graphDiv, svg:this.graphSvg,
+            }));
+      } else {
+        return;
+      }
+    }
+    if (!_.isEqual(prevProps.nodes, nodes)) {
+      this.renderer.graph.clear();
+      this.renderer.graph.read({nodes,edges});
+      this.sigmaInstance.refresh();
+      //this.setState({nodes:nodes});
+    }
+  }
+  render() {
+    let settings = (this.renderer || this.sigmaInstance).settings;
+    let graph = (this.renderer || this.sigmaInstance).graph;
+    let props = Object.assign({},this.props, this.state);
+    let {nodes=[], edges=[], className='',style='',
+          width, height} = props;
+    console.log(`rendering SigmaReactGraph with ${nodes.length} nodes`);
+    let svg = '';
+    if (nodes.length && width && height) {
+      svg = <SrgSvg 
+              parentWantsRef={refToParent(this,'graphSvg')}
+              {...{graph, settings, width, height, nodes,
+                    edges, style, className,}} />;
+    }
+    //let children = React.cloneElement( this.props.children, props);
+                  //eventHandlers={[this.setHoverNode.bind(this)]}
+                  //renderer={renderer}
+                  //refFunc={(div=>{ this.graphDiv=div; if (refFunc) refFunc(div); }).bind(this)} 
+    return  <ListenerNode wrapperTag="div" className={className} style={style} 
+                  eventsToHandle={['onMouseMove']}
+                  parentWantsRef={refToParent(this,'graphDiv')}
+                  >
+              {svg}
+            </ListenerNode>;
+  }
+}
+function refToParent(parent, parentProp) {
+  return (ref=>parent[parentProp]=ref).bind(parent);
+}
+class SrgSvg extends Component {
+  render() {
+    let {graph, settings, width, height, nodes,
+          edges, style, parentWantsRef, className, hoverNode,
+        } = this.props;
+    if (!(graph && settings && nodes.length && width && height)) {
+      console.log("don't have all props for svg");
+      return null;
+    }
+    console.log(`rendering SrgSvg with ${nodes.length} nodes`);
+    let classPrefix = settings('classPrefix');
+    return <svg {...{width, height}} 
+                ref={parentWantsRef}
+                className={classPrefix+'-svg'}>
+              <SigmaGroup grp='nodes' settings={settings} >
+                {graph.nodes().map(
+                  node => <SigmaNode key={node.id} node={node} settings={settings} 
+                                      getNodeState={this.getNodeState.bind(this)}
+                            />)}
+              </SigmaGroup>
+              <SigmaGroup grp='edges' settings={settings} >
+                {graph.edges().map(
+                  edge => <SigmaEdge key={edge.id} edge={edge} settings={settings} 
+                              source={graph.nodes(edge.source)}
+                              target={graph.nodes(edge.target)}
+                              getEdgeState={this.getEdgeState.bind(this)}
+                            />)}
+              </SigmaGroup>
+              <SigmaGroup grp='labels' settings={settings} >
+                {graph.nodes().map(
+                  node => <SigmaLabel key={node.id} node={node} settings={settings} 
+                                      getNodeState={this.getNodeState.bind(this)}
+                            />)}
+              </SigmaGroup>
+              <SigmaGroup grp='hovers' settings={settings} >
+                <text>hi</text>
+                { hoverNode &&
+                    <SigmaHover node={hoverNode} settings={settings} 
+                        getNodeState={this.getNodeState.bind(this)}
+                    /> || ''}
+              </SigmaGroup>
+              <canvas className={classPrefix+'-measurement-canvas'} />
+            </svg>
+  }
+}
 export function firstLastEvent(rxSubj, ms) {
   return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
           .distinctUntilChanged());
@@ -65,6 +233,7 @@ export class SigmaNode extends Component {
     let NodeClass = node.NodeClass || ListenerTarget;
     let content = node.NodeClass ? ''
           : <circle {...{fill, stroke, strokeWidth}} r={size} className={circleClass} data-node-id={node.id} />;
+    console.log("SigmaNode", content);
     return  <NodeClass {...this.props} size={size}  className={gClass} 
                 wrapperProps={{ ['data-node-id']:node.id,
                                 transform:`translate(${x},${y})`, }}
@@ -334,10 +503,11 @@ export class ListenerTarget extends Component {
   }
   render() {
     //const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
-    const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
+    const {wrapperTag='g', wrapperProps, children, 
+            parentWantsRef=d=>d, className } = this.props;
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
               //{React.cloneElement(this.props.children, this.props)}
-    return  <Tag className={(className||'')+" listener-target"} ref={refFunc} 
+    return  <Tag className={(className||'')+" listener-target"} ref={parentWantsRef} 
                   data-target-id={this.targetId} {...wrapperProps}>
               {children}
             </Tag>;
@@ -365,18 +535,24 @@ export class ListenerNode extends Component {
     };
   }
   dispatch(e) {
+    console.log("BROKEN -- shouldn't need a renderer");
+    /*
     const {eventHandlers=[], renderer } = this.props;
     let [target,targetEl] = findTarget(e.target);
     let node;
     if (target && target.props.node) {
       node = target.props.node;
     } else if (target && target.props["data-node-id"]) {
+      console.log("FIX?");
       node = renderer.graph.nodes(target.props["data-node-id"]);
     } else if (targetEl && targetEl.getAttribute('data-node-id')) {
       node = renderer.graph.nodes(targetEl.getAttribute('data-node-id'));
     }
     //console.log('node', target||'none',);
     eventHandlers.forEach( l => l(e, node, target, this.props));
+    */
+
+
     /*
     if (!sigmaDomEl || document.body.contains(sigmaDomEl)) {
       eventHandlers.forEach( l => l(e, this.props));
@@ -386,12 +562,14 @@ export class ListenerNode extends Component {
     */
   }
   render() {
-    const {wrapperTag='g', children, refFunc=d=>d, className } = this.props;
+    const {wrapperTag='g', children, parentWantsRef=d=>d, className } = this.props;
     let eventsToHandle = this.props.eventsToHandle || this.state.eventsToHandle;
     const reactEventypes = _.fromPairs(
       eventsToHandle.map(eventType=> [eventType,this.dispatch.bind(this)]));
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-    return  <Tag className={'listener-node ' + (className||'') } {...reactEventypes} ref={refFunc}>
+    return  <Tag className={'listener-node ' + (className||'') } 
+                {...reactEventypes} 
+                ref={parentWantsRef}>
               {children}
             </Tag>;
   }

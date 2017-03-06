@@ -90,7 +90,7 @@ class ConceptRecord extends Component {
     //const {node} = this.props;
     const {node, settings, eventProps, getNodeState} = this.props;
     if (!this.props.conceptRecord) return null;
-    console.log('conceptRecord', this.props);
+    //console.log('conceptRecord', this.props);
     const {concept_class_id, concept_code, concept_id, concept_name,
             domain_id, invalid_reason, standard_concept, 
             vocabulary_id} = this.props.conceptRecord;
@@ -135,7 +135,7 @@ export class ConceptView extends Component {
     //let cr = conceptInfo && conceptInfo.conceptRecord ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} /> : '';
     let node = {id:'testing', x:200, y:100, size: 5, NodeClass: ConceptRecord, };
     if (conceptInfo) node.conceptRecord = conceptInfo.conceptRecord;
-    console.log('conceptView', node);
+    //console.log('conceptView', node);
     let graphProps = {
       width: this.state.width, 
       height: this.state.height,
@@ -164,10 +164,10 @@ export class ConceptViewPage extends Component {
     this.state = {concept_id:''};
   }
   componentDidMount() {
-    console.log('ConceptViewPage mounting');
+    //console.log('ConceptViewPage mounting');
   }
   componentWillUnmount() {
-    console.log('ConceptViewPage unmounting');
+    //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
     if (this.state.concept_id !== prevState.concept_id) {
@@ -197,7 +197,7 @@ export class ConceptViewPage extends Component {
     e.preventDefault();
   }
   newDataFromWrapper(cvState) {
-    console.log('new conceptInfo data', cvState);
+    //console.log('new conceptInfo data', cvState);
     this.props.fullyRenderedCb(true);
   }
   render() {
