@@ -152,7 +152,8 @@ div.concept-browse {
 	cursor: ew-resize;
 }
 
-div.vocab-map, div.domain-map {
+div.vocab-map, div.domain-map,
+  div.concept-view-container {
   //float: right; 
   width: 100%;
   margin: 5;
@@ -163,7 +164,7 @@ div.vocab-map, div.domain-map {
     z-index: 100;
   }
   svg.sigma-svg { //g.sigma-node, g.sigma-label 
-    //background-color: #FBB;
+    background-color: $color_green_30
     rect {
       fill: $color_green_30;
     }

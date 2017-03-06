@@ -89,11 +89,11 @@ class ConceptRecord extends Component {
   render() {
     //const {node} = this.props;
     const {node, settings, eventProps, getNodeState} = this.props;
-    if (!this.props.conceptRecord) return null;
-    //console.log('conceptRecord', this.props);
+    if (!node.conceptRecord) return null;
+    console.log('conceptRecord', this.props);
     const {concept_class_id, concept_code, concept_id, concept_name,
             domain_id, invalid_reason, standard_concept, 
-            vocabulary_id} = this.props.conceptRecord;
+            vocabulary_id} = node.conceptRecord;
     let className = [ "concept-record",
                       invalid_reason ? "invalid" : '',
                       expandSc(standard_concept, 'className'),

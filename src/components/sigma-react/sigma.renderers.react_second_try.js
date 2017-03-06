@@ -1,8 +1,20 @@
+function getRenderer(renderers, el, settings, et='node') {
+  return renderers[elType(el, settings, et)] || renderers.def;
+}
+function elType(el, settings, et='node') {
+  return el.type || 
+          settings(et === 'node' 
+                      ? 'defaultNodeType'
+                      : et === 'edge'
+                        ? 'defaultEdgeType'
+                        : undefined);
+}
 export function sigmaReactRenderer() {
   var sigma = require('sigma');
 
   if (typeof sigma === 'undefined')
     throw 'sigma is not declared';
+  addFeatureRenderers(sigma);
 
   //if (typeof conrad === 'undefined') throw 'conrad is not declared';
 
@@ -17,7 +29,7 @@ export function sigmaReactRenderer() {
    * @param  {configurable}           settings The sigma instance settings
    *                                           function.
    * @param  {object}                 object   The options object.
-   * @return {sigma.renderers.svg}             The renderer instance.
+   * @return {sigma.renderers.react}             The renderer instance.
    */
   sigma.renderers.react = 
     function(graph, camera, settings, options) {
@@ -27,7 +39,7 @@ export function sigmaReactRenderer() {
         fn,
         self = this;
     if (typeof options !== 'object')
-      throw 'sigma.renderers.svg: Wrong arguments.';
+      throw 'sigma.renderers.react: Wrong arguments.';
     sigma.classes.dispatcher.extend(this);
 
     this.graph = graph;
@@ -41,12 +53,18 @@ export function sigmaReactRenderer() {
       hovers: {}
     };
     this.measurementCanvas = null;
+
     this.options = options;
+
+
     this.container = this.options.container;
-    this.settings = 
-      typeof options.settings === 'object'
-          ? settings.embedObjects(options.settings)
-          : settings;
+    this.settings = (
+        typeof options.settings === 'object' &&
+        options.settings
+      ) ?
+        settings.embedObjects(options.settings) :
+        settings;
+    
 
     // Is the renderer meant to be freestyle?
     this.settings('freeStyle', !!this.options.freeStyle);
@@ -54,9 +72,10 @@ export function sigmaReactRenderer() {
     this.nodesOnScreen = [];
     this.edgesOnScreen = [];
 
-    // Find the prefix:
-    this.options.prefix = 'renderer' + sigma.utils.id() + ':';
 
+    // moved this...not sure if that's ok
+    //options.settings.prefix = 'renderer' + sigma.utils.id() + ':';
+    this.options.prefix = 'renderer' + sigma.utils.id() + ':';
 
     console.log("this is where initDOM('svg') happens in sigma.renderers.svg");
     this.initDOM(options.domRefs);
@@ -94,9 +113,9 @@ export function sigmaReactRenderer() {
    * This method renders the graph on the svg scene.
    *
    * @param  {?object}                options Eventually an object of options.
-   * @return {sigma.renderers.svg}            Returns the instance itself.
+   * @return {sigma.renderers.react}            Returns the instance itself.
    */
-  sigma.renderers.svg.prototype.render = function(options) {
+  sigma.renderers.react.prototype.render = function(options) {
     options = options || {};
 
     var a,
@@ -114,7 +133,14 @@ export function sigmaReactRenderer() {
         index = {},
         graph = this.graph,
         nodes = this.graph.nodes,
-        prefix = this.options.prefix || '',
+
+
+        //prefix = this.options.prefix || '', 
+        // i don't get why prefix is blank, 
+        // fixing it...but there's probably a reason I'm not understanding
+        prefix = this.settings('prefix'),
+
+
         drawEdges = this.settings(options, 'drawEdges'),
         drawNodes = this.settings(options, 'drawNodes'),
         drawLabels = this.settings(options, 'drawLabels'),
@@ -166,96 +192,66 @@ export function sigmaReactRenderer() {
 
     // Display nodes
     //---------------
-    renderers = sigma.svg.nodes;
-    subrenderers = sigma.svg.labels;
-
+    renderers = sigma.react.nodes;
+    subrenderers = sigma.react.labels;
     //-- First we create the nodes which are not already created
-    if (drawNodes)
-      for (a = this.nodesOnScreen, i = 0, l = a.length; i < l; i++) {
-        if (!a[i].hidden && !this.domElements.nodes[a[i].id]) {
-          console.log("trying to create node");
-          // Node
-          e = (renderers[a[i].type] || renderers.def).create(
-            a[i],
-            embedSettings
-          );
+    let self = this;
+    if (drawNodes) {
+      this.nodesOnScreen.forEach(
+        node => {
+          if (!node.hidden && !self.domElements.nodes[node.id]) {
+            self.domElements.nodes[node.id] =
+              getRenderer(renderers, node, 
+                          self.settings, 'node')
+                .create(node, embedSettings);
 
-          this.domElements.nodes[a[i].id] = e;
-          this.domElements.groups.nodes.appendChild(e);
+            self.domElements.labels[node.id] =
+              getRenderer(subrenderers, node, 
+                          self.settings, 'node')
+                .create(node, embedSettings);
+          }
+        });
+      this.nodesOnScreen.forEach(
+        node => {
+          self.domElements.nodes[node.id] =
+            getRenderer(renderers, node, 
+                        self.settings, 'node')
+              .update(node, embedSettings);
 
-          // Label
-          e = (subrenderers[a[i].type] || subrenderers.def).create(
-            a[i],
-            embedSettings
-          );
-
-          this.domElements.labels[a[i].id] = e;
-          this.domElements.groups.labels.appendChild(e);
-        }
-      }
-
-    //-- Second we update the nodes
-    if (drawNodes)
-      for (a = this.nodesOnScreen, i = 0, l = a.length; i < l; i++) {
-
-        if (a[i].hidden)
-          continue;
-
-        // Node
-        (renderers[a[i].type] || renderers.def).update(
-          a[i],
-          this.domElements.nodes[a[i].id],
-          embedSettings
-        );
-
-        // Label
-        (subrenderers[a[i].type] || subrenderers.def).update(
-          a[i],
-          this.domElements.labels[a[i].id],
-          embedSettings
-        );
-      }
-
-    // Display edges
-    //---------------
+          self.domElements.labels[node.id] =
+            getRenderer(subrenderers, node, 
+                        self.settings, 'node')
+              .update(node, embedSettings);
+        });
+    }
     renderers = sigma.svg.edges;
+    if (drawEdges) {
+      this.edgesOnScreen.forEach(
+        edge => {
+          if (!self.domElements.edges[edge.id]) {
+            let source = nodes[edge.source];
+            let target = nodes[edge.target];
+            let renderer = getRenderer(renderers, edge, 
+                              self.settings, 'edge');
 
-    //-- First we create the edges which are not already created
-    if (drawEdges)
-      for (a = this.edgesOnScreen, i = 0, l = a.length; i < l; i++) {
-        if (!this.domElements.edges[a[i].id]) {
-          source = nodes(a[i].source);
-          target = nodes(a[i].target);
+            self.domElements.edges[edge.id] =
+              renderer.create(
+                  edge, source, target, embedSettings);
+          }
+        });
+      this.edgesOnScreen.forEach(
+        edge => {
+          let source = nodes[edge.source];
+          let target = nodes[edge.target];
+          let renderer = getRenderer(renderers, edge, 
+                            self.settings, 'edge');
 
-          e = (renderers[a[i].type] || renderers.def).create(
-            a[i],
-            source,
-            target,
-            embedSettings
-          );
-
-          this.domElements.edges[a[i].id] = e;
-          this.domElements.groups.edges.appendChild(e);
-        }
-       }
-
-    //-- Second we update the edges
-    if (drawEdges)
-      for (a = this.edgesOnScreen, i = 0, l = a.length; i < l; i++) {
-        source = nodes(a[i].source);
-        target = nodes(a[i].target);
-
-        (renderers[a[i].type] || renderers.def).update(
-          a[i],
-          this.domElements.edges[a[i].id],
-          source,
-          target,
-          embedSettings
-        );
-       }
-
+          self.domElements.edges[edge.id] =
+            renderer.update(
+                edge, source, target, embedSettings);
+        });
+    }
     this.dispatchEvent('render');
-
     return this;
   };
 
@@ -268,9 +264,17 @@ export function sigmaReactRenderer() {
    * @param  {string} id  The id of the element (to store it in "domElements").
    */
   sigma.renderers.react.prototype.initDOM = function(refs) {
-    this.domElements.graph = refs.svg;
-    console.log("FIX initDOM!!!!");
+    console.log("FIX initDOM!!!!", refs);
+    /*
+    if (!refs || !refs.svg) {
+      throw new Error("something wrong");
+      return;
+    }
+    this.domElements.graph = refs.svg.svg;
+    */
+    this.domElements.graph = refs.div;
     return;
+    /*
     var dom = refs.svg,
         c = this.settings('classPrefix'),
         g,
@@ -300,7 +304,6 @@ export function sigmaReactRenderer() {
       g.setAttributeNS(null, 'id', c + '-group-' + groups[i]);
       g.setAttributeNS(null, 'class', c + '-group');
 
-      debugger;
       this.domElements.groups[groups[i]] =
         this.domElements.graph.appendChild(g);
     }
@@ -308,6 +311,7 @@ export function sigmaReactRenderer() {
     // Appending measurement canvas
     this.container.appendChild(canvas);
     this.measurementCanvas = canvas.getContext('2d');
+    */
   };
 
   /**
@@ -315,10 +319,11 @@ export function sigmaReactRenderer() {
    *
    * @param  {array}                  elements  An array of elements to hide.
    * @param  {object}                 renderer  The renderer to use.
-   * @return {sigma.renderers.svg}              Returns the instance itself.
+   * @return {sigma.renderers.react}              Returns the instance itself.
    */
-  sigma.renderers.svg.prototype.hideDOMElements = function(elements) {
-    console.log("FIX THIS");
+  sigma.renderers.react.prototype.hideDOMElements = function(elements) {
+    console.log("FIX THIS, should be hiding", elements);
+    return this;
     var o,
         i;
 
@@ -336,12 +341,13 @@ export function sigmaReactRenderer() {
    * @param  {string} prefix The renderer prefix.
    */
   // TODO: add option about whether to display hovers or not
-  sigma.renderers.svg.prototype.bindHovers = function(prefix) {
+  sigma.renderers.react.prototype.bindHovers = function(prefix) {
     var renderers = sigma.svg.hovers,
         self = this,
         hoveredNode;
 
     function overNode(e) {
+      debugger;
       var node = e.data.node,
           embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -365,6 +371,7 @@ export function sigmaReactRenderer() {
     }
 
     function outNode(e) {
+      debugger;
       var node = e.data.node,
           embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -390,6 +397,7 @@ export function sigmaReactRenderer() {
     function update() {
       if (!hoveredNode)
         return;
+      debugger;
 
       var embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -428,9 +436,9 @@ export function sigmaReactRenderer() {
    *
    * @param  {?number}                width  The new width of the container.
    * @param  {?number}                height The new height of the container.
-   * @return {sigma.renderers.svg}           Returns the instance itself.
+   * @return {sigma.renderers.react}           Returns the instance itself.
    */
-  sigma.renderers.svg.prototype.resize = function(w, h) {
+  sigma.renderers.react.prototype.resize = function(w, h) {
     var oldWidth = this.width,
         oldHeight = this.height,
         pixelRatio = 1;
@@ -438,12 +446,17 @@ export function sigmaReactRenderer() {
     if (w !== undefined && h !== undefined) {
       this.width = w;
       this.height = h;
+      debugger;
     } else {
+      w = this.width = this.options.width;
+      h = this.height = this.options.height;
+      /*
       this.width = this.container.offsetWidth;
       this.height = this.container.offsetHeight;
 
       w = this.width;
       h = this.height;
+      */
     }
 
     if (oldWidth !== this.width || oldHeight !== this.height) {
@@ -468,8 +481,41 @@ export function sigmaReactRenderer() {
    *
    * They are stored in different files, in the "./svg" folder.
    */
-  sigma.utils.pkg('sigma.svg.nodes');
-  sigma.utils.pkg('sigma.svg.edges');
-  sigma.utils.pkg('sigma.svg.labels');
   return sigma;
+}
+function addFeatureRenderers(sigma) {
+  sigma.utils.pkg('sigma.react.nodes');
+  sigma.utils.pkg('sigma.react.edges');
+  sigma.utils.pkg('sigma.react.labels');
+
+  sigma.react.nodes.def = {
+    create: function(node, settings) {
+      console.log("trying to create node", node.id);
+      return node;
+    },
+    update: function(node, el, settings) {
+      console.log("trying to update node", node.id);
+      return this;
+    }
+  };
+  sigma.react.labels.def = {
+    create: function(node, settings) {
+      console.log("trying to create label", node.id);
+      return node;
+    },
+    update: function(node, el, settings) {
+      console.log("trying to update label", node.id);
+      return this;
+    }
+  };
+  sigma.react.edges.def = {
+    create: function(edge, source, target, settings) {
+      console.log("trying to create edge", edge.id);
+      return edge;
+    },
+    update: function(edge, el, source, target, settings) {
+      console.log("trying to update edge", edge.id);
+      return this;
+    }
+  };
 }

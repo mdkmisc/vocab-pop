@@ -39,13 +39,14 @@ export default class SigmaReactGraph extends Component {
           forceLabels: this.renderer.saveParams.options.forceLabels
         });
     */
-    this.state = {};
+    this.state = {hoverNode:null, hoverNeighbors:[]};
     DEBUG && (window.srg = this);
   }
-  options(domRefs) {
+  options(sOpts) {
     let rendererOpts = Object.assign(
       { id:'main',
-        //defaultNodeType, defaultEdgeType,
+        //defaultNodeType: 'react', 
+        //defaultEdgeType: 'react',
         // FIX ALL THIS
         defaultNodeColor:'darkkhaki',
         defaultNodeHoverColor:'crimson',
@@ -65,13 +66,12 @@ export default class SigmaReactGraph extends Component {
         drawEdgeLabels:false,
         edgeColor:'target',
         hideEdgesOnMove:true, }, this.props);
-    let opts = {  //container: this.graphDiv,
+    let opts = Object.assign({  //container: this.graphDiv,
                   type: 'react',
                   camera: this.cam,
                   //freeStyle: true
                   settings: rendererOpts,
-                  domRefs,
-                  };
+                }, sOpts);
     return opts;
   }
   componentDidMount() {
@@ -87,20 +87,40 @@ export default class SigmaReactGraph extends Component {
                 getObjectDiff(prevState, this.state));
     let {nodes=[], edges=[], className='',style='',
           width, height} = this.props;
+    let opts = this.options({
+                  width, height, 
+                  domRefs: {
+                    div: this.graphDiv, svg:this.graphSvg,
+                    width, height,
+                  }});
     if (!this.renderer) {
       if (nodes.length && width && height) {
         this.renderer = 
-          this.sigmaInstance.addRenderer(
-            this.options({
-              div: this.graphDiv, svg:this.graphSvg,
-            }));
+          this.sigmaInstance.addRenderer(opts);
+        console.log("created renderer. shouldn't be back here");
       } else {
         return;
       }
     }
     if (!_.isEqual(prevProps.nodes, nodes)) {
+      if (this.cam /*&& !sizeDomain*/) {
+        let sizeDomain = d3.extent(nodes.map(d=>d.size));
+        this.renderer.settings('sizeDomain', sizeDomain);
+        //this.setState({ sizeDomain });
+        let nodeSizeScale = d3.scaleLinear()
+                              .domain(sizeDomain)
+                              .range([1,2.5]);  
+        let zoomFontScale = d3.scaleLinear() // i think the largest zoomratio (or whatever sigma is doing) is 2 right now
+                              .domain([2,0])
+                              .range([6,20]);
+        let fontFromSize = size => nodeSizeScale(size) * zoomFontScale(this.cam.ratio);
+        this.renderer.settings('nodeSizeScale', nodeSizeScale);
+        this.renderer.settings('zoomFontScale', zoomFontScale);
+        this.renderer.settings('fontFromSize', fontFromSize);
+      }
       this.renderer.graph.clear();
       this.renderer.graph.read({nodes,edges});
+      this.sigmaInstance.camera.ratio = opts.settings.cameraRatio;
       this.sigmaInstance.refresh();
       //this.setState({nodes:nodes});
     }
@@ -113,9 +133,11 @@ export default class SigmaReactGraph extends Component {
           width, height} = props;
     console.log(`rendering SigmaReactGraph with ${nodes.length} nodes`);
     let svg = '';
+              //parentWantsRef={refsForParent(this,'graphSvg')}
     if (nodes.length && width && height) {
       svg = <SrgSvg 
-              parentWantsRef={refToParent(this,'graphSvg')}
+              getRefs={getRefsFunc(this,'graphSvg', true)}
+              getNodeState={this.getNodeState.bind(this)}
               {...{graph, settings, width, height, nodes,
                     edges, style, className,}} />;
     }
@@ -123,37 +145,101 @@ export default class SigmaReactGraph extends Component {
                   //eventHandlers={[this.setHoverNode.bind(this)]}
                   //renderer={renderer}
                   //refFunc={(div=>{ this.graphDiv=div; if (refFunc) refFunc(div); }).bind(this)} 
+                  //parentWantsRef={refsForParent(this,'graphDiv')}
     return  <ListenerNode wrapperTag="div" className={className} style={style} 
                   eventsToHandle={['onMouseMove']}
-                  parentWantsRef={refToParent(this,'graphDiv')}
+                  getRefs={getRefsFunc(this,'graphDiv')}
                   >
               {svg}
             </ListenerNode>;
   }
+  setHoverNode(e, node, target, listenerProps) {
+    let {settings} = this;
+    let {hoverNode, hoverNeighbors} = this.state;
+    if (hoverNode !== node) {
+      //if (node) { node.hideLabel = true; }
+      //this.hoverNode && renderer.dispatchEvent( 'outNode', { renderToSigma, node: this.hoverNode, renderer, isRedispatched: true });
+      //node && renderer.dispatchEvent( 'overNode', { renderToSigma, node, isRedispatched: true });
+      hoverNode = node;
+      hoverNeighbors = this.sigmaInstance.graph.neighborhood(node&&node.id||'');
+      console.log('hoverNode', hoverNode && hoverNode.id, 
+                    hoverNeighbors.nodes.map(d=>d.id).join(' / '),
+                    hoverNeighbors.edges.map(d=>d.id).join(' / '),
+                 );
+      this.setState({hoverNode, hoverNeighbors});
+      this.sigmaInstance.refresh();
+    }
+  }
+  getNodeState(node) {
+    let {hoverNode, hoverNeighbors} = this.state;
+    return {
+      hover: hoverNode && hoverNode.id === node.id,
+      hoverNeighbor: _.includes(hoverNeighbors.nodes, node),
+      muted: hoverNode && hoverNode.id !== node.id,
+    };
+  }
+  getEdgeState(edge) {
+    let {hoverNode, hoverNeighbors} = this.state;
+    return {
+      targetHover: hoverNode && hoverNode.id === edge.target,
+      sourceHover: hoverNode && hoverNode.id === edge.source,
+      muted: hoverNode && hoverNode.id !== edge.source.id && hoverNode.id !== edge.target,
+    };
+  }
 }
-function refToParent(parent, parentProp) {
+SigmaReactGraph.propTypes = {
+  nodes: React.PropTypes.array.isRequired,
+};
+function getRefsFunc(parent, parentProp, multiple=false) {
+  return (refs=>{
+              if (multiple) {
+                parent[parentProp]=refs;
+              } else {
+                let r = _.values(refs);
+                if (r.length !== 1)
+                  throw new Error("wrong number of refs");
+                parent[parentProp]=r[0];
+              }
+            }).bind(parent);
+}
+function refsForParent(parent, parentProp) {
   return (ref=>parent[parentProp]=ref).bind(parent);
 }
 class SrgSvg extends Component {
+  constructor(props) {
+    super(props);
+  }
+  componentDidUpdate() {
+    if (typeof this.props.getRefs === 'function') {
+      this.props.getRefs(this.refs);
+    }
+  }
   render() {
     let {graph, settings, width, height, nodes,
-          edges, style, parentWantsRef, className, hoverNode,
+          edges, style, getRefs, className, hoverNode,
+          getNodeState,
         } = this.props;
     if (!(graph && settings && nodes.length && width && height)) {
       console.log("don't have all props for svg");
       return null;
     }
     console.log(`rendering SrgSvg with ${nodes.length} nodes`);
-    let classPrefix = settings('classPrefix');
+    let c = settings('classPrefix');
+                //ref={parentWantsRef}
     return <svg {...{width, height}} 
-                ref={parentWantsRef}
-                className={classPrefix+'-svg'}>
-              <SigmaGroup grp='nodes' settings={settings} >
+                ref="svg"
+                className={c+'-svg'}>
+
+              <g 
+                  ref="node-group" id={`${c}-group-nodes`} 
+                  className={`${c}-group`} >
                 {graph.nodes().map(
-                  node => <SigmaNode key={node.id} node={node} settings={settings} 
-                                      getNodeState={this.getNodeState.bind(this)}
+                  node => <SigmaNode 
+                              key={node.id} node={node} settings={settings} 
+                              getNodeState={()=>getNodeState(node)}
                             />)}
-              </SigmaGroup>
+              </g>
+
               <SigmaGroup grp='edges' settings={settings} >
                 {graph.edges().map(
                   edge => <SigmaEdge key={edge.id} edge={edge} settings={settings} 
@@ -165,18 +251,20 @@ class SrgSvg extends Component {
               <SigmaGroup grp='labels' settings={settings} >
                 {graph.nodes().map(
                   node => <SigmaLabel key={node.id} node={node} settings={settings} 
-                                      getNodeState={this.getNodeState.bind(this)}
+                              getNodeState={()=>getNodeState(node)}
                             />)}
               </SigmaGroup>
+              <canvas className={c+'-measurement-canvas'} />
+            </svg>
+            /*
               <SigmaGroup grp='hovers' settings={settings} >
                 <text>hi</text>
                 { hoverNode &&
                     <SigmaHover node={hoverNode} settings={settings} 
-                        getNodeState={this.getNodeState.bind(this)}
+                        getNodeState={()=>getNodeState(node)}
                     /> || ''}
               </SigmaGroup>
-              <canvas className={classPrefix+'-measurement-canvas'} />
-            </svg>
+              */
   }
 }
 export function firstLastEvent(rxSubj, ms) {
@@ -208,11 +296,14 @@ export function firstLastEvent(rxSubj, ms) {
 export class SigmaNode extends Component {
   //constructor(props) { super(props); this.state = {}; }
   render() {
-    const {node, settings, eventProps, getNodeState} = this.props;
+    const {node, settings, eventProps, getNodeState,
+              wrapperProps={}, style={},
+              eventHandlers=[]} = this.props;
     if (node.hideNode) return null;
-    let prefix = settings('prefix');
+    let prefix = settings('prefix') || '';
     let gClass = settings('classPrefix') + '-node'
                   + (node.classes ? ' ' + node.classes : '');
+    let divClass = settings('classPrefix') + '-fo-div'
     let circleClass = settings('classPrefix') + '-node-circle';
 
     let nodeState = getNodeState(node);
@@ -231,15 +322,29 @@ export class SigmaNode extends Component {
     if (typeof x === 'undefined') throw new Error('no x');
 
     let NodeClass = node.NodeClass || ListenerTarget;
-    let content = node.NodeClass ? ''
-          : <circle {...{fill, stroke, strokeWidth}} r={size} className={circleClass} data-node-id={node.id} />;
-    console.log("SigmaNode", content);
-    return  <NodeClass {...this.props} size={size}  className={gClass} 
+    let content = node.NodeClass 
+          ? <NodeClass {...this.props} size={size}  className={gClass} 
                 wrapperProps={{ ['data-node-id']:node.id,
                                 transform:`translate(${x},${y})`, }}
                   eventProps={eventProps} wrapperTag='g'>
-              {content}
-            </NodeClass>;
+              {this.props.children}
+            </NodeClass>
+          : <circle {...{fill, stroke, strokeWidth}} r={size} className={circleClass} data-node-id={node.id} />;
+    // maybe want options for not wrapping in g/foreignobj/listener
+    return  <g transform={`translate(${x},${y})`} >
+              <ForeignObject node={node} settings={settings} 
+                      eventHandlers={eventHandlers} 
+              >
+                <ListenerTarget wrapperTag="div" 
+                      wrapperProps={wrapperProps /*div props*/}
+                      style={style}
+                      data-node-id={node.id}
+                      className={divClass} 
+                >
+                  {content}
+                </ListenerTarget>
+            </ForeignObject>
+          </g>;
       /*
       ?  <NodeClass {...{node, size, fill, stroke, strokeWidth}} data-node-id={node.id} />
       const circleSizeRange = [3,10];
@@ -253,7 +358,7 @@ export class SigmaLabel extends Component {
   //constructor(props) { super(props); this.state = {}; }
   render() {
     const {node, settings, eventProps, getNodeState} = this.props;
-    let prefix = settings('prefix');
+    let prefix = settings('prefix') || '';
     let size = node[prefix + 'size'];
     let gClass = settings('classPrefix') + '-label'
                   + (node.classes ? ' ' + node.classes : '');
@@ -450,12 +555,12 @@ export class ForeignObject extends Component {
     return {fontSize:fs, fontColor:fc, fontFamily};
   }
   render() {
-    const {children, eventHandlers=[], settings, node, wrapperProps} = this.props;
+    const {eventHandlers=[], settings, node, wrapperProps={} } = this.props;
     let {w, h, styles} = this.state;
     const {fontSize, fontColor, } = styles;
     const foClass = settings('classPrefix') + '-fo';
     const divClass = settings('classPrefix') + '-fo-div';
-    let prefix = settings('prefix');
+    let prefix = settings('prefix') || '';
     let size = node[prefix + 'size'];
     /*
     return <g data-node-id={node.id} data-el={this}>
@@ -470,16 +575,16 @@ export class ForeignObject extends Component {
     let x = node[prefix+'x'] - w / 2;
     let y = node[prefix+'y'] - h / 2;
     if (typeof x === 'undefined') throw new Error('no x');
-    return  <g transform={`translate(${x},${y})`} >
-              <foreignObject className={foClass} width={w} height={h} >
-                <ListenerTarget wrapperTag="div" {...wrapperProps} style={styles}
-                      data-node-id={node.id}
-                      className={divClass} refFunc={(d=>this.foDiv=d).bind(this)}
-                      eventHandlers={eventHandlers.concat(this.resizeFo.bind(this))} >
-                  {children}
-                </ListenerTarget>;
+    let children = 
+      React.cloneElement( this.props.children, {
+        eventHandlers: eventHandlers.concat(this.resizeFo.bind(this)),
+        getRefs: getRefsFunc(this,'foDiv'),
+        ...wrapperProps
+      });
+    return  <foreignObject className={foClass} width={w} height={h} 
+            >
+              {children}
             </foreignObject>
-          </g>;
     //<div className={className + '-div'} ref={d=>this.foDiv=d} style={styles} > </div>
     if (this.props.needsRect) {
       throw new Error("fix this");
@@ -501,13 +606,24 @@ export class ListenerTarget extends Component {
     this.targetId = ListenerTarget.nextId++;
     ListenerTarget.targets[this.targetId] = this;
   }
+  componentDidMount() {
+    if (typeof this.props.getRefs === 'function') {
+      this.props.getRefs(this.refs);
+    }
+  }
+  componentDidUpdate() {
+    if (typeof this.props.getRefs === 'function') {
+      this.props.getRefs(this.refs);
+    }
+  }
   render() {
     //const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
     const {wrapperTag='g', wrapperProps, children, 
-            parentWantsRef=d=>d, className } = this.props;
+            className } = this.props;
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
               //{React.cloneElement(this.props.children, this.props)}
-    return  <Tag className={(className||'')+" listener-target"} ref={parentWantsRef} 
+    return  <Tag className={(className||'')+" listener-target"} 
+                  ref="listenerTarget"
                   data-target-id={this.targetId} {...wrapperProps}>
               {children}
             </Tag>;
@@ -533,6 +649,11 @@ export class ListenerNode extends Component {
     this.state = {
       eventsToHandle,
     };
+  }
+  componentDidUpdate() {
+    if (typeof this.props.getRefs === 'function') {
+      this.props.getRefs(this.refs);
+    }
   }
   dispatch(e) {
     console.log("BROKEN -- shouldn't need a renderer");
@@ -562,14 +683,15 @@ export class ListenerNode extends Component {
     */
   }
   render() {
-    const {wrapperTag='g', children, parentWantsRef=d=>d, className } = this.props;
+    const {wrapperTag='g', children, className } = this.props;
     let eventsToHandle = this.props.eventsToHandle || this.state.eventsToHandle;
     const reactEventypes = _.fromPairs(
       eventsToHandle.map(eventType=> [eventType,this.dispatch.bind(this)]));
     const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
+                //ref={parentWantsRef}>
     return  <Tag className={'listener-node ' + (className||'') } 
                 {...reactEventypes} 
-                ref={parentWantsRef}>
+                ref="listenerNode" >
               {children}
             </Tag>;
   }
