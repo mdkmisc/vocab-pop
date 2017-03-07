@@ -1,3 +1,4 @@
+import _ from 'supergroup'; // just for lodash
 export function getRenderer(renderers, el, settings, et='node') {
   return renderers[elType(el, settings, et)] || renderers.def;
 }
@@ -178,18 +179,20 @@ export function sigmaReactRenderer() {
     );
 
     // Node index
-    for (a = this.nodesOnScreen, i = 0, l = a.length; i < l; i++)
-      index[a[i].id] = a[i];
+    this.nodesOnScreen.forEach(node=>{
+      node.hidden_for_render = false;
+      index[node.id] = node;
+    });
 
     // Find which edges are on screen
-    for (a = graph.edges(), i = 0, l = a.length; i < l; i++) {
-      o = a[i];
+    this.graph.edges().forEach(edge=>{
+      edge.hidden_for_render = false;
       if (
-        (index[o.source] || index[o.target]) &&
-        (!o.hidden && !nodes(o.source).hidden && !nodes(o.target).hidden)
+        (index[edge.source] || index[edge.target]) &&
+        (!edge.hidden && !nodes(edge.source).hidden && !nodes(edge.target).hidden)
       )
-        this.edgesOnScreen.push(o);
-    }
+        this.edgesOnScreen.push(edge);
+    });
 
     // Display nodes
     //---------------
@@ -323,17 +326,7 @@ export function sigmaReactRenderer() {
    * @return {sigma.renderers.react}              Returns the instance itself.
    */
   sigma.renderers.react.prototype.hideDOMElements = function(elements) {
-    console.log("FIX THIS, should be hiding", elements);
-    return this;
-    var o,
-        i;
-
-    for (i in elements) {
-      o = elements[i];
-      sigma.svg.utils.hide(o);
-    }
-
-    return this;
+    _.each(elements, el=>el.hidden_for_render = true);
   };
 
   /**
@@ -348,7 +341,9 @@ export function sigmaReactRenderer() {
         hoveredNode;
 
     function overNode(e) {
-      debugger;
+      //e.target.settings('srg').setHoverNode(e, e.data.node, e.target);
+      return;
+      console.log("overNode", e.data.node.id);
       var node = e.data.node,
           embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -372,7 +367,9 @@ export function sigmaReactRenderer() {
     }
 
     function outNode(e) {
-      debugger;
+      //e.target.settings('srg').setHoverNode(e, null, e.target);
+      return;
+      console.log("outNode", e.data.node.id);
       var node = e.data.node,
           embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -493,7 +490,7 @@ function addFeatureRenderers(sigma) {
   sigma.react.nodes.def = {
     create: function(node, settings) {
       //console.log("trying to create node", node.id);
-      return node;
+      return node.ref;
     },
     update: function(node, el, settings) {
       //console.log("trying to update node", node.id);
@@ -503,7 +500,7 @@ function addFeatureRenderers(sigma) {
   sigma.react.labels.def = {
     create: function(node, settings) {
       //console.log("trying to create label", node.id);
-      return node;
+      return node.ref;
     },
     update: function(node, el, settings) {
       //console.log("trying to update label", node.id);
@@ -514,11 +511,82 @@ function addFeatureRenderers(sigma) {
   sigma.react.edges.def = {
     create: function(edge, source, target, settings) {
       //console.log("trying to create edge", edge.id);
-      return edge;
+      return edge.ref;
     },
     update: function(edge, el, source, target, settings) {
       //console.log("trying to update edge", edge.id);
       return this;
     }
   };
+}
+/* sigma.plugins.neighborhoods constructor.
+   from https://github.com/jacomyal/sigma.js/tree/master/plugins/sigma.plugins.neighborhoods
+   but that version required a global sigma, which i didn't want to have necessarily
+*/
+export function neighborhoodPlugin(sigma) {
+  sigma.classes.graph.addMethod(
+    'neighborhood',
+    function(centerId) {
+      var k1,
+          k2,
+          k3,
+          node,
+          center,
+          // Those two local indexes are here just to avoid duplicates:
+          localNodesIndex = {},
+          localEdgesIndex = {},
+          // And here is the resulted graph, empty at the moment:
+          graph = {
+            nodes: [],
+            edges: []
+          };
+
+      // Check that the exists:
+      if (!this.nodes(centerId))
+        return graph;
+
+      // Add center. It has to be cloned to add it the "center" attribute
+      // without altering the current graph:
+      node = this.nodes(centerId);
+      center = {};
+      center.center = true;
+      for (k1 in node)
+        center[k1] = node[k1];
+
+      localNodesIndex[centerId] = true;
+      graph.nodes.push(center);
+
+      // Add neighbors and edges between the center and the neighbors:
+      for (k1 in this.allNeighborsIndex[centerId]) {
+        if (!localNodesIndex[k1]) {
+          localNodesIndex[k1] = true;
+          graph.nodes.push(this.nodesIndex[k1]);
+        }
+
+        for (k2 in this.allNeighborsIndex[centerId][k1])
+          if (!localEdgesIndex[k2]) {
+            localEdgesIndex[k2] = true;
+            graph.edges.push(this.edgesIndex[k2]);
+          }
+      }
+
+      // Add edges connecting two neighbors:
+      for (k1 in localNodesIndex)
+        if (k1 !== centerId)
+          for (k2 in localNodesIndex)
+            if (
+              k2 !== centerId &&
+              k1 !== k2 &&
+              this.allNeighborsIndex[k1][k2]
+            )
+              for (k3 in this.allNeighborsIndex[k1][k2])
+                if (!localEdgesIndex[k3]) {
+                  localEdgesIndex[k3] = true;
+                  graph.edges.push(this.edgesIndex[k3]);
+                }
+
+      // Finally, let's return the final graph:
+      return graph;
+    }
+  );
 }

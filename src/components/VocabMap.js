@@ -102,15 +102,15 @@ export default class VocabMap extends Component {
   constructor(props) {
     super(props);
     this.state = {  
+                    DefaultHoverClass:VocHover,
                     /*
                     DefaultNodeClass: VocNode, 
                     DefaultLabelClass:VocLabel,
-                    DefaultHoverClass:VocHover,
                     DefaultEdgeClass:VocEdge,
                     */
                     className: 'vocab-map',
                     defaultNodeType: 'circle',
-                    //defaultNodeType: 'circle_label_drill',
+                    defaultLabelType: 'text',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
@@ -251,6 +251,7 @@ export class DomainMap extends Component {
     this.state = {  //DefaultNodeClass: DomainMapNode, 
                     className: 'domain-map',
                     defaultNodeType: 'circle',
+                    defaultLabelType: 'text',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },

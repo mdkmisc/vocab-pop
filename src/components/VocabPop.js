@@ -133,7 +133,7 @@ export class ConceptView extends Component {
     const {concept_id, conceptInfo, } = this.props;
     //const {height} = this.state;
     //let cr = conceptInfo && conceptInfo.conceptRecord ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} /> : '';
-    let node = {id:'testing', x:200, y:100, size: 5, NodeClass: ConceptRecord, };
+    let node = {id:'testing', x:200, y:100, size: 5, LabelClass: ConceptRecord, };
     if (conceptInfo) node.conceptRecord = conceptInfo.conceptRecord;
     //console.log('conceptView', node);
     let graphProps = {
