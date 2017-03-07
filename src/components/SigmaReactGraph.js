@@ -8,8 +8,8 @@ var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
-import {sigmaReactRenderer} from './sigma-react/sigma.renderers.react_second_try';
-
+import {sigmaReactRenderer, elType} from './sigma-react/sigma.renderers.react';
+import { getRefsFunc, sendRefsToParent} from '../utils';
 //export {default} from './sigma-react/sigma.renderers.react';
 function getObjectDiff(obj1, obj2) {
     const diff = Object.keys(obj1).reduce((result, key) => {
@@ -79,6 +79,7 @@ export default class SigmaReactGraph extends Component {
     if (width && height && nodes) {
       this.setState({forceUpdate:true});
     }
+    sendRefsToParent(this, {graphDiv:this.graphDiv});
   }
   componentDidUpdate(prevProps, prevState) {
     // too many updates, need to fix
@@ -101,6 +102,7 @@ export default class SigmaReactGraph extends Component {
       } else {
         return;
       }
+      this.renderer.bind('render',(e=>this.setState({renderEvt:e})).bind(this));
     }
     if (!_.isEqual(prevProps.nodes, nodes)) {
       if (this.cam /*&& !sizeDomain*/) {
@@ -117,6 +119,7 @@ export default class SigmaReactGraph extends Component {
         this.renderer.settings('nodeSizeScale', nodeSizeScale);
         this.renderer.settings('zoomFontScale', zoomFontScale);
         this.renderer.settings('fontFromSize', fontFromSize);
+        console.log('prefix', this.renderer.settings('prefix'));
       }
       this.renderer.graph.clear();
       this.renderer.graph.read({nodes,edges});
@@ -124,6 +127,7 @@ export default class SigmaReactGraph extends Component {
       this.sigmaInstance.refresh();
       //this.setState({nodes:nodes});
     }
+    sendRefsToParent(this, {graphDiv:this.graphDiv});
   }
   render() {
     let settings = (this.renderer || this.sigmaInstance).settings;
@@ -133,11 +137,11 @@ export default class SigmaReactGraph extends Component {
           width, height} = props;
     console.log(`rendering SigmaReactGraph with ${nodes.length} nodes`);
     let svg = '';
-              //parentWantsRef={refsForParent(this,'graphSvg')}
     if (nodes.length && width && height) {
       svg = <SrgSvg 
-              getRefs={getRefsFunc(this,'graphSvg', true)}
+              sendRefsToParent={getRefsFunc(this,'graphSvg', true)}
               getNodeState={this.getNodeState.bind(this)}
+              getEdgeState={this.getEdgeState.bind(this)}
               {...{graph, settings, width, height, nodes,
                     edges, style, className,}} />;
     }
@@ -145,10 +149,9 @@ export default class SigmaReactGraph extends Component {
                   //eventHandlers={[this.setHoverNode.bind(this)]}
                   //renderer={renderer}
                   //refFunc={(div=>{ this.graphDiv=div; if (refFunc) refFunc(div); }).bind(this)} 
-                  //parentWantsRef={refsForParent(this,'graphDiv')}
     return  <ListenerNode wrapperTag="div" className={className} style={style} 
                   eventsToHandle={['onMouseMove']}
-                  getRefs={getRefsFunc(this,'graphDiv')}
+                  sendRefsToParent={getRefsFunc(this,'graphDiv')}
                   >
               {svg}
             </ListenerNode>;
@@ -190,34 +193,17 @@ export default class SigmaReactGraph extends Component {
 SigmaReactGraph.propTypes = {
   nodes: React.PropTypes.array.isRequired,
 };
-function getRefsFunc(parent, parentProp, multiple=false) {
-  return (refs=>{
-              if (multiple) {
-                parent[parentProp]=refs;
-              } else {
-                let r = _.values(refs);
-                if (r.length !== 1)
-                  throw new Error("wrong number of refs");
-                parent[parentProp]=r[0];
-              }
-            }).bind(parent);
-}
-function refsForParent(parent, parentProp) {
-  return (ref=>parent[parentProp]=ref).bind(parent);
-}
 class SrgSvg extends Component {
   constructor(props) {
     super(props);
   }
   componentDidUpdate() {
-    if (typeof this.props.getRefs === 'function') {
-      this.props.getRefs(this.refs);
-    }
+    sendRefsToParent(this);
   }
   render() {
     let {graph, settings, width, height, nodes,
-          edges, style, getRefs, className, hoverNode,
-          getNodeState,
+          edges, style, sendRefsToParent, className, hoverNode,
+          getNodeState, getEdgeState,
         } = this.props;
     if (!(graph && settings && nodes.length && width && height)) {
       console.log("don't have all props for svg");
@@ -245,7 +231,7 @@ class SrgSvg extends Component {
                   edge => <SigmaEdge key={edge.id} edge={edge} settings={settings} 
                               source={graph.nodes(edge.source)}
                               target={graph.nodes(edge.target)}
-                              getEdgeState={this.getEdgeState.bind(this)}
+                              getEdgeState={()=>getEdgeState(edge)}
                             />)}
               </SigmaGroup>
               <SigmaGroup grp='labels' settings={settings} >
@@ -321,7 +307,18 @@ export class SigmaNode extends Component {
     let y = node[prefix+'y'];
     if (typeof x === 'undefined') throw new Error('no x');
 
-    let NodeClass = node.NodeClass || ListenerTarget;
+    let nodeType = elType(node, settings, 'node');
+    if (nodeType === 'circle') {
+      return  <g transform={`translate(${x},${y})`} >
+                <ListenerTarget wrapperTag="circle" 
+                      wrapperProps={Object.assign({},wrapperProps,
+                                      {fill, stroke, strokeWidth})} 
+                      r={size} className={circleClass} 
+                      style={style}
+                      data-node-id={node.id} />
+              </g>;
+    }
+    let NodeClass = node.NodeClass;
     let content = node.NodeClass 
           ? <NodeClass {...this.props} size={size}  className={gClass} 
                 wrapperProps={{ ['data-node-id']:node.id,
@@ -345,13 +342,6 @@ export class SigmaNode extends Component {
                 </ListenerTarget>
             </ForeignObject>
           </g>;
-      /*
-      ?  <NodeClass {...{node, size, fill, stroke, strokeWidth}} data-node-id={node.id} />
-      const circleSizeRange = [3,10];
-      const size = d3.scaleLinear().domain(settings('sizeDomain'))
-                                   .range(circleSizeRange);
-      const scaleFactor = node[`${prefix}size`] / node.size;
-      */
   }
 }
 export class SigmaLabel extends Component {
@@ -578,7 +568,7 @@ export class ForeignObject extends Component {
     let children = 
       React.cloneElement( this.props.children, {
         eventHandlers: eventHandlers.concat(this.resizeFo.bind(this)),
-        getRefs: getRefsFunc(this,'foDiv'),
+        sendRefsToParent: getRefsFunc(this,'foDiv'),
         ...wrapperProps
       });
     return  <foreignObject className={foClass} width={w} height={h} 
@@ -592,14 +582,12 @@ export class ForeignObject extends Component {
     }
   }
 }
-
 function getSize(dn) {
   let cbr = dn.getBoundingClientRect(), 
       rw = Math.round(cbr.width),
       rh = Math.round(cbr.height);
   return [rw,rh];
 }
-
 export class ListenerTarget extends Component {
   constructor(props) {
     super();
@@ -607,14 +595,10 @@ export class ListenerTarget extends Component {
     ListenerTarget.targets[this.targetId] = this;
   }
   componentDidMount() {
-    if (typeof this.props.getRefs === 'function') {
-      this.props.getRefs(this.refs);
-    }
+    sendRefsToParent(this);
   }
   componentDidUpdate() {
-    if (typeof this.props.getRefs === 'function') {
-      this.props.getRefs(this.refs);
-    }
+    sendRefsToParent(this);
   }
   render() {
     //const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
@@ -639,7 +623,6 @@ function findTarget(el) {
   if (el.parentNode)
     return findTarget(el.parentNode);
 }
-
 export class ListenerNode extends Component {
   constructor(props) {
     super(props);
@@ -650,10 +633,11 @@ export class ListenerNode extends Component {
       eventsToHandle,
     };
   }
+  componentDidMount() {
+    sendRefsToParent(this);
+  }
   componentDidUpdate() {
-    if (typeof this.props.getRefs === 'function') {
-      this.props.getRefs(this.refs);
-    }
+    sendRefsToParent(this);
   }
   dispatch(e) {
     console.log("BROKEN -- shouldn't need a renderer");

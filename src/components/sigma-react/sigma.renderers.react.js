@@ -1,36 +1,29 @@
-// @ flow // flow breaking on new.target, so not using right now
-
-const DEBUG = true;
-import React, { Component } from 'react';
-import {render} from 'react-dom';
-//import {VocNode, VocEdge} from './VocabMap';
-var d3 = require('d3');
-var $ = require('jquery'); window.$ = $;
-import _ from 'supergroup'; // just for lodash
-import { ListenerTarget, ListenerNode, SigmaNode, SigmaGroup,
-          SigmaEdge, SigmaLabel, SigmaHover, } from '../SigmaReactGraph';
-
-function sigmaReactRenderer() {
+export function getRenderer(renderers, el, settings, et='node') {
+  return renderers[elType(el, settings, et)] || renderers.def;
+}
+export function elType(el, settings, et='node') {
+  return el.type || 
+          settings(et === 'node' 
+                      ? 'defaultNodeType'
+                      : et === 'edge'
+                        ? 'defaultEdgeType'
+                        : undefined);
+}
+export function sigmaReactRenderer() {
   var sigma = require('sigma');
-  /**
-   * The labels, nodes and edges renderers are stored in the three following
-   * objects. When an element is drawn, its type will be checked and if a
-   * renderer with the same name exists, it will be used. If not found, the
-   * default renderer will be used instead.
-   *
-   * They are stored in different files, in the "./svg" folder.
-   */
-  sigma.utils.pkg('sigma.react.nodes');
-  sigma.utils.pkg('sigma.react.edges');
-  sigma.utils.pkg('sigma.react.labels');
 
-  utils(sigma);
-  edgesCurveRenderer(sigma);
-  //edgesRenderer(sigma);
-  neighborhoodPlugin(sigma);
-  //addSpecificRenderers(sigma);
+  if (typeof sigma === 'undefined')
+    throw 'sigma is not declared';
+  addFeatureRenderers(sigma);
+
+  //if (typeof conrad === 'undefined') throw 'conrad is not declared';
+
+  // Initialize packages:
   sigma.utils.pkg('sigma.renderers');
+
   /**
+   * This function is the constructor of the svg sigma's renderer.
+   *
    * @param  {sigma.classes.graph}            graph    The graph to render.
    * @param  {sigma.classes.camera}           camera   The camera.
    * @param  {configurable}           settings The sigma instance settings
@@ -38,24 +31,17 @@ function sigmaReactRenderer() {
    * @param  {object}                 object   The options object.
    * @return {sigma.renderers.react}             The renderer instance.
    */
-  sigma.renderers.react = function(graph, camera, settings, options) {
-    if (typeof options !== 'object')
-      throw 'sigma.renderers.react: Wrong arguments.';
-
-
-    if (!(options.container instanceof HTMLElement ||
-          options.container instanceof SVGElement 
-         )) throw 'Container not found.';
-
+  sigma.renderers.react = 
+    function(graph, camera, settings, options) {
     var i,
         l,
         a,
         fn,
         self = this;
-
+    if (typeof options !== 'object')
+      throw 'sigma.renderers.react: Wrong arguments.';
     sigma.classes.dispatcher.extend(this);
 
-    // Initialize main attributes:
     this.graph = graph;
     this.camera = camera;
     this.domElements = {
@@ -67,7 +53,15 @@ function sigmaReactRenderer() {
       hovers: {}
     };
     this.measurementCanvas = null;
+
     this.options = options;
+
+    // moved this...not sure if that's ok
+    //options.settings.prefix = 'renderer' + sigma.utils.id() + ':';
+    this.options.prefix = 'renderer' + sigma.utils.id() + ':';
+    // still not working, trying this:
+    this.options.settings.prefix = this.options.prefix;
+
     this.container = this.options.container;
     this.settings = (
         typeof options.settings === 'object' &&
@@ -75,29 +69,18 @@ function sigmaReactRenderer() {
       ) ?
         settings.embedObjects(options.settings) :
         settings;
+    
 
     // Is the renderer meant to be freestyle?
     this.settings('freeStyle', !!this.options.freeStyle);
-
-    // SVG xmlns
-    this.settings('xmlns', 'http://www.w3.org/2000/svg');
-
     // Indexes:
     this.nodesOnScreen = [];
     this.edgesOnScreen = [];
 
-    // Find the prefix:
-    this.options.prefix = 'renderer' + sigma.utils.id() + ':';
-    this.saveParams = {graph, camera, settings, options};
-    // Initialize the DOM elements
-    //this.initDOM('svg');
-  };
-  sigma.renderers.react.finishAdding = function({graph, camera, settings, options}) {
-    var i,
-        l,
-        a,
-        fn,
-        self = this;
+
+    console.log("this is where initDOM('svg') happens in sigma.renderers.svg");
+    this.initDOM(options.domRefs);
+
 
     // Initialize captors:
     this.captors = [];
@@ -120,16 +103,15 @@ function sigmaReactRenderer() {
 
     // Deal with sigma events:
     // TODO: keep an option to override the DOM events?
-    console.log('probably want my own version of bindDOMEvents?');
-    //sigma.misc.bindDOMEvents.call(this, this.domElements.graph);
+    sigma.misc.bindDOMEvents.call(this, this.domElements.graph);
     this.bindHovers(this.options.prefix);
 
     // Resize
     this.resize(false);
-  }
+  };
 
   /**
-   * This method renders the graph on the react scene.
+   * This method renders the graph on the svg scene.
    *
    * @param  {?object}                options Eventually an object of options.
    * @return {sigma.renderers.react}            Returns the instance itself.
@@ -152,8 +134,22 @@ function sigmaReactRenderer() {
         index = {},
         graph = this.graph,
         nodes = this.graph.nodes,
+
+
+        //prefix = this.options.prefix || '', 
+        // i don't get why prefix is blank, 
+        // fixing it...but there's probably a reason I'm not understanding
+        prefix = this.settings('prefix'),
+
+
         drawEdges = this.settings(options, 'drawEdges'),
-        prefix = this.options.prefix || '';
+        drawNodes = this.settings(options, 'drawNodes'),
+        drawLabels = this.settings(options, 'drawLabels'),
+        embedSettings = this.settings.embedObjects(options, {
+          prefix: this.options.prefix,
+          forceLabels: this.options.forceLabels
+        });
+
     // Check the 'hideEdgesOnMove' setting:
     if (this.settings(options, 'hideEdgesOnMove'))
       if (this.camera.isAnimated || this.camera.isMoving)
@@ -194,23 +190,147 @@ function sigmaReactRenderer() {
       )
         this.edgesOnScreen.push(o);
     }
-    //console.log("can't append. finish rendering in the react comp");
-  }
+
+    // Display nodes
+    //---------------
+    renderers = sigma.react.nodes;
+    subrenderers = sigma.react.labels;
+    //-- First we create the nodes which are not already created
+    let self = this;
+    if (drawNodes) {
+      this.nodesOnScreen.forEach(
+        node => {
+          if (!node.hidden && !self.domElements.nodes[node.id]) {
+            self.domElements.nodes[node.id] =
+              getRenderer(renderers, node, 
+                          self.settings, 'node')
+                .create(node, embedSettings);
+
+            self.domElements.labels[node.id] =
+              getRenderer(subrenderers, node, 
+                          self.settings, 'node')
+                .create(node, embedSettings);
+          }
+        });
+      this.nodesOnScreen.forEach(
+        node => {
+          self.domElements.nodes[node.id] =
+            getRenderer(renderers, node, 
+                        self.settings, 'node')
+              .update(node, embedSettings);
+
+          self.domElements.labels[node.id] =
+            getRenderer(subrenderers, node, 
+                        self.settings, 'node')
+              .update(node, embedSettings);
+        });
+    }
+    renderers = sigma.react.edges;
+    if (drawEdges) {
+      this.edgesOnScreen.forEach(
+        edge => {
+          if (!self.domElements.edges[edge.id]) {
+            let source = nodes[edge.source];
+            let target = nodes[edge.target];
+            let renderer = getRenderer(renderers, edge, 
+                              self.settings, 'edge');
+
+            self.domElements.edges[edge.id] =
+              renderer.create(
+                  edge, source, target, embedSettings);
+          }
+        });
+      this.edgesOnScreen.forEach(
+        edge => {
+          let source = nodes[edge.source];
+          let target = nodes[edge.target];
+          let renderer = getRenderer(renderers, edge, 
+                            self.settings, 'edge');
+
+          self.domElements.edges[edge.id] =
+            renderer.update(
+                edge, source, target, embedSettings);
+        });
+    }
+    this.dispatchEvent('render');
+    return this;
+  };
 
   /**
-   * This method hides a batch of react DOM elements.
+   * This method creates a DOM element of the specified type, switches its
+   * position to "absolute", references it to the domElements attribute, and
+   * finally appends it to the container.
+   *
+   * @param  {string} tag The label tag.
+   * @param  {string} id  The id of the element (to store it in "domElements").
+   */
+  sigma.renderers.react.prototype.initDOM = function(refs) {
+    console.log("FIX initDOM!!!!", refs);
+    /*
+    if (!refs || !refs.svg) {
+      throw new Error("something wrong");
+      return;
+    }
+    this.domElements.graph = refs.svg.svg;
+    */
+    this.domElements.graph = refs.div;
+    return;
+    /*
+    var dom = refs.svg,
+        c = this.settings('classPrefix'),
+        g,
+        l,
+        i;
+
+    dom.style.position = 'absolute';
+    //dom.setAttribute('class', c + '-svg');
+
+    // Setting SVG namespace
+    dom.setAttribute('xmlns', this.settings('xmlns'));
+    dom.setAttribute('xmlns:xlink', 'http://www.w3.org/1999/xlink');
+    dom.setAttribute('version', '1.1');
+
+    // Creating the measurement canvas
+    //var canvas = document.createElement('canvas');
+    //canvas.setAttribute('class', c + '-measurement-canvas');
+
+    // Appending elements
+    this.domElements.graph = this.container.appendChild(dom);
+
+    // Creating groups
+    var groups = ['edges', 'nodes', 'labels', 'hovers'];
+    for (i = 0, l = groups.length; i < l; i++) {
+      g = document.createElementNS(this.settings('xmlns'), 'g');
+
+      g.setAttributeNS(null, 'id', c + '-group-' + groups[i]);
+      g.setAttributeNS(null, 'class', c + '-group');
+
+      this.domElements.groups[groups[i]] =
+        this.domElements.graph.appendChild(g);
+    }
+
+    // Appending measurement canvas
+    this.container.appendChild(canvas);
+    this.measurementCanvas = canvas.getContext('2d');
+    */
+  };
+
+  /**
+   * This method hides a batch of SVG DOM elements.
    *
    * @param  {array}                  elements  An array of elements to hide.
    * @param  {object}                 renderer  The renderer to use.
    * @return {sigma.renderers.react}              Returns the instance itself.
    */
   sigma.renderers.react.prototype.hideDOMElements = function(elements) {
+    console.log("FIX THIS, should be hiding", elements);
+    return this;
     var o,
         i;
 
     for (i in elements) {
       o = elements[i];
-      sigma.react.utils.hide(o);
+      sigma.svg.utils.hide(o);
     }
 
     return this;
@@ -223,11 +343,12 @@ function sigmaReactRenderer() {
    */
   // TODO: add option about whether to display hovers or not
   sigma.renderers.react.prototype.bindHovers = function(prefix) {
-    var renderers = sigma.react.hovers,
+    var renderers = sigma.svg.hovers,
         self = this,
         hoveredNode;
 
     function overNode(e) {
+      debugger;
       var node = e.data.node,
           embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -251,6 +372,7 @@ function sigmaReactRenderer() {
     }
 
     function outNode(e) {
+      debugger;
       var node = e.data.node,
           embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -276,6 +398,7 @@ function sigmaReactRenderer() {
     function update() {
       if (!hoveredNode)
         return;
+      debugger;
 
       var embedSettings = self.settings.embedObjects({
             prefix: prefix
@@ -324,19 +447,24 @@ function sigmaReactRenderer() {
     if (w !== undefined && h !== undefined) {
       this.width = w;
       this.height = h;
+      debugger;
     } else {
+      w = this.width = this.options.width;
+      h = this.height = this.options.height;
+      /*
       this.width = this.container.offsetWidth;
       this.height = this.container.offsetHeight;
 
       w = this.width;
       h = this.height;
+      */
     }
 
     if (oldWidth !== this.width || oldHeight !== this.height) {
       this.domElements.graph.style.width = w + 'px';
       this.domElements.graph.style.height = h + 'px';
 
-      if (this.domElements.graph.tagName.toLowerCase() === 'react') {
+      if (this.domElements.graph.tagName.toLowerCase() === 'svg') {
         this.domElements.graph.setAttribute('width', (w * pixelRatio));
         this.domElements.graph.setAttribute('height', (h * pixelRatio));
       }
@@ -346,192 +474,50 @@ function sigmaReactRenderer() {
   };
 
 
-  sigma.utils.pkg('sigma.react.nodes');
-  sigma.utils.pkg('sigma.react.labels');
-  sigma.utils.pkg('sigma.react.hovers');
+  /**
+   * The labels, nodes and edges renderers are stored in the three following
+   * objects. When an element is drawn, its type will be checked and if a
+   * renderer with the same name exists, it will be used. If not found, the
+   * default renderer will be used instead.
+   *
+   * They are stored in different files, in the "./svg" folder.
+   */
   return sigma;
 }
-
-/* sigma.plugins.neighborhoods constructor.
-   from https://github.com/jacomyal/sigma.js/tree/master/plugins/sigma.plugins.neighborhoods
-   but that version required a global sigma, which i didn't want to have necessarily
-*/
-function neighborhoodPlugin(sigma) {
-  if (sigma.classes.graph.hasMethod('neighborhood')) return;
-  sigma.classes.graph.addMethod(
-    'neighborhood',
-    function(centerId) {
-      var k1,
-          k2,
-          k3,
-          node,
-          center,
-          // Those two local indexes are here just to avoid duplicates:
-          localNodesIndex = {},
-          localEdgesIndex = {},
-          // And here is the resulted graph, empty at the moment:
-          graph = {
-            nodes: [],
-            edges: []
-          };
-
-      // Check that the exists:
-      if (!this.nodes(centerId))
-        return graph;
-
-      // Add center. It has to be cloned to add it the "center" attribute
-      // without altering the current graph:
-      node = this.nodes(centerId);
-      center = {};
-      center.center = true;
-      for (k1 in node)
-        center[k1] = node[k1];
-
-      localNodesIndex[centerId] = true;
-      graph.nodes.push(center);
-
-      // Add neighbors and edges between the center and the neighbors:
-      for (k1 in this.allNeighborsIndex[centerId]) {
-        if (!localNodesIndex[k1]) {
-          localNodesIndex[k1] = true;
-          graph.nodes.push(this.nodesIndex[k1]);
-        }
-
-        for (k2 in this.allNeighborsIndex[centerId][k1])
-          if (!localEdgesIndex[k2]) {
-            localEdgesIndex[k2] = true;
-            graph.edges.push(this.edgesIndex[k2]);
-          }
-      }
-
-      // Add edges connecting two neighbors:
-      for (k1 in localNodesIndex)
-        if (k1 !== centerId)
-          for (k2 in localNodesIndex)
-            if (
-              k2 !== centerId &&
-              k1 !== k2 &&
-              this.allNeighborsIndex[k1][k2]
-            )
-              for (k3 in this.allNeighborsIndex[k1][k2])
-                if (!localEdgesIndex[k3]) {
-                  localEdgesIndex[k3] = true;
-                  graph.edges.push(this.edgesIndex[k3]);
-                }
-
-      // Finally, let's return the final graph:
-      return graph;
-    }
-  );
-}
-
-function edgesCurveRenderer(sigma) {
+function addFeatureRenderers(sigma) {
+  sigma.utils.pkg('sigma.react.nodes');
   sigma.utils.pkg('sigma.react.edges');
+  sigma.utils.pkg('sigma.react.labels');
 
-  /**
-   * The curve edge renderer. It renders the node as a bezier curve.
-   */
-  sigma.react.edges.curve = {
-
-    /**
-     * SVG Element creation.
-     *
-     * @param  {object}                   edge       The edge object.
-     * @param  {object}                   source     The source node object.
-     * @param  {object}                   target     The target node object.
-     * @param  {configurable}             settings   The settings function.
-     */
-    create: function(edge, source, target, settings) {
-      var color = edge.color,
-          prefix = settings('prefix') || '',
-          edgeColor = settings('edgeColor'),
-          defaultNodeColor = settings('defaultNodeColor'),
-          defaultEdgeColor = settings('defaultEdgeColor');
-
-      if (!color)
-        switch (edgeColor) {
-          case 'source':
-            color = source.color || defaultNodeColor;
-            break;
-          case 'target':
-            color = target.color || defaultNodeColor;
-            break;
-          default:
-            color = defaultEdgeColor;
-            break;
-        }
-
-      var path = document.createElementNS(settings('xmlns'), 'path');
-
-      // Attributes
-      path.setAttributeNS(null, 'data-edge-id', edge.id);
-      path.setAttributeNS(null, 'class', settings('classPrefix') + '-edge');
-      path.setAttributeNS(null, 'stroke', color);
-
-      return path;
+  sigma.react.nodes.svg = sigma.svg.nodes.def;
+  sigma.react.nodes.def = {
+    create: function(node, settings) {
+      //console.log("trying to create node", node.id);
+      return node;
     },
-
-    /**
-     * SVG Element update.
-     *
-     * @param  {object}                   edge       The edge object.
-     * @param  {DOMElement}               line       The line DOM Element.
-     * @param  {object}                   source     The source node object.
-     * @param  {object}                   target     The target node object.
-     * @param  {configurable}             settings   The settings function.
-     */
-    update: function(edge, path, source, target, settings) {
-      var prefix = settings('prefix') || '';
-
-      path.setAttributeNS(null, 'stroke-width', edge[prefix + 'size'] || 1);
-
-      // Control point
-      var cx = (source[prefix + 'x'] + target[prefix + 'x']) / 2 +
-        (target[prefix + 'y'] - source[prefix + 'y']) / 4,
-          cy = (source[prefix + 'y'] + target[prefix + 'y']) / 2 +
-        (source[prefix + 'x'] - target[prefix + 'x']) / 4;
-
-      // Path
-      var p = 'M' + source[prefix + 'x'] + ',' + source[prefix + 'y'] + ' ' +
-              'Q' + cx + ',' + cy + ' ' +
-              target[prefix + 'x'] + ',' + target[prefix + 'y'];
-
-      // Updating attributes
-      path.setAttributeNS(null, 'd', p);
-      path.setAttributeNS(null, 'fill', 'none');
-
-      // Showing
-      path.style.display = '';
-
+    update: function(node, el, settings) {
+      //console.log("trying to update node", node.id);
       return this;
     }
   };
-};
-function utils(sigma) {
-  sigma.utils.pkg('sigma.react.utils');
-
-  /**
-   * Some useful functions used by sigma's SVG renderer.
-   */
-  sigma.react.utils = {
-
-    /**
-     * SVG Element show.
-     *
-     * @param  {DOMElement}               element   The DOM element to show.
-     */
-    show: function(element) {
-      element.style.display = '';
-      return this;
+  sigma.react.labels.def = {
+    create: function(node, settings) {
+      //console.log("trying to create label", node.id);
+      return node;
     },
-
-    /**
-     * SVG Element hide.
-     *
-     * @param  {DOMElement}               element   The DOM element to hide.
-     */
-    hide: function(element) {
-      element.style.display = 'none';
+    update: function(node, el, settings) {
+      //console.log("trying to update label", node.id);
+      return this;
+    }
+  };
+  sigma.react.edges.curve =
+  sigma.react.edges.def = {
+    create: function(edge, source, target, settings) {
+      //console.log("trying to create edge", edge.id);
+      return edge;
+    },
+    update: function(edge, el, source, target, settings) {
+      //console.log("trying to update edge", edge.id);
       return this;
     }
   };

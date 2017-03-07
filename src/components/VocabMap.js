@@ -25,12 +25,12 @@ var $ = require('jquery'); window.$ = $;
 //import Rx from 'rxjs/Rx';
 
 //import * as AppState from '../AppState';
-import {commify} from '../utils';
+import { commify, getRefsFunc, sendRefsToParent} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 //require('./stylesheets/Vocab.css');
 require('./sass/Vocab.scss');
 //import from './sigma-react/sigma.renderers.react';
-import SigmaReactGraph, { ListenerTarget, FoHover, ListenerNode } from './SigmaReactGraph';
+import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
 import {setToAncestorSize, getAncestorSize} from '../App';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
@@ -109,6 +109,7 @@ export default class VocabMap extends Component {
                     DefaultEdgeClass:VocEdge,
                     */
                     className: 'vocab-map',
+                    defaultNodeType: 'circle',
                     //defaultNodeType: 'circle_label_drill',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
@@ -166,8 +167,8 @@ export default class VocabMap extends Component {
             !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
   render() {
-    let props = Object.assign({refFunc:(d=>this.divRef=d).bind(this)}, this.props, this.state);
-    return  <SigmaReactGraph {...props} ><Spinner/></SigmaReactGraph>;
+    let graphProps = Object.assign({}, this.props, this.state);
+    return  <div ref={d=>this.divRef=d}><SigmaReactGraph {...graphProps} /></div>;
   }
 }
 /*
@@ -249,6 +250,7 @@ export class DomainMap extends Component {
     super(props);
     this.state = {  //DefaultNodeClass: DomainMapNode, 
                     className: 'domain-map',
+                    defaultNodeType: 'circle',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
@@ -289,6 +291,7 @@ export class DomainMap extends Component {
                               .range(_.range(1,6).reverse());
 
     let nodes = sg.map((d,i)=>{return {
+                //type: 'svg',
                 id:d.toString(), 
                 size:d.records.length,
                 label:d.toString(),
@@ -308,9 +311,8 @@ export class DomainMap extends Component {
     this.setState({nodes, edges});
   }
   render() {
-    let props = Object.assign({refFunc:(d=>this.divRef=d).bind(this)}, 
-                              this.props, this.state);
-    return  <SigmaReactGraph {...props} ><Spinner/></SigmaReactGraph>;
+    let graphProps = Object.assign({}, this.props, this.state);
+    return  <div ref={d=>this.divRef=d}><SigmaReactGraph {...graphProps} /></div>;
   }
 }
 export class MsgInfo extends Component {

@@ -293,3 +293,25 @@ function functor(val, ...args) { // d3.functor gone in d3.v4
 
 export const commify = d3.format(',');
 
+
+
+
+
+// to help with React reference for sizing
+export function getRefsFunc(parent, parentProp, multiple=false) {
+  return (refs=>{
+              if (multiple) {
+                parent[parentProp]=refs;
+              } else {
+                let r = _.values(refs);
+                if (r.length !== 1)
+                  throw new Error("wrong number of refs");
+                parent[parentProp]=r[0];
+              }
+            }).bind(parent);
+}
+export function sendRefsToParent(self, explicit) {
+  if (typeof self.props.sendRefsToParent === 'function') {
+    self.props.sendRefsToParent(explicit||self.refs);
+  }
+}
