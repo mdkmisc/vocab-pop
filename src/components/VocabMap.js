@@ -109,8 +109,8 @@ export default class VocabMap extends Component {
                     DefaultEdgeClass:VocEdge,
                     */
                     className: 'vocab-map',
-                    defaultNodeType: 'circle',
-                    defaultLabelType: 'text',
+                    //defaultNodeType: 'circle',
+                    //defaultLabelType: 'text',
                     cameraRatio: 1.4,
                     nodes:[], edges: [],
                     //style: { float: 'left', margin: 5, border: '1px solid blue', position: 'relative', },
@@ -202,7 +202,7 @@ class VocHover extends Component {
 
     let zoomContent = '';
     if (zoom) {
-      zoomContent = <div key="zoomContent" className="zoom">ZOOM!</div>;
+      zoomContent = 'ZOOM!';
     }
 
     let chunkStyle = {};
@@ -231,13 +231,14 @@ class VocHover extends Component {
                   vfmt={commify} style={chunkStyle} />
         }
       ));
-    return <FoHover {...this.props} >
-              <Icons key="Icons" hover={hover} />,
+    return <div>
+              <h4>hello</h4>
+              <Icons key="Icons" hover={hover} />
               <div key="chunks" className="info-chunks">
                 {chunks || <p>nothing yet</p>}
               </div>
-              {zoomContent}
-           </FoHover>;
+              <div key="zoomContent" className="zoom">{zoomContent}</div>
+           </div>
   }
   infoTrigger(k,v,e,out=false) {
     let {node, notInGraph, srgSigmaEvtCb} = this.props;

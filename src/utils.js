@@ -298,8 +298,9 @@ export const commify = d3.format(',');
 
 
 // to help with React reference for sizing
-export function getRefsFunc(parent, parentProp, multiple=false) {
+export function getRefsFunc(parent, parentProp, multiple=false, debug=false) {
   return (refs=>{
+              if (debug) debugger;
               if (multiple) {
                 parent[parentProp]=refs;
               } else {

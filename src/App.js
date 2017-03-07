@@ -386,6 +386,9 @@ export class ComponentWrapper extends Component {
   }
 }
 export class App extends Component {
+  componentDidUpdate() {
+    //console.log('app updating');
+  }
   render() {
     const {main, sidebar} = this.props;
     let NavBar = DefaultNavBar;

@@ -28,7 +28,9 @@ create index onewayrelidx on :results.one_way_relationships (relationship_id);
 -- realizing that relationship_name does have vital information for understanding relationships
 
 select * from :cdm.concept where concept_id = 44824072;
-select r.defines_ancestry da, r.is_hierarchical ish, r.relationship_name, c.concept_id, 
+
+select  distinct
+        r.defines_ancestry, r.is_hierarchical, r.relationship_name, c.concept_id, 
         c.concept_code, c.concept_name, 
         c.standard_concept sc, c.domain_id, c.vocabulary_id, c.concept_class_id
 from :cdm.concept_relationship cr
@@ -36,6 +38,17 @@ join :cdm.concept c on cr.concept_id_2 = c.concept_id
 join :results.one_way_relationships r on cr.relationship_id=r.relationship_id
 where cr.concept_id_1 = 44824072 --and c.vocabulary_id='ICD9CM'
 and   cr.invalid_reason is null
+order by 3, sc, domain_id, vocabulary_id;
+
+select r.defines_ancestry, r.is_hierarchical, r.relationship_name, 
+        c.standard_concept sc, c.domain_id, c.vocabulary_id, c.concept_class_id,
+        count(distinct c.concept_id)
+from :cdm.concept_relationship cr
+join :cdm.concept c on cr.concept_id_2 = c.concept_id
+join :results.one_way_relationships r on cr.relationship_id=r.relationship_id
+where cr.concept_id_1 = 44824072
+and   cr.invalid_reason is null
+group by 1,2,3,4,5,6,7
 order by 3, sc, domain_id, vocabulary_id;
 
 /*

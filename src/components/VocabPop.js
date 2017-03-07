@@ -120,6 +120,7 @@ export class ConceptView extends Component {
     //this.setState({height});
   }
   componentDidUpdate() {
+    console.log('ConceptView', this.props);
     this.setGetSize();
   }
   setGetSize() {
@@ -133,7 +134,10 @@ export class ConceptView extends Component {
     const {concept_id, conceptInfo, } = this.props;
     //const {height} = this.state;
     //let cr = conceptInfo && conceptInfo.conceptRecord ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} /> : '';
-    let node = {id:'testing', x:200, y:100, size: 5, LabelClass: ConceptRecord, };
+    let node = {id:concept_id, x:200, y:100, size: 5, 
+                  label: conceptInfo && conceptInfo.conceptRecord.concept_name || 'waiting for conceptInfo',
+                  //LabelClass: ConceptRecord, 
+                };
     if (conceptInfo) node.conceptRecord = conceptInfo.conceptRecord;
     //console.log('conceptView', node);
     let graphProps = {
@@ -164,10 +168,13 @@ export class ConceptViewPage extends Component {
     this.state = {concept_id:''};
   }
   componentDidMount() {
-    //console.log('ConceptViewPage mounting');
+    console.log('ConceptViewPage mounting');
+    let concept_id_as = AppState.getState('concept_id');
+    if (this.state.concept_id === '' && _.isNumber(concept_id_as))
+      this.setState({concept_id: concept_id_as});
   }
   componentWillUnmount() {
-    //console.log('ConceptViewPage unmounting');
+    console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
     if (this.state.concept_id !== prevState.concept_id) {
@@ -197,7 +204,7 @@ export class ConceptViewPage extends Component {
     e.preventDefault();
   }
   newDataFromWrapper(cvState) {
-    //console.log('new conceptInfo data', cvState);
+    console.log('new conceptInfo data', cvState);
     this.props.fullyRenderedCb(true);
   }
   render() {
