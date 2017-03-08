@@ -141,10 +141,7 @@ export default class SigmaReactGraph extends Component {
       //node && renderer.dispatchEvent( 'overNode', { renderToSigma, node, isRedispatched: true });
       hoverNode = node;
       hoverNeighbors = this.sigmaInstance.graph.neighborhood(node&&node.id||'');
-      console.log('hoverNode', hoverNode && hoverNode.id, 
-                    hoverNeighbors.nodes.map(d=>d.id).join(' / '),
-                    hoverNeighbors.edges.map(d=>d.id).join(' / '),
-                 );
+      //console.log('hoverNode', hoverNode && hoverNode.id, hoverNeighbors.nodes.map(d=>d.id).join(' / '), hoverNeighbors.edges.map(d=>d.id).join(' / '),);
       this.setState({hoverNode, hoverNeighbors});
       this.sigmaInstance.refresh();
     }

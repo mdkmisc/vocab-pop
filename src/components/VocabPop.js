@@ -134,11 +134,12 @@ export class ConceptView extends Component {
     const {concept_id, conceptInfo, } = this.props;
     //const {height} = this.state;
     //let cr = conceptInfo && conceptInfo.conceptRecord ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} /> : '';
-    let node = {id:concept_id, x:200, y:100, size: 5, 
-                  label: conceptInfo && conceptInfo.conceptRecord.concept_name || 'waiting for conceptInfo',
+    let node = {id:concept_id, x:200, y:100, size: 5, label: 'no concept...'};
                   //LabelClass: ConceptRecord, 
-                };
-    if (conceptInfo) node.conceptRecord = conceptInfo.conceptRecord;
+    if (conceptInfo && conceptInfo.conceptRecord) {
+      node.conceptRecord = conceptInfo.conceptRecord;
+      node.label = conceptInfo.conceptRecord.concept_name;
+    }
     //console.log('conceptView', node);
     let graphProps = {
       width: this.state.width, 
@@ -187,8 +188,9 @@ export class ConceptViewPage extends Component {
     }
   }
   getValidationState() {
-    const {concept_id} = this.state;
-    if (concept_id > 0) {
+    const {concept_id, conceptInfo} = this.state;
+    if (concept_id > 0 && conceptInfo && conceptInfo.conceptRecord && 
+        concept_id === conceptInfo.conceptRecord.concept_id) {
       return 'success';
     }
     else if (concept_id === '') return 'warning';
@@ -205,6 +207,7 @@ export class ConceptViewPage extends Component {
   }
   newDataFromWrapper(cvState) {
     console.log('new conceptInfo data', cvState);
+    this.setState(cvState); // conceptInfo
     this.props.fullyRenderedCb(true);
   }
   render() {

@@ -77,7 +77,7 @@ export class DataWrapper extends Component {
   newData() {
     const {parentCb=d=>d} = this.props;
     let state = Object.assign({}, this.state);
-    //console.log('newData', _.keys(this.streamsToWatch));
+    console.log('newData', _.keys(this.streamsToWatch));
     _.each(this.streamsToWatch, (stream,name) => {
       if (stream.results && 
           !_.isEqual(_.get(state, stream.meta.statePath), stream.results)) {
