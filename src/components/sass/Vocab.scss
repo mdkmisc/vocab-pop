@@ -57,6 +57,9 @@ html, body, .height-100 {
     flex: 0 1 40px;
   }
 }
+.main-content {
+  margin: 10px;
+}
 
 /*
 div.concept-browse {
@@ -383,3 +386,32 @@ div.junk {
     .tipsy-e .tipsy-arrow { right: 0; top: 50%; margin-top: -5px; border-left-style: solid; border-right: none; border-top-color: transparent; border-bottom-color: transparent; }
     .tipsy-w .tipsy-arrow { left: 0; top: 50%; margin-top: -5px; border-right-style: solid; border-left: none; border-top-color: transparent; border-bottom-color: transparent; }
 
+
+
+
+.concept-info-menu {
+  border: 1px solid gray;
+  & > span {
+    margin: 2px 3px 2px 3px;
+  }
+  .class {
+    font-style: italic;
+  }
+/*
+  .domain {
+    &::before {
+      content: "D";
+      font-weight: bold;
+      border: 2px solid lightblue;
+    }
+  }
+*/
+  .name {
+    text-decoration: underline;
+    font-weight: bold;
+  }
+  .code {
+  }
+  .vocab {
+  }
+}

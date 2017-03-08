@@ -298,30 +298,25 @@ export class Sidebar extends Component {
 export class ComponentWrapper extends Component {
   constructor(props) {
     super(props);
-    this.state = { childReady: false, updates: 0,};
+    this.state = { childReady: false,};
   }
   componentDidMount() {
-    //this.setState({contentDiv:this.contentDiv});
-    this.getSize();
+    this.forceUpdate();
   }
-  componentDidUpdate() {
-    this.getSize();
-  }
-  getSize() {
-    // should switch to version in utils
-    if (this.contentDiv) {
-      const {w,h} = this.state;
-      // maybe ComponentWrapper will end up too general for this
-      // specific way of getting div dimensions, but it should work
-      // for now
-      let cbr = this.contentDiv.getBoundingClientRect(),
-          rw = Math.round(cbr.width),
-          rh = getAncestorHeight(this.contentDiv, '.flex-remaining-height');
-
-      if (w !== rw || h !== rh) {
-        this.setState({w:rw, h:rh, updates: this.state.updates+1});
-      }
+  componentDidUpdate(prevProps, prevState) {
+    const {parentClass="flex-remaining-height"} = this.props;
+    updateReason(prevProps, prevState, this.props, this.state);
+    const {width, height} = setToAncestorSize(this, this.contentDiv, '.'+parentClass, false);
+    if (width !== this.state.width && height !== this.state.height)
+      return;
+    let growing = this.state.growing||0;
+    if (growing > 15) debugger;
+    if (height > this.state.height) {
+      growing++;
+    } else {
+      growing = 0;
     }
+    this.setState({width, height, growing});
   }
   render() {
     const {w:width, h:height} = this.state;
@@ -346,6 +341,7 @@ export class ComponentWrapper extends Component {
     //{spinner}  was screwing up height calcs and 
     // making infinite loop with page growing longer and longer
 // passing w,h not working so well...
+    //console.log("rendering main-content");
     return  <div className="main-content" ref={d=>this.contentDiv=d} 
                   style={{width,height}}
             >

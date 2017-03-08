@@ -37,8 +37,10 @@ require('./sass/Vocab.scss');
 //require('tipsy/src/javascripts/jquery.tipsy');
 //require('./VocabPop.css');
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
-import {Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock} from 'react-bootstrap';
-import {commify, updateReason, setToAncestorSize, getAncestorSize} from '../utils';
+import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
+          Button, ButtonToolbar,
+          } from 'react-bootstrap';
+import {commify, updateReason, setToAncestorHeight, getAncestorSize} from '../utils';
 
 //import {Grid} from 'ag-grid/main';
 import {AgGridReact} from 'ag-grid-react';
@@ -79,6 +81,51 @@ function expandSc(sc, out="title") { // out = title or className
             X: {title:'Non-Standard Concept', className: 'non-standard-concept'},
       })[sc][out];
 }
+class ConceptInfoMenu extends Component {
+  render() {
+    let ci = this.props.conceptInfo;
+    if (!ci) return null;
+    return  <div className="concept-info-menu">
+              <Glyphicon glyph="map-marker" title="Concept (name)" />
+              <span className="name">{ci.concept_name}</span>:{' '}
+
+              <Glyphicon glyph="asterisk" title="Concept Class" />
+              <span className="class">{ci.concept_class_id}</span>
+
+              <Glyphicon glyph="globe" title="Domain" />
+              <span className="domain">{ci.domain_id}</span>.{' '}
+
+              <Glyphicon glyph="barcode" title="Concept Code" />
+              Code <span className="code">{ci.concept_code}</span> in
+
+              <Glyphicon glyph="book" title="Vocabulary" />
+              <span className="vocab">{ci.vocabulary_id}</span>
+
+
+              <ButtonToolbar>
+                <HoverButton
+                >
+                  {ci.ci.conceptAncestorCount} Ancestor concepts,{' '}
+                </HoverButton>
+                <HoverButton
+                >
+                  {ci.ci.parentConceptCount} Parent concepts<br/>
+                </HoverButton>
+              </ButtonToolbar>
+
+              {ci.ci.conceptDescendantCount} Descendant concepts,{' '}
+              {ci.ci.childConceptCount} Child concepts<br/>
+            </div>;
+  }
+}
+class HoverButton extends Component {
+  render() {
+    return  <Button bsStyle="primary" bsSize="small"
+            >
+              {this.props.children}
+            </Button>
+  }
+}
 class ConceptRecord extends Component {
   render() {
     //const {node} = this.props;
@@ -109,14 +156,13 @@ export class ConceptView extends Component {
     this.state = {};
   }
   componentDidMount() {
-    const {parentClass="main-content"} = this.props;
-    setToAncestorSize(this, this.divRef, '.'+parentClass);
+    this.forceUpdate();
   }
   componentDidUpdate(prevProps, prevState) {
-    const {parentClass="main-content"} = this.props;
-    //console.log('ConceptView', this.props);
-    updateReason(prevProps, prevState, this.props, this.state);
-    setToAncestorSize(this, this.divRef, '.'+parentClass);
+    const parentClass = this.props.parentClass || "flex-remaining-height";
+    //updateReason(prevProps, prevState, this.props, this.state);
+    console.log("resizing ConceptView to ", parentClass);
+    setToAncestorHeight(this, this.divRef, '.'+parentClass);
   }
   render() {
     const {concept_id, conceptInfo, } = this.props;
@@ -136,7 +182,9 @@ export class ConceptView extends Component {
       //getHeight: (() => getAncestorHeight(this, this.divRef, ".main-content")).bind(this),
       //refFunc: (ref=>{ this.srgRef=ref; console.log('got a ref from SRG'); }).bind(this),
     };
-    return  <div ref={d=>this.divRef=d}><SigmaReactGraph {...graphProps} /></div>;
+    return  <div 
+              ref={d=>this.divRef=d} className={"concept-view-graph-div"}
+            ><SigmaReactGraph {...graphProps} /></div>;
     /*
     return  <div ref={d=>this.divRef=d}>
               {cr}
@@ -159,22 +207,22 @@ export class ConceptViewPage extends Component {
     this.wrapperUpdate = this._wrapperUpdate.bind(this);
   }
   _wrapperUpdate(wrapperSelf) {
-    const {parentClass="main-content"} = this.props;
+    const parentClass = this.props.parentClass || "flex-remaining-height";
     //console.log('new conceptInfo data', wrapperSelf.state);
     this.divRef = wrapperSelf.refs.conceptViewWrapper;
     this.props.fullyRenderedCb(true);
-    setToAncestorSize(this, this.divRef, '.'+parentClass, false);
+    console.log("resizing ConceptViewPage to ", parentClass);
+    setToAncestorHeight(this, this.divRef, '.'+parentClass, false);
     this.setState(wrapperSelf.state); // conceptInfo
   }
   componentDidMount() {
-    const {parentClass="main-content"} = this.props;
-    console.log('ConceptViewPage mounting');
+    //console.log('ConceptViewPage mounting');
     let concept_id_as = AppState.getState('concept_id');
     if (this.state.concept_id === '' && _.isNumber(concept_id_as))
       this.setState({concept_id: concept_id_as});
   }
   componentWillUnmount() {
-    console.log('ConceptViewPage unmounting');
+    //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
     if (this.state.concept_id !== prevState.concept_id) {
@@ -223,7 +271,7 @@ export class ConceptViewPage extends Component {
                           dontClone={true}
             >
               <div className="concept-view-container flex-content-height" >
-                <h3>hello</h3>
+                <ConceptInfoMenu concept_id={concept_id} conceptInfo={conceptInfo} />
               </div>
               <div className="concept-view-container flex-remaining-height" >
                 <ConceptView  

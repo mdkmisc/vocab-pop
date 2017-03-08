@@ -338,25 +338,35 @@ export function updateReason(prevProps, prevState, props, state) {
               getObjectDiff(prevState, state));
 }
 
-export function getAncestorHeight(el, selector) {
-  let height = Math.round($(el).closest(selector).height());
-  if (isNaN(height)) debugger;
-  return height;
-}
-export function setToAncestorHeight(el, selector) {
-  let height = getAncestorHeight(el, selector);
-  $(el).height(height);
-  return height;
-}
 export function getAncestorWidth(el, selector) {
   let width = Math.round($(el).closest(selector).width());
   if (isNaN(width)) debugger;
   return width;
 }
-export function setToAncestorWidth(el, selector) {
+export function setToAncestorWidth(self, el, selector, saveToCompState=true) {
   let width = getAncestorWidth(el, selector);
+  if (width && width === self.state.width)
+    return width;
+  console.log(`setting ${el.type}.${el.className} width to ${selector} ancestor. ${$(el).width()} to ${width}`);
   $(el).width(width);
+  if (saveToCompState)
+    self.setState({width});
   return width;
+}
+export function getAncestorHeight(el, selector) {
+  let height = Math.round($(el).closest(selector).height());
+  if (isNaN(height)) debugger;
+  return height;
+}
+export function setToAncestorHeight(self, el, selector, saveToCompState=true) {
+  let height = getAncestorHeight(el, selector);
+  if (height && height === self.state.height)
+    return height;
+  console.log(`setting ${el.type}.${el.className} height to ${selector} ancestor. ${$(el).height()} to ${height}`);
+  $(el).height(height);
+  if (saveToCompState)
+    self.setState({height});
+  return height;
 }
 export function getAncestorSize(el, selector) {
   return { width:getAncestorWidth(el, selector),
@@ -364,15 +374,8 @@ export function getAncestorSize(el, selector) {
   };
 }
 export function setToAncestorSize(self, el, selector, saveToCompState=true) {
-  let {width,height} = getAncestorSize(el, selector);
-  $(el).width(width);
-  $(el).height(height);
-  if (saveToCompState &&
-      (height && height !== self.state.height) ||
-      (width && width !== self.state.width)) 
-  {
-    self.setState({width,height});
-  }
+  let width = setToAncestorWidth(self, el, selector, saveToCompState);
+  let height = setToAncestorHeight(self, el, selector, saveToCompState);
   return {width,height}
 }
 
