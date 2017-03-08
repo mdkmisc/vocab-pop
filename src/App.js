@@ -305,8 +305,8 @@ export class ComponentWrapper extends Component {
   }
   componentDidUpdate(prevProps, prevState) {
     const {parentClass="flex-remaining-height"} = this.props;
-    updateReason(prevProps, prevState, this.props, this.state);
-    const {width, height} = setToAncestorSize(this, this.contentDiv, '.'+parentClass, false);
+    updateReason(prevProps, prevState, this.props, this.state, 'App/ComponentWrapper');
+    const {width, height} = setToAncestorSize(this, this.contentDiv, '.'+parentClass, false, 'App/ComponentWrapper');
     if (width !== this.state.width && height !== this.state.height)
       return;
     let growing = this.state.growing||0;
