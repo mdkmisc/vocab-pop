@@ -28,6 +28,7 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
 import {setToAncestorSize, getAncestorSize} from '../App';
+import ConceptInfo from '../ConceptInfo';
 
 //import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
@@ -45,7 +46,7 @@ import React, { Component } from 'react';
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
 import {Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock} from 'react-bootstrap';
 
-import {commify} from '../utils';
+import {commify, updateReason} from '../utils';
 
 //import {Grid} from 'ag-grid/main';
 import {AgGridReact} from 'ag-grid-react';
@@ -89,11 +90,11 @@ class ConceptRecord extends Component {
   render() {
     //const {node} = this.props;
     const {node, settings, eventProps, getNodeState} = this.props;
-    if (!node.conceptRecord) return null;
-    console.log('conceptRecord', this.props);
+    if (!node.conceptInfo) return null;
+    console.log('conceptInfo', this.props);
     const {concept_class_id, concept_code, concept_id, concept_name,
             domain_id, invalid_reason, standard_concept, 
-            vocabulary_id} = node.conceptRecord;
+            vocabulary_id} = node.conceptInfo;
     let className = [ "concept-record",
                       invalid_reason ? "invalid" : '',
                       expandSc(standard_concept, 'className'),
@@ -119,8 +120,9 @@ export class ConceptView extends Component {
     this.setGetSize();
     //this.setState({height});
   }
-  componentDidUpdate() {
-    console.log('ConceptView', this.props);
+  componentDidUpdate(prevProps, prevState) {
+    //console.log('ConceptView', this.props);
+    updateReason(prevProps, prevState, this.props, this.state);
     this.setGetSize();
   }
   setGetSize() {
@@ -133,12 +135,12 @@ export class ConceptView extends Component {
   render() {
     const {concept_id, conceptInfo, } = this.props;
     //const {height} = this.state;
-    //let cr = conceptInfo && conceptInfo.conceptRecord ? <ConceptRecord conceptRecord={conceptInfo.conceptRecord} /> : '';
+    //let cr = conceptInfo && conceptInfo.conceptInfo ? <ConceptRecord conceptInfo={conceptInfo.conceptInfo} /> : '';
     let node = {id:concept_id, x:200, y:100, size: 5, label: 'no concept...'};
                   //LabelClass: ConceptRecord, 
-    if (conceptInfo && conceptInfo.conceptRecord) {
-      node.conceptRecord = conceptInfo.conceptRecord;
-      node.label = conceptInfo.conceptRecord.concept_name;
+    if (conceptInfo && conceptInfo.concept_id === concept_id) {
+      node.conceptInfo = conceptInfo;
+      node.label = conceptInfo.concept_name;
     }
     //console.log('conceptView', node);
     let graphProps = {
@@ -167,6 +169,8 @@ export class ConceptViewPage extends Component {
   constructor(props) {
     super(props);
     this.state = {concept_id:''};
+    this.transformResults = d=>new ConceptInfo(d);
+    this.newDataFromWrapper = this._newDataFromWrapper.bind(this);
   }
   componentDidMount() {
     console.log('ConceptViewPage mounting');
@@ -189,8 +193,7 @@ export class ConceptViewPage extends Component {
   }
   getValidationState() {
     const {concept_id, conceptInfo} = this.state;
-    if (concept_id > 0 && conceptInfo && conceptInfo.conceptRecord && 
-        concept_id === conceptInfo.conceptRecord.concept_id) {
+    if (concept_id > 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
       return 'success';
     }
     else if (concept_id === '') return 'warning';
@@ -205,22 +208,25 @@ export class ConceptViewPage extends Component {
     this.setState({concept_id});
     e.preventDefault();
   }
-  newDataFromWrapper(cvState) {
+  _newDataFromWrapper(cvState) {
     console.log('new conceptInfo data', cvState);
     this.setState(cvState); // conceptInfo
     this.props.fullyRenderedCb(true);
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
-    const {concept_id} = this.state;
+    const {concept_id, } = this.state;
     let cv = 'hi ';
     if (concept_id) {
       cv =  <DataWrapper calls={[ {
                                     apiCall: 'conceptInfo',
                                     apiParams: {concept_id},
+                                    //transformResults: d=>new ConceptInfo(d),
+                                    transformResults: this.transformResults,
+                                    // has to be same func or causes infinite loop
                                   },
                                 ]} 
-                          parentCb={this.newDataFromWrapper.bind(this)}
+                          parentCb={this.newDataFromWrapper}
             >
               <ConceptView  concept_id={concept_id}
               />

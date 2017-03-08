@@ -141,7 +141,7 @@ export class ApiStream extends AppData.ApiFetcher {
   // of inheriting from util.JsonFetcher)
   constructor({apiCall, params, meta, transformResults, 
               singleValue, cb}) {
-    super({apiCall, params, meta, });
+    super({apiCall, params, meta, }); // don't pass transformResults to ApiFetcher
     this.behaviorSubj = new Rx.BehaviorSubject(this);
     this.jsonPromise.then(
       results=>{
@@ -150,8 +150,11 @@ export class ApiStream extends AppData.ApiFetcher {
           return;
         }
         if (singleValue) results = results[0];
-        if (transformResults)
+        if (transformResults) {
+          console.log('transform', results);
           results = transformResults(results);
+          console.log('to', results);
+        }
         this.results = results;
         if (this.behaviorSubj.isStopped) {
           console.warn("got results for unsubscribed ApiStream", results);
