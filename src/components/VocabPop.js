@@ -16,18 +16,16 @@ Copyright 2016 Sigfried Gold
 // @flow
 // npm run-script flow
 const DEBUG = true;
+import React, { Component } from 'react';
 var d3 = require('d3');
 var $ = require('jquery');
-import * as util from '../utils';
 //if (DEBUG) window.d3 = d3;
-if (DEBUG) window.util = util;
 import _ from 'supergroup'; // in global space anyway...
 import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
-import {setToAncestorSize, getAncestorSize} from '../App';
 import ConceptInfo from '../ConceptInfo';
 
 //import sigma from './sigmaSvgReactRenderer';
@@ -38,20 +36,15 @@ import ConceptInfo from '../ConceptInfo';
 require('./sass/Vocab.scss');
 //require('tipsy/src/javascripts/jquery.tipsy');
 //require('./VocabPop.css');
-
-
-window._ = _; 
-
-import React, { Component } from 'react';
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
 import {Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock} from 'react-bootstrap';
-
-import {commify, updateReason} from '../utils';
+import {commify, updateReason, setToAncestorSize, getAncestorSize} from '../utils';
 
 //import {Grid} from 'ag-grid/main';
 import {AgGridReact} from 'ag-grid-react';
 import 'ag-grid/dist/styles/ag-grid.css';
 import 'ag-grid/dist/styles/theme-fresh.css';
+window._ = _; 
 
 import * as AppState from '../AppState';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
@@ -116,21 +109,14 @@ export class ConceptView extends Component {
     this.state = {};
   }
   componentDidMount() {
-    //setToAncestorHeight(this.divRef, "concept-view-container");
-    this.setGetSize();
-    //this.setState({height});
+    const {parentClass="main-content"} = this.props;
+    setToAncestorSize(this, this.divRef, '.'+parentClass);
   }
   componentDidUpdate(prevProps, prevState) {
+    const {parentClass="main-content"} = this.props;
     //console.log('ConceptView', this.props);
     updateReason(prevProps, prevState, this.props, this.state);
-    this.setGetSize();
-  }
-  setGetSize() {
-    let {width,height} = setToAncestorSize(this.divRef, ".main-content");
-    if (height && height !== this.state.height &&
-        width && width !== this.state.width) {
-      this.setState({width,height});
-    }
+    setToAncestorSize(this, this.divRef, '.'+parentClass);
   }
   render() {
     const {concept_id, conceptInfo, } = this.props;
@@ -147,7 +133,7 @@ export class ConceptView extends Component {
       width: this.state.width, 
       height: this.state.height,
       nodes: [node],
-      //getHeight: (() => getAncestorHeight(this.divRef, ".main-content")).bind(this),
+      //getHeight: (() => getAncestorHeight(this, this.divRef, ".main-content")).bind(this),
       //refFunc: (ref=>{ this.srgRef=ref; console.log('got a ref from SRG'); }).bind(this),
     };
     return  <div ref={d=>this.divRef=d}><SigmaReactGraph {...graphProps} /></div>;
@@ -170,9 +156,18 @@ export class ConceptViewPage extends Component {
     super(props);
     this.state = {concept_id:''};
     this.transformResults = d=>new ConceptInfo(d);
-    this.newDataFromWrapper = this._newDataFromWrapper.bind(this);
+    this.wrapperUpdate = this._wrapperUpdate.bind(this);
+  }
+  _wrapperUpdate(wrapperSelf) {
+    const {parentClass="main-content"} = this.props;
+    //console.log('new conceptInfo data', wrapperSelf.state);
+    this.divRef = wrapperSelf.refs.conceptViewWrapper;
+    this.props.fullyRenderedCb(true);
+    setToAncestorSize(this, this.divRef, '.'+parentClass, false);
+    this.setState(wrapperSelf.state); // conceptInfo
   }
   componentDidMount() {
+    const {parentClass="main-content"} = this.props;
     console.log('ConceptViewPage mounting');
     let concept_id_as = AppState.getState('concept_id');
     if (this.state.concept_id === '' && _.isNumber(concept_id_as))
@@ -208,15 +203,11 @@ export class ConceptViewPage extends Component {
     this.setState({concept_id});
     e.preventDefault();
   }
-  _newDataFromWrapper(cvState) {
-    console.log('new conceptInfo data', cvState);
-    this.setState(cvState); // conceptInfo
-    this.props.fullyRenderedCb(true);
-  }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
-    const {concept_id, } = this.state;
+    const {concept_id, conceptInfo } = this.state;
     let cv = 'hi ';
+    // do I really need a wrapper?  ... switching to state to pass data down
     if (concept_id) {
       cv =  <DataWrapper calls={[ {
                                     apiCall: 'conceptInfo',
@@ -226,13 +217,23 @@ export class ConceptViewPage extends Component {
                                     // has to be same func or causes infinite loop
                                   },
                                 ]} 
-                          parentCb={this.newDataFromWrapper}
+                          className="flex-box"
+                          refName="conceptViewWrapper"
+                          parentCb={this.wrapperUpdate}
+                          dontClone={true}
             >
-              <ConceptView  concept_id={concept_id}
-              />
+              <div className="concept-view-container flex-content-height" >
+                <h3>hello</h3>
+              </div>
+              <div className="concept-view-container flex-remaining-height" >
+                <ConceptView  
+                    concept_id={concept_id} conceptInfo={conceptInfo}
+                    parentClass="concept-view-container" />
+              </div>
             </DataWrapper>;
     }
-    return  <Row>
+    return <div className="flex-box"> 
+            <Row className="flex-fixed-height-40">
               <Col md={2} sm={2} className="short-input">
                 <FormGroup
                   controlId="concept_id_input"
@@ -249,10 +250,13 @@ export class ConceptViewPage extends Component {
                   <FormControl.Feedback />
                 </FormGroup>
               </Col>
-              <Col className="concept-view-container" md={9} sm={9} mdOffset={1} smOffset={1}>
+            </Row>
+            <Row className="flex-remaining-height">
+              <Col md={12} sm={12} mdOffset={0} smOffset={0}>
                 {cv}
               </Col>
             </Row>
+          </div>
                   //<HelpBlock>Validation is based on string length.</HelpBlock>
   }
 }

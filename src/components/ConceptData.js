@@ -19,14 +19,9 @@ import Rx from 'rxjs/Rx';
 import * as AppState from '../AppState';
 //import * as VocabPop from './VocabPop';
 import _ from 'supergroup'; // in global space anyway...
-import {commify} from '../utils';
+import {commify, cloneToComponentDescendants, firstLastEvent} from '../utils';
 
-export function firstLastEvent(rxSubj, ms) {
-  return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
-          .distinctUntilChanged());
-}
-
-export class DataWrapper extends Component {
+export class DataWrapper extends Component { // should replace ConceptData
   constructor(props) {
     super(props);
     this.state = { };
@@ -35,10 +30,17 @@ export class DataWrapper extends Component {
   render() {
     let props = Object.assign({}, this.props, this.state);
     //console.log('DataWrapper', props);
-    let classNames = props.classNames || '';
-    delete props.classNames;
-    return  <div className={'data-wrapper ' + classNames}>
-              {React.cloneElement(this.props.children, props)}
+    let className = props.className || '';
+    delete props.className;
+    let refName = props.refName || 'wrapperDiv';
+    delete props.refName;
+    let dontClone = props.dontClone;
+    delete props.dontClone;
+    let children = dontClone
+      ? this.props.children
+      : cloneToComponentDescendants(this.props.children, props);
+    return <div className={'data-wrapper ' + className} ref={refName}>
+              {children}
            </div>;
   }
   requestStream(opts, apiParams) {
@@ -63,12 +65,14 @@ export class DataWrapper extends Component {
     this.newPropsSubj = new Rx.BehaviorSubject();
     this.newPropsSub = firstLastEvent(this.newPropsSubj, 200)
                           .subscribe(calls => this.fetchData())
-    this.setState({forceUpdate:true});
+    this.forceUpdate();
   }
   componentDidUpdate(prevProps, prevState) {
+    const {parentCb=d=>d} = this.props;
     if (!_.isEqual(prevProps.calls, this.props.calls)) {
       this.newPropsSubj.next(this.props.calls);
     }
+    parentCb(this);
   }
   componentWillUnmount() {
     _.each(this.streamsToWatch, s => s.unsubscribe());
@@ -77,7 +81,7 @@ export class DataWrapper extends Component {
   newData() {
     const {parentCb=d=>d} = this.props;
     let state = Object.assign({}, this.state);
-    console.log('newData', _.keys(this.streamsToWatch));
+    //console.log('newData', _.keys(this.streamsToWatch));
     _.each(this.streamsToWatch, (stream,name) => {
       if (stream.results && 
           !_.isEqual(_.get(state, stream.meta.statePath), stream.results)) {
@@ -93,7 +97,6 @@ export class DataWrapper extends Component {
     */
     //window.ConceptDataState = state;
     this.setState(state); // make a way to cancel if obsolete
-    parentCb(state);
   }
   fetchData() {
     const {calls} = this.props;
@@ -124,10 +127,10 @@ export default class ConceptData extends Component {
     //const {filters} = this.props;
     //const {counts, agg, concept_groups_d, concept_groups, dcid_cnts_breakdown, vocgroups} = this.state;
     let props = Object.assign({}, this.props, this.state);
-    let classNames = props.classNames || '';
-    delete props.classNames;
+    let className = props.className || '';
+    delete props.className;
     //filters, counts, agg, concept_groups: concept_groups_d, vocgroups,
-    return  <div className={'concept-data ' + classNames}>
+    return  <div className={'concept-data ' + className}>
               {React.cloneElement(this.props.children, props)}
            </div>;
   }

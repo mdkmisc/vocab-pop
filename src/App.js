@@ -41,7 +41,7 @@ import './stylesheets/VocabPop.css';
 import _ from 'supergroup';
 //import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
-import {commify} from './utils';
+import {commify, updateReason, setToAncestorSize, getAncestorHeight} from './utils';
 
 export class Home extends Component {
   constructor(props) {
@@ -222,39 +222,6 @@ const Settings = ({props}) => <h4>Settings</h4>;
 const History = ({props}) => <h4>History</h4>;
 const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
 
-export function getAncestorHeight(el, selector) {
-  let height = Math.round($(el).closest(selector).height());
-  if (isNaN(height)) debugger;
-  return height;
-}
-export function setToAncestorHeight(el, selector) {
-  let height = getAncestorHeight(el, selector);
-  $(el).height(height);
-  return height;
-}
-export function getAncestorWidth(el, selector) {
-  let width = Math.round($(el).closest(selector).width());
-  if (isNaN(width)) debugger;
-  return width;
-}
-export function setToAncestorWidth(el, selector) {
-  let width = getAncestorWidth(el, selector);
-  $(el).width(width);
-  return width;
-}
-export function getAncestorSize(el, selector) {
-  return { width:getAncestorWidth(el, selector),
-           height:getAncestorHeight(el, selector)
-  };
-}
-export function setToAncestorSize(el, selector) {
-  let {width,height} = getAncestorSize(el, selector);
-  $(el).width(width);
-  $(el).height(height);
-  return {width,height}
-}
-  
-
 export class Sidebar extends Component {
   constructor(props) {
     super(props);
@@ -341,6 +308,7 @@ export class ComponentWrapper extends Component {
     this.getSize();
   }
   getSize() {
+    // should switch to version in utils
     if (this.contentDiv) {
       const {w,h} = this.state;
       // maybe ComponentWrapper will end up too general for this

@@ -4,6 +4,9 @@
 // adapted from cachedAjax in ohdsi.utils
 import LZString from 'lz-string';
 import _ from 'lodash';
+import React, { Component } from 'react';
+import Rx from 'rxjs/Rx';
+var $ = require('jquery');
 var d3 = require('d3');
 var ALLOW_CACHING = [
 	'.*',
@@ -333,4 +336,60 @@ export function updateReason(prevProps, prevState, props, state) {
   console.log('prop/state diffs', 
               getObjectDiff(prevProps, props),
               getObjectDiff(prevState, state));
+}
+
+export function getAncestorHeight(el, selector) {
+  let height = Math.round($(el).closest(selector).height());
+  if (isNaN(height)) debugger;
+  return height;
+}
+export function setToAncestorHeight(el, selector) {
+  let height = getAncestorHeight(el, selector);
+  $(el).height(height);
+  return height;
+}
+export function getAncestorWidth(el, selector) {
+  let width = Math.round($(el).closest(selector).width());
+  if (isNaN(width)) debugger;
+  return width;
+}
+export function setToAncestorWidth(el, selector) {
+  let width = getAncestorWidth(el, selector);
+  $(el).width(width);
+  return width;
+}
+export function getAncestorSize(el, selector) {
+  return { width:getAncestorWidth(el, selector),
+           height:getAncestorHeight(el, selector)
+  };
+}
+export function setToAncestorSize(self, el, selector, saveToCompState=true) {
+  let {width,height} = getAncestorSize(el, selector);
+  $(el).width(width);
+  $(el).height(height);
+  if (saveToCompState &&
+      (height && height !== self.state.height) ||
+      (width && width !== self.state.width)) 
+  {
+    self.setState({width,height});
+  }
+  return {width,height}
+}
+
+export function firstLastEvent(rxSubj, ms) {
+  return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
+          .distinctUntilChanged());
+}
+export function cloneToComponentDescendants(children, props) {
+  return React.Children.map(children,
+          child => {
+            if (child.type instanceof Component) {
+              return React.cloneElement(child, props);
+            } else if (typeof child.type === "string") {
+              return React.cloneElement(child, {}, 
+                  cloneToComponentDescendants(child.props.children, props));
+            } else {
+              return child;
+            }
+          });
 }

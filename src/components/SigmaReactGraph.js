@@ -78,7 +78,7 @@ export default class SigmaReactGraph extends Component {
   componentDidMount() {
     const {width, height, nodes} = this.props;
     if (width && height && nodes) {
-      this.setState({forceUpdate:true});
+      this.forceUpdate();
     }
     sendRefsToParent(this, {graphDiv:this.graphDiv});
   }
@@ -276,10 +276,6 @@ class SrgSvg extends Component {
               <canvas className={c+'-measurement-canvas'} />
             </svg>
   }
-}
-export function firstLastEvent(rxSubj, ms) {
-  return (Rx.Observable.merge(rxSubj.debounceTime(ms), rxSubj.throttleTime(ms))
-          .distinctUntilChanged());
 }
 /*
     confusing, but here's what I think is happening:
@@ -501,15 +497,6 @@ export class SigmaEdge extends Component {
       */
   }
 }
-export class SigmaGroup extends Component {
-  render() {
-    const {grp, settings, children} = this.props;
-    let c = settings('classPrefix');
-    return (<g id={`${c}-group-${grp}`} className={`${c}-group`} >
-              {children}
-            </g>);
-  }
-}
 export class FoLabel extends Component {
   render() {
     return <ForeignObject {...this.props} />;
@@ -536,6 +523,7 @@ export class ForeignObject extends Component {
     //node.resizeFo = this.resizeFo.bind(this);
   }
   resizeFo() {
+    // use utils sizing stuff?
     const {node, settings} = this.props;
     let {w, h, styles} = this.state;
     styles = _.cloneDeep(styles); // not to mutate existing state...probably doesn't matter

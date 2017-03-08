@@ -31,7 +31,7 @@ import makeElements from './ThreeLayerVocGraphElements';
 require('./sass/Vocab.scss');
 //import from './sigma-react/sigma.renderers.react';
 import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
-import {setToAncestorSize, getAncestorSize} from '../App';
+import {setToAncestorSize, getAncestorSize} from '../utils';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 
@@ -44,7 +44,7 @@ export class VocabMapByDomain extends Component {
   componentDidMount() {
     const {concept_groups_d, } = this.props;
     if (concept_groups_d && concept_groups_d.length)
-      this.setState({forceUpdate:true});
+      this.forceUpdate();
   }
   componentDidUpdate(prevProps, prevState) {
     const {w, h, fullyRenderedCb, } = this.props;
@@ -118,19 +118,12 @@ export default class VocabMap extends Component {
   }
   componentDidMount() {
     this.dataPrep();
-    this.setGetSize();
+    setToAncestorSize(this, this.divRef, ".main-content");
   }
   componentDidUpdate() {
     if (!this.state.nodes)
       this.dataPrep();
-    this.setGetSize();
-  }
-  setGetSize() {
-    let {width,height} = setToAncestorSize(this.divRef, ".main-content");
-    if (height && height !== this.state.height &&
-        width && width !== this.state.width) {
-      this.setState({width,height});
-    }
+    setToAncestorSize(this, this.divRef, ".main-content");
   }
   dataPrep() {
     const {sg} = this.props;
@@ -266,14 +259,7 @@ export class DomainMap extends Component {
               !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
   componentDidMount() {
-    this.setGetSize();
-  }
-  setGetSize() {
-    let {width,height} = setToAncestorSize(this.divRef, ".main-content");
-    if ((height && height !== this.state.height) ||
-        (width && width !== this.state.width)) {
-      this.setState({width,height});
-    }
+    setToAncestorSize(this, this.divRef, ".main-content");
   }
   componentDidUpdate() {
     const { vocgroups, w, h } = this.props;
@@ -309,7 +295,7 @@ export class DomainMap extends Component {
                   sval: d.parent,
                   tval: d,
               }});
-    this.setGetSize();
+    setToAncestorSize(this, this.divRef, ".main-content");
     this.setState({nodes, edges});
   }
   render() {
