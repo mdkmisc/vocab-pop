@@ -312,7 +312,7 @@ export function getRefsFunc(parent, parentProp, multiple=false, debug=false) {
                   throw new Error("wrong number of refs");
                 parent[parentProp]=r[0];
               }
-            }).bind(parent);
+            });
 }
 export function sendRefsToParent(self, explicit) {
   if (typeof self.props.sendRefsToParent === 'function') {
@@ -395,4 +395,90 @@ export function cloneToComponentDescendants(children, props) {
               return child;
             }
           });
+}
+function findTarget(el) {
+  if (el.classList.contains('listener-target'))
+    return [ListenerTargetWrapper.targets[el.getAttribute('data-target-id')], el];
+  if (el.classList.contains('listener-node'))
+    return [null,null];
+  if (el.parentNode)
+    return findTarget(el.parentNode);
+  console.log("can't find target for", el);
+}
+export class ListenerTargetWrapper extends Component {
+  constructor(props) {
+    super();
+    let addTarget = props.addTarget ||
+                      ((self)=>{
+                        let id=ListenerTargetWrapper.nextId++;
+                        ListenerTargetWrapper.targets[id] = self;
+                        return id;
+                      });
+    this.targetId = addTarget(props.wrappedComponent||this);
+  }
+  componentDidMount() {
+    sendRefsToParent(this);
+    this.props.listener && this.props.listener();
+  }
+  componentDidUpdate() {
+    sendRefsToParent(this);
+    this.props.listener && this.props.listener();
+  }
+  render() {
+    //const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
+    const {wrapperTag='g', wrapperProps, children, 
+            className } = this.props;
+    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
+              //{React.cloneElement(this.props.children, this.props)}
+    return  <Tag className={(className||'')+" listener-target"} 
+                  ref="listenerTarget"
+                  data-target-id={this.targetId} {...wrapperProps}>
+              {children}
+            </Tag>;
+  }
+}
+ListenerTargetWrapper.nextId = 0;
+ListenerTargetWrapper.targets = [];
+
+export class ListenerWrapper extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { eventListeners:{}, };
+  }
+  eventListeners() {
+    const {eventsToHandle=[ 'onClick', 'onMouseMove'], 
+           eventHandlers=[]} = this.props;
+    //console.log('binding ListenerNode to', eventsToHandle);
+    const eventListeners = _.fromPairs(
+      eventsToHandle.map(
+        eventType=> [eventType,this.dispatch.bind(this)]));
+    this.setState({eventListeners});
+  }
+  componentDidMount() {
+    this.eventListeners();
+    sendRefsToParent(this);
+  }
+  componentDidUpdate(prevProps, prevState) {
+    if (!_.isEqual(prevProps.eventsToHandle, this.props.eventsToHandle) ||
+        !_.isEqual(prevProps.eventHandlers, this.props.eventHandlers)) {
+      this.eventListeners();
+    }
+    sendRefsToParent(this);
+  }
+  dispatch(e) {
+    const {eventHandlers=[], } = this.props;
+    let [target,targetEl] = findTarget(e.target);
+    eventHandlers.forEach(eh => eh({e, target, targetEl, listenerWrapper:this}));
+  }
+  render() {
+    const {wrapperTag='g', children, className } = this.props;
+    const {eventListeners} = this.state;
+    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
+                //ref={parentWantsRef}>
+    return  <Tag className={'listener-node ' + (className||'') } 
+                {...eventListeners} 
+                ref="listenerNode" >
+              {children}
+            </Tag>;
+  }
 }

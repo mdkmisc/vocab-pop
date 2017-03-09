@@ -25,7 +25,7 @@ import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
+import SigmaReactGraph from './SigmaReactGraph';
 import ConceptInfo from '../ConceptInfo';
 
 //import sigma from './sigmaSvgReactRenderer';
@@ -40,7 +40,10 @@ require('./sass/Vocab.scss');
 import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
           Button, ButtonToolbar,
           } from 'react-bootstrap';
-import {commify, updateReason, setToAncestorHeight, setToAncestorSize, getAncestorSize} from '../utils';
+import {commify, updateReason, 
+        setToAncestorHeight, setToAncestorSize, getAncestorSize,
+        getRefsFunc, sendRefsToParent,
+        ListenerWrapper, ListenerTargetWrapper} from '../utils';
 
 //import {Grid} from 'ag-grid/main';
 import {AgGridReact} from 'ag-grid-react';
@@ -85,16 +88,30 @@ class ConceptInfoMenu extends Component {
   constructor(props) {
     super(props);
     this.state = {};
+    this.eventHandler = this._eventHandler.bind(this);
   }
-  // callbacks or Rx events?
+  _eventHandler({e, target, targetEl, listenerWrapper}) {
+    if (target && target.props && target.props.data) {
+      const {ci, drill} = target.props.data;
+      console.log(ci, drill);
+      switch (drill) {
+        case "ancestors":
+          console.log('drill', drill);
+      }
+    }
+  }
   render() {
     let ci = this.props.conceptInfo;
     if (!ci) return null;
-    return  <div className="concept-info-menu">
+    const {above, below} = this.state;
+                  //sendRefsToParent={getRefsFunc(this,'graphDiv')}
+    return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
+                  eventsToHandle={['onMouseMove']}
+                  eventHandlers={[this.eventHandler]} >
               {above}
               <ConceptDesc {...this.props} />
               {below}
-            </div>;
+            </ListenerWrapper>;
   }
 }
 class ConceptDesc extends Component {
@@ -119,12 +136,10 @@ class ConceptDesc extends Component {
 
 
               <ButtonToolbar>
-                <HoverButton
-                >
+                <HoverButton data={{ci, drill:'ancestors'}} >
                   {ci.ci.conceptAncestorCount} Ancestor concepts,{' '}
                 </HoverButton>
-                <HoverButton
-                >
+                <HoverButton data={{ci, drill:'parents'}} >
                   {ci.ci.parentConceptCount} Parent concepts<br/>
                 </HoverButton>
               </ButtonToolbar>
@@ -136,10 +151,11 @@ class ConceptDesc extends Component {
 }
 class HoverButton extends Component {
   render() {
-    return  <Button bsStyle="primary" bsSize="small"
-            >
-              {this.props.children}
-            </Button>
+    return  <ListenerTargetWrapper wrapperTag="span" wrappedComponent={this} >
+              <Button bsStyle="primary" bsSize="small" >
+                {this.props.children}
+              </Button>
+            </ListenerTargetWrapper>
   }
 }
 class ConceptRecord extends Component {

@@ -9,7 +9,8 @@ var $ = require('jquery'); window.$ = $;
 import _ from 'supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
 import {sigmaReactRenderer, elType, neighborhoodPlugin} from './sigma-react/sigma.renderers.react';
-import { getRefsFunc, sendRefsToParent, updateReason} from '../utils';
+import { getRefsFunc, sendRefsToParent, updateReason,
+            ListenerWrapper, ListenerTargetWrapper} from '../utils';
 //export {default} from './sigma-react/sigma.renderers.react';
 
 export default class SigmaReactGraph extends Component {
@@ -619,72 +620,26 @@ function getSize(dn) {
   return [rw,rh];
 }
 export class ListenerTarget extends Component {
-  constructor(props) {
-    super();
-    this.targetId = ListenerTarget.nextId++;
-    ListenerTarget.targets[this.targetId] = this;
-  }
-  componentDidMount() {
-    sendRefsToParent(this);
-    this.props.listener && this.props.listener();
-  }
-  componentDidUpdate() {
-    sendRefsToParent(this);
-    this.props.listener && this.props.listener();
-  }
   render() {
-    //const {wrapperTag='g', wrapperProps, children, refFunc=d=>this.elRef=d, className } = this.props;
-    const {wrapperTag='g', wrapperProps, children, 
-            className } = this.props;
-    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-              //{React.cloneElement(this.props.children, this.props)}
-    return  <Tag className={(className||'')+" listener-target"} 
-                  ref="listenerTarget"
-                  data-target-id={this.targetId} {...wrapperProps}>
-              {children}
-            </Tag>;
+                /*
+                addTarget={(self)=>{
+                  let id=ListenerTarget.nextId++;
+                  ListenerTarget.targets[id] = this; // self or this?
+                  return id;
+                }} 
+                */
+    return  <ListenerTargetWrapper {...this.props} >
+              {this.props.children}
+            </ListenerTargetWrapper>
   }
-}
-ListenerTarget.nextId = 0;
-ListenerTarget.targets = [];
-function findTarget(el) {
-  if (el.classList.contains('listener-target'))
-    return [ListenerTarget.targets[el.getAttribute('data-target-id')], el];
-  if (el.classList.contains('listener-node'))
-    return [null,null];
-  if (el.parentNode)
-    return findTarget(el.parentNode);
-  console.log("can't find target for", el);
 }
 export class ListenerNode extends Component {
   constructor(props) {
     super(props);
-    this.state = { eventListeners:{}, };
+    this.sigmaNodeDispatcher = this._sigmaNodeDispatcher.bind(this);
   }
-  eventListeners() {
-    const {eventsToHandle=[ 'onClick', 'onMouseMove'], 
-           eventHandlers=[]} = this.props;
-    //console.log('binding ListenerNode to', eventsToHandle);
-    const eventListeners = _.fromPairs(
-      eventsToHandle.map(
-        eventType=> [eventType,this.dispatch.bind(this)]));
-    this.setState({eventListeners});
-  }
-  componentDidMount() {
-    this.eventListeners();
-    sendRefsToParent(this);
-  }
-  componentDidUpdate(prevProps, prevState) {
-    if (!_.isEqual(prevProps.eventsToHandle, this.props.eventsToHandle) ||
-        !_.isEqual(prevProps.eventHandlers, this.props.eventHandlers)) {
-      this.eventListeners();
-    }
-    sendRefsToParent(this);
-  }
-  dispatch(e) {
-    //console.log("BROKEN -- shouldn't need a renderer");
+  _sigmaNodeDispatcher({e, target, targetEl,} = {}) {
     const {eventHandlers=[], renderer } = this.props;
-    let [target,targetEl] = findTarget(e.target);
     let node;
     if (target && target.props.node) {
       node = target.props.node;
@@ -696,27 +651,14 @@ export class ListenerNode extends Component {
     } else if (targetEl && targetEl.getAttribute('data-node-id')) {
       node = renderer.graph.nodes(targetEl.getAttribute('data-node-id'));
     }
-    //console.log('node', target||'none',);
-    //e.target.tagName !== 'svg' && console.log('dispatching', e.type, 'from', node&&node.id, 'to', target||'nothing');
     eventHandlers.forEach( l => l(e, node, this.props));
-    /*
-    if (!sigmaDomEl || document.body.contains(sigmaDomEl)) {
-      eventHandlers.forEach( l => l(e, this.props));
-    } else {
-      console.log(`can't handle ${e.type} because ListenerNode no longer on page`);
-    }
-    */
   }
   render() {
-    const {wrapperTag='g', children, className } = this.props;
-    const {eventListeners} = this.state;
-    const Tag = wrapperTag; // should be an html or svg tag, i think, not compoent
-                //ref={parentWantsRef}>
-    return  <Tag className={'listener-node ' + (className||'') } 
-                {...eventListeners} 
-                ref="listenerNode" >
-              {children}
-            </Tag>;
+    return  <ListenerWrapper {...this.props} 
+              eventHandlers={[this.sigmaNodeDispatcher]}
+            >
+              {this.props.children}
+            </ListenerWrapper>
   }
 }
 /*
