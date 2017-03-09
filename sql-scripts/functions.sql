@@ -5,7 +5,7 @@ AS $function$
     select array_remove(array( select distinct unnest($1) order by 1 ),null)
 $function$;
 
-DROP AGGREGATE :results.array_cat_agg(anyarray);
+DROP AGGREGATE IF EXISTS :results.array_cat_agg(anyarray);
 CREATE AGGREGATE :results.array_cat_agg(anyarray) (
   SFUNC=array_cat,
   STYPE=anyarray
