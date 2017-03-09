@@ -28,6 +28,7 @@ import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph from './SigmaReactGraph';
 import ConceptInfo from '../ConceptInfo';
 import Spinner from 'react-spinner';
+import {AgTable} from './TableStuff';
 //require('react-spinner/react-spinner.css');
 
 //import sigma from './sigmaSvgReactRenderer';
@@ -46,12 +47,6 @@ import {commify, updateReason,
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper} from '../utils';
-
-//import {Grid} from 'ag-grid/main';
-import {AgGridReact} from 'ag-grid-react';
-import 'ag-grid/dist/styles/ag-grid.css';
-import 'ag-grid/dist/styles/theme-fresh.css';
-window._ = _; 
 
 import * as AppState from '../AppState';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
@@ -109,7 +104,6 @@ class ConceptInfoMenu extends Component {
           below = <CDMRecs {...{ci, crec}} />;
           break;
       }
-      debugger;
       this.setState({ drill: target.props.data, above, below, });
     }
   }
@@ -138,11 +132,10 @@ class CDMRecs extends Component {
   componentDidUpdate(prevProps, prevState) {
     const {ci, crec, rowLimit/*=40*/} = this.props;
     const {tbl, col} = crec;
-    updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
-      debugger;
+    //updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
       
     const oldStream = this.state.stream;
-    if (oldStream && tbl === prevProps.tbl && col === prevProps.col)
+    if (oldStream && tbl === this.state.tbl && col === this.state.col)
       return;
     let params = { tbl, col, concept_id: ci.concept_id, };
     if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
@@ -152,14 +145,12 @@ class CDMRecs extends Component {
       //meta: { statePath },
       //transformResults,
     });
-    stream.subscribeToResults(recs=>{
-      debugger;
+    stream.subscribe((recs,stream)=>{
       this.setState({recs});
     });
-    this.setState({stream});
+    this.setState({stream, tbl, col});
   }
   render() {
-      debugger;
     const {recs} = this.state;
     const {ci, crec, rowLimit=40} = this.props;
     const {tbl, col} = crec;
@@ -169,10 +160,17 @@ class CDMRecs extends Component {
                 <p>Waiting for recs from {ci.tblcol(crec)}</p>
              </div>;
     }
-    return <pre>
+      //coldefs={cols} 
+    return  <AgTable data={recs}
+                      width={"100%"} height={250}
+                      id="cdmRecs"
+            />
+            /*
+    <pre>
               {ci.tblcol(crec)}:
               {recs.slice(0,4).map(d=>JSON.stringify(d,null,2))}
            </pre>;
+           */
   }
 }
 class ConceptDesc extends Component {

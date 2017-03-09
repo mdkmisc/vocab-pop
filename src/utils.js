@@ -333,9 +333,11 @@ export function getObjectDiff(obj1, obj2) {
     return diff;
 }
 export function updateReason(prevProps, prevState, props, state, source) {
-  console.log('prop/state diffs', 
-              getObjectDiff(prevProps, props),
-              getObjectDiff(prevState, state), source && 'from ' + source);
+  console.log('prevProps', prevProps, '\nthis.props', props, '\n',
+                  getObjectDiff(prevProps, props), '\n\n',
+              'prevState', prevState, '\nthis.state', state, '\n',
+                  getObjectDiff(prevState, state), '\n\n',
+              source && 'from ' + source);
 }
 
 export function getAncestorWidth(el, selector) {

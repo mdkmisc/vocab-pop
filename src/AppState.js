@@ -142,11 +142,11 @@ export class ApiStream extends AppData.ApiFetcher {
   constructor({apiCall, params, meta, transformResults, 
               singleValue, cb}) {
     super({apiCall, params, meta, }); // don't pass transformResults to ApiFetcher
-    this.behaviorSubj = new Rx.BehaviorSubject(this);
+    this.resultsSubj = new Rx.BehaviorSubject();
     this.jsonPromise.then(
       results=>{
         if (results.error) {
-          this.behaviorSubj.error(results.error);
+          this.resultsSubj.error(results.error);
           return;
         }
         if (singleValue) results = results[0];
@@ -156,22 +156,22 @@ export class ApiStream extends AppData.ApiFetcher {
           //console.log('to', results);
         }
         this.results = results;
-        if (this.behaviorSubj.isStopped) {
+        if (this.resultsSubj.isStopped) {
           console.warn("got results for unsubscribed ApiStream", results);
           return;
         }
-        this.behaviorSubj.next(this);
+        this.resultsSubj.next(this.results);
         if (cb) {
           cb(this.results);
         }
         return this.results;
-        //this.behaviorSubj.complete();
+        //this.resultsSubj.complete();
       });
   }
-  subscribe(cb) { return this.behaviorSubj.subscribe(cb); } // subscribes to stream!
-  unsubscribe() { return this.behaviorSubj.unsubscribe(); }
-  subscribeToResults(cb) { 
-    return this.behaviorSubj.subscribe(self=>cb(self.results)); } // subscribes to stream!
+  unsubscribe() { return this.resultsSubj.unsubscribe(); }
+  subscribe(cb) { 
+    return this.resultsSubj.subscribe(results=>cb(results, this)); 
+  }
 }
 /*
 export class StreamsSubscriber {
@@ -186,7 +186,7 @@ export class StreamsSubscriber {
     if (this.subscription) this.subscription.unsubscribe();
     this.streams = _.filter(ApiStream.instances, filtFunc);
     this.latest = Rx.Observable.combineLatest(
-        this.streams.map(d=>d.behaviorSubj));
+        this.streams.map(d=>d.resultsSubj));
     if (this.subscription) 
       this.subscription.unsubscribe();
     return (this.subscription = 
