@@ -80,7 +80,7 @@ create table :results.concept_id_occurrence (
   column_type text,
   concept_id integer,
   rc bigint,
-  drc bigint
+  src bigint
 );
 
 CREATE OR REPLACE 
@@ -209,7 +209,7 @@ create table :results.record_counts as (
           coalesce(cio.column_name,'') col,
           coalesce(cio.column_type,'') coltype,
           cio.rc,
-          cio.drc
+          cio.src
   from :cdm.concept c
   left join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
 );
