@@ -208,10 +208,8 @@ create table :results.record_counts as (
           coalesce(cio.table_name,'') tbl,
           coalesce(cio.column_name,'') col,
           coalesce(cio.column_type,'') coltype,
-          case when c.standard_concept is null then 0 
-                else coalesce(cio.count,0) end rc, --record count
-          case when c.standard_concept is null then coalesce(cio.count,0) 
-                else 0 end src --source record count
+          cio.rc,
+          cio.drc
   from :cdm.concept c
   left join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
 );
