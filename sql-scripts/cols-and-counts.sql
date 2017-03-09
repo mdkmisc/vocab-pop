@@ -230,9 +230,9 @@ create table :results.record_counts_agg as
         count(distinct tbl||col)::integer tblcols,
         sum(rc) rc,
         sum(src) src,
-        array_remove(array_unique(
+        :results.array_unique(
                 array_agg(rc.concept_id order by concept_id)
-              ),null) cids
+              ) cids
   from :results.record_counts rc
   group by  standard_concept, domain_id, vocabulary_id, concept_class_id, tbl, col, coltype ;
 

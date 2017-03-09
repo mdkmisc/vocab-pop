@@ -16,9 +16,9 @@
 drop table if exists :results.cg_dcids;
 create table :results.cg_dcids as
     select  cgwc.cgid, --source, 
-            array_remove(array_unique(
+            array_unique(
                     array_agg(apm.descendant_concept_id order by descendant_concept_id)
-                  ),null) dcids
+                  ) dcids
     from :results.concept_groups_w_cids cgwc
     left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
     where grpset != array[]::text[]
@@ -151,9 +151,9 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
                       count(distinct tbl||col)::integer tblcols,
                       sum(rc) rc,
                       sum(src) src,
-                      array_remove(array_unique(
+                      array_unique(
                               array_agg(rc.concept_id order by concept_id)
-                            ),null) cids
+                            ) cids
             from :results.record_counts rc
             --where cardinality($1) = 0 or rc.concept_id = any($1)
             where rc.concept_id = any(dcid_group.dcids)

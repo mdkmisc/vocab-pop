@@ -109,6 +109,7 @@ class ConceptInfoMenu extends Component {
           below = <CDMRecs {...{ci, crec}} />;
           break;
       }
+      debugger;
       this.setState({ drill: target.props.data, above, below, });
     }
   }
@@ -137,6 +138,9 @@ class CDMRecs extends Component {
   componentDidUpdate(prevProps, prevState) {
     const {ci, crec, rowLimit/*=40*/} = this.props;
     const {tbl, col} = crec;
+    updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
+      debugger;
+      
     const oldStream = this.state.stream;
     if (oldStream && tbl === prevProps.tbl && col === prevProps.col)
       return;
@@ -149,11 +153,13 @@ class CDMRecs extends Component {
       //transformResults,
     });
     stream.subscribeToResults(recs=>{
+      debugger;
       this.setState({recs});
     });
     this.setState({stream});
   }
   render() {
+      debugger;
     const {recs} = this.state;
     const {ci, crec, rowLimit=40} = this.props;
     const {tbl, col} = crec;
@@ -201,8 +207,8 @@ class ConceptDesc extends Component {
                 {
                   ci.cdmSrcCounts().map(crec=>
                     <HoverButton key={'src-'+ci.tblcol(crec)}
-                        data={{drill:{ci, crec}, drillType:'rc'}}  >
-                      {crec.rc} CDM source records in {ci.tblcol(crec)}
+                        data={{drill:{ci, crec}, drillType:'src'}}  >
+                      {crec.src} CDM source records in {ci.tblcol(crec)}
                     </HoverButton>)
                 }
               </ButtonGroup>
