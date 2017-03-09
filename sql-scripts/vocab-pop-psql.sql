@@ -9,11 +9,13 @@ set session my.vars.results = :results;
 
 -- will probably have to put invalid concepts back in? people will get confused possibly if they're not there
 
---\i cols-and-counts.sql
+\i functions.sql
 
---\i ancestor-creates.sql
+\i cols-and-counts.sql
 
---\i descendants-based-on-ancestorsplus.sql
+\i ancestor-creates.sql
+
+\i descendants-based-on-ancestorsplus.sql
 
 
 \i descendants-based-on-concept_relationship.sql

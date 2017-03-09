@@ -154,7 +154,7 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
                       array_remove(array_unique(
                               array_agg(rc.concept_id order by concept_id)
                             ),null) cids
-            from results2.record_counts rc
+            from :results.record_counts rc
             --where cardinality($1) = 0 or rc.concept_id = any($1)
             where rc.concept_id = any(dcid_group.dcids)
             group by  grouping sets 

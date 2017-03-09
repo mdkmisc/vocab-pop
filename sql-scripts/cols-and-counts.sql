@@ -131,7 +131,7 @@ CREATE OR REPLACE
   END;
   $func$ LANGUAGE plpgsql;
 
-select store_concept_id_counts(
+select :results.store_concept_id_counts(
           schema::text,
           table_name::text,
           column_name::text,
@@ -139,7 +139,7 @@ select store_concept_id_counts(
           target_schema::text,
           target_table::text
 ) from
-  (select 'cdm2' as schema,
+  (select current_setting('my.vars.cdm')::text as schema, 
           table_name,
           column_name,
           column_type,
@@ -157,7 +157,7 @@ create index cio_idx1 on :results.concept_id_occurrence (concept_id);
     concepts and allows them to be counted or filtered out)
 */
 delete from :results.concept_id_occurrence cio
-using cdm2.concept c
+using :cdm.concept c
 where cio.concept_id = c.concept_id and c.invalid_reason is not null;
 
 
@@ -219,18 +219,6 @@ create unique index rcidx on :results.record_counts (concept_id,tbl,col);
 create index rc_concept_att_idx on :results.record_counts 
               (domain_id, standard_concept, vocabulary_id, concept_class_id, tbl, col, coltype);
 
-CREATE OR REPLACE FUNCTION results2.array_unique(arr anyarray)
- RETURNS anyarray
- LANGUAGE sql
-AS $function$
-    select array_remove(array( select distinct unnest($1) order by 1 ),null)
-$function$;
-
-CREATE AGGREGATE :results.array_cat_agg(anyarray) (
-  SFUNC=array_cat,
-  STYPE=anyarray
-);
-
 /* record_counts_agg
     groups by all the attribute columns we have and aggregates counts
     and includes an array of all concept ids in each groups */
@@ -247,7 +235,7 @@ create table :results.record_counts_agg as
         array_remove(array_unique(
                 array_agg(rc.concept_id order by concept_id)
               ),null) cids
-  from results2.record_counts rc
+  from :results.record_counts rc
   group by  standard_concept, domain_id, vocabulary_id, concept_class_id, tbl, col, coltype ;
 
 /* concept_groups_w_cids
@@ -327,7 +315,7 @@ create table :results.concept_groups_w_cids as
               -- doing array_unique in order to sort list, there shouldn't
               -- actually be any duplicates
               array_unique(array_cat_agg(cids)) cids
-    from results2.record_counts_agg rc
+    from :results.record_counts_agg rc
     group by  grouping sets 
                 (rollup(
                         domain_id, standard_concept, vocabulary_id, concept_class_id, 
