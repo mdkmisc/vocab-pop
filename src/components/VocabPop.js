@@ -27,6 +27,8 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph from './SigmaReactGraph';
 import ConceptInfo from '../ConceptInfo';
+import Spinner from 'react-spinner';
+//require('react-spinner/react-spinner.css');
 
 //import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
@@ -124,7 +126,7 @@ class ConceptInfoMenu extends Component {
             </ListenerWrapper>;
   }
 }
-class CDMRecs extends Componet {
+class CDMRecs extends Component {
   constructor(props) {
     super(props);
     this.state = { recs: [], };
@@ -133,20 +135,20 @@ class CDMRecs extends Componet {
     this.forceUpdate();
   }
   componentDidUpdate(prevProps, prevState) {
-    const {ci, crec, rowLimit=40} = this.props;
+    const {ci, crec, rowLimit/*=40*/} = this.props;
     const {tbl, col} = crec;
     const oldStream = this.state.stream;
     if (oldStream && tbl === prevProps.tbl && col === prevProps.col)
       return;
+    let params = { tbl, col, concept_id: ci.concept_id, };
+    if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
     let stream = new AppState.ApiStream({
       apiCall: 'cdmRecs',
-      params: {
-        tbl, col, rowLimit,
-      },
+      params,
       //meta: { statePath },
       //transformResults,
     });
-    stream.subscribe(recs=>{
+    stream.subscribeToResults(recs=>{
       this.setState({recs});
     });
     this.setState({stream});

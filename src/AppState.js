@@ -168,8 +168,10 @@ export class ApiStream extends AppData.ApiFetcher {
         //this.behaviorSubj.complete();
       });
   }
-  subscribe(cb) { return this.behaviorSubj.subscribe(cb); }
+  subscribe(cb) { return this.behaviorSubj.subscribe(cb); } // subscribes to stream!
   unsubscribe() { return this.behaviorSubj.unsubscribe(); }
+  subscribeToResults(cb) { 
+    return this.behaviorSubj.subscribe(self=>cb(self.results)); } // subscribes to stream!
 }
 /*
 export class StreamsSubscriber {

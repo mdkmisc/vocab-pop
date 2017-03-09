@@ -11,7 +11,7 @@ CREATE AGGREGATE :results.array_cat_agg(anyarray) (
   STYPE=anyarray
 );
 
-create or replace function :results.dsql(_t regclass, _c text, _cid int, _limit int default null)
+create or replace function :results.dsql(_t regtype, _c text, _cid int, _limit int default null)
 returns setof json as
 $func$
 declare sql varchar;
@@ -22,14 +22,11 @@ begin
   else
     lim := '';
   end if;
-  RETURN QUERY EXECUTE format('
-      SELECT row_to_json(x) FROM
-        (SELECT * FROM %s
-          WHERE  %s = $1
-          %s
-        ) x'
-    , _t, quote_ident(_c), lim)
-   USING  _cid;
+  sql := format('SELECT row_to_json(x) FROM
+                  (SELECT * FROM %s WHERE  %s = $1 %s) x',
+           _t, quote_ident(_c), lim);
+  RAISE NOTICE 'dsql: %s', sql;
+  RETURN QUERY EXECUTE sql USING  _cid;
 end;
 $func$
 LANGUAGE 'plpgsql';
