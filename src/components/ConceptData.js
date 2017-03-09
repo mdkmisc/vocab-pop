@@ -243,7 +243,7 @@ export default class ConceptData extends Component {
                           {dcgs:(byDcgId.lookup(cg.dcid_grp_id)||{}).records||empty}));
         
     return vgs;
-    //let sg = _.supergroup(vgs, ["standard_concept", "domain_id", "vocabulary_id", "class_concept_id"]);
+    //let sg = _.supergroup(vgs, ["standard_concept", "domain_id", "vocabulary_id", "concept_class_id"]);
     //debugger;
   }
   combineCgDc(cgs, dcnts) { // for now just doing sc/dom/voc and desc/children

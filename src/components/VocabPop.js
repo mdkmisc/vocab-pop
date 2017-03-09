@@ -38,7 +38,7 @@ require('./sass/Vocab.scss');
 //require('./VocabPop.css');
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
 import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
-          Button, ButtonToolbar,
+          Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap';
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
@@ -92,33 +92,87 @@ class ConceptInfoMenu extends Component {
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (target && target.props && target.props.data) {
-      const {ci, drill} = target.props.data;
-      console.log(ci, drill);
-      switch (drill) {
+      const {drill={}, drillType, } = target.props.data;
+      const {ci, crec, } = drill;
+      let below, above;
+      //console.log(ci, drill);
+      switch (drillType) {
         case "ancestors":
-          console.log('drill', drill);
+          console.log('drill', drillType, drill);
+          break;
+        case "rc":
+        case "src":
+          console.log('drill', drillType, drill, );
+          //below = <p>drill to {ci.tblcol(crec)}</p>;
+          below = <CDMRecs {...{ci, crec}} />;
+          break;
       }
+      this.setState({ drill: target.props.data, above, below, });
     }
   }
   render() {
     let ci = this.props.conceptInfo;
     if (!ci) return null;
-    const {above, below} = this.state;
+    const {above, below, drill, drillType} = this.state;
                   //sendRefsToParent={getRefsFunc(this,'graphDiv')}
     return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
                   eventsToHandle={['onMouseMove']}
                   eventHandlers={[this.eventHandler]} >
               {above}
-              <ConceptDesc {...this.props} />
+              <ConceptDesc {...this.props} drill={drill} drillType={drillType} />
               {below}
             </ListenerWrapper>;
   }
 }
+class CDMRecs extends Componet {
+  constructor(props) {
+    super(props);
+    this.state = { recs: [], };
+  }
+  componentDidMount() {
+    this.forceUpdate();
+  }
+  componentDidUpdate(prevProps, prevState) {
+    const {ci, crec, rowLimit=40} = this.props;
+    const {tbl, col} = crec;
+    const oldStream = this.state.stream;
+    if (oldStream && tbl === prevProps.tbl && col === prevProps.col)
+      return;
+    let stream = new AppState.ApiStream({
+      apiCall: 'cdmRecs',
+      params: {
+        tbl, col, rowLimit,
+      },
+      //meta: { statePath },
+      //transformResults,
+    });
+    stream.subscribe(recs=>{
+      this.setState({recs});
+    });
+    this.setState({stream});
+  }
+  render() {
+    const {recs} = this.state;
+    const {ci, crec, rowLimit=40} = this.props;
+    const {tbl, col} = crec;
+    if (!recs) {
+      return <div>
+                <Spinner/>
+                <p>Waiting for recs from {ci.tblcol(crec)}</p>
+             </div>;
+    }
+    return <pre>
+              {ci.tblcol(crec)}:
+              {recs.slice(0,4).map(d=>JSON.stringify(d,null,2))}
+           </pre>;
+  }
+}
 class ConceptDesc extends Component {
   render() {
+    const {drill, drillType} = this.props;
     let ci = this.props.conceptInfo;
     if (!ci) return null;
-    return  <div className="concept-desc">
+    return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
               <Glyphicon glyph="map-marker" title="Concept (name)" />
               <span className="name">{ci.concept_name}</span>:{' '}
 
@@ -133,25 +187,48 @@ class ConceptDesc extends Component {
 
               <Glyphicon glyph="book" title="Vocabulary" />
               <span className="vocab">{ci.vocabulary_id}</span>
+              <br/>
+              <ButtonGroup>
+                {
+                  ci.cdmCounts().map(crec=>
+                    <HoverButton key={'rc-'+ci.tblcol(crec)}
+                        data={{drill:{ci, crec}, drillType:'rc'}}  >
+                      {crec.rc} CDM records in {ci.tblcol(crec)}
+                    </HoverButton>)
+                }
+                {
+                  ci.cdmSrcCounts().map(crec=>
+                    <HoverButton key={'src-'+ci.tblcol(crec)}
+                        data={{drill:{ci, crec}, drillType:'rc'}}  >
+                      {crec.rc} CDM source records in {ci.tblcol(crec)}
+                    </HoverButton>)
+                }
+              </ButtonGroup>
 
-
-              <ButtonToolbar>
-                <HoverButton data={{ci, drill:'ancestors'}} >
-                  {ci.ci.conceptAncestorCount} Ancestor concepts,{' '}
+              <ButtonGroup>
+                <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
+                  {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
                 </HoverButton>
-                <HoverButton data={{ci, drill:'parents'}} >
+                <HoverButton data={{drill:{ci}, drillType:'parents'}} >
                   {ci.ci.parentConceptCount} Parent concepts<br/>
                 </HoverButton>
-              </ButtonToolbar>
+                <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
+                  {ci.ci.conceptDescendantCount} Descendant concepts{' '}
+                </HoverButton>
+                <HoverButton data={{drill:{ci}, drillType:'children'}} >
+                  {ci.ci.childConceptCount} Child concepts<br/>
+                </HoverButton>
+              </ButtonGroup>
 
-              {ci.ci.conceptDescendantCount} Descendant concepts,{' '}
-              {ci.ci.childConceptCount} Child concepts<br/>
             </div>;
   }
 }
 class HoverButton extends Component {
   render() {
-    return  <ListenerTargetWrapper wrapperTag="span" wrappedComponent={this} >
+    let {empty} = this.props;
+    if (empty) return null;
+    return  <ListenerTargetWrapper wrapperTag="span" wrappedComponent={this} 
+                className="hover-button" >
               <Button bsStyle="primary" bsSize="small" >
                 {this.props.children}
               </Button>

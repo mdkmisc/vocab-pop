@@ -132,16 +132,16 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
                       domain_id,
                       standard_concept,
                       vocabulary_id,
-                      class_concept_id,
+                      concept_class_id,
                       tbl,
                       col,
                       coltype,
-                      grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
+                      grouping(domain_id, standard_concept, vocabulary_id, concept_class_id, tbl, col, coltype) grp,
                       (array_remove(array[
                         case when grouping(domain_id) =     0 then 'domain_id'     else null end,
                         case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
                         case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
-                        case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
+                        case when grouping(concept_class_id) =     0 then 'concept_class_id'     else null end,
                         case when grouping(tbl) =     0 then 'tbl'     else null end,
                         case when grouping(col) =     0 then 'col'     else null end,
                         case when grouping(coltype) = 0 then 'coltype' else null end
@@ -159,7 +159,7 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
             where rc.concept_id = any(dcid_group.dcids)
             group by  grouping sets 
                         (rollup(
-                                domain_id, standard_concept, vocabulary_id, class_concept_id, 
+                                domain_id, standard_concept, vocabulary_id, concept_class_id, 
                                 (tbl, col, coltype)
                               ),
                         (tbl,col,coltype),

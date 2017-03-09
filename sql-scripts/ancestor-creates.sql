@@ -1,3 +1,21 @@
+drop table if exists :results.ancestors;
+create table :results.ancestors as
+  select a.*,
+         ca.domain_id as a_domain_id,
+         ca.standard_concept as a_standard_concept,
+         ca.vocabulary_id as a_vocabulary_id,
+         ca.concept_class_id as a_concept_class_id,
+         ca.concept_name as a_concept_name,
+         cd.domain_id as d_domain_id,
+         cd.standard_concept as d_standard_concept,
+         cd.vocabulary_id as d_vocabulary_id,
+         cd.concept_class_id as d_concept_class_id,
+         cd.concept_name as d_concept_name
+  from :cdm.concept_ancestor a
+  join :cdm.concept ca on a.ancestor_concept_id = ca.concept_id
+  join :cdm.concept cd on a.descendant_concept_id = cd.concept_id;
+create index anc1idx on :results.ancestors (ancestor_concept_id);
+create index anc2idx on :results.ancestors (descendant_concept_id);
 
 
 /* ancestor_plus_mapsto
@@ -5,6 +23,7 @@
     'maps to' relationships and a single field telling which table the record
     came from and, if it came from concept_ancestor, the min and max separation
 */
+/*
 drop table :results.ancestor_plus_mapsto;
 create table :results.ancestor_plus_mapsto as
   select
@@ -53,6 +72,7 @@ create table :results.ancestors as
   join :cdm.concept cd on a.descendant_concept_id = cd.concept_id;
 create index anc1idx on :results.ancestors (ancestor_concept_id);
 create index anc2idx on :results.ancestors (descendant_concept_id);
+*/
 
 /*
 create table :results.domain_ancestors as

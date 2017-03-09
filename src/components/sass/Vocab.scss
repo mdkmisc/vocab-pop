@@ -265,13 +265,13 @@ div.vocab-map, div.domain-map,
       }
     }
   }
-  .rc {
+  .rc, .sc-S {
     background-color: $color_lochmara_30_approx;
   }
-  .drc {
+  .drc, .sc-C {
     background-color: $color_amethyst_30_approx;
   }
-  .src {
+  .src, .sc-X {
     background-color: $crimson_30;
   }
   .dsrc {
@@ -284,6 +284,15 @@ div.vocab-map, div.domain-map,
     background-color: $color_green_30;
     font-size: small;
     font-style: small-caps;
+  }
+  .concept-desc {
+    padding: 5px;
+    .hover-button {
+      margin-right: 3px;
+    }
+    .btn-group {
+      margin-top: 3px;
+    }
   }
 }
 

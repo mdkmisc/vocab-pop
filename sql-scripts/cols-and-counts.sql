@@ -183,7 +183,7 @@ where cio.concept_id = c.concept_id and c.invalid_reason is not null;
     where these rules are broken, there may have been a problem with ETL,
     or in the vocabularies
 
- concept_id |     domain_id      | standard_concept | vocabulary_id |  class_concept_id  |     tbl     |              col              | coltype | rc  | src
+ concept_id |     domain_id      | standard_concept | vocabulary_id |  concept_class_id  |     tbl     |              col              | coltype | rc  | src
 ------------+--------------------+------------------+---------------+--------------------+-------------+-------------------------------+---------+-----+-----
    38001032 | Observation        | S                | DRG           | MS-DRG             | observation | observation_source_concept_id | source  |  64 |   0
    38000965 | Observation        | S                | DRG           | MS-DRG             | observation | observation_source_concept_id | source  | 171 |   0
@@ -203,7 +203,7 @@ create table :results.record_counts as (
           c.domain_id domain_id,
           coalesce(c.standard_concept, 'X') standard_concept, 
           c.vocabulary_id vocabulary_id,
-          c.concept_class_id class_concept_id,
+          c.concept_class_id,
           --cio.schema,
           coalesce(cio.table_name,'') tbl,
           coalesce(cio.column_name,'') col,
@@ -217,7 +217,7 @@ create table :results.record_counts as (
 );
 create unique index rcidx on :results.record_counts (concept_id,tbl,col);
 create index rc_concept_att_idx on :results.record_counts 
-              (domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype);
+              (domain_id, standard_concept, vocabulary_id, concept_class_id, tbl, col, coltype);
 
 CREATE OR REPLACE FUNCTION results2.array_unique(arr anyarray)
  RETURNS anyarray
@@ -238,7 +238,7 @@ create table :results.record_counts_agg as
   select
         row_number() over () as rcgid, -- could link concept_groups_w_cids back to here, but no need
                                        -- so no need for this id
-        standard_concept, domain_id, vocabulary_id, class_concept_id, tbl, col, coltype,
+        standard_concept, domain_id, vocabulary_id, concept_class_id, tbl, col, coltype,
         count(distinct concept_id)::integer cc,
         count(*)::integer rc_rowcnt,
         count(distinct tbl||col)::integer tblcols,
@@ -248,7 +248,7 @@ create table :results.record_counts_agg as
                 array_agg(rc.concept_id order by concept_id)
               ),null) cids
   from results2.record_counts rc
-  group by  standard_concept, domain_id, vocabulary_id, class_concept_id, tbl, col, coltype ;
+  group by  standard_concept, domain_id, vocabulary_id, concept_class_id, tbl, col, coltype ;
 
 /* concept_groups_w_cids
     creates different grouping sets including lower levels of granularity
@@ -265,9 +265,9 @@ create table :results.record_counts_agg as
 ------+-----+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------+----+-----------+---------+--------+-----+---------------------------------------------------------------------------------------------
    21 |  31 | {standard_concept,domain_id}                                                | {S,Ethnicity}                                                                          |  2 |         2 |       1 | 624283 |   0 | {38003563,38003564}
   132 |  15 | {standard_concept,domain_id,vocabulary_id}                                  | {X,Metadata,PEDSnet}                                                                   |  9 |         9 |       3 |      0 |1475 | {2000000034,2000000035,2000000036,2000000037,2000000038,2000000049,2000000050,2000000051,2000000052}
-  732 |   7 | {standard_concept,domain_id,vocabulary_id,class_concept_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                             |  1 |         1 |       1 |      0 |   0 | {44814701}
-  994 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}                                                  |  6 |         6 |       1 |      0 |   0 | {44814654,44814655,44814656,44814657,44814658,44814660}
- 1398 |   0 | {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source} |  3 |         3 |       1 |      0 |   6 | {45935765,45941602,45947121}
+  732 |   7 | {standard_concept,domain_id,vocabulary_id,concept_class_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                             |  1 |         1 |       1 |      0 |   0 | {44814701}
+  994 |   0 | {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}                                                  |  6 |         6 |       1 |      0 |   0 | {44814654,44814655,44814656,44814657,44814658,44814660}
+ 1398 |   0 | {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source} |  3 |         3 |       1 |      0 |   6 | {45935765,45941602,45947121}
  1905 | 120 | {tbl,col,coltype}                                                           | {visit_occurrence,visit_type_concept_id,type}                                          |  1 |         1 |       1 |9263690 |   0 | {44818518}
 
     a little easier to read:
@@ -290,8 +290,8 @@ select grpset,count(*) from concept_groups_w_cids group by 1 order by 1;
  {standard_concept}                                                          |     3
  {standard_concept,domain_id}                                                |    56
  {standard_concept,domain_id,vocabulary_id}                                  |   207
- {standard_concept,domain_id,vocabulary_id,class_concept_id}                 |   504
- {standard_concept,domain_id,vocabulary_id,class_concept_id,tbl,col,coltype} |   759
+ {standard_concept,domain_id,vocabulary_id,concept_class_id}                 |   504
+ {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} |   759
  {standard_concept,domain_id,vocabulary_id,tbl,col,coltype}                  |   366
  {tbl,col,coltype}                                                           |    55
 */
@@ -305,16 +305,16 @@ create table :results.concept_groups_w_cids as
               standard_concept,
               domain_id,
               vocabulary_id,
-              class_concept_id,
+              concept_class_id,
               tbl,
               col,
               coltype,
-              grouping(domain_id, standard_concept, vocabulary_id, class_concept_id, tbl, col, coltype) grp,
+              grouping(domain_id, standard_concept, vocabulary_id, concept_class_id, tbl, col, coltype) grp,
               (array_remove(array[
                 case when grouping(domain_id) =     0 then 'domain_id'     else null end,
                 case when grouping(standard_concept) =      0 then 'standard_concept'      else null end,
                 case when grouping(vocabulary_id) =     0 then 'vocabulary_id'     else null end,
-                case when grouping(class_concept_id) =     0 then 'class_concept_id'     else null end,
+                case when grouping(concept_class_id) =     0 then 'concept_class_id'     else null end,
                 case when grouping(tbl) =     0 then 'tbl'     else null end,
                 case when grouping(col) =     0 then 'col'     else null end,
                 case when grouping(coltype) = 0 then 'coltype' else null end
@@ -330,7 +330,7 @@ create table :results.concept_groups_w_cids as
     from results2.record_counts_agg rc
     group by  grouping sets 
                 (rollup(
-                        domain_id, standard_concept, vocabulary_id, class_concept_id, 
+                        domain_id, standard_concept, vocabulary_id, concept_class_id, 
                         (tbl, col, coltype)
                         ),
                   (tbl,col,coltype),

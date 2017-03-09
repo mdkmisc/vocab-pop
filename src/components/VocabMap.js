@@ -189,7 +189,7 @@ class VocHover extends Component {
 
     if (node.nodeData.records.length !== 1) throw new Error("expected one record");
     let rec = node.nodeData.records[0];
-    let classVal = rec.drill.lookup('class_concept_id');
+    let classVal = rec.drill.lookup('concept_class_id');
     let conceptClasses = classVal ? classVal.getChildren() : [];
     //console.log(conceptClasses.join('\n'));
 

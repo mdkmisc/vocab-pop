@@ -132,7 +132,7 @@ export function initialize({history:_history}) {
  *  @param opts.apiCall string   // name of api call
  *  @param opts.params [object]  // apiCall params
  *  @param opts.singleValue [boolean]  // whether to return a single value instead of array
- *  @param opts.transformResults [function]  // callback on results returning object to call setState with
+ *  @param opts.transformResults [function] apply function to rows before returning them
  *  @returns string // streamKey, which is valid get url, though stream is based on post url
  */
 export class ApiStream extends AppData.ApiFetcher {
@@ -151,9 +151,9 @@ export class ApiStream extends AppData.ApiFetcher {
         }
         if (singleValue) results = results[0];
         if (transformResults) {
-          console.log('transform', results);
+          //console.log('transform', results);
           results = transformResults(results);
-          console.log('to', results);
+          //console.log('to', results);
         }
         this.results = results;
         if (this.behaviorSubj.isStopped) {

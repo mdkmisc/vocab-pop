@@ -332,10 +332,10 @@ export function getObjectDiff(obj1, obj2) {
 
     return diff;
 }
-export function updateReason(prevProps, prevState, props, state) {
+export function updateReason(prevProps, prevState, props, state, source) {
   console.log('prop/state diffs', 
               getObjectDiff(prevProps, props),
-              getObjectDiff(prevState, state));
+              getObjectDiff(prevState, state), source && 'from ' + source);
 }
 
 export function getAncestorWidth(el, selector) {
@@ -343,11 +343,11 @@ export function getAncestorWidth(el, selector) {
   if (isNaN(width)) debugger;
   return width;
 }
-export function setToAncestorWidth(self, el, selector, saveToCompState=true) {
+export function setToAncestorWidth(self, el, selector, saveToCompState=true, source='') {
   let width = getAncestorWidth(el, selector);
   if (width && width === self.state.width)
     return width;
-  console.log(`setting ${el.type}.${el.className} width to ${selector} ancestor. ${$(el).width()} to ${width}`);
+  //console.log(`setting ${el.type||el.nodeName}.${el.className} width to ${selector} ancestor. ${$(el).width()} to ${width} ${source && ('from '+source)}`);
   $(el).width(width);
   if (saveToCompState)
     self.setState({width});
@@ -358,11 +358,11 @@ export function getAncestorHeight(el, selector) {
   if (isNaN(height)) debugger;
   return height;
 }
-export function setToAncestorHeight(self, el, selector, saveToCompState=true) {
+export function setToAncestorHeight(self, el, selector, saveToCompState=true, source='') {
   let height = getAncestorHeight(el, selector);
   if (height && height === self.state.height)
     return height;
-  console.log(`setting ${el.type}.${el.className} height to ${selector} ancestor. ${$(el).height()} to ${height}`);
+  //console.log(`setting ${el.type||el.nodeName}.${el.className} height to ${selector} ancestor. ${$(el).height()} to ${height} ${source && ('from '+source)}`);
   $(el).height(height);
   if (saveToCompState)
     self.setState({height});
@@ -373,9 +373,9 @@ export function getAncestorSize(el, selector) {
            height:getAncestorHeight(el, selector)
   };
 }
-export function setToAncestorSize(self, el, selector, saveToCompState=true) {
-  let width = setToAncestorWidth(self, el, selector, saveToCompState);
-  let height = setToAncestorHeight(self, el, selector, saveToCompState);
+export function setToAncestorSize(self, el, selector, saveToCompState=true, source) {
+  let width = setToAncestorWidth(self, el, selector, saveToCompState, source);
+  let height = setToAncestorHeight(self, el, selector, saveToCompState, source);
   return {width,height}
 }
 
