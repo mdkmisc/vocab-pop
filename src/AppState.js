@@ -141,7 +141,12 @@ export class ApiStream extends AppData.ApiFetcher {
   // of inheriting from util.JsonFetcher)
   constructor({apiCall, params, meta, transformResults, 
               singleValue, cb}) {
-    super({apiCall, params, meta, }); // don't pass transformResults to ApiFetcher
+    let instance = super({apiCall, params, meta, }); // don't pass transformResults to ApiFetcher
+    if (!instance.newInstance) {
+      if (instance.resultsSubj && instance.resultsSubj.isStopped)
+        instance.resultsSubj = new Rx.BehaviorSubject(instance.results);
+      return instance;
+    }
     this.resultsSubj = new Rx.BehaviorSubject('NoResultsYet');
     this.jsonPromise.then(
       results=>{

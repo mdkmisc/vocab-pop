@@ -416,10 +416,24 @@ export class ConceptViewPage extends Component {
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
-    let {concept_id, concept_code, conceptInfo} = this.state;
+    let {concept_id, concept_code, conceptInfo, 
+          multipleMatchingRecs, change} = this.state;
     let concept_id_appst = AppState.getState('concept_id');
     let params = {};
+    if (!change) {
+      console.log('no change', this.state, 'app cid', concept_id_appst);
+    } else if (change.match(/^user/)) {
+      console.log('change', change, this.state);
+    }
+    return;
+    if (multipleMatchingRecs) {
+      if (multipleMatchingRecs[0].concept_code !== concept_code)
+        multipleMatchingRecs = undefined;
+      else
+        return;
+    }
     if (concept_id !== '' && concept_id !== prevState.concept_id) {// user change to concept_id
+      if (conceptInfo && conceptInfo.concept_id === concept_id) return; // concept_id is just catching up
       console.log('new concept_id', concept_id);
       params.concept_id = concept_id;
       concept_code = '';
@@ -453,24 +467,22 @@ export class ConceptViewPage extends Component {
         //transformResults,
       });
       stream.subscribe((results,stream)=>{
-        if (stream.stopped) return;
-        let newConceptInfo;
-        if (results && !Array.isArray(results)) {
-          newConceptInfo = new ConceptInfo(results);
-        } else {
-          debugger;
-        }
-        if (!newConceptInfo || !newConceptInfo.valid()) {
-          this.setState({conceptInfo: undefined});
+        console.log('received conceptInfo results', results);
+        if (!stream.resultsSubj || stream.resultsSubj.isStopped) return;
+        if (!results) {this.setState({conceptInfo: undefined}); return;}
+        if (Array.isArray(results)) {
+          if (!results.length) {this.setState({conceptInfo: undefined}); return;}
+          this.setState({multipleMatchingRecs: results, conceptInfo:undefined, 
+                        concept_code, concept_id:undefined});
           return;
         }
-        console.log('received conceptInfo', newConceptInfo);
+        let newConceptInfo = new ConceptInfo(results);
         if (concept_id === '') concept_id = newConceptInfo.concept_id;
         if (concept_code === '') concept_code = newConceptInfo.concept_code;
         //if (newConceptInfo.concept_id !== concept_id || newConceptInfo.concept_code !== concept_code) console.log("should i do anything here?");
         this.setState({conceptInfo: newConceptInfo, concept_id, concept_code});
       });
-      this.setState({stream, concept_id, concept_code, conceptInfo});
+      this.setState({stream, concept_id, concept_code, conceptInfo, multipleMatchingRecs});
     }
     //setToAncestorSize(this, this.divRef, '.'+parentClass, false, 'VocabPop:ConceptViewPage');
   }
@@ -498,11 +510,11 @@ export class ConceptViewPage extends Component {
         concept_id = parseInt(concept_id,10);
         if (isNaN(concept_id)) return;
       }
-      this.setState({concept_id});
+      this.setState({concept_id, change:'user:concept_id'});
     } else if (e.target.id === 'concept_code_input') {
       let concept_code = e.target.value;
       if (concept_code.length) {
-        this.setState({concept_code});
+        this.setState({concept_code, change:'user:concept_code'});
       }
     } else {
       throw new Error('huh?');
