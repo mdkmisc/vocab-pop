@@ -142,7 +142,7 @@ export class ApiStream extends AppData.ApiFetcher {
   constructor({apiCall, params, meta, transformResults, 
               singleValue, cb}) {
     super({apiCall, params, meta, }); // don't pass transformResults to ApiFetcher
-    this.resultsSubj = new Rx.BehaviorSubject();
+    this.resultsSubj = new Rx.BehaviorSubject('NoResultsYet');
     this.jsonPromise.then(
       results=>{
         if (results.error) {
@@ -170,7 +170,10 @@ export class ApiStream extends AppData.ApiFetcher {
   }
   unsubscribe() { return this.resultsSubj.unsubscribe(); }
   subscribe(cb) { 
-    return this.resultsSubj.subscribe(results=>cb(results, this)); 
+    return this.resultsSubj.subscribe(results=>{
+      if (results === 'NoResultsYet') return;
+      cb(results, this); 
+    });
   }
 }
 /*

@@ -40,7 +40,8 @@ require('./sass/Vocab.scss');
 //require('tipsy/src/javascripts/jquery.tipsy');
 //require('./VocabPop.css');
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
-import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
+import {Glyphicon, Row, Col, 
+          FormGroup, FormControl, ControlLabel, HelpBlock,
           Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap';
 import {commify, updateReason, 
@@ -103,6 +104,10 @@ class ConceptInfoMenu extends Component {
           //below = <p>drill to {ci.tblcol(crec)}</p>;
           below = <CDMRecs {...{ci, crec}} />;
           break;
+        case "related":
+          below = <RelatedConcepts {...{ci, crec}} />;
+          console.log('drill', drillType, drill);
+          break;
       }
       this.setState({ drill: target.props.data, above, below, });
     }
@@ -119,6 +124,66 @@ class ConceptInfoMenu extends Component {
               <ConceptDesc {...this.props} drill={drill} drillType={drillType} />
               {below}
             </ListenerWrapper>;
+  }
+}
+class RelatedConcepts extends Component {
+  constructor(props) {
+    super(props);
+    this.state = { recs: [], };
+  }
+  componentDidMount() {
+    this.forceUpdate();
+  }
+  /*
+  componentDidUpdate(prevProps, prevState) {
+    const {ci, crec, rowLimit/*=40* /} = this.props;
+    const {tbl, col} = crec;
+    //updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
+      
+    const oldStream = this.state.stream;
+    if (oldStream && tbl === this.state.tbl && col === this.state.col)
+      return;
+    let params = { tbl, col, concept_id: ci.concept_id, };
+    if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
+    let stream = new AppState.ApiStream({
+      apiCall: 'cdmRecs',
+      params,
+      //meta: { statePath },
+      //transformResults,
+    });
+    stream.subscribe((recs,stream)=>{
+      this.setState({recs});
+    });
+    this.setState({stream, tbl, col});
+  }
+  */
+  render() {
+    //const {recs} = this.state;
+    const {ci, crec, rowLimit=40} = this.props;
+    //const {tbl, col} = crec; {ci.tblcol(crec)}:
+    return <pre>
+              {ci.ci.relatedConcepts.slice(0,4).map(d=>JSON.stringify(d,null,2))}
+              {ci.ci.relatedConceptGroups.slice(0,4).map(d=>JSON.stringify(d,null,2))}
+           </pre>;
+
+    /*
+    if (!recs) {
+      return <div>
+                <Spinner/>
+                <p>Waiting for recs from {ci.tblcol(crec)}</p>
+             </div>;
+    }
+      //coldefs={cols} 
+    return  <AgTable data={recs}
+                      width={"100%"} height={250}
+                      id="cdmRecs"
+            />
+            /*
+    <pre>
+              {ci.tblcol(crec)}:
+              {recs.slice(0,4).map(d=>JSON.stringify(d,null,2))}
+           </pre>;
+           */
   }
 }
 class CDMRecs extends Component {
@@ -179,6 +244,10 @@ class ConceptDesc extends Component {
     let ci = this.props.conceptInfo;
     if (!ci) return null;
     return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
+              <div className="sc">{
+                expandSc(ci.standard_concept, 'title')
+              }</div>
+              
               <Glyphicon glyph="map-marker" title="Concept (name)" />
               <span className="name">{ci.concept_name}</span>:{' '}
 
@@ -212,18 +281,21 @@ class ConceptDesc extends Component {
               </ButtonGroup>
 
               <ButtonGroup>
-                <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
-                  {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
-                </HoverButton>
-                <HoverButton data={{drill:{ci}, drillType:'parents'}} >
-                  {ci.ci.parentConceptCount} Parent concepts<br/>
-                </HoverButton>
-                <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
-                  {ci.ci.conceptDescendantCount} Descendant concepts{' '}
-                </HoverButton>
-                <HoverButton data={{drill:{ci}, drillType:'children'}} >
-                  {ci.ci.childConceptCount} Child concepts<br/>
-                </HoverButton>
+                {ci.ci.relatedConceptCount 
+                  ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
+                      {ci.ci.relatedConceptCount} Related concepts{' '}
+                    </HoverButton>
+                  : ''}
+                {ci.ci.conceptAncestorCount 
+                  ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
+                      {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
+                    </HoverButton>
+                  : ''}
+                {ci.ci.conceptAncestorCount 
+                  ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
+                      {ci.ci.conceptDescendant} Descendat concepts{' '}
+                    </HoverButton>
+                  : ''}
               </ButtonGroup>
 
             </div>;
@@ -317,111 +389,184 @@ export class ConceptView extends Component {
 export class ConceptViewPage extends Component {
   constructor(props) {
     super(props);
-    this.state = {concept_id:''};
-    this.transformResults = d=>new ConceptInfo(d);
-    this.wrapperUpdate = this._wrapperUpdate.bind(this);
+    //this.transformResults = d=>new ConceptInfo(d);
+    let concept_id = AppState.getState('concept_id') || '';
+    this.state = {concept_id, concept_code:''};
+    this.handleChange = this.handleChange.bind(this);
+    //this.wrapperUpdate = this._wrapperUpdate.bind(this);
   }
+  /*
   _wrapperUpdate(wrapperSelf) {
     const parentClass = this.props.parentClass || "flex-remaining-height";
     //console.log('new conceptInfo data', wrapperSelf.state);
     this.divRef = wrapperSelf.refs.conceptViewWrapper;
-    this.props.fullyRenderedCb(true);
-    //console.log("resizing ConceptViewPage to ", parentClass);
     setToAncestorSize(this, this.divRef, '.'+parentClass, false, 'VocabPop:ConceptViewPage');
+    //this.props.fullyRenderedCb(true);
+    //console.log("resizing ConceptViewPage to ", parentClass);
     this.setState(wrapperSelf.state); // conceptInfo
   }
+  */
   componentDidMount() {
+    this.forceUpdate();
     //console.log('ConceptViewPage mounting');
-    let concept_id_as = AppState.getState('concept_id');
-    if (this.state.concept_id === '' && _.isNumber(concept_id_as))
-      this.setState({concept_id: concept_id_as});
+    //if (this.state.concept_id === '' && _.isNumber(concept_id_appst))
+      //this.setState({concept_id: concept_id_appst});
   }
   componentWillUnmount() {
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
-    if (this.state.concept_id !== prevState.concept_id) {
-      this.state.concept_id && this.props.fullyRenderedCb(false);
-      AppState.saveState({concept_id: this.state.concept_id});
+    let {concept_id, concept_code, conceptInfo} = this.state;
+    let concept_id_appst = AppState.getState('concept_id');
+    let params = {};
+    if (concept_id !== '' && concept_id !== prevState.concept_id) {// user change to concept_id
+      console.log('new concept_id', concept_id);
+      params.concept_id = concept_id;
+      concept_code = '';
     }
-    let concept_id_as = AppState.getState('concept_id');
-    if (concept_id_as && concept_id_as !== this.state.concept_id) {
-      this.setState({concept_id: concept_id_as});
+    else if (concept_code !== '' && 
+             (conceptInfo && concept_code !== conceptInfo.concept_code) ||
+             (
+               concept_code !== prevState.concept_code &&
+               conceptInfo === prevState.conceptInfo // have to make sure the concept_code
+               // hasn't just been set because it's a new conceptInfo
+             )) { // user change to concept code
+      console.log('new concept_code', concept_code);
+      params.concept_code = concept_code;
+      concept_id = '';
     }
+    else if (concept_id && !this.state.stream) { // haven't fetched data yet
+      console.log('first time through', concept_id);
+      params.concept_id = concept_id;
+    }
+    if (!_.isEmpty(params)) {
+      conceptInfo = undefined;
+      if (this.state.stream) {
+        this.state.stream.unsubscribe();
+      }
+      //console.log('new conceptInfo stream', params);
+      let stream = new AppState.ApiStream({
+        apiCall: 'conceptInfo',
+        params,
+        //transformResults: this.transformResults,
+        //meta: { statePath },
+        //transformResults,
+      });
+      stream.subscribe((results,stream)=>{
+        if (stream.stopped) return;
+        let newConceptInfo;
+        if (results && !Array.isArray(results)) {
+          newConceptInfo = new ConceptInfo(results);
+        } else {
+          debugger;
+        }
+        if (!newConceptInfo || !newConceptInfo.valid()) {
+          this.setState({conceptInfo: undefined});
+          return;
+        }
+        console.log('received conceptInfo', newConceptInfo);
+        if (concept_id === '') concept_id = newConceptInfo.concept_id;
+        if (concept_code === '') concept_code = newConceptInfo.concept_code;
+        //if (newConceptInfo.concept_id !== concept_id || newConceptInfo.concept_code !== concept_code) console.log("should i do anything here?");
+        this.setState({conceptInfo: newConceptInfo, concept_id, concept_code});
+      });
+      this.setState({stream, concept_id, concept_code, conceptInfo});
+    }
+    //setToAncestorSize(this, this.divRef, '.'+parentClass, false, 'VocabPop:ConceptViewPage');
   }
-  getValidationState() {
-    const {concept_id, conceptInfo} = this.state;
-    if (concept_id > 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
-      return 'success';
+  getValidationState(field) {
+    const {concept_id, concept_code, conceptInfo, 
+            concept_id_msg, concept_code_msg,} = this.state;
+    if (field === 'concept_id') {
+      if (concept_id > 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
+        //if (concept_id_msg) this.setState({concept_id_msg:undefined});
+        return 'success';
+      }
+    } else if (field === 'concept_code') {
+      if (concept_code && conceptInfo && concept_code === conceptInfo.concept_code) {
+        //if (concept_code_msg) this.setState({concept_code_msg:undefined});
+        return 'success';
+      }
     }
-    else if (concept_id === '') return 'warning';
-    else return 'error';
+    //else if (concept_id === '') return 'warning';
+    return 'error';
   }
   handleChange(e) {
-    let concept_id = e.target.value;
-    if (concept_id.length) {
-      concept_id = parseInt(concept_id,10);
-      if (isNaN(concept_id)) return;
+    if (e.target.id === 'concept_id_input') {
+      let concept_id = e.target.value;
+      if (concept_id.length) {
+        concept_id = parseInt(concept_id,10);
+        if (isNaN(concept_id)) return;
+      }
+      this.setState({concept_id});
+    } else if (e.target.id === 'concept_code_input') {
+      let concept_code = e.target.value;
+      if (concept_code.length) {
+        this.setState({concept_code});
+      }
+    } else {
+      throw new Error('huh?');
     }
-    this.setState({concept_id});
     e.preventDefault();
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
-    const {concept_id, conceptInfo } = this.state;
-    let cv = 'hi ';
+    const {concept_id, concept_code, conceptInfo, 
+            concept_id_msg, concept_code_msg, } = this.state;
+    let cv = 'No concept chosen';
     // do I really need a wrapper?  ... switching to state to pass data down
-    if (concept_id) {
-      cv =  <DataWrapper calls={[ {
-                                    apiCall: 'conceptInfo',
-                                    apiParams: {concept_id},
-                                    //transformResults: d=>new ConceptInfo(d),
-                                    transformResults: this.transformResults,
-                                    // has to be same func or causes infinite loop
-                                  },
-                                ]} 
-                          className="flex-box"
-                          refName="conceptViewWrapper"
-                          parentCb={this.wrapperUpdate}
-                          dontClone={true}
-            >
-              <div className="concept-view-container flex-content-height" >
-                <ConceptInfoMenu concept_id={concept_id} conceptInfo={conceptInfo} />
-              </div>
-            </DataWrapper>;
+    if (conceptInfo && conceptInfo.valid()) {
+      //cv =  <div className="flex-box" refName="conceptViewContainer" >
+      //<div flex-content-height" >
+      cv =  <div className="concept-view-container" >
+              <ConceptInfoMenu conceptInfo={conceptInfo} />
+            </div>
     }
-    /*
-              <div className="concept-view-container flex-remaining-height" >
-                <ConceptView  
-                    concept_id={concept_id} conceptInfo={conceptInfo}
-                    parentClass="concept-view-container" />
-              </div>
-    */
     return <div className="flex-box"> 
             <Row className="flex-fixed-height-40">
-              <Col md={2} sm={2} className="short-input">
+              <Col md={4} sm={4} >{/*className="short-input"*/}
                 <FormGroup
                   controlId="concept_id_input"
-                  validationState={this.getValidationState()}
+                  validationState={this.getValidationState('concept_id')}
                 >
                   <ControlLabel>Concept Id</ControlLabel>
                   <FormControl
                     type="number" step="1"
                     value={concept_id}
                     placeholder="Concept Id"
-                    inputRef={d=>this.cidInput=d}
-                    onChange={this.handleChange.bind(this)}
+                    //inputRef={d=>this.cidInput=d}
+                    onChange={this.handleChange}
                   />
                   <FormControl.Feedback />
+                  <HelpBlock>{this.getValidationState('concept_id') === 'error'
+                                && 'Invalid concept id'}</HelpBlock>
+                </FormGroup>
+              </Col>
+              <Col md={4} sm={4}
+                    mdOffset={1} smOffset={1}>
+                <FormGroup
+                  controlId="concept_code_input"
+                  validationState={this.getValidationState('concept_code')}
+                >
+                  <ControlLabel>Concept Code</ControlLabel>
+                  <FormControl
+                    type="string" step="1"
+                    value={concept_code}
+                    placeholder="Concept Code"
+                    //inputRef={d=>this.codeInput=d}
+                    onChange={this.handleChange}
+                  />
+                  <FormControl.Feedback />
+                  <HelpBlock>{this.getValidationState('concept_code') === 'error'
+                                && 'Invalid concept code'}</HelpBlock>
                 </FormGroup>
               </Col>
             </Row>
             <Row className="flex-remaining-height">
-              <Col md={12} sm={12} mdOffset={0} smOffset={0}>
+              <Col md={10} sm={10} mdOffset={0} smOffset={0}>
                 {cv}
               </Col>
             </Row>
           </div>
-                  //<HelpBlock>Validation is based on string length.</HelpBlock>
   }
 }

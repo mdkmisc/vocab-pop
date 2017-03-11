@@ -165,6 +165,10 @@ export default class SigmaReactGraph extends Component {
   }
   elClass(node, whichEl) {
     let settings = (this.renderer || this.sigmaInstance).settings;
+    if (node.defaultClassOverride) {
+      // allow function?
+      return node.defaultClassOverride;
+    }
     let ElClass;
     switch (whichEl) {
       case "node":
@@ -326,9 +330,9 @@ class SigmaNodeEl extends Component { // for nodes, labels, hovers
     if (typeof x === 'undefined') throw new Error('no x');
 
     let nodeType = elType(node, settings, 'node');
-    let ElClass = srg.elClass(node, whichEl);;
     let fill, stroke, strokeWidth, content, fontSize, fontFamily, contentClass;
-    if (!ElClass) { // right now just using nodeType (defaultNodeType)
+    let ElClass = srg.elClass(node, whichEl);;
+    if (!ElClass || ElClass === 'default') { // right now just using nodeType (defaultNodeType)
                                 // for node circles or label texts
       switch (whichEl) {
         case "node":

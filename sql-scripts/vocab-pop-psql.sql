@@ -13,11 +13,8 @@ set session my.vars.results = :results;
 
 \i cols-and-counts.sql
 
-\i ancestor-creates.sql
+--\i ancestor-creates.sql
 
-\i descendants-based-on-ancestorsplus.sql
-
-
-\i descendants-based-on-concept_relationship.sql
+--\i descendants-based-on-concept_ancestor.sql
 
 

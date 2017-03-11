@@ -18,7 +18,10 @@ create index anc1idx on :results.ancestors (ancestor_concept_id);
 create index anc2idx on :results.ancestors (descendant_concept_id);
 
 
-/* ancestor_plus_mapsto
+/* 
+NOT USING ANYMORE
+
+  ancestor_plus_mapsto
     extended version of concept_ancestor table including concept_relationship
     'maps to' relationships and a single field telling which table the record
     came from and, if it came from concept_ancestor, the min and max separation

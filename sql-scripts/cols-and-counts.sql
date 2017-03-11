@@ -79,8 +79,7 @@ create table :results.concept_id_occurrence (
   column_name text,
   column_type text,
   concept_id integer,
-  rc bigint,
-  src bigint
+  cnt bigint
 );
 
 CREATE OR REPLACE 
@@ -104,7 +103,7 @@ CREATE OR REPLACE
   $func$
   declare sql text;
   BEGIN
-    RAISE NOTICE 'getting concept_ids for %', _tbl;
+    RAISE NOTICE 'getting concept_ids for %.%s', _tbl, _col;
     sql := format(
       'INSERT INTO %s.%s ' ||   -- concept_id_occurrence
       'SELECT ' ||
@@ -156,9 +155,14 @@ create index cio_idx1 on :results.concept_id_occurrence (concept_id);
     (though some of the vocab-pop code assumes that there will be invalid
     concepts and allows them to be counted or filtered out)
 */
+
+/* PUT A WARNING HERE IN SCRIPT OUTPUT IF RECS DELETED!!! */
+-- instead, leaving them here, but not including in record_counts
+/*
 delete from :results.concept_id_occurrence cio
 using :cdm.concept c
 where cio.concept_id = c.concept_id and c.invalid_reason is not null;
+*/
 
 
 /* record_counts table
@@ -200,18 +204,23 @@ drop table if exists :results.record_counts cascade;
 create table :results.record_counts as (
   select  
           c.concept_id,
-          c.domain_id domain_id,
+          c.concept_code,
+          c.concept_name,
+
+          c.domain_id,
           coalesce(c.standard_concept, 'X') standard_concept, 
-          c.vocabulary_id vocabulary_id,
+          c.vocabulary_id,
           c.concept_class_id,
           --cio.schema,
           coalesce(cio.table_name,'') tbl,
           coalesce(cio.column_name,'') col,
           coalesce(cio.column_type,'') coltype,
-          cio.rc,
-          cio.src
+          coalesce(case when c.standard_concept = 'S' then cio.cnt else 0 end, 0) as rc,
+          coalesce(case when c.standard_concept is null then cio.cnt else 0 end, 0) as src,
+          coalesce(case when c.standard_concept = 'C' then cio.cnt else 0 end, 0) as crc
   from :cdm.concept c
   left join :results.concept_id_occurrence cio on c.concept_id = cio.concept_id
+  where c.invalid_reason is null
 );
 create unique index rcidx on :results.record_counts (concept_id,tbl,col);
 create index rc_concept_att_idx on :results.record_counts 
@@ -220,21 +229,27 @@ create index rc_concept_att_idx on :results.record_counts
 /* record_counts_agg
     groups by all the attribute columns we have and aggregates counts
     and includes an array of all concept ids in each groups */
+drop table if exists :results.record_counts_agg;
 create table :results.record_counts_agg as
   select
         row_number() over () as rcgid, -- could link concept_groups_w_cids back to here, but no need
                                        -- so no need for this id
-        standard_concept, domain_id, vocabulary_id, concept_class_id, tbl, col, coltype,
+        domain_id, 
+        standard_concept, 
+        vocabulary_id, 
+        concept_class_id, 
+        tbl, 
+        col, 
+        coltype,
         count(distinct concept_id)::integer cc,
-        count(*)::integer rc_rowcnt,
-        count(distinct tbl||col)::integer tblcols,
         sum(rc) rc,
         sum(src) src,
+        sum(crc) crc,
         :results.array_unique(
                 array_agg(rc.concept_id order by concept_id)
               ) cids
   from :results.record_counts rc
-  group by  standard_concept, domain_id, vocabulary_id, concept_class_id, tbl, col, coltype ;
+  group by  domain_id, standard_concept, vocabulary_id, concept_class_id, tbl, col, coltype ;
 
 /* concept_groups_w_cids
     creates different grouping sets including lower levels of granularity
@@ -247,14 +262,14 @@ create table :results.record_counts_agg as
 
     a sample of concept_groups_w_cids rows with low concept counts:
 
- cgid | grp |                                   grpset                                    |                                          vals                                          | cc | rc_rowcnt | tblcols |   rc   | src |                                            cids
-------+-----+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------+----+-----------+---------+--------+-----+---------------------------------------------------------------------------------------------
-   21 |  31 | {standard_concept,domain_id}                                                | {S,Ethnicity}                                                                          |  2 |         2 |       1 | 624283 |   0 | {38003563,38003564}
-  132 |  15 | {standard_concept,domain_id,vocabulary_id}                                  | {X,Metadata,PEDSnet}                                                                   |  9 |         9 |       3 |      0 |1475 | {2000000034,2000000035,2000000036,2000000037,2000000038,2000000049,2000000050,2000000051,2000000052}
-  732 |   7 | {standard_concept,domain_id,vocabulary_id,concept_class_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                             |  1 |         1 |       1 |      0 |   0 | {44814701}
-  994 |   0 | {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}                                                  |  6 |         6 |       1 |      0 |   0 | {44814654,44814655,44814656,44814657,44814658,44814660}
- 1398 |   0 | {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source} |  3 |         3 |       1 |      0 |   6 | {45935765,45941602,45947121}
- 1905 | 120 | {tbl,col,coltype}                                                           | {visit_occurrence,visit_type_concept_id,type}                                          |  1 |         1 |       1 |9263690 |   0 | {44818518}
+ cgid | grp |                                   grpset                                    |                                          vals                                          | cc | tblcols |   rc   | src |                                            cids
+------+-----+-----------------------------------------------------------------------------+----------------------------------------------------------------------------------------+----+---------+--------+-----+---------------------------------------------------------------------------------------------
+   21 |  31 | {standard_concept,domain_id}                                                | {S,Ethnicity}                                                                          |  2 |       1 | 624283 |   0 | {38003563,38003564}
+  132 |  15 | {standard_concept,domain_id,vocabulary_id}                                  | {X,Metadata,PEDSnet}                                                                   |  9 |       3 |      0 |1475 | {2000000034,2000000035,2000000036,2000000037,2000000038,2000000049,2000000050,2000000051,2000000052}
+  732 |   7 | {standard_concept,domain_id,vocabulary_id,concept_class_id}                 | {S,Observation,PCORNet,"Discharge Status"}                                             |  1 |       1 |      0 |   0 | {44814701}
+  994 |   0 | {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} | {X,Observation,PCORNet,Race,"","",""}                                                  |  6 |       1 |      0 |   0 | {44814654,44814655,44814656,44814657,44814658,44814660}
+ 1398 |   0 | {standard_concept,domain_id,vocabulary_id,concept_class_id,tbl,col,coltype} | {X,"Spec Anatomic Site",CIEL,Anatomy,observation,observation_source_concept_id,source} |  3 |       1 |      0 |   6 | {45935765,45941602,45947121}
+ 1905 | 120 | {tbl,col,coltype}                                                           | {visit_occurrence,visit_type_concept_id,type}                                          |  1 |       1 |9263690 |   0 | {44818518}
 
     a little easier to read:
 
@@ -281,12 +296,12 @@ select grpset,count(*) from concept_groups_w_cids group by 1 order by 1;
  {standard_concept,domain_id,vocabulary_id,tbl,col,coltype}                  |   366
  {tbl,col,coltype}                                                           |    55
 */
-drop table :results.concept_groups_w_cids;
+drop table if exists :results.concept_groups_w_cids;
 create table :results.concept_groups_w_cids as
   select  row_number() over (order by grpset) as cgid, 
           grp, grpset, 
           array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
-          cc,rc_rowcnt, tblcols, rc, src, cids
+          cc,tblcols, rc, src, crc, cids
   from (select    
               standard_concept,
               domain_id,
@@ -306,10 +321,10 @@ create table :results.concept_groups_w_cids as
                 case when grouping(coltype) = 0 then 'coltype' else null end
                   ], null))::text[] grpset,
               sum(cc) cc,
-              sum(rc_rowcnt) rc_rowcnt,
-              sum(tblcols) tblcols,
+              count(distinct case when tbl='' then null else tbl||col end)::integer tblcols,
               sum(rc) rc,
               sum(src) src,
+              sum(crc) crc,
               -- doing array_unique in order to sort list, there shouldn't
               -- actually be any duplicates
               array_unique(array_cat_agg(cids)) cids

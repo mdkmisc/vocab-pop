@@ -134,16 +134,17 @@ export default class VocabMap extends Component {
       elements.nodes.forEach(
         d => {
           if (d.isParent) {
-            d.hideNode = true;
+            d.defaultClassOverride = 'default';
+            //d.HoverClass = VocGroupHover; // otherwise default
+            //d.hideNode = true;
             /*
-            d.NodeClass = VocGroupNode; // otherwise default
             d.LabelClass = VocGroupLabel;
             d.HoverClass = VocGroupHover;
             //d.EdgeClass:VocGroupEdge,
             //d.type = 'groupLabel';
             */
           } else {
-            d.HoverClass = VocHover;
+            //d.HoverClass = VocHover; // managed by DefaultHoverClass above
           }
         });
       this.setState({
@@ -168,6 +169,12 @@ export default class VocabMap extends Component {
 class VocabMapNode {
   constructor(props) {
     Object.assign(this, props);
+  }
+}
+class VocGroupHover extends Component {
+  render() {
+    const {node, settings, children} = this.props;
+    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
   }
 }
 */
@@ -225,7 +232,6 @@ class VocHover extends Component {
         }
       ));
     return <div>
-              <h4>hello</h4>
               <Icons key="Icons" hover={hover} />
               <div key="chunks" className="info-chunks">
                 {chunks || <p>nothing yet</p>}
@@ -356,12 +362,6 @@ class VocGroupLabel extends VocNode {
   render() {
     const {node, settings, children} = this.props;
     return <ListenerTarget wrapperTag="g" rNode={this} >{children}</ListenerTarget>;
-  }
-}
-class VocGroupHover extends VocNode {
-  render() {
-    const {node, settings, children} = this.props;
-    return <ListenerTarget wrapperTag="g" >{children}</ListenerTarget>;
   }
 }
 */

@@ -9,29 +9,17 @@
 
     it would be better to include source but it takes so long to run, I've given
     up on that.
-
-    also, doing the total group with every concept id (grpset = {}) separately
-    for performance reasons
 */
 drop table if exists :results.cg_dcids;
 create table :results.cg_dcids as
-    select  cgwc.cgid, --source, 
+    select  cgwc.cgid,
             array_unique(
-                    array_agg(apm.descendant_concept_id order by descendant_concept_id)
+                    array_agg(ca.descendant_concept_id order by descendant_concept_id)
                   ) dcids
     from :results.concept_groups_w_cids cgwc
-    left join ancestor_plus_mapsto apm on apm.ancestor_concept_id = any(cgwc.cids)
+    left join :cdm.concept_ancestor ca on ca.ancestor_concept_id = any(cgwc.cids)
     where grpset != array[]::text[]
     group by 1; --,2;
-
-/*
--- didn't run this insert last time, not sure if i need it for anything
-insert into cg_dcids  -- it should just be all desc ids, right?
-  select cg.cgid, array_agg(apm.descendant_concept_id order by descendant_concept_id)
-  from :results.ancestor_plus_mapsto apm,
-       (select distinct cgid from :results.concept_groups_w_cids where grpset = array[]::text[]) cg
-  group by 1; --,2;
-*/
 
 /*
     cg_dcids (above) has one row for each concept group with an array of its
@@ -80,7 +68,7 @@ create table :results.dcid_cnts as
 drop table if exists :results.concept_groups cascade;
 create table :results.concept_groups as
   select  cgw.cgid, cgw.grp, cgw.grpset, cgw.vals, 
-          cgw.cc, cgw.rc_rowcnt, cgw.tblcols, cgw.rc, cgw.src, 
+          cgw.cc, cgw.tblcols, cgw.rc, cgw.src, 
           dg.dcid_grp_id,
           dg.dcc,
           dg.dtblcols,
@@ -107,7 +95,6 @@ create table :results.dcid_cnts_breakdown (
   grpset text[],
   vals text[],
   dcc bigint,
-  drc_rowcnt bigint,
   dtblcols bigint,
   drc bigint,
   dsrc bigint,
@@ -126,7 +113,7 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
           select  dcid_group.dcid_grp_id, dcid_group.cgids,
                   x.grp, x.grpset, 
                   array(select row_to_json(x.*)->>unnest(x.grpset) col) vals,
-                  cc dcc,rc_rowcnt drc_rowcnt, tblcols dtblcols, rc drc, src dsrc, cids dcids
+                  cc dcc, tblcols dtblcols, rc drc, src dsrc, cids dcids
           from (
             select    distinct
                       domain_id,
@@ -147,7 +134,6 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
                         case when grouping(coltype) = 0 then 'coltype' else null end
                           ], null))::text[] grpset,
                       count(distinct concept_id)::integer cc,
-                      count(*)::integer rc_rowcnt,
                       count(distinct tbl||col)::integer tblcols,
                       sum(rc) rc,
                       sum(src) src,

@@ -304,6 +304,7 @@ export class AgTable extends Component {
     setTimeout(()=>this.setState({status: 'initialized'}),500);
   }
   _onGridReady(grid) {
+    this.grid = grid;
     this.setState({gridReady: true});
   }
   componentDidMount() {
@@ -329,9 +330,9 @@ export class AgTable extends Component {
     if (urlGridState.columnState) {
       this.grid.columnApi.setColumnState(urlGridState.columnState);
     }
-    if (urlGridState.sortModel)
+    if (urlGridState.sortModel && urlGridState.sortModel.length)
       this.grid.api.setSortModel(urlGridState.sortModel);
-    if (urlGridState.filterModel)
+    if (urlGridState.filterModel && urlGridState.filterModel.length)
       this.grid.api.setFilterModel(urlGridState.filterModel);
   }
   shouldComponentUpdate(nextProps, nextState) {
