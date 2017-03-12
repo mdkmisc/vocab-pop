@@ -258,54 +258,47 @@ export class TreeWalker extends Component {
 export class AgTable extends Component {
   constructor(props) {
     super(props);
-    this.state = { 
-      status: 'initializing' 
-    };
     const {id} = props;
     if (_.has(AgTable.instances, id)) {
       console.error(`agGrid.${id} AgTable already exists`, id);
       let instance = AgTable.instances[id];
       return instance;
     }
-    this.initializeGridState = this._initializeGridState.bind(this);
-    this.onGridReady = this._onGridReady.bind(this);
+    //this.initializeGridState = this._initializeGridState.bind(this);
+    this.onGridReady = this.onGridReady.bind(this);
+    this.saveGridState = this.saveGridState.bind(this);
+    this.state = { 
+      gridState: AppState.getState(`agGrid.${id}`),
+    };
   }
-  saveGridState(arg) { // for dealing with user changes
-                       // but also gets called during init
-    if (!this.grid) return;
+  saveGridState(p) { // for dealing with user changes but also gets called during init
     const {id} = this.props;
+    const {gridReady, gridState} = this.state;
+    if (!this.grid || !(p === 'fromOnGridReady' || gridReady)) return;
+    if (p === 'fromOnGridReady') {
+      if (gridState) {
+        this.grid.columnApi.setColumnState(gridState.columnState);
+        return;
+      }
+    }
     console.log('in saveGridState', this.state, this.grid.api.getSortModel());
-    if (this.state.status !== 'initialized') return true;
-    var gridState = {
+    //if (this.state.status !== 'initialized') return true;
+    var newGridState = {
       columnState: this.grid.columnApi.getColumnState(),
       sortModel: this.grid.api.getSortModel(),
       filterModel: this.grid.api.getFilterModel(),
     };
-    //let state = AppState.getState(`agGrid.${id}`) || {sortModel:[{}]};
-    //console.log('old', state.sortModel[0], 'new', gridState.sortModel[0]);
-    //this.grid.api.setSortModel(gridState.sortModel);
-    AppState.saveState(`agGrid.${id}`, gridState);
+    if (_.isEqual(gridState, newGridState)) return;
+    AppState.saveState(`agGrid.${id}`, newGridState);
+    this.setState({gridState: newGridState});
+    this.grid.columnApi.setColumnState(newGridState.columnState);
+    //if (gridState.sortModel && gridState.sortModel.length) this.grid.api.setSortModel(gridState.sortModel);
+    //if (gridState.filterModel && gridState.filterModel.length) this.grid.api.setFilterModel(gridState.filterModel);
   }
-  componentWillUnmount() {
-    const {id} = this.props;
-    delete AgTable.instances[id];
-  }
-  _initializeGridState(urlGridState) {
-    if (!(this.props.data && this.props.data.length)) {
-      console.log('waiting for data, have to run initializeGridState again');
-      setTimeout(()=>this.initializeGridState(urlGridState), 500);
-      return;
-    }
-    //AppState.saveState({test:this.grid.columnApi.getColumnState()[1]});
-    
-    //var currentGridState = {};
-
-    // this still necessary?
-    setTimeout(()=>this.setState({status: 'initialized'}),500);
-  }
-  _onGridReady(grid) {
+  onGridReady(grid) {
     this.grid = grid;
     this.setState({gridReady: true});
+    this.saveGridState('fromOnGridReady');
   }
   componentDidMount() {
     this.forceUpdate();
@@ -313,27 +306,23 @@ export class AgTable extends Component {
   componentDidUpdate(prevProps, prevState) {
     const {id} = this.props;
     const {gridReady, gridState} = this.state;
-    if (!gridReady) return;
-
+    if (!gridReady || !gridState) return;
     updateReason(prevProps, prevState, this.props, this.state, 'TableStuff/AgGrid');
+    if (this.props.data.length) this.grid.api.hideOverlay();
+    this.grid.columnApi.setColumnState(gridState.columnState);
 
-    let urlGridState = AppState.getState(`agGrid.${id}`);
-    if (urlGridState && !_.isEqual(urlGridState, this.state.urlGridState))
-      this.setState({urlGridState});
-    else
-      this.setState({status: 'initialized'});
     // not using this right now
-    const {columnSettings} = this.props;
-    if (columnSettings)
-      this.grid.columnApi.setColumnState(columnSettings);
+    // const {columnSettings} = this.props; if (columnSettings) this.grid.columnApi.setColumnState(columnSettings);
 
-    if (urlGridState.columnState) {
-      this.grid.columnApi.setColumnState(urlGridState.columnState);
+    /*
+    if (gridState.columnState) {
+      this.grid.columnApi.setColumnState(gridState.columnState);
     }
-    if (urlGridState.sortModel && urlGridState.sortModel.length)
-      this.grid.api.setSortModel(urlGridState.sortModel);
-    if (urlGridState.filterModel && urlGridState.filterModel.length)
-      this.grid.api.setFilterModel(urlGridState.filterModel);
+    if (gridState.sortModel && gridState.sortModel.length)
+      this.grid.api.setSortModel(gridState.sortModel);
+    if (gridState.filterModel && gridState.filterModel.length)
+      this.grid.api.setFilterModel(gridState.filterModel);
+    */
   }
   shouldComponentUpdate(nextProps, nextState) {
     //if (this.state.status !== 'ready') return false;
@@ -342,6 +331,10 @@ export class AgTable extends Component {
     //console.log(this.state, nextState, 'stateChange', stateChange);
     //console.log(this.props, nextProps, 'propsChange', propsChange);
     return stateChange || propsChange;
+  }
+  componentWillUnmount() {
+    const {id} = this.props;
+    delete AgTable.instances[id];
   }
   render() {
     const {coldefs, data=[], height=400, width='100%'} = this.props;
@@ -375,11 +368,11 @@ export class AgTable extends Component {
                   headerCellRenderer={
                     p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
                   }
-                  onColumnMoved={this.saveGridState.bind(this)}
-                  onColumnVisible={this.saveGridState.bind(this)}
+                  onColumnMoved={this.saveGridState}
+                  onColumnVisible={this.saveGridState}
                   //onColumnEverythingChanged={this.saveGridState.bind(this)}
-                  onSortChanged={this.saveGridState.bind(this)}
-                  onFilterChanged={this.saveGridState.bind(this)}
+                  onSortChanged={this.saveGridState}
+                  onFilterChanged={this.saveGridState}
                 />
               </div>
             </Panel>);
