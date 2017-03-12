@@ -126,6 +126,23 @@ class ConceptInfoMenu extends Component {
             </ListenerWrapper>;
   }
 }
+class MultipleConcepts extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+    //this.eventHandler = this._eventHandler.bind(this);
+  }
+  render() {
+    let {recs} = this.props;
+    if (!recs || !recs.length) return null;
+    return  <ListenerWrapper wrapperTag="div" className="concept-view-multiple"
+                  eventsToHandle={['onMouseMove']}
+                  //eventHandlers={[this.eventHandler]} 
+            >
+              {recs.map(rec=><pre key={rec.concept_id}>{JSON.stringify(rec,null,2)}</pre>)}
+            </ListenerWrapper>;
+  }
+}
 class RelatedConcepts extends Component {
   constructor(props) {
     super(props);
@@ -394,6 +411,7 @@ export class ConceptViewPage extends Component {
     let concept_code = AppState.getState('conceptInfoParams.concept_code') || '';
     this.state = {concept_id, concept_code};
     this.handleChange = this.handleChange.bind(this);
+    this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
     //this.wrapperUpdate = this._wrapperUpdate.bind(this);
   }
   /*
@@ -414,70 +432,60 @@ export class ConceptViewPage extends Component {
                               console.log('appChange', c);
                               if (c.conceptInfoUserChange) {
                                 AppState.deleteState('conceptInfoUserChange');
-                                if (c.conceptInfoUserChange.match(/concept_id/))
+                                if (c.conceptInfoUserChange.match(/concept_id/)) {
                                   AppState.deleteState('conceptInfoParams.concept_code');
-                                if (c.conceptInfoUserChange.match(/concept_code/))
+                                  this.getConceptInfo(c.conceptInfoParams, 'user', 'concept_id');
+                                } else if (c.conceptInfoUserChange.match(/concept_code/)) {
                                   AppState.deleteState('conceptInfoParams.concept_id');
-                                this.loadData(c.conceptInfoParams, c.conceptInfoUserChange);
+                                  this.getConceptInfo(c.conceptInfoParams, 'user', 'concept_code');
+                                }
                               }
                               //this.setState({change:'appState',appStateChange:c}));
                             });
     if (concept_id !== '') {
-      this.loadData({concept_id}, 'init:concept_id');
+      this.getConceptInfo({concept_id}, 'init', 'concept_id');
     } else if (concept_code !== '') {
-      this.loadData({concept_code}, 'init:concept_code');
+      this.getConceptInfo({concept_code}, 'init', 'concept_code');
     }
+  }
+  conceptInfoUpdate(conceptInfo) {
+    if (conceptInfo.valid()) {
+      this.setState({ concept_id: conceptInfo.concept_id,
+                      concept_code: conceptInfo.concept_code});
+    } else {
+      this.forceUpdate();
+    }
+    /*
+    else if (conceptInfo.status === 'multiple') {
+      this.setState({ multipleMatchingRecs: concept_code: conceptInfo.concept_code});
+    } else {
+    }
+    */
   }
   unsub() {
-    if (this.stream) {
-      this.stream.unsubscribe();
-      delete this.stream;
-    }
+    const {conceptInfo} = this.state;
+    conceptInfo && conceptInfo.done();
   }
-  loadData(params, loadChange) {
-    //console.log('loadData', loadChange, params);
+  getConceptInfo(params, source, lookupField) {
+    //console.log('getConceptInfo', loadChange, params);
     let {concept_id, concept_code, conceptInfo, 
-          multipleMatchingRecs, change} = this.state;
-    //if (change) console.log('prev change:', change);
-    change = undefined; // probably doesn't matter, but don't want subscription closure confused
-    this.unsub();
+          multipleMatchingRecs, } = this.state;
+    //this.unsub();
     let newState = Object.assign( {}, this.state, 
-        { concept_id:'', concept_code:'', 
-          conceptInfo:undefined, multipleMatchingRecs:undefined},
-        params, {change: 'loadData:'+loadChange});
+        { concept_id:'', concept_code:'', },
+          params, 
+          {change: `${source} triggered getConceptInfo:${lookupField}:${params[lookupField]}`});
 
-    let stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params, });
-    newState.stream = stream;
+    conceptInfo = conceptInfo 
+          ? conceptInfo.want({lookupField, val:params[lookupField]}) 
+          : new ConceptInfo({lookupField, val:params[lookupField]});
 
-    stream.subscribe((results,stream)=>{
-      //console.log('received conceptInfo results', results);
-      if (typeof change !== 'undefined') debugger;
-      //if (!stream.resultsSubj || stream.resultsSubj.isStopped) return;
-      if (!results) {
-        newState.change = 'failed:' + loadChange + ':' + stream.url;
-        //this.setState({conceptInfo: undefined}); 
-        //return;
-      } else if (Array.isArray(results)) {
-        if (!results.length) {
-          newState.change = 'failed:' + loadChange + ':' + stream.url;
-          //this.setState({conceptInfo: undefined}); return;
-        } else {
-          newState.change = 'fetchedMultiple:' + loadChange + ':' + stream.url;
-          debugger; // handle multiple
-        }
-      } else {
-        let newConceptInfo = new ConceptInfo(results);
-        if (!newConceptInfo.valid()) {
-          newState.change = 'failed:' + loadChange;
-        } else  {
-          newState.conceptInfo = newConceptInfo;
-          newState.concept_id = newConceptInfo.concept_id;
-          newState.concept_code = newConceptInfo.concept_code;
-          newState.change = 'success:' + loadChange;
-        }
-      }
-      this.setState(newState);
-    });
+    conceptInfo.subscribe(this.conceptInfoUpdate);
+    newState.conceptInfo = conceptInfo;
+    if (conceptInfo.valid()) {
+      newState.concept_id = conceptInfo.concept_id;
+      newState.concept_code = conceptInfo.concept_code;
+    }
     this.setState(newState);
   }
   componentWillUnmount() {
@@ -485,63 +493,17 @@ export class ConceptViewPage extends Component {
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
-    let {concept_id, concept_code, conceptInfo, 
-          multipleMatchingRecs, change} = this.state;
-    let params = {};
-    if (!change) {
-      //console.log('no change');
-    } else if (change.match(/^user/)) {
-      //console.log('change', change, this.state);
-    } else if (change === 'appState') {
-      //console.log('change', change, this.state);
-    }
-    //console.log('componentDidUpdate', change, this.state);
-
-    return;
-    /*
-    if (multipleMatchingRecs) {
-      if (multipleMatchingRecs[0].concept_code !== concept_code)
-        multipleMatchingRecs = undefined;
-      else
-        return;
-    }
-    if (concept_id !== '' && concept_id !== prevState.concept_id) {// user change to concept_id
-      if (conceptInfo && conceptInfo.concept_id === concept_id) return; // concept_id is just catching up
-      console.log('new concept_id', concept_id);
-      params.concept_id = concept_id;
-      concept_code = '';
-    }
-    else if (concept_code !== '' && 
-             (conceptInfo && concept_code !== conceptInfo.concept_code) ||
-             (
-               concept_code !== prevState.concept_code &&
-               conceptInfo === prevState.conceptInfo // have to make sure the concept_code
-               // hasn't just been set because it's a new conceptInfo
-             )) { // user change to concept code
-      console.log('new concept_code', concept_code);
-      params.concept_code = concept_code;
-      concept_id = '';
-    }
-    else if (concept_id && !this.state.stream) { // haven't fetched data yet
-      console.log('first time through', concept_id);
-      params.concept_id = concept_id;
-    }
-    //setToAncestorSize(this, this.divRef, '.'+parentClass, false, 'VocabPop:ConceptViewPage');
-    */
   }
   getValidationState(field) {
-    const {concept_id, concept_code, conceptInfo, 
-            concept_id_msg, concept_code_msg,} = this.state;
+    const {concept_id, concept_code, conceptInfo, } = this.state;
     if (field === 'concept_id') {
       if (concept_id >= 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
-        //if (concept_id_msg) this.setState({concept_id_msg:undefined});
         return 'success';
       } else if (!concept_id) {
         return null;
       }
     } else if (field === 'concept_code') {
       if (concept_code && conceptInfo && concept_code === conceptInfo.concept_code) {
-        //if (concept_code_msg) this.setState({concept_code_msg:undefined});
         return 'success';
       } else if (!concept_code) {
         return null;
@@ -560,33 +522,37 @@ export class ConceptViewPage extends Component {
         concept_id = parseInt(concept_id,10);
         if (isNaN(concept_id)) return;
       }
-      //this.loadData({concept_id}, 'user:concept_id');
+      //this.getConceptInfo({concept_id}, 'user:concept_id');
       conceptInfoParams.concept_id = concept_id;
       change = 'user:concept_id';
     } else if (e.target.id === 'concept_code_input') {
       let concept_code = e.target.value;
       if (concept_code.length) {
-        //this.loadData({concept_code}, 'user:concept_code');
+        //this.getConceptInfo({concept_code}, 'user:concept_code');
         conceptInfoParams.concept_code = concept_code;
         change = 'user:concept_code';
       }
     } else {
       throw new Error('huh?');
     }
-    //this.loadData(params, change);
+    //this.getConceptInfo(params, change);
     AppState.saveState({conceptInfoParams, conceptInfoUserChange:change});
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
     const {concept_id, concept_code, conceptInfo, 
-            concept_id_msg, concept_code_msg, } = this.state;
+            multipleMatchingRecs, change} = this.state;
     let cv = 'No concept chosen';
     // do I really need a wrapper?  ... switching to state to pass data down
-    if (conceptInfo && conceptInfo.valid()) {
-      //cv =  <div className="flex-box" refName="conceptViewContainer" >
-      //<div flex-content-height" >
+    if (!conceptInfo) {
+
+    } else if (conceptInfo.valid()) {
       cv =  <div className="concept-view-container" >
               <ConceptInfoMenu conceptInfo={conceptInfo} />
+            </div>
+    } else if (conceptInfo.getMultiple()) {
+      cv =  <div className="concept-view-multiple" >
+              <MultipleConcepts recs={conceptInfo.getMultiple()} />
             </div>
     }
     return <div className="flex-box"> 
