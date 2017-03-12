@@ -30,7 +30,6 @@ export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
       params = _.merge({}, params, {cdmSchema, resultsSchema});
       let baseUrl = apiCallBaseUrl(apiCall);
       let instance = super(baseUrl, params, meta);
-      debugger;
       if (!instance.newInstance) return instance;
       // AppState.ApiStream should do it's own transforming
       // so it can better control (run singleValue first)

@@ -57,7 +57,7 @@ export class Home extends Component {
   render() {
     //const {filters, domain_id} = this.props;
     var conceptCount = this.state.conceptCount || 0;
-    console.log(this.props);
+    //console.log(this.props);
     return  <div>
               {/*
               <div>
@@ -342,8 +342,14 @@ export class ComponentWrapper extends Component {
     // making infinite loop with page growing longer and longer
 // passing w,h not working so well...
     //console.log("rendering main-content");
+
+
+    //trying without:
+                  //style={{width,height}}
+    // remember to fix if this doesn't save the day
+    // ... hmm...seems working for now with container class and width:100% below
+
     return  <div className="main-content" ref={d=>this.contentDiv=d} 
-                  style={{width,height}}
             >
               <Comp {...props} classNames="" />
             </div>;
@@ -357,22 +363,26 @@ export class App extends Component {
     const {main, sidebar} = this.props;
     let NavBar = DefaultNavBar;
     let belowNav = sidebar
-      ? <Row className="flex-remaining-height">
-          <Col xs={2} md={2} className="sidebar">
-            {sidebar}
-          </Col>
-          <Col xs={10} md={10} >
-            {main}
-          </Col>
-        </Row>
-      : <Row className="flex-remaining-height">
-          <Col xs={12} md={12} >
-            {main}
-          </Col>
-        </Row>;
+      ? <div className="flex-remaining-height container" style={{width:'100%'}}>
+          <Row>
+            <Col xs={2} md={2} className="sidebar">
+              {sidebar}
+            </Col>
+            <Col xs={10} md={10} >
+              {main}
+            </Col>
+          </Row>
+        </div>
+      : <div className="flex-remaining-height container" style={{width:'100%'}}>
+          <Row>
+            <Col xs={12} md={12} >
+              {main}
+            </Col>
+          </Row>
+        </div>;
     return (
       <div className="vocab-app flex-box">
-        <div className="flex-content-height" >
+        <div className="flex-content-height container" style={{width:'100%'}} >
           <NavBar />
         </div>
         {belowNav}

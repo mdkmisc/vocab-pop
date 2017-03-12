@@ -61,7 +61,10 @@ export var userSettings = new Rx.BehaviorSubject({filters:{}});
 export var apiCalls = new Rx.Subject({});
 
 var stateChange = new Rx.BehaviorSubject();
-export function saveState(key, val) {
+export function deleteState(key) {
+  saveState(key, null, true);
+}
+export function saveState(key, val, deleteProp) {
   let change;
   if (typeof val === 'undefined') {
     // no key/val, received entire change object
@@ -77,8 +80,15 @@ export function saveState(key, val) {
     stateChange.next(newState); // make sure there's an initial state change
     return;
   }
+
+  if (deleteProp) {
+    let tmp = _.cloneDeep(oldState);
+    _.unset(tmp, key);
+    newState = tmp;
+  }
   if (_.isEqual(oldState, newState)) return;
 
+  //console.log('AppState.saveState', key, val, newState);
   let newLoc = {  pathname: loc.pathname, 
                   //search: '?' + qs.stringify(newState,{ strictNullHandling: true }),
                   search: '?' + myqs.stringify(newState),
@@ -110,6 +120,7 @@ export function getState(path) {
   return _.getPath(state, path);
 }
 export function stateStream(path) {
+  if (!path) return stateChange;
   return (
     stateChange
         .filter(change => _.getPath(change, path))

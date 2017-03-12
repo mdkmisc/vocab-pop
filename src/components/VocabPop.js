@@ -390,8 +390,9 @@ export class ConceptViewPage extends Component {
   constructor(props) {
     super(props);
     //this.transformResults = d=>new ConceptInfo(d);
-    let concept_id = AppState.getState('concept_id') || '';
-    this.state = {concept_id, concept_code:''};
+    let concept_id = AppState.getState('conceptInfoParams.concept_id') || '';
+    let concept_code = AppState.getState('conceptInfoParams.concept_code') || '';
+    this.state = {concept_id, concept_code};
     this.handleChange = this.handleChange.bind(this);
     //this.wrapperUpdate = this._wrapperUpdate.bind(this);
   }
@@ -407,25 +408,97 @@ export class ConceptViewPage extends Component {
   }
   */
   componentDidMount() {
-    this.forceUpdate();
-    //console.log('ConceptViewPage mounting');
-    //if (this.state.concept_id === '' && _.isNumber(concept_id_appst))
-      //this.setState({concept_id: concept_id_appst});
+    let {concept_id, concept_code} = this.state;
+    AppState.subscribeState(null,
+                            c=>{
+                              console.log('appChange', c);
+                              if (c.conceptInfoUserChange) {
+                                AppState.deleteState('conceptInfoUserChange');
+                                if (c.conceptInfoUserChange.match(/concept_id/))
+                                  AppState.deleteState('conceptInfoParams.concept_code');
+                                if (c.conceptInfoUserChange.match(/concept_code/))
+                                  AppState.deleteState('conceptInfoParams.concept_id');
+                                this.loadData(c.conceptInfoParams, c.conceptInfoUserChange);
+                              }
+                              //this.setState({change:'appState',appStateChange:c}));
+                            });
+    if (concept_id !== '') {
+      this.loadData({concept_id}, 'init:concept_id');
+    } else if (concept_code !== '') {
+      this.loadData({concept_code}, 'init:concept_code');
+    }
+  }
+  unsub() {
+    if (this.stream) {
+      this.stream.unsubscribe();
+      delete this.stream;
+    }
+  }
+  loadData(params, loadChange) {
+    //console.log('loadData', loadChange, params);
+    let {concept_id, concept_code, conceptInfo, 
+          multipleMatchingRecs, change} = this.state;
+    //if (change) console.log('prev change:', change);
+    change = undefined; // probably doesn't matter, but don't want subscription closure confused
+    this.unsub();
+    let newState = Object.assign( {}, this.state, 
+        { concept_id:'', concept_code:'', 
+          conceptInfo:undefined, multipleMatchingRecs:undefined},
+        params, {change: 'loadData:'+loadChange});
+
+    let stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params, });
+    newState.stream = stream;
+
+    stream.subscribe((results,stream)=>{
+      //console.log('received conceptInfo results', results);
+      if (typeof change !== 'undefined') debugger;
+      //if (!stream.resultsSubj || stream.resultsSubj.isStopped) return;
+      if (!results) {
+        newState.change = 'failed:' + loadChange + ':' + stream.url;
+        //this.setState({conceptInfo: undefined}); 
+        //return;
+      } else if (Array.isArray(results)) {
+        if (!results.length) {
+          newState.change = 'failed:' + loadChange + ':' + stream.url;
+          //this.setState({conceptInfo: undefined}); return;
+        } else {
+          newState.change = 'fetchedMultiple:' + loadChange + ':' + stream.url;
+          debugger; // handle multiple
+        }
+      } else {
+        let newConceptInfo = new ConceptInfo(results);
+        if (!newConceptInfo.valid()) {
+          newState.change = 'failed:' + loadChange;
+        } else  {
+          newState.conceptInfo = newConceptInfo;
+          newState.concept_id = newConceptInfo.concept_id;
+          newState.concept_code = newConceptInfo.concept_code;
+          newState.change = 'success:' + loadChange;
+        }
+      }
+      this.setState(newState);
+    });
+    this.setState(newState);
   }
   componentWillUnmount() {
+    this.unsub();
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
     let {concept_id, concept_code, conceptInfo, 
           multipleMatchingRecs, change} = this.state;
-    let concept_id_appst = AppState.getState('concept_id');
     let params = {};
     if (!change) {
-      console.log('no change', this.state, 'app cid', concept_id_appst);
+      //console.log('no change');
     } else if (change.match(/^user/)) {
-      console.log('change', change, this.state);
+      //console.log('change', change, this.state);
+    } else if (change === 'appState') {
+      //console.log('change', change, this.state);
     }
+    //console.log('componentDidUpdate', change, this.state);
+
     return;
+    /*
     if (multipleMatchingRecs) {
       if (multipleMatchingRecs[0].concept_code !== concept_code)
         multipleMatchingRecs = undefined;
@@ -453,73 +526,55 @@ export class ConceptViewPage extends Component {
       console.log('first time through', concept_id);
       params.concept_id = concept_id;
     }
-    if (!_.isEmpty(params)) {
-      conceptInfo = undefined;
-      if (this.state.stream) {
-        this.state.stream.unsubscribe();
-      }
-      //console.log('new conceptInfo stream', params);
-      let stream = new AppState.ApiStream({
-        apiCall: 'conceptInfo',
-        params,
-        //transformResults: this.transformResults,
-        //meta: { statePath },
-        //transformResults,
-      });
-      stream.subscribe((results,stream)=>{
-        console.log('received conceptInfo results', results);
-        if (!stream.resultsSubj || stream.resultsSubj.isStopped) return;
-        if (!results) {this.setState({conceptInfo: undefined}); return;}
-        if (Array.isArray(results)) {
-          if (!results.length) {this.setState({conceptInfo: undefined}); return;}
-          this.setState({multipleMatchingRecs: results, conceptInfo:undefined, 
-                        concept_code, concept_id:undefined});
-          return;
-        }
-        let newConceptInfo = new ConceptInfo(results);
-        if (concept_id === '') concept_id = newConceptInfo.concept_id;
-        if (concept_code === '') concept_code = newConceptInfo.concept_code;
-        //if (newConceptInfo.concept_id !== concept_id || newConceptInfo.concept_code !== concept_code) console.log("should i do anything here?");
-        this.setState({conceptInfo: newConceptInfo, concept_id, concept_code});
-      });
-      this.setState({stream, concept_id, concept_code, conceptInfo, multipleMatchingRecs});
-    }
     //setToAncestorSize(this, this.divRef, '.'+parentClass, false, 'VocabPop:ConceptViewPage');
+    */
   }
   getValidationState(field) {
     const {concept_id, concept_code, conceptInfo, 
             concept_id_msg, concept_code_msg,} = this.state;
     if (field === 'concept_id') {
-      if (concept_id > 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
+      if (concept_id >= 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
         //if (concept_id_msg) this.setState({concept_id_msg:undefined});
         return 'success';
+      } else if (!concept_id) {
+        return null;
       }
     } else if (field === 'concept_code') {
       if (concept_code && conceptInfo && concept_code === conceptInfo.concept_code) {
         //if (concept_code_msg) this.setState({concept_code_msg:undefined});
         return 'success';
+      } else if (!concept_code) {
+        return null;
       }
     }
     //else if (concept_id === '') return 'warning';
     return 'error';
   }
   handleChange(e) {
+    e.preventDefault();
+    let conceptInfoParams = {};
+    let change;
     if (e.target.id === 'concept_id_input') {
       let concept_id = e.target.value;
       if (concept_id.length) {
         concept_id = parseInt(concept_id,10);
         if (isNaN(concept_id)) return;
       }
-      this.setState({concept_id, change:'user:concept_id'});
+      //this.loadData({concept_id}, 'user:concept_id');
+      conceptInfoParams.concept_id = concept_id;
+      change = 'user:concept_id';
     } else if (e.target.id === 'concept_code_input') {
       let concept_code = e.target.value;
       if (concept_code.length) {
-        this.setState({concept_code, change:'user:concept_code'});
+        //this.loadData({concept_code}, 'user:concept_code');
+        conceptInfoParams.concept_code = concept_code;
+        change = 'user:concept_code';
       }
     } else {
       throw new Error('huh?');
     }
-    e.preventDefault();
+    //this.loadData(params, change);
+    AppState.saveState({conceptInfoParams, conceptInfoUserChange:change});
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
@@ -536,7 +591,7 @@ export class ConceptViewPage extends Component {
     }
     return <div className="flex-box"> 
             <Row className="flex-fixed-height-40">
-              <Col md={4} sm={4} >{/*className="short-input"*/}
+              <Col md={4} sm={2} >{/*className="short-input"*/}
                 <FormGroup
                   controlId="concept_id_input"
                   validationState={this.getValidationState('concept_id')}
@@ -554,7 +609,7 @@ export class ConceptViewPage extends Component {
                                 && 'Invalid concept id'}</HelpBlock>
                 </FormGroup>
               </Col>
-              <Col md={4} sm={4}
+              <Col md={4} sm={2}
                     mdOffset={1} smOffset={1}>
                 <FormGroup
                   controlId="concept_code_input"
