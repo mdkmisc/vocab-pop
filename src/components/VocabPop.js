@@ -79,14 +79,6 @@ export default class VocabPop extends Component {
             </ConceptData>;
   }
 }
-function expandSc(sc, out="title") { // out = title or className
-  
-  return ({
-            S: {title:'Standard Concept', className: 'standard-concept'},
-            C: {title:'Classification Concept', className: 'classification-concept'},
-            X: {title:'Non-Standard Concept', className: 'non-standard-concept'},
-      })[sc][out];
-}
 class ConceptInfoMenu extends Component {
   constructor(props) {
     super(props);
@@ -133,42 +125,43 @@ class ConceptInfoMenu extends Component {
 }
 class ConceptDesc extends Component {
   render() {
-    const {drill, drillType} = this.props;
+    const {drill, drillType, context} = this.props;
     let ci = this.props.conceptInfo;
     let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
     if (ci.valid()) {
       thisInfo =  <div>
                     <span className="sc">
-                      { expandSc(ci.standard_concept, 'title') }
+                      { ci.scTitle() }
                     </span>&nbsp;&nbsp;
 
                     <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}
                           className="name">
                       <NavItem eventKey={1}>
                         <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-                        {ci.concept_name}
+                        {ci.selfInfoBit('concept_name').title},
+                        {/*ci.concept_name*/}
                       </NavItem>
                     </LinkContainer>
                     <br/>
 
                     <span className="domain">
                       <Glyphicon glyph="globe" title="Domain" />&nbsp;
-                      {ci.domain_id}
+                      {ci.selfInfoBit('domain_id').title},
                     </span>{' '}
 
                     <span className="class">
                       <Glyphicon glyph="asterisk" title="Concept Class" />&nbsp;
-                      {ci.concept_class_id}
+                      {ci.get('concept_class_id')}
                     </span>{' '}
 
                     <span className="vocab">
                       <Glyphicon glyph="book" title="Vocabulary" />&nbsp;
-                      {ci.vocabulary_id}
+                      {ci.get('vocabulary_id')}
                     </span>
 
                     <span className="code">
                       <Glyphicon glyph="barcode" title="Concept Code" />&nbsp;
-                      Code {ci.concept_code}
+                      Code {ci.get('concept_code')}
                     </span>
                   </div>
       mapsTo = <MapsTo conceptInfo={ci} />;
@@ -192,19 +185,19 @@ class ConceptDesc extends Component {
                   </ButtonGroup>
 
                   <ButtonGroup>
-                    {ci.ci.relatedConceptCount 
+                    {ci.get('relatedConceptCount') 
                       ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
-                          {ci.ci.relatedConceptCount} Related concepts{' '}
+                          {ci.get('relatedConceptCount')} Related concepts{' '}
                         </HoverButton>
                       : ''}
-                    {ci.ci.conceptAncestorCount 
+                    {ci.conceptAncestorCount 
                       ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
-                          {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
+                          {ci.get('conceptAncestorCount')} Ancestor concepts{' '}
                         </HoverButton>
                       : ''}
-                    {ci.ci.conceptAncestorCount 
+                    {ci.conceptAncestorCount 
                       ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
-                          {ci.ci.conceptDescendant} Descendat concepts{' '}
+                          {ci.get('conceptDescendant')} Descendant concepts{' '}
                         </HoverButton>
                       : ''}
                   </ButtonGroup>
@@ -221,10 +214,20 @@ class ConceptDesc extends Component {
     } else {
       return null;
     }
-    return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
-              {mapsTo}
-              {mappedFrom}
+    /*
+              <div className="self-info">
+                {ci.selfInfo().map(ib=><InfoBit conceptInfo={ci} bit=ib context={context} />)}
+              </div>
+    */
+    return  <div className={"concept-desc " + ci.scClassName() }>
               {thisInfo}
+              <div className="mapsto">
+                <MapsTo conceptInfo={ci} />
+              </div>
+              <div className="mappedfrom">
+                <MappedFrom conceptInfo={ci} />
+              </div>
+              related<br/>anc/desc<br/>recs<br/>docs
               {related}
             </div>;
   }
@@ -265,8 +268,8 @@ class RelatedConcepts extends Component {
     const {ci, crec, rowLimit=40} = this.props;
     //const {tbl, col} = crec; {ci.tblcol(crec)}:
     return <pre>
-              {ci.ci.relatedConcepts.slice(0,4).map(d=>JSON.stringify(d,null,2))}
-              {ci.ci.relatedConceptGroups.slice(0,4).map(d=>JSON.stringify(d,null,2))}
+              {ci.get('relatedConcepts').slice(0,4).map(d=>JSON.stringify(d,null,2))}
+              {ci.get('relatedConceptGroups').slice(0,4).map(d=>JSON.stringify(d,null,2))}
            </pre>;
 
     /*
@@ -305,7 +308,7 @@ class CDMRecs extends Component {
     const oldStream = this.state.stream;
     if (oldStream && tbl === this.state.tbl && col === this.state.col)
       return;
-    let params = { tbl, col, concept_id: ci.concept_id, };
+    let params = { tbl, col, concept_id: ci.get('concept_id'), };
     if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
     let stream = new AppState.ApiStream({
       apiCall: 'cdmRecs',
@@ -345,7 +348,7 @@ class MapsTo extends Component {
   render() {
     let ci = this.props.conceptInfo;
     return  <ul>{ci.mapsto().map(
-                  mt=><li key={mt.concept_id}>{mt.concept_name}</li>
+                  mt=><li key={mt.get('concept_id')}>Maps to {mt.get('concept_name')}</li>
                   )}
             </ul>
   }
@@ -354,7 +357,7 @@ class MappedFrom extends Component {
   render() {
     let ci = this.props.conceptInfo;
     return  <ul>{ci.mappedfrom().map(
-                  mt=><li key={mt.concept_id}>{mt.concept_name}</li>
+                  mt=><li key={mt.get('concept_id')}>Mapped from {mt.get('concept_name')}</li>
                   )}
             </ul>
   }
@@ -371,17 +374,19 @@ class HoverButton extends Component {
             </ListenerTargetWrapper>
   }
 }
+/*
 class ConceptRecord extends Component {
   render() {
     //const {node} = this.props;
     const {node, settings, eventProps, getNodeState} = this.props;
-    if (!node.conceptInfo) return null;
-    console.log('conceptInfo', this.props);
+    let ci = node.conceptInfo;
+    if (!ci) return null;
+    console.log('ConceptRecord', this.props);
     const {concept_class_id, concept_code, concept_id, concept_name,
             domain_id, invalid_reason, standard_concept, 
             vocabulary_id} = node.conceptInfo;
     let className = [ "concept-record",
-                      invalid_reason ? "invalid" : '',
+                      invalid_reason ? "invalid-concept" : '',
                       expandSc(standard_concept, 'className'),
                     ].join(' ');
 
@@ -395,6 +400,7 @@ class ConceptRecord extends Component {
             </div>;
   }
 }
+*/
 export class ConceptView extends Component {
   constructor(props) {
     super(props);

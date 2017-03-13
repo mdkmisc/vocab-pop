@@ -487,19 +487,21 @@ export class ListenerWrapper extends Component {
   }
 }
 export class LoadingButton extends Component {
+  // not using this yet
   constructor(props) {
     super(props);
     this.state = {
-      isLoading: false
+      isLoading: false,
+      isActive: false
     };
   }
   render() {
     let {loadingMsg='Loading...', bprops} = this.props;
     let {isLoading} = this.state;
     bprops = Object.assign({},
-                           {bsStyle:"primary"
-                            disabled:{isLoading},
-                            onClick:{!isLoading ? this.handleClick : null},
+                           {bsStyle:"primary",
+                            disabled: isLoading,
+                            onClick: !isLoading ? this.handleClick : null,
                            }, bprops);
     return (
       <Button {...bprops} >
@@ -516,4 +518,4 @@ export class LoadingButton extends Component {
       this.setState({isLoading: false});
     }, 2000);
   }
-});
+}

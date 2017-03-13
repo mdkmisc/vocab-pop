@@ -118,12 +118,6 @@ div.concept-browse {
 
 
 
-.standard-concept {
-	background-color: $color_granny_smith_apple_approx;
-}
-.classification-concept {
-	background-color: $color_regent_st_blue_approx;
-}
 .ag-row {
 	border-bottom: 1px solid $color_quill_gray_approx;
 }
@@ -155,8 +149,7 @@ div.concept-browse {
 	cursor: ew-resize;
 }
 
-div.vocab-map, div.domain-map,
-  div.concept-view-container {
+div.vocab-map, div.domain-map, div.concept-view-container {
   //float: right; 
   width: 100%;
   margin: 5;
@@ -238,8 +231,6 @@ div.vocab-map, div.domain-map,
         }
         cursor: pointer;
         font-size: small;
-/*
-*/
         &.parent {
           font-size: large;
           background-color: $alice_blue;
@@ -265,27 +256,36 @@ div.vocab-map, div.domain-map,
       }
     }
   }
-  .rc, .sc-S {
-    background-color: $color_lochmara_30_approx;
-  }
-  .drc, .sc-C {
-    background-color: $color_amethyst_30_approx;
-  }
-  .src, .sc-X {
-    background-color: $crimson_30;
-  }
-  .dsrc {
-    background-color: $color_claret_30_approx;
-  }
-  .norecs {
-    background-color: $black_10;
-  }
   .tblcol {
     background-color: $color_green_30;
     font-size: small;
     font-style: small-caps;
   }
 }
+
+.sc-standard-concept, .rc, .sc-S { // don't use all of these
+  background-color: $color_lochmara_30_approx;
+	//background-color: $color_granny_smith_apple_approx;
+}
+.sc-classification-concept, .drc, .sc-C {
+	background-color: $color_regent_st_blue_approx;
+  //background-color: $color_amethyst_30_approx;
+}
+.sc-non-standard-concept, .src, .sc-X {
+  background-color: $crimson_30;
+}
+.invalid-concept {
+  background-color: $crimson_100;
+}
+
+.dsrc {
+  background-color: $color_claret_30_approx;
+}
+.norecs {
+  background-color: $black_10;
+}
+
+
 .concept-desc {
   padding: 5px;
   .hover-button {
