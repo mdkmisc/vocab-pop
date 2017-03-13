@@ -113,6 +113,7 @@ _.mixin({
   });
 window.getState = getState;
 window.saveState = saveState;
+window.deleteState = deleteState;
 export function getState(path) {
   var loc = history.getCurrentLocation();
   //var state = qs.parse(loc.search.substr(1),{ strictNullHandling: true });

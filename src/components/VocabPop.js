@@ -110,7 +110,7 @@ class ConceptDescWrapper extends Component {
   }
   render() {
     let ci = this.props.conceptInfo;
-    //const {amMain, mainConcept} = this.props;
+    const {amMain, mainConcept} = this.props;
     if (!ci) return null;
     const {above, below, drill, drillType} = this.state;
                   //sendRefsToParent={getRefsFunc(this,'graphDiv')}
@@ -118,7 +118,10 @@ class ConceptDescWrapper extends Component {
                   eventsToHandle={['onMouseMove']}
                   eventHandlers={[this.eventHandler]} >
               {above}
-              <ConceptDesc {...this.props} drill={drill} drillType={drillType} />
+              <ConceptDesc 
+                  amMain={amMain} mainConcept={mainConcept}
+                  conceptInfo={ci}
+                  drill={drill} drillType={drillType} />
               {below}
             </ListenerWrapper>;
   }
@@ -127,51 +130,9 @@ class ConceptDesc extends Component {
   render() {
     const {drill, drillType, amMain, mainConcept} = this.props;
     let ci = this.props.conceptInfo;
-    let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
+    let related = '';
     if (ci.valid()) {
       let concept_id = ci.get('concept_id', 'fail');
-      thisInfo =  <div>
-                    <span className="sc">
-                      { ci.scTitle() }
-                    </span>&nbsp;&nbsp;
-
-                    <Nav>
-                        <NavItem 
-                          onClick={
-                            ()=>AppState.saveState(
-                              {conceptInfoParams:{concept_id},
-                                conceptInfoUserChange:'user:concept_id'})
-                          }
-                        >
-                          <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-                          {ci.selfInfoBit('concept_name').value},
-                          {/*ci.concept_name*/}
-                        </NavItem>
-                    </Nav>
-                    <br/>
-
-                    <span className="domain">
-                      <Glyphicon glyph="globe" title="Domain" />&nbsp;
-                      {ci.selfInfoBit('domain_id').value},
-                    </span>{' '}
-
-                    <span className="class">
-                      <Glyphicon glyph="asterisk" title="Concept Class" />&nbsp;
-                      {ci.get('concept_class_id','fail')}
-                    </span>{' '}
-
-                    <span className="vocab">
-                      <Glyphicon glyph="book" title="Vocabulary" />&nbsp;
-                      {ci.get('vocabulary_id','fail')}
-                    </span>
-
-                    <span className="code">
-                      <Glyphicon glyph="barcode" title="Concept Code" />&nbsp;
-                      Code {ci.get('concept_code','fail')}
-                    </span>
-                  </div>
-      mapsTo = <MapsTo conceptInfo={ci} />;
-      mappedFrom = <MappedFrom conceptInfo={ci} />;
       related = <div>
                   <ButtonGroup>
                     {
@@ -208,23 +169,7 @@ class ConceptDesc extends Component {
                       : ''}
                   </ButtonGroup>
                 </div>
-    } else if (ci.multiple()) {
-      thisInfo =  <div>
-                    <span className="name">
-                      Code {ci.get('concept_code','fail')} matches {ci.getMultiple().length} concepts
-                    </span>:{' '}
-                    
-                    {ci.getMultipleAsCi().map(rec=>
-                      <ConceptDescWrapper 
-                        mainConcept={ci}
-                        key={rec.concept_id} conceptInfo={rec} />)}
-                  </div>
-    } else {
-      return null;
     }
-    /*
-              {thisInfo}
-    */
     return  <div className={"concept-desc " + ci.scClassName() }>
               <div className="self-info container">
                   {ci.selfInfo().map(
@@ -237,12 +182,10 @@ class ConceptDesc extends Component {
                         mainConcept={ci}
                         key={rec.concept_id} conceptInfo={rec} />)}
               </div>
-              <div className="mapsto">
-                <MapsTo conceptInfo={ci} />
-              </div>
-              <div className="mappedfrom">
-                <MappedFrom conceptInfo={ci} />
-              </div>
+
+              <MapConcept relationship='mapsto' conceptInfo={ci} amMain={amMain} />
+              <MapConcept relationship='mappedfrom' conceptInfo={ci} amMain={amMain} />
+
               related<br/>anc/desc<br/>recs<br/>docs
               {related}
             </div>;
@@ -250,19 +193,37 @@ class ConceptDesc extends Component {
 }
 class InfoBit extends Component {
   render() {
-    const {conceptInfo, bit, cdProps} = this.props;
-    let {title, className, value, wholeRow} = bit; // an infobit should have (at least) title, className, value
+    const {conceptInfo, bit, cdProps, } = this.props;
+    const {amMain, mainConcept} = cdProps;
+    let {title, className, value, wholeRow, linkParams} = bit; // an infobit should have (at least) title, className, value
+    //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
+    console.log(conceptInfo.get('concept_name'),
+                {amMain},
+                {mainConcept: mainConcept || 'none'});
+    let content = wholeRow || value;
+    if (linkParams && !cdProps.amMain) {
+      content =     <Nav>
+                        <NavItem onClick={
+                            ()=>AppState.saveState(
+                              {conceptInfoParams: linkParams,
+                                conceptInfoUserChange:'user:concept_id'}) } >
+                          {wholeRow || value}
+                        </NavItem>
+                    </Nav>
+    }
     if (wholeRow) {
       return  <Row className={className + ' infobit '}>
-                <Col xs={12} >{wholeRow}</Col>
+                <Col xs={12} >
+                  {content}
+                </Col>
               </Row>
     }
     return  <Row className={className + ' infobit '}>
-              <Col className='control-label' xs={5} >
+              <Col xs={5} xsOffset={0} >
                 {title}
               </Col>
               <Col xs={7} xsOffset={0} >
-                {value}
+                {content}
               </Col>
             </Row>
   }
@@ -379,30 +340,19 @@ class CDMRecs extends Component {
            */
   }
 }
-class MapsTo extends Component {
+class MapConcept extends Component {
   render() {
+    const {amMain, relationship} = this.props;
     let ci = this.props.conceptInfo;
-    return  <ul>{ci.mapsto().map(
-                  mt=><li key={mt.get('concept_id','fail')}>
-                        Maps to {' '}
-                          {mt.get('domain_id','fail')}{' '}
-                          {mt.get('vocabulary_id','fail')} concept {' '}
-                          {mt.get('concept_name','fail')}
-                      </li>)}
-            </ul>
-  }
-}
-class MappedFrom extends Component {
-  render() {
-    let ci = this.props.conceptInfo;
-    return  <ul>{ci.mappedfrom().map(
-                  mf=><li key={mf.get('concept_id','fail')}>
-                        Mapped from {' '}
-                          {mf.get('domain_id','fail')}{' '}
-                          {mf.get('vocabulary_id','fail')} concept {' '}
-                          {mf.get('concept_name','fail')}
-                      </li>)}
-            </ul>
+    if (!amMain) return null;
+    let recs = ci[relationship]();
+    if (!recs) return null;
+    return  <div className={relationship}>
+              <h4>{ci.fieldTitle(relationship)}</h4>
+              {recs.map(
+                rec=> <ConceptDescWrapper mainConcept={ci} 
+                        key={rec.concept_id} conceptInfo={rec} />)}
+            </div>
   }
 }
 class HoverButton extends Component {
@@ -583,8 +533,6 @@ export class ConceptViewPage extends Component {
       newState.concept_id = conceptInfo.concept_id;
       newState.concept_code = conceptInfo.concept_code;
     }
-    if (typeof newState.concept_id !== "string" && typeof newState.concept_id !== "number") debugger;
-    if (typeof newState.concept_code !== "string" && typeof newState.concept_code !== "number") debugger;
     this.setState(newState);
   }
   componentWillUnmount() {
@@ -592,9 +540,6 @@ export class ConceptViewPage extends Component {
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
-    const {concept_id, concept_code} = this.state;
-    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
-    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
   getValidationState(field) {
     const {concept_id, concept_code, conceptInfo, } = this.state;
@@ -628,25 +573,28 @@ export class ConceptViewPage extends Component {
     let change;
     if (e.target.id === 'concept_id_input') {
       let concept_id = e.target.value;
-      if (concept_id.length) {
-        concept_id = parseInt(concept_id,10);
-        if (!isFinite(concept_id)) return;
+      concept_id = parseInt(concept_id,10);
+      if (!concept_id.length) {
+        AppState.deleteState('conceptInfoParams');
+        return;
       }
       //this.getConceptInfo({concept_id}, 'user:concept_id');
       conceptInfoParams.concept_id = concept_id;
       change = 'user:concept_id';
     } else if (e.target.id === 'concept_code_input') {
       let concept_code = e.target.value;
-      if (concept_code.length) {
-        //this.getConceptInfo({concept_code}, 'user:concept_code');
-        conceptInfoParams.concept_code = concept_code;
-        change = 'user:concept_code';
+      if (!concept_code.length) {
+        AppState.deleteState('conceptInfoParams');
+        return;
       }
+      conceptInfoParams.concept_code = concept_code;
+      change = 'user:concept_code';
+      //}
     } else {
       throw new Error('huh?');
     }
-    //this.getConceptInfo(params, change);
-    AppState.saveState({conceptInfoParams, conceptInfoUserChange:change});
+    if (!_.isEqual(AppState.getState('conceptInfoParams'), conceptInfoParams))
+      AppState.saveState({conceptInfoParams, conceptInfoUserChange:change});
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper

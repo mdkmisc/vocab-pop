@@ -283,12 +283,17 @@ export class AgTable extends Component {
     }
     console.log('in saveGridState', this.state, this.grid.api.getSortModel());
     //if (this.state.status !== 'initialized') return true;
-    var newGridState = {
-      columnState: this.grid.columnApi.getColumnState(),
-      sortModel: this.grid.api.getSortModel(),
-      filterModel: this.grid.api.getFilterModel(),
-    };
+    var newGridState = {};
+
+    let columnState = this.grid.columnApi.getColumnState();
+    if (!_.isEmpty(columnState)) newGridState.columnState = columnState;
+    let sortModel = this.grid.columnApi.getColumnState();
+    if (!_.isEmpty(sortModel)) newGridState.sortModel = sortModel;
+    let filterModel = this.grid.columnApi.getColumnState();
+    if (!_.isEmpty(filterModel)) newGridState.filterModel = filterModel;
+
     if (_.isEqual(gridState, newGridState)) return;
+    console.error("saving appstate");
     AppState.saveState(`agGrid.${id}`, newGridState);
     this.setState({gridState: newGridState});
     this.grid.columnApi.setColumnState(newGridState.columnState);
@@ -309,7 +314,8 @@ export class AgTable extends Component {
     if (!gridReady || !gridState) return;
     updateReason(prevProps, prevState, this.props, this.state, 'TableStuff/AgGrid');
     if (this.props.data.length) this.grid.api.hideOverlay();
-    this.grid.columnApi.setColumnState(gridState.columnState);
+    if (!_.isEmpty(gridState.columnState))
+      this.grid.columnApi.setColumnState(gridState.columnState);
 
     // not using this right now
     // const {columnSettings} = this.props; if (columnSettings) this.grid.columnApi.setColumnState(columnSettings);

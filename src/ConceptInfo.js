@@ -4,7 +4,7 @@ import Rx from 'rxjs/Rx';
 
 export default class ConceptInfo {
   //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
-  constructor({lookupField, params, rec, cb, relatedConcept} = {}) { // expect lookupField and params, or rec
+  constructor({lookupField, params, rec, cb, conceptRole} = {}) { // expect lookupField and params, or rec
     this._valid = false;
     this._status = 'loading';
     this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
@@ -12,8 +12,7 @@ export default class ConceptInfo {
     this.sendUpdate = this.sendUpdate.bind(this);
     if (cb) this.cb = cb;
     if (rec) {
-      Object.assign(this, rec); // stop doing this
-      this._crec = rec; // this instead...?
+      this._crec = rec;
       this.lookupField = 'concept_id';
       this.lookupVal = rec.concept_id;
       this.params = {concept_id:rec.concept_id}; // apiParams
@@ -24,8 +23,8 @@ export default class ConceptInfo {
       this.lookupVal = params[lookupField];
     }
     this[this.lookupField] = this.lookupVal;
-    if (relatedConcept) {
-      this._status = 'relatedConcept';
+    if (conceptRole) {
+      this._conceptRole = conceptRole;
     }
     this.stream = this.lookup();
     this.stream.subscribe(results=>{
@@ -48,6 +47,9 @@ export default class ConceptInfo {
   multiple() {
     return this._status === 'multiple';
   }
+  conceptRole() {
+    return this._conceptRole;
+  }
   multipleReady() {
     return !!(this._status === 'multiple' && this._multipleAsCis);
   }
@@ -69,20 +71,37 @@ export default class ConceptInfo {
     if (this.multiple()) {
       let codeInfo = this.selfInfoBit('concept_code');
       return [
-        {title:'Status', className:'ci-status', 
-          value: `${this.getMultiple().length} concepts matching 
+        {title:'Status', className:'name', 
+          wholeRow: `${this.getMultiple().length} concepts matching 
                     ${codeInfo.title} ${codeInfo.value}`},
       ];
     }
     if (this.valid()) {
       return [
-        {title: this.scTitle(), className: 'name', value: this.get('concept_name'),
-            linkTo:{concept_id: this.get('concept_id')}},
+        {title: this.scTitle(), className: 'name', 
+            wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
+            linkParams:{concept_id: this.get('concept_id')}},
         {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
         this.selfInfoBit('domain_id'),
         this.selfInfoBit('concept_class_id'),
       ];
     }
+    if (this.conceptRole()) {
+      switch (this.conceptRole()) {
+        case 'mapsto':
+        case 'mappedfrom':
+        case 'relatedConcept':
+          return [      // same as this.valid() at the moment...should combine stuff
+            {title: this.scTitle(), className: 'name', 
+                wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
+                linkParams:{concept_id: this.get('concept_id')}},
+            {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
+            this.selfInfoBit('domain_id'),
+            this.selfInfoBit('concept_class_id'),
+          ];
+      }
+    }
+    throw new Error("what am I?");
   }
   selfInfoBit(bit, context) {
     return {title: this.fieldTitle(bit), className: this.fieldClass(bit), value: this.get(bit)};
@@ -113,7 +132,7 @@ export default class ConceptInfo {
         })[sc];
     return r && r[out];
   }
-  fieldTitle(field, val) {
+  fieldTitle(field, val) { // maybe just a general lookup for nice names
     //if (val) { }
     return ({
               concept_id: 'Concept ID',
@@ -122,6 +141,8 @@ export default class ConceptInfo {
               domain_id: 'Domain',
               concept_class_id: 'Class',
               vocabulary_id: 'Vocabulary',
+              mapsto: 'Maps to',
+              mappedfrom: 'Mapped from',
         })[field] || `no title for ${field}`;
   }
   fieldClass(field) {
@@ -140,12 +161,14 @@ export default class ConceptInfo {
   mapsto() {
     return (this.relatedConcepts()
                 .filter(rec=>rec.relationship_id === 'Maps to')
-                .map(rec=>new ConceptInfo({rec, relatedConcept:true})));
+                .map(rec=>new ConceptInfo({rec, conceptRole:'mapsto',
+                                    cb:this.sendUpdate})));
   }
   mappedfrom() {
     return (this.relatedConcepts()
                 .filter(rec=>rec.relationship_id === 'Mapped from')
-                .map(rec=>new ConceptInfo({rec, relatedConcept:true})));
+                .map(rec=>new ConceptInfo({rec, conceptRole:'mappedfrom',
+                                    cb:this.sendUpdate})));
   }
   otherRels() {
     let mt = [];
