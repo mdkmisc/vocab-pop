@@ -76,6 +76,7 @@ export default class VocabPop extends Component {
   }
 }
 function expandSc(sc, out="title") { // out = title or className
+  
   return ({
             S: {title:'Standard Concept', className: 'standard-concept'},
             C: {title:'Classification Concept', className: 'classification-concept'},
@@ -123,23 +124,6 @@ class ConceptInfoMenu extends Component {
               {above}
               <ConceptDesc {...this.props} drill={drill} drillType={drillType} />
               {below}
-            </ListenerWrapper>;
-  }
-}
-class MultipleConcepts extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-    //this.eventHandler = this._eventHandler.bind(this);
-  }
-  render() {
-    let {recs} = this.props;
-    if (!recs || !recs.length) return null;
-    return  <ListenerWrapper wrapperTag="div" className="concept-view-multiple"
-                  eventsToHandle={['onMouseMove']}
-                  //eventHandlers={[this.eventHandler]} 
-            >
-              {recs.map(rec=><pre key={rec.concept_id}>{JSON.stringify(rec,null,2)}</pre>)}
             </ListenerWrapper>;
   }
 }
@@ -259,62 +243,78 @@ class ConceptDesc extends Component {
   render() {
     const {drill, drillType} = this.props;
     let ci = this.props.conceptInfo;
-    if (!ci) return null;
+    let thisInfo = '', related = '';
+    if (ci.valid()) {
+      thisInfo =  <div>
+                    <div className="sc">
+                      { expandSc(ci.standard_concept, 'title') }
+                    </div>
+                    <Glyphicon glyph="map-marker" title="Concept (name)" />
+                    <span className="name">{ci.concept_name}</span>:{' '}
+
+                    <Glyphicon glyph="asterisk" title="Concept Class" />
+                    <span className="class">{ci.concept_class_id}</span>
+
+                    <Glyphicon glyph="globe" title="Domain" />
+                    <span className="domain">{ci.domain_id}</span>.{' '}
+
+                    <Glyphicon glyph="barcode" title="Concept Code" />
+                    Code <span className="code">{ci.concept_code}</span> in
+
+                    <Glyphicon glyph="book" title="Vocabulary" />
+                    <span className="vocab">{ci.vocabulary_id}</span>
+                  </div>
+      related = <div>
+                  <ButtonGroup>
+                    {
+                      ci.cdmCounts().map(crec=>
+                        <HoverButton key={'rc-'+ci.tblcol(crec)}
+                            data={{drill:{ci, crec}, drillType:'rc'}}  >
+                          {crec.rc} CDM records in {ci.tblcol(crec)}
+                        </HoverButton>)
+                    }
+                    {
+                      ci.cdmSrcCounts().map(crec=>
+                        <HoverButton key={'src-'+ci.tblcol(crec)}
+                            data={{drill:{ci, crec}, drillType:'src'}}  >
+                          {crec.src} CDM source records in {ci.tblcol(crec)}
+                        </HoverButton>)
+                    }
+                  </ButtonGroup>
+
+                  <ButtonGroup>
+                    {ci.ci.relatedConceptCount 
+                      ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
+                          {ci.ci.relatedConceptCount} Related concepts{' '}
+                        </HoverButton>
+                      : ''}
+                    {ci.ci.conceptAncestorCount 
+                      ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
+                          {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
+                        </HoverButton>
+                      : ''}
+                    {ci.ci.conceptAncestorCount 
+                      ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
+                          {ci.ci.conceptDescendant} Descendat concepts{' '}
+                        </HoverButton>
+                      : ''}
+                  </ButtonGroup>
+                </div>
+    } else if (ci.multiple()) {
+      thisInfo =  <div>
+                    <span className="name">
+                      Code {ci.get('concept_code')} matches {ci.getMultiple().length} concepts
+                    </span>:{' '}
+                    
+                    {ci.getMultipleAsCi().map(rec=>
+                      <ConceptInfoMenu key={rec.concept_id} conceptInfo={rec} />)}
+                  </div>
+    } else {
+      return null;
+    }
     return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
-              <div className="sc">{
-                expandSc(ci.standard_concept, 'title')
-              }</div>
-              
-              <Glyphicon glyph="map-marker" title="Concept (name)" />
-              <span className="name">{ci.concept_name}</span>:{' '}
-
-              <Glyphicon glyph="asterisk" title="Concept Class" />
-              <span className="class">{ci.concept_class_id}</span>
-
-              <Glyphicon glyph="globe" title="Domain" />
-              <span className="domain">{ci.domain_id}</span>.{' '}
-
-              <Glyphicon glyph="barcode" title="Concept Code" />
-              Code <span className="code">{ci.concept_code}</span> in
-
-              <Glyphicon glyph="book" title="Vocabulary" />
-              <span className="vocab">{ci.vocabulary_id}</span>
-              <br/>
-              <ButtonGroup>
-                {
-                  ci.cdmCounts().map(crec=>
-                    <HoverButton key={'rc-'+ci.tblcol(crec)}
-                        data={{drill:{ci, crec}, drillType:'rc'}}  >
-                      {crec.rc} CDM records in {ci.tblcol(crec)}
-                    </HoverButton>)
-                }
-                {
-                  ci.cdmSrcCounts().map(crec=>
-                    <HoverButton key={'src-'+ci.tblcol(crec)}
-                        data={{drill:{ci, crec}, drillType:'src'}}  >
-                      {crec.src} CDM source records in {ci.tblcol(crec)}
-                    </HoverButton>)
-                }
-              </ButtonGroup>
-
-              <ButtonGroup>
-                {ci.ci.relatedConceptCount 
-                  ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
-                      {ci.ci.relatedConceptCount} Related concepts{' '}
-                    </HoverButton>
-                  : ''}
-                {ci.ci.conceptAncestorCount 
-                  ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
-                      {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
-                    </HoverButton>
-                  : ''}
-                {ci.ci.conceptAncestorCount 
-                  ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
-                      {ci.ci.conceptDescendant} Descendat concepts{' '}
-                    </HoverButton>
-                  : ''}
-              </ButtonGroup>
-
+              {thisInfo}
+              {related}
             </div>;
   }
 }
@@ -452,6 +452,9 @@ export class ConceptViewPage extends Component {
     if (conceptInfo.valid()) {
       this.setState({ concept_id: conceptInfo.concept_id,
                       concept_code: conceptInfo.concept_code});
+    } else if (conceptInfo.multiple()) {
+      conceptInfo.resolveMultiple(4);
+      this.forceUpdate();
     } else {
       this.forceUpdate();
     }
@@ -477,8 +480,8 @@ export class ConceptViewPage extends Component {
           {change: `${source} triggered getConceptInfo:${lookupField}:${params[lookupField]}`});
 
     conceptInfo = conceptInfo 
-          ? conceptInfo.want({lookupField, val:params[lookupField]}) 
-          : new ConceptInfo({lookupField, val:params[lookupField]});
+          ? conceptInfo.want({lookupField, params})
+          : new ConceptInfo({lookupField, params});
 
     conceptInfo.subscribe(this.conceptInfoUpdate);
     newState.conceptInfo = conceptInfo;
@@ -503,10 +506,14 @@ export class ConceptViewPage extends Component {
         return null;
       }
     } else if (field === 'concept_code') {
-      if (concept_code && conceptInfo && concept_code === conceptInfo.concept_code) {
-        return 'success';
-      } else if (!concept_code) {
+      if (!concept_code) {
         return null;
+      } else if (!conceptInfo) {
+        return 'error';
+      } else if (conceptInfo.valid()) {
+        return 'success';
+      } else if (conceptInfo.multiple()) {
+        return 'warning';
       }
     }
     //else if (concept_id === '') return 'warning';
@@ -546,15 +553,20 @@ export class ConceptViewPage extends Component {
     // do I really need a wrapper?  ... switching to state to pass data down
     if (!conceptInfo) {
 
-    } else if (conceptInfo.valid()) {
+    } else if (conceptInfo.loaded()) {
       cv =  <div className="concept-view-container" >
               <ConceptInfoMenu conceptInfo={conceptInfo} />
             </div>
-    } else if (conceptInfo.getMultiple()) {
+    }
+    /*
+    else if (conceptInfo.multiple()) {
       cv =  <div className="concept-view-multiple" >
-              <MultipleConcepts recs={conceptInfo.getMultiple()} />
+              <ConceptInfoMenu conceptInfo={conceptInfo} />
+              {conceptInfo.getMultipleAsCi().map(rec=>
+                <ConceptInfoMenu key={rec.concept_id} conceptInfo={rec} />)}
             </div>
     }
+    */
     return <div className="flex-box"> 
             <Row className="flex-fixed-height-40">
               <Col md={4} sm={2} >{/*className="short-input"*/}

@@ -285,14 +285,41 @@ div.vocab-map, div.domain-map,
     font-size: small;
     font-style: small-caps;
   }
-  .concept-desc {
-    padding: 5px;
-    .hover-button {
-      margin-right: 3px;
+}
+.concept-desc {
+  padding: 5px;
+  .hover-button {
+    margin-right: 3px;
+  }
+  .btn-group {
+    margin-top: 3px;
+  }
+}
+.concept-info-menu {
+  margin: 3px;
+  border: 1px solid gray;
+  & > span {
+    margin: 2px 3px 2px 3px;
+  }
+  .class {
+    font-style: italic;
+  }
+/*
+  .domain {
+    &::before {
+      content: "D";
+      font-weight: bold;
+      border: 2px solid lightblue;
     }
-    .btn-group {
-      margin-top: 3px;
-    }
+  }
+*/
+  .name {
+    text-decoration: underline;
+    font-weight: bold;
+  }
+  .code {
+  }
+  .vocab {
   }
 }
 
@@ -398,29 +425,3 @@ div.junk {
 
 
 
-.concept-info-menu {
-  border: 1px solid gray;
-  & > span {
-    margin: 2px 3px 2px 3px;
-  }
-  .class {
-    font-style: italic;
-  }
-/*
-  .domain {
-    &::before {
-      content: "D";
-      font-weight: bold;
-      border: 2px solid lightblue;
-    }
-  }
-*/
-  .name {
-    text-decoration: underline;
-    font-weight: bold;
-  }
-  .code {
-  }
-  .vocab {
-  }
-}

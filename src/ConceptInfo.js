@@ -4,19 +4,43 @@ import Rx from 'rxjs/Rx';
 
 export default class ConceptInfo {
   //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
-  constructor(props) {
-    const {lookupField, val} = props; // expect lookupField and val(id,code)
-    this.lookupField = lookupField;
-    this.apiParams = {[lookupField]:val, };
-    this.val = val;
-    // caller will subscribe?
+  constructor({lookupField, params, rec, cb} = {}) { // expect lookupField and params, or rec
     this._valid = false;
-    this.bsubj = new Rx.BehaviorSubject(this);
-    this.stream = this.lookup();
+    this._status = 'loading';
+    this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
     this.gotResults = this.gotResults.bind(this);
-    this.stream.subscribe(results=>this.gotResults(results));
-    /*
-    */
+    this.sendUpdate = this.sendUpdate.bind(this);
+    if (cb) this.cb = cb;
+    if (rec) {
+      Object.assign(this, rec);
+      this.lookupField = 'concept_id';
+      this.lookupVal = rec.concept_id;
+      this.params = {concept_id:rec.concept_id};
+    } else {
+      this.lookupField = lookupField;
+      this.params = params;
+      if (!_.has(params, lookupField)) throw new Error(`expected params[${lookupField}]`);
+      this.lookupVal = params[lookupField];
+    }
+    this[this.lookupField] = this.lookupVal;
+    this.stream = this.lookup();
+    this.stream.subscribe(results=>{
+      this.gotResults(results);
+    });
+  }
+  loaded() {
+    return this._status !== 'loading' && this._status !== 'failed';
+  }
+  get(field) {
+    if (_.has(this, field)) return this[field];
+    throw new Error(`can't find ${field}`);
+  }
+  want({lookupField, params, } = {}) {
+    if (this.lookupField === lookupField && this.lookupVal === params[lookupField]) {
+      return this;
+    }
+    this.done();
+    return new ConceptInfo({lookupField, params});
   }
   subscribe(cb) {
     this.bsubj.subscribe(cb); // get rid of old ones!
@@ -27,45 +51,58 @@ export default class ConceptInfo {
   }
   gotResults(results) {
     if (!results) {
-      this.status = 'failed';
+      this._status = 'failed';
     } else if (Array.isArray(results)) {
       if (!results.length) {
-        this.status = 'failed';
+        this._status = 'failed';
       } else {
         if (this.lookupField !== 'concept_code')
-          throw new Error("shouldn't be");
-        if (results[0].concept_code !== this.val)
-          throw new Error("shouldn't be");
-        this.status = 'multiple';
-        this.multipleRecs = results;
+          throw new Error("shouldn't be having array results unless looking up by concept_code");
+        if (results[0].concept_code !== this.lookupVal) throw new Error("impossible");
+        this._status = 'multiple';
+        this._multipleRecs = results;
       }
     } else {
       if (results.conceptRecord) {
         Object.assign(this, results.conceptRecord);
         this.ci = results;
         this._valid = true;
-        this.status = 'success';
+        this._status = 'success';
       }
     }
-    this.bsubj.next(this);
+    this.sendUpdate();
   }
-  want(props) {
-    if (this.lookupField === props.lookupField && this.val === props.val) {
-      return this;
-    }
-    this.done();
-    return new ConceptInfo(props);
-    //this.lookup({lookupField, val}, false);
+  sendUpdate(source) {
+    //if (this.parentCi) this.parentCi.sendUpdate();
+    if (this.cb) 
+      this.cb('fromChild');
+    //else
+    this.bsubj.next(this);
   }
   lookup() {
     //const {lookupField, val} = params;
-    return new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.apiParams});
+    return new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
   }
   valid() {
     return this._valid;
   }
-  getMultiple(cb) {
-    if (this.status === 'multiple') return this.multipleRecs;
+  multiple() {
+    return this._status === 'multiple';
+  }
+  multipleReady() {
+    return !!(this._status === 'multiple' && this._multipleAsCis);
+  }
+  getMultiple() {
+    if (this._status === 'multiple') return this._multipleRecs;
+  }
+  getMultipleAsCi() {
+    if (this._status === 'multiple') return this._multipleAsCis;
+  }
+  resolveMultiple(max) {
+    if (this._multipleAsCis && this._multipleAsCis.length === Math.min(max, this._multipleRecs.length))
+      return;
+    this._multipleAsCis = this._multipleRecs.slice(0,max)
+          .map(rec=>new ConceptInfo({rec, cb:this.sendUpdate}))
   }
   cdmCounts() {
     return this.rcs.filter(d=>d.rc);
