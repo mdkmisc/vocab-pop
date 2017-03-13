@@ -49,7 +49,8 @@ import { LinkContainer } from 'react-router-bootstrap';
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
-        ListenerWrapper, ListenerTargetWrapper} from '../utils';
+        ListenerWrapper, ListenerTargetWrapper,
+        LoadingButton} from '../utils';
 
 import * as AppState from '../AppState';
 import {locPath} from '../App';
@@ -128,6 +129,104 @@ class ConceptInfoMenu extends Component {
               <ConceptDesc {...this.props} drill={drill} drillType={drillType} />
               {below}
             </ListenerWrapper>;
+  }
+}
+class ConceptDesc extends Component {
+  render() {
+    const {drill, drillType} = this.props;
+    let ci = this.props.conceptInfo;
+    let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
+    if (ci.valid()) {
+      thisInfo =  <div>
+                    <span className="sc">
+                      { expandSc(ci.standard_concept, 'title') }
+                    </span>&nbsp;&nbsp;
+
+                    <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}
+                          className="name">
+                      <NavItem eventKey={1}>
+                        <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
+                        {ci.concept_name}
+                      </NavItem>
+                    </LinkContainer>
+                    <br/>
+
+                    <span className="domain">
+                      <Glyphicon glyph="globe" title="Domain" />&nbsp;
+                      {ci.domain_id}
+                    </span>{' '}
+
+                    <span className="class">
+                      <Glyphicon glyph="asterisk" title="Concept Class" />&nbsp;
+                      {ci.concept_class_id}
+                    </span>{' '}
+
+                    <span className="vocab">
+                      <Glyphicon glyph="book" title="Vocabulary" />&nbsp;
+                      {ci.vocabulary_id}
+                    </span>
+
+                    <span className="code">
+                      <Glyphicon glyph="barcode" title="Concept Code" />&nbsp;
+                      Code {ci.concept_code}
+                    </span>
+                  </div>
+      mapsTo = <MapsTo conceptInfo={ci} />;
+      mappedFrom = <MappedFrom conceptInfo={ci} />;
+      related = <div>
+                  <ButtonGroup>
+                    {
+                      ci.cdmCounts().map(crec=>
+                        <HoverButton key={'rc-'+ci.tblcol(crec)}
+                            data={{drill:{ci, crec}, drillType:'rc'}}  >
+                          {crec.rc} CDM records in {ci.tblcol(crec)}
+                        </HoverButton>)
+                    }
+                    {
+                      ci.cdmSrcCounts().map(crec=>
+                        <HoverButton key={'src-'+ci.tblcol(crec)}
+                            data={{drill:{ci, crec}, drillType:'src'}}  >
+                          {crec.src} CDM source records in {ci.tblcol(crec)}
+                        </HoverButton>)
+                    }
+                  </ButtonGroup>
+
+                  <ButtonGroup>
+                    {ci.ci.relatedConceptCount 
+                      ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
+                          {ci.ci.relatedConceptCount} Related concepts{' '}
+                        </HoverButton>
+                      : ''}
+                    {ci.ci.conceptAncestorCount 
+                      ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
+                          {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
+                        </HoverButton>
+                      : ''}
+                    {ci.ci.conceptAncestorCount 
+                      ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
+                          {ci.ci.conceptDescendant} Descendat concepts{' '}
+                        </HoverButton>
+                      : ''}
+                  </ButtonGroup>
+                </div>
+    } else if (ci.multiple()) {
+      thisInfo =  <div>
+                    <span className="name">
+                      Code {ci.get('concept_code')} matches {ci.getMultiple().length} concepts
+                    </span>:{' '}
+                    
+                    {ci.getMultipleAsCi().map(rec=>
+                      <ConceptInfoMenu key={rec.concept_id} conceptInfo={rec} />)}
+                  </div>
+    } else {
+      return null;
+    }
+    return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
+              {mapsTo}
+              {mappedFrom}
+              {thisInfo}
+              {related}
+            </div>;
   }
 }
 class RelatedConcepts extends Component {
@@ -258,104 +357,6 @@ class MappedFrom extends Component {
                   mt=><li key={mt.concept_id}>{mt.concept_name}</li>
                   )}
             </ul>
-  }
-}
-class ConceptDesc extends Component {
-  render() {
-    const {drill, drillType} = this.props;
-    let ci = this.props.conceptInfo;
-    let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
-    if (ci.valid()) {
-      thisInfo =  <div>
-                    <span className="sc">
-                      { expandSc(ci.standard_concept, 'title') }
-                    </span>&nbsp;&nbsp;
-
-                    <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}
-                          className="name">
-                      <NavItem eventKey={1}>
-                        <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-                        {ci.concept_name}
-                      </NavItem>
-                    </LinkContainer>
-                    <br/>
-
-                    <span className="domain">
-                      <Glyphicon glyph="globe" title="Domain" />&nbsp;
-                      {ci.domain_id}
-                    </span>{' '}
-
-                    <span className="class">
-                      <Glyphicon glyph="asterisk" title="Concept Class" />&nbsp;
-                      {ci.concept_class_id}
-                    </span>{' '}
-
-                    <span className="vocab">
-                      <Glyphicon glyph="book" title="Vocabulary" />&nbsp;
-                      {ci.vocabulary_id}
-                    </span>
-
-                    <span className="code">
-                      <Glyphicon glyph="barcode" title="Concept Code" />&nbsp;
-                      Code {ci.concept_code}
-                    </span>
-                  </div>
-      mapsTo = <MapsTo conceptInfo={ci} />;
-      mappedFrom = <MappedFrom conceptInfo={ci} />;
-      related = <div>
-                  <ButtonGroup>
-                    {
-                      ci.cdmCounts().map(crec=>
-                        <HoverButton key={'rc-'+ci.tblcol(crec)}
-                            data={{drill:{ci, crec}, drillType:'rc'}}  >
-                          {crec.rc} CDM records in {ci.tblcol(crec)}
-                        </HoverButton>)
-                    }
-                    {
-                      ci.cdmSrcCounts().map(crec=>
-                        <HoverButton key={'src-'+ci.tblcol(crec)}
-                            data={{drill:{ci, crec}, drillType:'src'}}  >
-                          {crec.src} CDM source records in {ci.tblcol(crec)}
-                        </HoverButton>)
-                    }
-                  </ButtonGroup>
-
-                  <ButtonGroup>
-                    {ci.ci.relatedConceptCount 
-                      ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
-                          {ci.ci.relatedConceptCount} Related concepts{' '}
-                        </HoverButton>
-                      : ''}
-                    {ci.ci.conceptAncestorCount 
-                      ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
-                          {ci.ci.conceptAncestorCount} Ancestor concepts{' '}
-                        </HoverButton>
-                      : ''}
-                    {ci.ci.conceptAncestorCount 
-                      ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
-                          {ci.ci.conceptDescendant} Descendat concepts{' '}
-                        </HoverButton>
-                      : ''}
-                  </ButtonGroup>
-                </div>
-    } else if (ci.multiple()) {
-      thisInfo =  <div>
-                    <span className="name">
-                      Code {ci.get('concept_code')} matches {ci.getMultiple().length} concepts
-                    </span>:{' '}
-                    
-                    {ci.getMultipleAsCi().map(rec=>
-                      <ConceptInfoMenu key={rec.concept_id} conceptInfo={rec} />)}
-                  </div>
-    } else {
-      return null;
-    }
-    return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
-              {mapsTo}
-              {mappedFrom}
-              {thisInfo}
-              {related}
-            </div>;
   }
 }
 class HoverButton extends Component {
