@@ -41,15 +41,18 @@ require('./sass/Vocab.scss');
 //require('./VocabPop.css');
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
 import {Glyphicon, Row, Col, 
+          Nav, Navbar, NavItem, 
           FormGroup, FormControl, ControlLabel, HelpBlock,
           Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper} from '../utils';
 
 import * as AppState from '../AppState';
+import {locPath} from '../App';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 //require('./fileBrowser.css');
 
@@ -239,31 +242,66 @@ class CDMRecs extends Component {
            */
   }
 }
+class MapsTo extends Component {
+  render() {
+    let ci = this.props.conceptInfo;
+    return  <ul>{ci.mapsto().map(
+                  mt=><li key={mt.concept_id}>{mt.concept_name}</li>
+                  )}
+            </ul>
+  }
+}
+class MappedFrom extends Component {
+  render() {
+    let ci = this.props.conceptInfo;
+    return  <ul>{ci.mappedfrom().map(
+                  mt=><li key={mt.concept_id}>{mt.concept_name}</li>
+                  )}
+            </ul>
+  }
+}
 class ConceptDesc extends Component {
   render() {
     const {drill, drillType} = this.props;
     let ci = this.props.conceptInfo;
-    let thisInfo = '', related = '';
+    let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
     if (ci.valid()) {
       thisInfo =  <div>
-                    <div className="sc">
+                    <span className="sc">
                       { expandSc(ci.standard_concept, 'title') }
-                    </div>
-                    <Glyphicon glyph="map-marker" title="Concept (name)" />
-                    <span className="name">{ci.concept_name}</span>:{' '}
+                    </span>&nbsp;&nbsp;
 
-                    <Glyphicon glyph="asterisk" title="Concept Class" />
-                    <span className="class">{ci.concept_class_id}</span>
+                    <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}
+                          className="name">
+                      <NavItem eventKey={1}>
+                        <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
+                        {ci.concept_name}
+                      </NavItem>
+                    </LinkContainer>
+                    <br/>
 
-                    <Glyphicon glyph="globe" title="Domain" />
-                    <span className="domain">{ci.domain_id}</span>.{' '}
+                    <span className="domain">
+                      <Glyphicon glyph="globe" title="Domain" />&nbsp;
+                      {ci.domain_id}
+                    </span>{' '}
 
-                    <Glyphicon glyph="barcode" title="Concept Code" />
-                    Code <span className="code">{ci.concept_code}</span> in
+                    <span className="class">
+                      <Glyphicon glyph="asterisk" title="Concept Class" />&nbsp;
+                      {ci.concept_class_id}
+                    </span>{' '}
 
-                    <Glyphicon glyph="book" title="Vocabulary" />
-                    <span className="vocab">{ci.vocabulary_id}</span>
+                    <span className="vocab">
+                      <Glyphicon glyph="book" title="Vocabulary" />&nbsp;
+                      {ci.vocabulary_id}
+                    </span>
+
+                    <span className="code">
+                      <Glyphicon glyph="barcode" title="Concept Code" />&nbsp;
+                      Code {ci.concept_code}
+                    </span>
                   </div>
+      mapsTo = <MapsTo conceptInfo={ci} />;
+      mappedFrom = <MappedFrom conceptInfo={ci} />;
       related = <div>
                   <ButtonGroup>
                     {
@@ -313,6 +351,8 @@ class ConceptDesc extends Component {
       return null;
     }
     return  <div className={"concept-desc " + "sc-" + ci.standard_concept}>
+              {mapsTo}
+              {mappedFrom}
               {thisInfo}
               {related}
             </div>;
@@ -569,7 +609,7 @@ export class ConceptViewPage extends Component {
     */
     return <div className="flex-box"> 
             <Row className="flex-fixed-height-40">
-              <Col md={4} sm={2} >{/*className="short-input"*/}
+              <Col md={5} sm={5} >{/*className="short-input"*/}
                 <FormGroup
                   controlId="concept_id_input"
                   validationState={this.getValidationState('concept_id')}
@@ -587,7 +627,7 @@ export class ConceptViewPage extends Component {
                                 && 'Invalid concept id'}</HelpBlock>
                 </FormGroup>
               </Col>
-              <Col md={4} sm={2}
+              <Col md={5} sm={5}
                     mdOffset={1} smOffset={1}>
                 <FormGroup
                   controlId="concept_code_input"

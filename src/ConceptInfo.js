@@ -28,6 +28,18 @@ export default class ConceptInfo {
       this.gotResults(results);
     });
   }
+  mapsto() {
+    let mt = [];
+    return this.ci.relatedConcepts.filter(d=>d.relationship_id === 'Maps to');
+  }
+  mappedfrom() {
+    let mt = [];
+    return this.ci.relatedConcepts.filter(d=>d.relationship_id === 'Mapped from');
+  }
+  otherRels() {
+    let mt = [];
+    return this.ci.relatedConcepts.filter(d=>!d.relationship_id.match(/^Map/));
+  }
   loaded() {
     return this._status !== 'loading' && this._status !== 'failed';
   }

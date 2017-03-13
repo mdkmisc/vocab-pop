@@ -71,7 +71,7 @@ export class Home extends Component {
             </div>;
   }
 }
-function locPath(pathname, opts={}) {
+export function locPath(pathname, opts={}) {
   // not sure whether to get state from AppState.getState()
   // here. this does the same:
   let search = AppState.myqs.parse(location.search.substr(1));
