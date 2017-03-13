@@ -298,6 +298,12 @@ div.vocab-map, div.domain-map, div.concept-view-container {
     margin-top: 3px;
   }
 }
+.infobit {
+  border: 1px solid gray;
+  &.sc {
+    font-weight: bold;
+  }
+}
 .concept-info-menu {
   margin: 3px;
   border: 1px solid gray;

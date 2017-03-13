@@ -76,9 +76,11 @@ export default class ConceptInfo {
     }
     if (this.valid()) {
       return [
-        {title: this.scTitle(), className: 'sc', value: this.get('standard_concept')},
-        this.selfInfoBit('standard_concept'),
-        this.selfInfoBit('concept_name'),
+        {title: this.scTitle(), className: 'name', value: this.get('concept_name'),
+            linkTo:{concept_id: this.get('concept_id')}},
+        {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
+        this.selfInfoBit('domain_id'),
+        this.selfInfoBit('concept_class_id'),
       ];
     }
   }
@@ -117,13 +119,20 @@ export default class ConceptInfo {
               concept_id: 'Concept ID',
               concept_code: 'Concept Code',
               concept_name: 'Name',
+              domain_id: 'Domain',
+              concept_class_id: 'Class',
+              vocabulary_id: 'Vocabulary',
         })[field] || `no title for ${field}`;
   }
   fieldClass(field) {
     return ({
               concept_id: 'concept-id',
+              concept_name: 'concept-name',
               concept_code: 'concept-code',
-        })[field] || `no-title-for-${field}`;
+              domain_id: 'domain-id',
+              concept_class_id: 'concept-class-id',
+              vocabulary_id: 'vocabulary-id',
+        })[field] || `no-class-for-${field}`;
   }
   relatedConcepts() {
     return this.valid() && this._ci.relatedConcepts || [];

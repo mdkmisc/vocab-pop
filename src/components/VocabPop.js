@@ -226,12 +226,12 @@ class ConceptDesc extends Component {
               {thisInfo}
     */
     return  <div className={"concept-desc " + ci.scClassName() }>
-              <div className="self-info">
+              <div className="self-info container">
                   {ci.selfInfo().map(
-                    ib=><InfoBit asTable={true} conceptInfo={ci} bit={ib} key={ib.title}
+                    (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
                                     cdProps={this.props} />)}
               </div>
-              <div className="multiple-list">
+              <div className="multiple-list container">
                     {ci.multiple() && ci.getMultipleAsCi().map(rec=>
                       <ConceptDescWrapper 
                         mainConcept={ci}
@@ -251,13 +251,17 @@ class ConceptDesc extends Component {
 class InfoBit extends Component {
   render() {
     const {conceptInfo, bit, cdProps} = this.props;
-    let {title, className, value} = bit; // an infobit should have (at least) title, className, value
-
-    return  <Row className={className + ' infobit container'}>
-              <Col componentClass={Button} className='control-label' md={3} >
+    let {title, className, value, wholeRow} = bit; // an infobit should have (at least) title, className, value
+    if (wholeRow) {
+      return  <Row className={className + ' infobit '}>
+                <Col xs={12} >{wholeRow}</Col>
+              </Row>
+    }
+    return  <Row className={className + ' infobit '}>
+              <Col className='control-label' xs={5} >
                 {title}
               </Col>
-              <Col componentClass={Button} md={7} >
+              <Col xs={7} xsOffset={0} >
                 {value}
               </Col>
             </Row>
@@ -675,7 +679,7 @@ export class ConceptViewPage extends Component {
               <FormGroup controlId="concept_id_input"
                       validationState={this.getValidationState('concept_id')} >
                 <Col componentClass={ControlLabel}>Concept Id</Col>
-                <Col sm={4}>
+                <Col xs={4}>
                   <FormControl type="number" step="1"
                               value={concept_id}
                               placeholder="Concept Id"
@@ -690,7 +694,7 @@ export class ConceptViewPage extends Component {
               <FormGroup controlId="concept_code_input"
                       validationState={this.getValidationState('concept_code')} >
                 <Col componentClass={ControlLabel}>Concept Code</Col>
-                <Col sm={4}>
+                <Col xs={4}>
                   <FormControl  type="string" step="1"
                                 value={concept_code}
                                 placeholder="Concept Code"
@@ -703,7 +707,7 @@ export class ConceptViewPage extends Component {
               </FormGroup>
             </Form>
             <Row className="flex-remaining-height">
-              <Col md={10} sm={10} mdOffset={0} smOffset={0}>
+              <Col xs={10} xsOffset={0} >
                 {cv}
               </Col>
             </Row>
