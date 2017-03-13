@@ -87,10 +87,11 @@ export default class ConceptInfo {
   }
   infoBit(bit, context) {
   }
-  get(field, fail=true) {
+  get(field, fail=false) {
     if (_.has(this._crec, field)) return this._crec[field];
     if (typeof this[field] === 'function') return this[field]();
     if (this._ci && this._ci[field]) return this._ci[field];
+    if (field === this.lookupField) return this.lookupVal;
     if (fail) throw new Error(`can't find ${field}`);
   }
   scClassName() {
@@ -115,6 +116,7 @@ export default class ConceptInfo {
     return ({
               concept_id: 'Concept ID',
               concept_code: 'Concept Code',
+              concept_name: 'Name',
         })[field] || `no title for ${field}`;
   }
   fieldClass(field) {
@@ -203,13 +205,13 @@ export default class ConceptInfo {
           .map(rec=>new ConceptInfo({rec, cb:this.sendUpdate}))
   }
   cdmCounts() {
-    return this.rcs.filter(d=>d.rc);
+    return this.valid() && this._crec.rcs.filter(d=>d.rc) || [];
   }
   cdmSrcCounts() {
-    return this.rcs.filter(d=>d.src);
+    return this.valid() && this._crec.rcs.filter(d=>d.src) || [];
   }
   rc() {
-    return _.sum(this.rcs.map(d=>d.rc));
+    return this.valid() && _.sum(this._crec.rcs.map(d=>d.rc));
   }
   tblcol(crec) { // old...not sure if working
     if (crec)

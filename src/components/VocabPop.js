@@ -17,21 +17,27 @@ Copyright 2016 Sigfried Gold
 // npm run-script flow
 const DEBUG = true;
 import React, { Component } from 'react';
+import Inspector from 'react-json-inspector';
+import 'react-json-inspector/json-inspector.css';
+import SigmaReactGraph from './SigmaReactGraph';
+import Spinner from 'react-spinner';
+//require('react-spinner/react-spinner.css');
+//import sigma from './sigmaSvgReactRenderer';
+//import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, }
+import {Glyphicon, Row, Col, 
+          Nav, Navbar, NavItem, 
+          FormGroup, FormControl, ControlLabel, HelpBlock,
+          Button, ButtonToolbar, ButtonGroup,
+          } from 'react-bootstrap';
+import { LinkContainer } from 'react-router-bootstrap';
 var d3 = require('d3');
 var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
 import _ from 'supergroup'; // in global space anyway...
 import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
-import SigmaReactGraph from './SigmaReactGraph';
 import ConceptInfo from '../ConceptInfo';
-import Spinner from 'react-spinner';
 import {AgTable} from './TableStuff';
-//require('react-spinner/react-spinner.css');
-
-//import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 //import 'tipsy/src/stylesheets/tipsy.css';
@@ -39,13 +45,6 @@ import {AgTable} from './TableStuff';
 require('./sass/Vocab.scss');
 //require('tipsy/src/javascripts/jquery.tipsy');
 //require('./VocabPop.css');
-//import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, 
-import {Glyphicon, Row, Col, 
-          Nav, Navbar, NavItem, 
-          FormGroup, FormControl, ControlLabel, HelpBlock,
-          Button, ButtonToolbar, ButtonGroup,
-          } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
@@ -129,39 +128,45 @@ class ConceptDesc extends Component {
     let ci = this.props.conceptInfo;
     let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
     if (ci.valid()) {
+      let concept_id = ci.get('concept_id', 'fail');
       thisInfo =  <div>
                     <span className="sc">
                       { ci.scTitle() }
                     </span>&nbsp;&nbsp;
 
-                    <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}
-                          className="name">
-                      <NavItem eventKey={1}>
-                        <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-                        {ci.selfInfoBit('concept_name').title},
-                        {/*ci.concept_name*/}
-                      </NavItem>
-                    </LinkContainer>
+                    <Nav>
+                        <NavItem 
+                          onClick={
+                            ()=>AppState.saveState(
+                              {conceptInfoParams:{concept_id},
+                                conceptInfoUserChange:'user:concept_id'})
+                          }
+                        >
+                          <Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
+                          {ci.selfInfoBit('concept_name').value},
+                          {/*ci.concept_name*/}
+                        </NavItem>
+                    </Nav>
                     <br/>
 
                     <span className="domain">
                       <Glyphicon glyph="globe" title="Domain" />&nbsp;
-                      {ci.selfInfoBit('domain_id').title},
+                      {ci.selfInfoBit('domain_id').value},
                     </span>{' '}
 
                     <span className="class">
                       <Glyphicon glyph="asterisk" title="Concept Class" />&nbsp;
-                      {ci.get('concept_class_id')}
+                      {ci.get('concept_class_id','fail')}
                     </span>{' '}
 
                     <span className="vocab">
                       <Glyphicon glyph="book" title="Vocabulary" />&nbsp;
-                      {ci.get('vocabulary_id')}
+                      {ci.get('vocabulary_id','fail')}
                     </span>
 
                     <span className="code">
                       <Glyphicon glyph="barcode" title="Concept Code" />&nbsp;
-                      Code {ci.get('concept_code')}
+                      Code {ci.get('concept_code','fail')}
                     </span>
                   </div>
       mapsTo = <MapsTo conceptInfo={ci} />;
@@ -169,14 +174,14 @@ class ConceptDesc extends Component {
       related = <div>
                   <ButtonGroup>
                     {
-                      ci.cdmCounts().map(crec=>
+                      ci.get('cdmCounts','fail').map(crec=>
                         <HoverButton key={'rc-'+ci.tblcol(crec)}
                             data={{drill:{ci, crec}, drillType:'rc'}}  >
                           {crec.rc} CDM records in {ci.tblcol(crec)}
                         </HoverButton>)
                     }
                     {
-                      ci.cdmSrcCounts().map(crec=>
+                      ci.get('cdmSrcCounts','fail').map(crec=>
                         <HoverButton key={'src-'+ci.tblcol(crec)}
                             data={{drill:{ci, crec}, drillType:'src'}}  >
                           {crec.src} CDM source records in {ci.tblcol(crec)}
@@ -185,19 +190,19 @@ class ConceptDesc extends Component {
                   </ButtonGroup>
 
                   <ButtonGroup>
-                    {ci.get('relatedConceptCount') 
+                    {ci.get('relatedConceptCount','fail') 
                       ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
-                          {ci.get('relatedConceptCount')} Related concepts{' '}
+                          {ci.get('relatedConceptCount','fail')} Related concepts{' '}
                         </HoverButton>
                       : ''}
                     {ci.conceptAncestorCount 
                       ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
-                          {ci.get('conceptAncestorCount')} Ancestor concepts{' '}
+                          {ci.get('conceptAncestorCount','fail')} Ancestor concepts{' '}
                         </HoverButton>
                       : ''}
                     {ci.conceptAncestorCount 
                       ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
-                          {ci.get('conceptDescendant')} Descendant concepts{' '}
+                          {ci.get('conceptDescendant','fail')} Descendant concepts{' '}
                         </HoverButton>
                       : ''}
                   </ButtonGroup>
@@ -205,7 +210,7 @@ class ConceptDesc extends Component {
     } else if (ci.multiple()) {
       thisInfo =  <div>
                     <span className="name">
-                      Code {ci.get('concept_code')} matches {ci.getMultiple().length} concepts
+                      Code {ci.get('concept_code','fail')} matches {ci.getMultiple().length} concepts
                     </span>:{' '}
                     
                     {ci.getMultipleAsCi().map(rec=>
@@ -268,8 +273,8 @@ class RelatedConcepts extends Component {
     const {ci, crec, rowLimit=40} = this.props;
     //const {tbl, col} = crec; {ci.tblcol(crec)}:
     return <pre>
-              {ci.get('relatedConcepts').slice(0,4).map(d=>JSON.stringify(d,null,2))}
-              {ci.get('relatedConceptGroups').slice(0,4).map(d=>JSON.stringify(d,null,2))}
+              {ci.get('relatedConcepts','fail').slice(0,4).map(d=>JSON.stringify(d,null,2))}
+              {ci.get('relatedConceptGroups','fail').slice(0,4).map(d=>JSON.stringify(d,null,2))}
            </pre>;
 
     /*
@@ -308,7 +313,7 @@ class CDMRecs extends Component {
     const oldStream = this.state.stream;
     if (oldStream && tbl === this.state.tbl && col === this.state.col)
       return;
-    let params = { tbl, col, concept_id: ci.get('concept_id'), };
+    let params = { tbl, col, concept_id: ci.get('concept_id','fail'), };
     if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
     let stream = new AppState.ApiStream({
       apiCall: 'cdmRecs',
@@ -348,8 +353,12 @@ class MapsTo extends Component {
   render() {
     let ci = this.props.conceptInfo;
     return  <ul>{ci.mapsto().map(
-                  mt=><li key={mt.get('concept_id')}>Maps to {mt.get('concept_name')}</li>
-                  )}
+                  mt=><li key={mt.get('concept_id','fail')}>
+                        Maps to {' '}
+                          {mt.get('domain_id','fail')}{' '}
+                          {mt.get('vocabulary_id','fail')} concept {' '}
+                          {mt.get('concept_name','fail')}
+                      </li>)}
             </ul>
   }
 }
@@ -357,8 +366,12 @@ class MappedFrom extends Component {
   render() {
     let ci = this.props.conceptInfo;
     return  <ul>{ci.mappedfrom().map(
-                  mt=><li key={mt.get('concept_id')}>Mapped from {mt.get('concept_name')}</li>
-                  )}
+                  mf=><li key={mf.get('concept_id','fail')}>
+                        Mapped from {' '}
+                          {mf.get('domain_id','fail')}{' '}
+                          {mf.get('vocabulary_id','fail')} concept {' '}
+                          {mf.get('concept_name','fail')}
+                      </li>)}
             </ul>
   }
 }
@@ -459,6 +472,8 @@ export class ConceptViewPage extends Component {
     this.state = {concept_id, concept_code};
     this.handleChange = this.handleChange.bind(this);
     this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
+    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
+    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
     //this.wrapperUpdate = this._wrapperUpdate.bind(this);
   }
   /*
@@ -494,6 +509,8 @@ export class ConceptViewPage extends Component {
     } else if (concept_code !== '') {
       this.getConceptInfo({concept_code}, 'init', 'concept_code');
     }
+    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
+    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
   conceptInfoUpdate(conceptInfo) {
     if (conceptInfo.valid()) {
@@ -536,6 +553,8 @@ export class ConceptViewPage extends Component {
       newState.concept_id = conceptInfo.concept_id;
       newState.concept_code = conceptInfo.concept_code;
     }
+    if (typeof newState.concept_id !== "string" && typeof newState.concept_id !== "number") debugger;
+    if (typeof newState.concept_code !== "string" && typeof newState.concept_code !== "number") debugger;
     this.setState(newState);
   }
   componentWillUnmount() {
@@ -543,19 +562,26 @@ export class ConceptViewPage extends Component {
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
+    const {concept_id, concept_code} = this.state;
+    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
+    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
   getValidationState(field) {
     const {concept_id, concept_code, conceptInfo, } = this.state;
     if (field === 'concept_id') {
-      if (concept_id >= 0 && conceptInfo && concept_id === conceptInfo.concept_id) {
-        return 'success';
-      } else if (!concept_id) {
+      if (!isFinite(parseInt(concept_id,10))) {
         return null;
+      } else if (!conceptInfo || conceptInfo.failed()) {
+        return 'error';
+      } else if (conceptInfo.concept_id !== concept_id) {
+        throw new Error("not sure what's up");
+      } else if (conceptInfo.valid()) {
+        return 'success';
       }
     } else if (field === 'concept_code') {
       if (!concept_code) {
         return null;
-      } else if (!conceptInfo) {
+      } else if (!conceptInfo || conceptInfo.failed()) {
         return 'error';
       } else if (conceptInfo.valid()) {
         return 'success';
@@ -574,7 +600,7 @@ export class ConceptViewPage extends Component {
       let concept_id = e.target.value;
       if (concept_id.length) {
         concept_id = parseInt(concept_id,10);
-        if (isNaN(concept_id)) return;
+        if (!isFinite(concept_id)) return;
       }
       //this.getConceptInfo({concept_id}, 'user:concept_id');
       conceptInfoParams.concept_id = concept_id;
@@ -594,8 +620,12 @@ export class ConceptViewPage extends Component {
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
-    const {concept_id, concept_code, conceptInfo, 
+    let {concept_id, concept_code, conceptInfo, 
             multipleMatchingRecs, change} = this.state;
+    concept_id = conceptInfo && conceptInfo.get('concept_id') || '';
+    concept_code = conceptInfo && conceptInfo.get('concept_code') || '';
+    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
+    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
     let cv = 'No concept chosen';
     // do I really need a wrapper?  ... switching to state to pass data down
     if (!conceptInfo) {

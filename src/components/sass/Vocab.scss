@@ -9,8 +9,12 @@ $color_mountain_mist_approx: #999;
 $white: #fff;
 $color_lochmara_30_approx: rgba(0,119,221,0.3);
 $color_lochmara_10_approx: rgba(0,119,221,0.1);
+$color_amethyst_approx: rgba(163, 53, 238,1);
 $color_amethyst_30_approx: rgba(163, 53, 238,0.3);
 $color_amethyst_10_approx: rgba(163, 53, 238,0.1);
+
+$color_lightish_purple: rgba(200, 150, 255,1);
+
 $crimson_30: rgba(220,20,60,0.3);
 $crimson_10: rgba(220,20,60,0.1);
 $black_30: rgba(0,0,0,0.3);
@@ -18,7 +22,6 @@ $black_10: rgba(0,0,0,0.1);
 $color_claret_30_approx: rgba(120,20,60,0.3);
 $color_claret_10_approx: rgba(120,20,60,0.1);
 $color_lochmara_approx: rgba(0,119,221,1);
-$color_amethyst_approx: rgba(163, 53, 238,1);
 $crimson_100: rgba(220,20,60,1);
 $color_claret_approx: rgba(120,20,60,1);
 $alice_blue: aliceblue;
@@ -264,12 +267,12 @@ div.vocab-map, div.domain-map, div.concept-view-container {
 }
 
 .sc-standard-concept, .rc, .sc-S { // don't use all of these
-  background-color: $color_lochmara_30_approx;
-	//background-color: $color_granny_smith_apple_approx;
+  //background-color: $color_lochmara_30_approx;
+	background-color: $color_granny_smith_apple_approx;
 }
 .sc-classification-concept, .drc, .sc-C {
-	background-color: $color_regent_st_blue_approx;
-  //background-color: $color_amethyst_30_approx;
+	//background-color: $color_regent_st_blue_approx;
+  background-color: $color_lightish_purple;
 }
 .sc-non-standard-concept, .src, .sc-X {
   background-color: $crimson_30;
