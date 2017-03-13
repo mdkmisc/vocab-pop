@@ -17,12 +17,12 @@ $color_lightish_purple: rgba(200, 150, 255,1);
 
 $crimson_30: rgba(220,20,60,0.3);
 $crimson_10: rgba(220,20,60,0.1);
+$crimson_100: rgba(220,20,60,1);
 $black_30: rgba(0,0,0,0.3);
 $black_10: rgba(0,0,0,0.1);
 $color_claret_30_approx: rgba(120,20,60,0.3);
 $color_claret_10_approx: rgba(120,20,60,0.1);
 $color_lochmara_approx: rgba(0,119,221,1);
-$crimson_100: rgba(220,20,60,1);
 $color_claret_approx: rgba(120,20,60,1);
 $alice_blue: aliceblue;
 $steel_blue:  steelblue;
@@ -275,10 +275,10 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   background-color: $color_lightish_purple;
 }
 .sc-non-standard-concept, .src, .sc-X {
-  background-color: $crimson_30;
+  background-color: $crimson_10;
 }
 .invalid-concept {
-  background-color: $crimson_100;
+  background-color: $crimson_30;
 }
 
 .dsrc {

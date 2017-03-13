@@ -25,8 +25,8 @@ import Spinner from 'react-spinner';
 //import sigma from './sigmaSvgReactRenderer';
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, }
 import {Glyphicon, Row, Col, 
-          Nav, Navbar, NavItem, 
-          FormGroup, FormControl, ControlLabel, HelpBlock,
+          Nav, Navbar, NavItem, Label,
+          Form, FormGroup, FormControl, ControlLabel, HelpBlock,
           Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap';
 import { LinkContainer } from 'react-router-bootstrap';
@@ -78,7 +78,7 @@ export default class VocabPop extends Component {
             </ConceptData>;
   }
 }
-class ConceptInfoMenu extends Component {
+class ConceptDescWrapper extends Component {
   constructor(props) {
     super(props);
     this.state = {};
@@ -110,6 +110,7 @@ class ConceptInfoMenu extends Component {
   }
   render() {
     let ci = this.props.conceptInfo;
+    //const {amMain, mainConcept} = this.props;
     if (!ci) return null;
     const {above, below, drill, drillType} = this.state;
                   //sendRefsToParent={getRefsFunc(this,'graphDiv')}
@@ -124,7 +125,7 @@ class ConceptInfoMenu extends Component {
 }
 class ConceptDesc extends Component {
   render() {
-    const {drill, drillType, context} = this.props;
+    const {drill, drillType, amMain, mainConcept} = this.props;
     let ci = this.props.conceptInfo;
     let thisInfo = '', related = '', mapsTo = '', mappedFrom = '';
     if (ci.valid()) {
@@ -214,18 +215,28 @@ class ConceptDesc extends Component {
                     </span>:{' '}
                     
                     {ci.getMultipleAsCi().map(rec=>
-                      <ConceptInfoMenu key={rec.concept_id} conceptInfo={rec} />)}
+                      <ConceptDescWrapper 
+                        mainConcept={ci}
+                        key={rec.concept_id} conceptInfo={rec} />)}
                   </div>
     } else {
       return null;
     }
     /*
-              <div className="self-info">
-                {ci.selfInfo().map(ib=><InfoBit conceptInfo={ci} bit=ib context={context} />)}
-              </div>
+              {thisInfo}
     */
     return  <div className={"concept-desc " + ci.scClassName() }>
-              {thisInfo}
+              <div className="self-info">
+                  {ci.selfInfo().map(
+                    ib=><InfoBit asTable={true} conceptInfo={ci} bit={ib} key={ib.title}
+                                    cdProps={this.props} />)}
+              </div>
+              <div className="multiple-list">
+                    {ci.multiple() && ci.getMultipleAsCi().map(rec=>
+                      <ConceptDescWrapper 
+                        mainConcept={ci}
+                        key={rec.concept_id} conceptInfo={rec} />)}
+              </div>
               <div className="mapsto">
                 <MapsTo conceptInfo={ci} />
               </div>
@@ -235,6 +246,21 @@ class ConceptDesc extends Component {
               related<br/>anc/desc<br/>recs<br/>docs
               {related}
             </div>;
+  }
+}
+class InfoBit extends Component {
+  render() {
+    const {conceptInfo, bit, cdProps} = this.props;
+    let {title, className, value} = bit; // an infobit should have (at least) title, className, value
+
+    return  <Row className={className + ' infobit container'}>
+              <Col componentClass={Button} className='control-label' md={3} >
+                {title}
+              </Col>
+              <Col componentClass={Button} md={7} >
+                {value}
+              </Col>
+            </Row>
   }
 }
 class RelatedConcepts extends Component {
@@ -632,58 +658,50 @@ export class ConceptViewPage extends Component {
 
     } else if (conceptInfo.loaded()) {
       cv =  <div className="concept-view-container" >
-              <ConceptInfoMenu conceptInfo={conceptInfo} />
+              <ConceptDescWrapper amMain={true} conceptInfo={conceptInfo} />
             </div>
     }
     /*
     else if (conceptInfo.multiple()) {
       cv =  <div className="concept-view-multiple" >
-              <ConceptInfoMenu conceptInfo={conceptInfo} />
+              <ConceptDescWrapper conceptInfo={conceptInfo} />
               {conceptInfo.getMultipleAsCi().map(rec=>
-                <ConceptInfoMenu key={rec.concept_id} conceptInfo={rec} />)}
+                <ConceptDescWrapper key={rec.concept_id} conceptInfo={rec} />)}
             </div>
     }
     */
     return <div className="flex-box"> 
-            <Row className="flex-fixed-height-40">
-              <Col md={5} sm={5} >{/*className="short-input"*/}
-                <FormGroup
-                  controlId="concept_id_input"
-                  validationState={this.getValidationState('concept_id')}
-                >
-                  <ControlLabel>Concept Id</ControlLabel>
-                  <FormControl
-                    type="number" step="1"
-                    value={concept_id}
-                    placeholder="Concept Id"
+            <Form horizontal className="flex-fixed-height-40">
+              <FormGroup controlId="concept_id_input"
+                      validationState={this.getValidationState('concept_id')} >
+                <Col componentClass={ControlLabel}>Concept Id</Col>
+                <Col sm={4}>
+                  <FormControl type="number" step="1"
+                              value={concept_id}
+                              placeholder="Concept Id"
                     //inputRef={d=>this.cidInput=d}
                     onChange={this.handleChange}
                   />
                   <FormControl.Feedback />
                   <HelpBlock>{this.getValidationState('concept_id') === 'error'
                                 && 'Invalid concept id'}</HelpBlock>
-                </FormGroup>
-              </Col>
-              <Col md={5} sm={5}
-                    mdOffset={1} smOffset={1}>
-                <FormGroup
-                  controlId="concept_code_input"
-                  validationState={this.getValidationState('concept_code')}
-                >
-                  <ControlLabel>Concept Code</ControlLabel>
-                  <FormControl
-                    type="string" step="1"
-                    value={concept_code}
-                    placeholder="Concept Code"
-                    //inputRef={d=>this.codeInput=d}
-                    onChange={this.handleChange}
+                </Col>
+              </FormGroup>
+              <FormGroup controlId="concept_code_input"
+                      validationState={this.getValidationState('concept_code')} >
+                <Col componentClass={ControlLabel}>Concept Code</Col>
+                <Col sm={4}>
+                  <FormControl  type="string" step="1"
+                                value={concept_code}
+                                placeholder="Concept Code"
+                                onChange={this.handleChange}
                   />
                   <FormControl.Feedback />
                   <HelpBlock>{this.getValidationState('concept_code') === 'error'
-                                && 'Invalid concept code'}</HelpBlock>
-                </FormGroup>
-              </Col>
-            </Row>
+                                && 'Invalid concept Code'}</HelpBlock>
+                </Col>
+              </FormGroup>
+            </Form>
             <Row className="flex-remaining-height">
               <Col md={10} sm={10} mdOffset={0} smOffset={0}>
                 {cv}

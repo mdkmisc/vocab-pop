@@ -51,7 +51,7 @@ export default class ConceptInfo {
   multipleReady() {
     return !!(this._status === 'multiple' && this._multipleAsCis);
   }
-  selfInfo(context) {
+  selfInfo(context) { // not using context
     if (this.loading()) {
       return [
         {title:'Status', className:'ci-status', value: 'Loading'},
