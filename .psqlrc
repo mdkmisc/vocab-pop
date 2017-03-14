@@ -1,0 +1,7 @@
+\set cdm cdm2
+set session my.vars.cdm = :cdm; -- lets me use it as string in query (as per http://stackoverflow.com/a/29469454/1368860)
+\set results results2
+set session my.vars.results = :results;
+SET search_path TO :results;
+\pset format wrapped
+
