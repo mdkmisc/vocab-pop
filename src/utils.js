@@ -111,6 +111,7 @@ export function cachedGetJsonFetch(url, params={}) {
             })
         );
 }
+/* not used in vocab-pop
 export function jsonFetchMeta(url, params={}, meta={}) {
   // so you get back not just the promise, but also the getUrl,
   // which is a unique key for the fetch and a key into storage,
@@ -120,6 +121,7 @@ export function jsonFetchMeta(url, params={}, meta={}) {
   let promise = cachedGetJsonFetch(url, params);
   return {key, promise, meta};
 }
+*/
 export class JsonFetcher { // this.url is the unique key
   constructor(baseUrl, params, meta) {
     this.baseUrl = baseUrl;

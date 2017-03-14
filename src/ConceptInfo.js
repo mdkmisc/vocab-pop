@@ -2,13 +2,33 @@ import * as AppState from './AppState';
 import _ from 'supergroup'; // in global space anyway...
 import Rx from 'rxjs/Rx';
 
+export class ConceptSet {
+  constructor({cis, params}) {
+    this.cis = cis; // ConceptInfo array
+    this.params = params;
+  }
+}
 export default class ConceptInfo {
   //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
-  constructor({lookupField, params, rec, cb, conceptRole} = {}) { // expect lookupField and params, or rec
+  constructor({ // expect lookupField and params, or rec
+                lookupField, 
+                params, // used in api call
+                rec, // if creating from already (partially) fetched data
+                fetchRelated=true, // set to false to not fetch related concepts
+                                   // if false and rec not set, just fetch concept record
+                cb,           // callback for when child updates (still use?)
+                role='main',  // main, multiple, mapsto, etc
+                inRelTo,      // parent ConceptInfo instance
+                depth=0,      // 0 for main, +1 below
+              } = {}) {
+    this._status = 'preloading';
     this._valid = false;
-    this._status = 'loading';
+    this._role = role;
+    this._depth = depth;
+    this._amMain = inRelTo ? false : true;
+    this._inRelTo = inRelTo;
+    this._fetchRelated = fetchRelated;
     this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
-    this.gotResults = this.gotResults.bind(this);
     this.sendUpdate = this.sendUpdate.bind(this);
     if (cb) this.cb = cb;
     if (rec) {
@@ -23,20 +43,106 @@ export default class ConceptInfo {
       this.lookupVal = params[lookupField];
     }
     this[this.lookupField] = this.lookupVal;
-    if (conceptRole) {
-      this._conceptRole = conceptRole;
+    this.fetchData();
+  }
+  fetchData() {
+    // at some point allow specifying what specifically needs fetching 
+    //  (beyond conceptRecord and related)
+
+    if (this._status !== 'preloading') return;
+    this._status = 'loading';
+    if (this.lookupField === 'concept_code') {
+      if (this._crec) {
+        throw new Error("that's weird");
+      }
+      let apiCall = 'conceptRecordsFromCode';
+      let codeLookupStream = new AppState.ApiStream({ apiCall, params:this.params});
+      codeLookupStream.subscribe((results,stream)=>{
+        if (!results.length) {
+          this._status = 'failed';
+        } else if (results.length === 1) {
+          this._crec = results[0];
+          this._valid = true;  // not sure....
+          this._status = 'gotCrec'; // partially complete
+          this.fetchRelated('codeLookup got crec'); //this._crec.concept_id;
+        } else {
+          this._role = 'conceptSet';
+          this._conceptSet = new ConceptSet({
+            cis: results.map(
+                    rec => { return new ConceptInfo({
+                                        rec, 
+                                        //cb:this.sendUpdate,
+                                        inRelTo: this,
+                                        role: 'multiple',
+                                        fetchRelated: false,
+                                    });
+                    })
+          });
+          this._multipleRecs = this._conceptSet.cis;
+          this._valid = true;
+          this._status = 'complete'; // partially complete
+        }
+      });
+    } else { // lookup === concept_id
+      if (!this._fetchRelated) {
+        let apiCall = 'conceptRecord';
+        let cidLookupStream = new AppState.ApiStream({ apiCall, params:this.params});
+        cidLookupStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+          if (_.isEmpty(results)) {
+            this._status = 'failed';
+          } else {
+            this._crec = results;
+            this._valid = true;  // not sure....
+            this._status = 'complete';
+          }
+        });
+      } else {
+        this.fetchRelated("concept lookup, don't know if got crec"); //this.lookupVal;
+      }
     }
-    this.stream = this.lookup();
-    this.stream.subscribe(results=>{
-      this.gotResults(results);
-    });
+    //throw new Error("not sure what's up");
+    //this._status = 'complete'; // getting here means not needing related and already having _crec
+  }
+  fetchRelated(source) {
+    console.log("in fetchRelated from", source, this._status, this._fetchRelated);
+    if (!this._fetchRelated) {
+      if (this._crec) {
+        this._status = 'complete';
+        this._valid = true;
+      } else {
+        throw new Error("should this happen?");
+      }
+      return;
+    }
+    if (!this._crec && this.lookupField === 'concept_id') {
+      this.stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
+      this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+        if (_.isEmpty(results)) {
+          this._status = 'failed';
+        } else {
+          this._crec = results.conceptRecord;
+          this._ci = results;
+          this._valid = true;  // not sure....
+          this._status = 'complete';
+        }
+        this.sendUpdate();
+        return this._status;
+      });
+    }
+  }
+  want({lookupField, params, } = {}) {
+    if (this.lookupField === lookupField && this.lookupVal === params[lookupField]) {
+      return this;
+    }
+    this.done();
+    return new ConceptInfo({lookupField, params});
   }
   // status methods -- combine?
   loading() {
-    return this._status === 'loading';
+    return this._status.match(/loading/);
   }
   loaded() {
-    return this._status !== 'loading' && this._status !== 'failed';
+    return this._status.match(/loading/) && this._status !== 'failed';
   }
   failed() {
     return this._status === 'failed';
@@ -44,14 +150,14 @@ export default class ConceptInfo {
   valid() {
     return this._valid;
   }
-  multiple() {
-    return this._status === 'multiple';
+  isMultiple() {
+    return this._multipleRecs && this._multipleRecs.length; // for ambiguous concept_codes
   }
-  conceptRole() {
-    return this._conceptRole;
+  role() {
+    return this._role;
   }
-  multipleReady() {
-    return !!(this._status === 'multiple' && this._multipleAsCis);
+  isRole(role) {
+    return this._role === role;
   }
   selfInfo(context) { // not using context
     if (this.loading()) {
@@ -68,7 +174,7 @@ export default class ConceptInfo {
                     ${lookupInfo.title} ${lookupInfo.value}`},
       ];
     }
-    if (this.multiple()) {
+    if (this.isMultiple()) { // this is the main ConceptInfo, 
       let codeInfo = this.selfInfoBit('concept_code');
       return [
         {title:'Status', className:'name', 
@@ -86,20 +192,18 @@ export default class ConceptInfo {
         this.selfInfoBit('concept_class_id'),
       ];
     }
-    if (this.conceptRole()) {
-      switch (this.conceptRole()) {
-        case 'mapsto':
-        case 'mappedfrom':
-        case 'relatedConcept':
-          return [      // same as this.valid() at the moment...should combine stuff
-            {title: this.scTitle(), className: 'name', 
-                wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-                linkParams:{concept_id: this.get('concept_id')}},
-            {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
-            this.selfInfoBit('domain_id'),
-            this.selfInfoBit('concept_class_id'),
-          ];
-      }
+    switch (this.role()) {
+      case 'mapsto':
+      case 'mappedfrom':
+      case 'relatedConcept':
+        return [      // same as this.valid() at the moment...should combine stuff
+          {title: this.scTitle(), className: 'name', 
+              wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
+              linkParams:{concept_id: this.get('concept_id')}},
+          {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
+          this.selfInfoBit('domain_id'),
+          this.selfInfoBit('concept_class_id'),
+        ];
     }
     throw new Error("what am I?");
   }
@@ -143,6 +247,7 @@ export default class ConceptInfo {
               vocabulary_id: 'Vocabulary',
               mapsto: 'Maps to',
               mappedfrom: 'Mapped from',
+              otherRelationship: val,
         })[field] || `no title for ${field}`;
   }
   fieldClass(field) {
@@ -159,59 +264,47 @@ export default class ConceptInfo {
     return this.valid() && this._ci.relatedConcepts || [];
   }
   mapsto() {
-    return (this.relatedConcepts()
+    return (this._mapsto = 
+            this._mapsto ||
+            this.relatedConcepts()
                 .filter(rec=>rec.relationship_id === 'Maps to')
-                .map(rec=>new ConceptInfo({rec, conceptRole:'mapsto',
-                                    cb:this.sendUpdate})));
+                .map(rec=>new ConceptInfo({rec, role:'mapsto',
+                                          inRelTo: this,
+                                    //cb:this.sendUpdate
+                })));
   }
   mappedfrom() {
-    return (this.relatedConcepts()
+    return (this._mappedfrom = 
+            this._mappedfrom ||
+            this.relatedConcepts()
                 .filter(rec=>rec.relationship_id === 'Mapped from')
-                .map(rec=>new ConceptInfo({rec, conceptRole:'mappedfrom',
-                                    cb:this.sendUpdate})));
+                .map(rec=>new ConceptInfo({rec, role:'mappedfrom',
+                                          inRelTo: this,
+                                    //cb:this.sendUpdate
+                })));
+  }
+  otherRelationship() {
+    return (this._otherRelationship = 
+            this._otherRelationship ||
+            this.relatedConcepts()
+                .filter(rec=>!_.includes(['Maps to','Mapped from'],
+                                         rec.relationship_id))
+                .map(rec=>new ConceptInfo({rec, role:'otherRelationship',
+                                          inRelTo: this,
+                                    //cb:this.sendUpdate
+                })));
   }
   otherRels() {
     let mt = [];
     return this.relatedConcepts().filter(d=>!d.relationship_id.match(/^Map/));
   }
-  want({lookupField, params, } = {}) {
-    if (this.lookupField === lookupField && this.lookupVal === params[lookupField]) {
-      return this;
-    }
-    this.done();
-    return new ConceptInfo({lookupField, params});
-  }
   subscribe(cb) {
     this.bsubj.subscribe(cb); // get rid of old ones!
   }
   done() {
-    this.stream.unsubscribe();
-    this.bsubj.unsubscribe();
-  }
-  gotResults(results) {
-    if (!results) {
-      this._status = 'failed';
-    } else if (Array.isArray(results)) {
-      if (!results.length) {
-        this._status = 'failed';
-      } else {
-        if (this.lookupField !== 'concept_code')
-          throw new Error("shouldn't be having array results unless looking up by concept_code");
-        if (results[0].concept_code !== this.lookupVal) throw new Error("impossible");
-        this._status = 'multiple';
-        this._multipleRecs = results;
-        this._crec = {concept_code: this.lookupVal};
-      }
-    } else {
-      if (results.conceptRecord) {
-        //Object.assign(this, results.conceptRecord); // stop doing this
-        this._crec = results.conceptRecord; // this instead...?
-        this._ci = results;
-        this._valid = true;
-        this._status = 'success';
-      }
-    }
-    this.sendUpdate();
+    console.log("not saving streams for unsubscribing! is that a problem?");
+    //this.stream.unsubscribe();
+    //this.bsubj.unsubscribe();
   }
   sendUpdate(source) {
     //if (this.parentCi) this.parentCi.sendUpdate();
@@ -219,17 +312,17 @@ export default class ConceptInfo {
       this.cb('fromChild');
     //else
     this.bsubj.next(this);
-  }
-  lookup() {
-    //const {lookupField, val} = params;
-    return new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
+    if (this._inRelTo)
+      this._inRelTo.sendUpdate();
   }
   getMultiple() {
-    if (this._status === 'multiple') return this._multipleRecs;
+    if (this.isMultiple()) return this._multipleRecs;
   }
+  /*
   getMultipleAsCi() {
     if (this._status === 'multiple') return this._multipleAsCis;
   }
+  */
   resolveMultiple(max) {
     if (this._multipleAsCis && this._multipleAsCis.length === Math.min(max, this._multipleRecs.length))
       return;

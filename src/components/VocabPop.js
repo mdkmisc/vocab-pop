@@ -86,6 +86,8 @@ class ConceptDescWrapper extends Component {
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (target && target.props && target.props.data) {
+      debugger;
+      const {amMain, mainConcept} = this.props;
       const {drill={}, drillType, } = target.props.data;
       const {ci, crec, } = drill;
       let below, above;
@@ -101,7 +103,9 @@ class ConceptDescWrapper extends Component {
           below = <CDMRecs {...{ci, crec}} />;
           break;
         case "related":
-          below = <RelatedConcepts {...{ci, crec}} />;
+          below = <RelatedConcept relationship='otherRelationship' 
+                    conceptInfo={ci} amMain={amMain} />
+            //<RelatedConcepts {...{ci, crec}} />;
           console.log('drill', drillType, drill);
           break;
       }
@@ -177,14 +181,14 @@ class ConceptDesc extends Component {
                                     cdProps={this.props} />)}
               </div>
               <div className="multiple-list container">
-                    {ci.multiple() && ci.getMultipleAsCi().map(rec=>
+                    {ci.isMultiple() && ci.getMultiple().map(rec=>
                       <ConceptDescWrapper 
                         mainConcept={ci}
                         key={rec.concept_id} conceptInfo={rec} />)}
               </div>
 
-              <MapConcept relationship='mapsto' conceptInfo={ci} amMain={amMain} />
-              <MapConcept relationship='mappedfrom' conceptInfo={ci} amMain={amMain} />
+              <RelatedConcept relationship='mapsto' conceptInfo={ci} amMain={amMain} />
+              <RelatedConcept relationship='mappedfrom' conceptInfo={ci} amMain={amMain} />
 
               related<br/>anc/desc<br/>recs<br/>docs
               {related}
@@ -226,66 +230,6 @@ class InfoBit extends Component {
                 {content}
               </Col>
             </Row>
-  }
-}
-class RelatedConcepts extends Component {
-  constructor(props) {
-    super(props);
-    this.state = { recs: [], };
-  }
-  componentDidMount() {
-    this.forceUpdate();
-  }
-  /*
-  componentDidUpdate(prevProps, prevState) {
-    const {ci, crec, rowLimit/*=40* /} = this.props;
-    const {tbl, col} = crec;
-    //updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
-      
-    const oldStream = this.state.stream;
-    if (oldStream && tbl === this.state.tbl && col === this.state.col)
-      return;
-    let params = { tbl, col, concept_id: ci.concept_id, };
-    if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
-    let stream = new AppState.ApiStream({
-      apiCall: 'cdmRecs',
-      params,
-      //meta: { statePath },
-      //transformResults,
-    });
-    stream.subscribe((recs,stream)=>{
-      this.setState({recs});
-    });
-    this.setState({stream, tbl, col});
-  }
-  */
-  render() {
-    //const {recs} = this.state;
-    const {ci, crec, rowLimit=40} = this.props;
-    //const {tbl, col} = crec; {ci.tblcol(crec)}:
-    return <pre>
-              {ci.get('relatedConcepts','fail').slice(0,4).map(d=>JSON.stringify(d,null,2))}
-              {ci.get('relatedConceptGroups','fail').slice(0,4).map(d=>JSON.stringify(d,null,2))}
-           </pre>;
-
-    /*
-    if (!recs) {
-      return <div>
-                <Spinner/>
-                <p>Waiting for recs from {ci.tblcol(crec)}</p>
-             </div>;
-    }
-      //coldefs={cols} 
-    return  <AgTable data={recs}
-                      width={"100%"} height={250}
-                      id="cdmRecs"
-            />
-            /*
-    <pre>
-              {ci.tblcol(crec)}:
-              {recs.slice(0,4).map(d=>JSON.stringify(d,null,2))}
-           </pre>;
-           */
   }
 }
 class CDMRecs extends Component {
@@ -340,15 +284,15 @@ class CDMRecs extends Component {
            */
   }
 }
-class MapConcept extends Component {
+class RelatedConcept extends Component {
   render() {
     const {amMain, relationship} = this.props;
     let ci = this.props.conceptInfo;
     if (!amMain) return null;
     let recs = ci[relationship]();
-    if (!recs) return null;
+    if (_.isEmpty(recs)) return null;
     return  <div className={relationship}>
-              <h4>{ci.fieldTitle(relationship)}</h4>
+              <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
               {recs.map(
                 rec=> <ConceptDescWrapper mainConcept={ci} 
                         key={rec.concept_id} conceptInfo={rec} />)}
@@ -493,12 +437,13 @@ export class ConceptViewPage extends Component {
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
   conceptInfoUpdate(conceptInfo) {
+    if (conceptInfo.isRole('conceptSet')) {
+      this.setState({conceptSet: conceptInfo});
+      return;
+    }
     if (conceptInfo.valid()) {
       this.setState({ concept_id: conceptInfo.concept_id,
                       concept_code: conceptInfo.concept_code});
-    } else if (conceptInfo.multiple()) {
-      conceptInfo.resolveMultiple(4);
-      this.forceUpdate();
     } else {
       this.forceUpdate();
     }
@@ -560,7 +505,7 @@ export class ConceptViewPage extends Component {
         return 'error';
       } else if (conceptInfo.valid()) {
         return 'success';
-      } else if (conceptInfo.multiple()) {
+      } else if (conceptInfo.isMultiple()) {
         return 'warning';
       }
     }
@@ -574,7 +519,7 @@ export class ConceptViewPage extends Component {
     if (e.target.id === 'concept_id_input') {
       let concept_id = e.target.value;
       concept_id = parseInt(concept_id,10);
-      if (!concept_id.length) {
+      if (!_.isNumber(concept_id)) {
         AppState.deleteState('conceptInfoParams');
         return;
       }
@@ -614,7 +559,7 @@ export class ConceptViewPage extends Component {
             </div>
     }
     /*
-    else if (conceptInfo.multiple()) {
+    else if (conceptInfo.isMultiple()) {
       cv =  <div className="concept-view-multiple" >
               <ConceptDescWrapper conceptInfo={conceptInfo} />
               {conceptInfo.getMultipleAsCi().map(rec=>
