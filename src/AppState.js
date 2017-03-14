@@ -64,18 +64,23 @@ var stateChange = new Rx.BehaviorSubject();
 export function deleteState(key) {
   saveState(key, null, true);
 }
-export function saveState(key, val, deleteProp) {
-  let change;
-  if (typeof val === 'undefined') {
-    // no key/val, received entire change object
-    change = _.merge({}, key);
-  } else {
-    change = _.set({}, key, val);
+export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
+  // need a named param version but don't want to break the original
+  if (!change) {
+    if (typeof val === 'undefined') {
+      // no key/val, received entire change object
+      change = _.merge({}, key);
+    } else {
+      change = _.set({}, key, val);
+    }
   }
   let loc = history.getCurrentLocation();
   //let oldState = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
   let oldState = myqs.parse(loc.search.substr(1));
-  let newState = _.merge({}, oldState, change);
+  let newState = deepMerge
+                    ? _.merge({}, oldState, change)
+                    : Object.assign({}, oldState, change);
+
   if (typeof stateChange.getValue() === 'undefined') {
     stateChange.next(newState); // make sure there's an initial state change
     return;
@@ -105,6 +110,9 @@ export function saveState(key, val, deleteProp) {
     fetchData();
   }
   */
+}
+export function saveState(key, val, deleteProp) {
+  return saveStateN({key,val,deleteProp});
 }
 _.mixin({
   getPath: (obj,path) => (_.isEmpty(path) 

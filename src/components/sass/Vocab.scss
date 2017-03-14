@@ -303,6 +303,11 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   &.sc {
     font-weight: bold;
   }
+  .title {
+    font-style: italic;
+  }
+  .value {
+  }
 }
 .concept-info-menu {
   margin: 3px;

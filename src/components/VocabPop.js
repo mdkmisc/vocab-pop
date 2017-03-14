@@ -86,7 +86,6 @@ class ConceptDescWrapper extends Component {
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (target && target.props && target.props.data) {
-      debugger;
       const {drill={}, drillType, } = target.props.data;
       const {ci, crec, } = drill;
       let below, above;
@@ -94,6 +93,8 @@ class ConceptDescWrapper extends Component {
       switch (drillType) {
         case "ancestors":
           console.log('drill', drillType, drill);
+          above = <RelatedConcept relationship='conceptAncestors' 
+                    conceptInfo={ci} />
           break;
         case "rc":
         case "src":
@@ -102,7 +103,7 @@ class ConceptDescWrapper extends Component {
           below = <CDMRecs {...{ci, crec}} />;
           break;
         case "related":
-          below = <RelatedConcept relationship='otherRelationship' 
+          below = <RelatedConcept relationship='relatedConcepts' 
                     conceptInfo={ci} />
             //<RelatedConcepts {...{ci, crec}} />;
           console.log('drill', drillType, drill);
@@ -137,14 +138,14 @@ class ConceptDesc extends Component {
       related = <div>
                   <ButtonGroup>
                     {
-                      ci.get('cdmCounts','fail').map(crec=>
+                      ci.get('cdmCounts',[]).map(crec=>
                         <HoverButton key={'rc-'+ci.tblcol(crec)}
                             data={{drill:{ci, crec}, drillType:'rc'}}  >
                           {crec.rc} CDM records in {ci.tblcol(crec)}
                         </HoverButton>)
                     }
                     {
-                      ci.get('cdmSrcCounts','fail').map(crec=>
+                      ci.get('cdmSrcCounts',[]).map(crec=>
                         <HoverButton key={'src-'+ci.tblcol(crec)}
                             data={{drill:{ci, crec}, drillType:'src'}}  >
                           {crec.src} CDM source records in {ci.tblcol(crec)}
@@ -153,34 +154,33 @@ class ConceptDesc extends Component {
                   </ButtonGroup>
 
                   <ButtonGroup>
-                    {ci.get('relatedConceptCount','fail') 
+                    {ci.get('relatedConceptCount') 
                       ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
-                          {ci.get('relatedConceptCount','fail')} Related concepts{' '}
+                          {ci.get('relatedConceptCount')} Related concepts{' '}
                         </HoverButton>
                       : ''}
-                    {ci.conceptAncestorCount 
+                    {ci.get('conceptAncestorCount') 
                       ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
-                          {ci.get('conceptAncestorCount','fail')} Ancestor concepts{' '}
+                          {ci.get('conceptAncestorCount')} Ancestor concepts{' '}
                         </HoverButton>
                       : ''}
-                    {ci.conceptAncestorCount 
+                    {ci.get('conceptDescendantCount') 
                       ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
-                          {ci.get('conceptDescendant','fail')} Descendant concepts{' '}
+                          {ci.get('conceptDescendantCount')} Descendant concepts{' '}
                         </HoverButton>
                       : ''}
                   </ButtonGroup>
                 </div>
+    }
+    //console.log('rendering', ci.get('concept_name'), ci.role(), 'isConceptSet', ci.isConceptSet());
+    if (ci.isConceptSet()) {
+      throw new Error("shouldn't be here");
     }
     return  <div className={"concept-desc " + ci.scClassName() }>
               <div className="self-info container">
                   {ci.selfInfo().map(
                     (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
                                     cdProps={this.props} />)}
-              </div>
-              <div className="multiple-list container">
-                    {ci.isMultiple() && ci.getMultiple().map(rec=>
-                      <ConceptDescWrapper 
-                        key={rec.concept_id} conceptInfo={rec} />)}
               </div>
 
               <RelatedConcept relationship='mapsto' conceptInfo={ci} />
@@ -191,19 +191,34 @@ class ConceptDesc extends Component {
             </div>;
   }
 }
+class ConceptList extends Component {
+  render() {
+    let {className} = this.props;
+    let cl = this.props.conceptList;
+    return  <div className={"concept-list " + className }>
+              <h4>{cl.title()}</h4>
+              {cl.items().map(
+                ci=> <ConceptDescWrapper
+                        key={ci.get('concept_id')} conceptInfo={ci} />)}
+            </div>;
+  }
+}
 class InfoBit extends Component {
   render() {
     const {conceptInfo, bit, cdProps, } = this.props;
     let {title, className, value, wholeRow, linkParams} = bit; // an infobit should have (at least) title, className, value
     //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-    console.log(conceptInfo.get('concept_name'), conceptInfo.role());
     let content = wholeRow || value;
-    if (linkParams && conceptInfo.isRole('main')) {
+    if (linkParams && !conceptInfo.isRole('main')) {
       content =     <Nav>
                         <NavItem onClick={
-                            ()=>AppState.saveState(
-                              {conceptInfoParams: linkParams,
-                                conceptInfoUserChange:'user:concept_id'}) } >
+                            ()=>AppState.saveStateN({
+                              change:{
+                                conceptInfoParams: linkParams,
+                                conceptInfoUserChange:'user:concept_id'
+                              },
+                              deepMerge: false,
+                            }) } >
                           {wholeRow || value}
                         </NavItem>
                     </Nav>
@@ -216,10 +231,10 @@ class InfoBit extends Component {
               </Row>
     }
     return  <Row className={className + ' infobit '}>
-              <Col xs={5} xsOffset={0} >
+              <Col xs={5} xsOffset={0} className="title">
                 {title}
               </Col>
-              <Col xs={7} xsOffset={0} >
+              <Col xs={7} xsOffset={0} className="value">
                 {content}
               </Col>
             </Row>
@@ -278,12 +293,23 @@ class CDMRecs extends Component {
   }
 }
 class RelatedConcept extends Component {
-  render() {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
     let {relationship} = this.props;
     let ci = this.props.conceptInfo;
-    if (!ci.isRole('main')) return null;
-    //let recs = ci[relationship]();
+    if (!ci.isRole('main')) return; // probably don't want this...not sure yet
     let recs = ci.getRelatedRecs(relationship);
+    this.setState({recs});
+  }
+
+  render() {
+    let {recs} = this.state;
+    let {relationship} = this.props;
+    let ci = this.props.conceptInfo;
+    if (!ci.isRole('main')) return null;  // probably don't want this...not sure yet
     if (_.isEmpty(recs)) return null;
     return  <div className={relationship}>
               <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
@@ -430,23 +456,18 @@ export class ConceptViewPage extends Component {
     //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
-  conceptInfoUpdate(conceptInfo) {
-    if (conceptInfo.isRole('conceptSet')) {
-      this.setState({conceptSet: conceptInfo});
+  conceptInfoUpdate(ci) {
+    console.log('got update from', ci.get('concept_name')||'no name yet', ci.role());
+    if (ci.isConceptSet()) {
+      this.setState({conceptSet: ci});
       return;
     }
-    if (conceptInfo.validLookup()) {
-      this.setState({ concept_id: conceptInfo.concept_id,
-                      concept_code: conceptInfo.concept_code});
+    if (ci.validLookup()) {
+      this.setState({ concept_id: ci.concept_id,
+                      concept_code: ci.concept_code});
     } else {
       this.forceUpdate();
     }
-    /*
-    else if (conceptInfo.status === 'multiple') {
-      this.setState({ multipleMatchingRecs: concept_code: conceptInfo.concept_code});
-    } else {
-    }
-    */
   }
   unsub() {
     const {conceptInfo} = this.state;
@@ -454,8 +475,7 @@ export class ConceptViewPage extends Component {
   }
   getConceptInfo(params, source, lookupField) {
     //console.log('getConceptInfo', loadChange, params);
-    let {concept_id, concept_code, conceptInfo, 
-          multipleMatchingRecs, } = this.state;
+    let {concept_id, concept_code, conceptInfo, } = this.state;
     //this.unsub();
     let newState = Object.assign( {}, this.state, 
         { concept_id:'', concept_code:'', },
@@ -499,7 +519,7 @@ export class ConceptViewPage extends Component {
         return 'error';
       } else if (conceptInfo.validLookup()) {
         return 'success';
-      } else if (conceptInfo.isMultiple()) {
+      } else if (conceptInfo.isConceptSet()) {
         return 'warning';
       }
     }
@@ -517,7 +537,6 @@ export class ConceptViewPage extends Component {
         AppState.deleteState('conceptInfoParams');
         return;
       }
-      //this.getConceptInfo({concept_id}, 'user:concept_id');
       conceptInfoParams.concept_id = concept_id;
       change = 'user:concept_id';
     } else if (e.target.id === 'concept_code_input') {
@@ -528,7 +547,6 @@ export class ConceptViewPage extends Component {
       }
       conceptInfoParams.concept_code = concept_code;
       change = 'user:concept_code';
-      //}
     } else {
       throw new Error('huh?');
     }
@@ -537,8 +555,7 @@ export class ConceptViewPage extends Component {
   }
   render() {
     const {w,h} = this.props; // from ComponentWrapper
-    let {concept_id, concept_code, conceptInfo, 
-            multipleMatchingRecs, change} = this.state;
+    let {concept_id, concept_code, conceptInfo, change} = this.state;
     concept_id = conceptInfo && conceptInfo.get('concept_id') || '';
     concept_code = conceptInfo && conceptInfo.get('concept_code') || '';
     //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
@@ -547,20 +564,15 @@ export class ConceptViewPage extends Component {
     // do I really need a wrapper?  ... switching to state to pass data down
     if (!conceptInfo) {
 
+    } else if (conceptInfo.isConceptSet()) {
+      cv =  <div className="concept-set-container" >
+              <ConceptList conceptList={conceptInfo.conceptSet()} />
+            </div>
     } else if (conceptInfo.loaded()) {
       cv =  <div className="concept-view-container" >
               <ConceptDescWrapper conceptInfo={conceptInfo} />
             </div>
     }
-    /*
-    else if (conceptInfo.isMultiple()) {
-      cv =  <div className="concept-view-multiple" >
-              <ConceptDescWrapper conceptInfo={conceptInfo} />
-              {conceptInfo.getMultipleAsCi().map(rec=>
-                <ConceptDescWrapper key={rec.concept_id} conceptInfo={rec} />)}
-            </div>
-    }
-    */
     return <div className="flex-box"> 
             <Form horizontal className="flex-fixed-height-40">
               <FormGroup controlId="concept_id_input"
