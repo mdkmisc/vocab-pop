@@ -297,12 +297,18 @@ export default class ConceptInfo {
   }
   scMap(out, sc) { // out = title or className
     sc = sc || this.get('standard_concept', false);
-    let r = ({
-              S: {title:'Standard Concept', className: 'standard-concept'},
-              C: {title:'Classification Concept', className: 'classification-concept'},
-              X: {title:'Non-Standard Concept', className: 'non-standard-concept'},
-        })[sc];
-    return r && r[out];
+    let strings;
+    switch (sc) {
+      case 'S':
+        strings = {title:'Standard Concept', className: 'standard-concept'};
+        break;
+      case 'C':
+        strings = {title:'Classification Concept', className: 'classification-concept'};
+        break;
+      default:
+        strings = {title:'Non-Standard Concept', className: 'non-standard-concept'};
+    }
+    return strings[out];
   }
   fieldTitle(field, val) { // maybe just a general lookup for nice names
     //if (val) { }

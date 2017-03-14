@@ -185,8 +185,6 @@ class ConceptDesc extends Component {
 
               <RelatedConcept relationship='mapsto' conceptInfo={ci} />
               <RelatedConcept relationship='mappedfrom' conceptInfo={ci} />
-
-              related<br/>anc/desc<br/>recs<br/>docs
               {related}
             </div>;
   }
@@ -208,36 +206,37 @@ class InfoBit extends Component {
     const {conceptInfo, bit, cdProps, } = this.props;
     let {title, className, value, wholeRow, linkParams} = bit; // an infobit should have (at least) title, className, value
     //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-    let content = wholeRow || value;
-    if (linkParams && !conceptInfo.isRole('main')) {
-      content =     <Nav>
-                        <NavItem onClick={
-                            ()=>AppState.saveStateN({
-                              change:{
-                                conceptInfoParams: linkParams,
-                                conceptInfoUserChange:'user:concept_id'
-                              },
-                              deepMerge: false,
-                            }) } >
-                          {wholeRow || value}
-                        </NavItem>
-                    </Nav>
-    }
+    let content;
     if (wholeRow) {
-      return  <Row className={className + ' infobit '}>
-                <Col xs={12} >
-                  {content}
-                </Col>
-              </Row>
+      content = <Row className={className + ' infobit '}>
+                  <Col xs={12} >
+                    {wholeRow}
+                  </Col>
+                </Row>
+    } else {
+      content = <Row className={className + ' infobit '}>
+                  <Col xs={5} xsOffset={0} className="title" role="button">
+                    {title}
+                  </Col>
+                  <Col xs={7} xsOffset={0} className="value">
+                    {value}
+                  </Col>
+                </Row>
     }
-    return  <Row className={className + ' infobit '}>
-              <Col xs={5} xsOffset={0} className="title">
-                {title}
-              </Col>
-              <Col xs={7} xsOffset={0} className="value">
-                {content}
-              </Col>
-            </Row>
+    if (linkParams && !conceptInfo.isRole('main')) {
+      return  <Nav>
+                <NavItem onClick={
+                    ()=>AppState.saveStateN({
+                      change:{
+                        conceptInfoParams: linkParams,
+                        conceptInfoUserChange:'user:concept_id'
+                      },
+                      deepMerge: false, }) } >
+                  {content}
+                </NavItem>
+              </Nav>
+    }
+    return content;
   }
 }
 class CDMRecs extends Component {

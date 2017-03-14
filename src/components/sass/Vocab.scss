@@ -302,9 +302,11 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   border: 1px solid gray;
   &.sc {
     font-weight: bold;
+    padding: 8px;
   }
   .title {
     font-style: italic;
+    text-align: right;
   }
   .value {
   }
