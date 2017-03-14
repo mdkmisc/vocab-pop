@@ -22,12 +22,13 @@ export default class ConceptInfo {
                 depth=0,      // 0 for main, +1 below
               } = {}) {
     this._status = 'preloading';
-    this._valid = false;
+    this._validLookup = false;
     this._role = role;
     this._depth = depth;
     this._amMain = inRelTo ? false : true;
     this._inRelTo = inRelTo;
     this._fetchRelated = fetchRelated;
+    this._relatedRecs = {};
     this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
     this.sendUpdate = this.sendUpdate.bind(this);
     if (cb) this.cb = cb;
@@ -36,6 +37,7 @@ export default class ConceptInfo {
       this.lookupField = 'concept_id';
       this.lookupVal = rec.concept_id;
       this.params = {concept_id:rec.concept_id}; // apiParams
+      this._validLookup = true; // assume rec/_crec is always a valid concept
     } else {
       this.lookupField = lookupField;
       this.params = params;
@@ -62,15 +64,16 @@ export default class ConceptInfo {
           this._status = 'failed';
         } else if (results.length === 1) {
           this._crec = results[0];
-          this._valid = true;  // not sure....
+          this._validLookup = true;  // not sure....
           this._status = 'gotCrec'; // partially complete
           this.fetchRelated('codeLookup got crec'); //this._crec.concept_id;
         } else {
           this._role = 'conceptSet';
-          this._conceptSet = new ConceptSet({
+          let conceptSet = new ConceptSet({
             cis: results.map(
                     rec => { return new ConceptInfo({
                                         rec, 
+                                        depth: this._depth + 1,
                                         //cb:this.sendUpdate,
                                         inRelTo: this,
                                         role: 'multiple',
@@ -78,28 +81,33 @@ export default class ConceptInfo {
                                     });
                     })
           });
-          this._multipleRecs = this._conceptSet.cis;
-          this._valid = true;
+          this._relatedRecs.multiple = conceptSet;
+          //this._validLookup = true;
           this._status = 'complete'; // partially complete
         }
       });
     } else { // lookup === concept_id
       if (!this._fetchRelated) {
-        let apiCall = 'conceptRecord';
-        let cidLookupStream = new AppState.ApiStream({ apiCall, params:this.params});
-        cidLookupStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-          if (_.isEmpty(results)) {
-            this._status = 'failed';
-          } else {
-            this._crec = results;
-            this._valid = true;  // not sure....
-            this._status = 'complete';
-          }
-        });
+        if (this._crec) {
+          this._status = 'complete';
+        } else {
+          let apiCall = 'conceptRecord';
+          let cidLookupStream = new AppState.ApiStream({ apiCall, params:this.params});
+          cidLookupStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+            if (_.isEmpty(results)) {
+              this._status = 'failed';
+            } else {
+              this._crec = results;
+              this._validLookup = true;
+              this._status = 'complete';
+            }
+          });
+        }
       } else {
         this.fetchRelated("concept lookup, don't know if got crec"); //this.lookupVal;
       }
     }
+    this.sendUpdate();
     //throw new Error("not sure what's up");
     //this._status = 'complete'; // getting here means not needing related and already having _crec
   }
@@ -108,27 +116,31 @@ export default class ConceptInfo {
     if (!this._fetchRelated) {
       if (this._crec) {
         this._status = 'complete';
-        this._valid = true;
+        this._validLookup = true; // should already be set?
       } else {
         throw new Error("should this happen?");
       }
       return;
-    }
-    if (!this._crec && this.lookupField === 'concept_id') {
-      this.stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
-      this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-        if (_.isEmpty(results)) {
-          this._status = 'failed';
-        } else {
-          this._crec = results.conceptRecord;
-          this._ci = results;
-          this._valid = true;  // not sure....
-          this._status = 'complete';
+    } else { // supposed to fetch related
+      if (!this._crec) {
+        throw new Error("no crec yet");
+        if (this.lookupField === 'concept_id') {
+          this.stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
+          this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+            if (_.isEmpty(results)) {
+              this._status = 'failed';
+            } else {
+              this._crec = results.conceptRecord;
+              this._ci = results;
+              this._validLookup = true;
+              this._status = 'complete';
+            }
+          });
         }
-        this.sendUpdate();
-        return this._status;
-      });
+      }
     }
+    this.sendUpdate();
+    return this._status;
   }
   want({lookupField, params, } = {}) {
     if (this.lookupField === lookupField && this.lookupVal === params[lookupField]) {
@@ -147,11 +159,15 @@ export default class ConceptInfo {
   failed() {
     return this._status === 'failed';
   }
-  valid() {
-    return this._valid;
+  validLookup() {
+    return this._validLookup;
   }
   isMultiple() {
-    return this._multipleRecs && this._multipleRecs.length; // for ambiguous concept_codes
+    let m = this.getRelatedRecs('multiple');
+    return m && m.length;
+  }
+  getRelatedRecs(rel) {
+    return this._relatedRecs[rel];
   }
   role() {
     return this._role;
@@ -182,7 +198,7 @@ export default class ConceptInfo {
                     ${codeInfo.title} ${codeInfo.value}`},
       ];
     }
-    if (this.valid()) {
+    if (this.validLookup()) {
       return [
         {title: this.scTitle(), className: 'name', 
             wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
@@ -261,7 +277,8 @@ export default class ConceptInfo {
         })[field] || `no-class-for-${field}`;
   }
   relatedConcepts() {
-    return this.valid() && this._ci.relatedConcepts || [];
+    throw new Error("fix?");
+    return this.validLookup() && this._ci.relatedConcepts || [];
   }
   mapsto() {
     return (this._mapsto = 
@@ -316,7 +333,7 @@ export default class ConceptInfo {
       this._inRelTo.sendUpdate();
   }
   getMultiple() {
-    if (this.isMultiple()) return this._multipleRecs;
+    return this.getRelatedRecs('multiple');
   }
   /*
   getMultipleAsCi() {
@@ -324,19 +341,23 @@ export default class ConceptInfo {
   }
   */
   resolveMultiple(max) {
+    throw new Error("fix");
     if (this._multipleAsCis && this._multipleAsCis.length === Math.min(max, this._multipleRecs.length))
       return;
     this._multipleAsCis = this._multipleRecs.slice(0,max)
           .map(rec=>new ConceptInfo({rec, cb:this.sendUpdate}))
   }
   cdmCounts() {
-    return this.valid() && this._crec.rcs.filter(d=>d.rc) || [];
+    throw new Error("fix?");
+    return this.validLookup() && this._crec.rcs.filter(d=>d.rc) || [];
   }
   cdmSrcCounts() {
-    return this.valid() && this._crec.rcs.filter(d=>d.src) || [];
+    throw new Error("fix?");
+    return this.validLookup() && this._crec.rcs.filter(d=>d.src) || [];
   }
   rc() {
-    return this.valid() && _.sum(this._crec.rcs.map(d=>d.rc));
+    throw new Error("fix?");
+    return this.validLookup() && _.sum(this._crec.rcs.map(d=>d.rc));
   }
   tblcol(crec) { // old...not sure if working
     if (crec)

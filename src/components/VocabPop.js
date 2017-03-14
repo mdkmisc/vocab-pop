@@ -87,7 +87,6 @@ class ConceptDescWrapper extends Component {
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (target && target.props && target.props.data) {
       debugger;
-      const {amMain, mainConcept} = this.props;
       const {drill={}, drillType, } = target.props.data;
       const {ci, crec, } = drill;
       let below, above;
@@ -104,7 +103,7 @@ class ConceptDescWrapper extends Component {
           break;
         case "related":
           below = <RelatedConcept relationship='otherRelationship' 
-                    conceptInfo={ci} amMain={amMain} />
+                    conceptInfo={ci} />
             //<RelatedConcepts {...{ci, crec}} />;
           console.log('drill', drillType, drill);
           break;
@@ -114,7 +113,6 @@ class ConceptDescWrapper extends Component {
   }
   render() {
     let ci = this.props.conceptInfo;
-    const {amMain, mainConcept} = this.props;
     if (!ci) return null;
     const {above, below, drill, drillType} = this.state;
                   //sendRefsToParent={getRefsFunc(this,'graphDiv')}
@@ -123,7 +121,6 @@ class ConceptDescWrapper extends Component {
                   eventHandlers={[this.eventHandler]} >
               {above}
               <ConceptDesc 
-                  amMain={amMain} mainConcept={mainConcept}
                   conceptInfo={ci}
                   drill={drill} drillType={drillType} />
               {below}
@@ -132,10 +129,10 @@ class ConceptDescWrapper extends Component {
 }
 class ConceptDesc extends Component {
   render() {
-    const {drill, drillType, amMain, mainConcept} = this.props;
+    const {drill, drillType, } = this.props;
     let ci = this.props.conceptInfo;
     let related = '';
-    if (ci.valid()) {
+    if (ci.validLookup()) {
       let concept_id = ci.get('concept_id', 'fail');
       related = <div>
                   <ButtonGroup>
@@ -183,12 +180,11 @@ class ConceptDesc extends Component {
               <div className="multiple-list container">
                     {ci.isMultiple() && ci.getMultiple().map(rec=>
                       <ConceptDescWrapper 
-                        mainConcept={ci}
                         key={rec.concept_id} conceptInfo={rec} />)}
               </div>
 
-              <RelatedConcept relationship='mapsto' conceptInfo={ci} amMain={amMain} />
-              <RelatedConcept relationship='mappedfrom' conceptInfo={ci} amMain={amMain} />
+              <RelatedConcept relationship='mapsto' conceptInfo={ci} />
+              <RelatedConcept relationship='mappedfrom' conceptInfo={ci} />
 
               related<br/>anc/desc<br/>recs<br/>docs
               {related}
@@ -198,14 +194,11 @@ class ConceptDesc extends Component {
 class InfoBit extends Component {
   render() {
     const {conceptInfo, bit, cdProps, } = this.props;
-    const {amMain, mainConcept} = cdProps;
     let {title, className, value, wholeRow, linkParams} = bit; // an infobit should have (at least) title, className, value
     //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
-    console.log(conceptInfo.get('concept_name'),
-                {amMain},
-                {mainConcept: mainConcept || 'none'});
+    console.log(conceptInfo.get('concept_name'), conceptInfo.role());
     let content = wholeRow || value;
-    if (linkParams && !cdProps.amMain) {
+    if (linkParams && conceptInfo.isRole('main')) {
       content =     <Nav>
                         <NavItem onClick={
                             ()=>AppState.saveState(
@@ -286,15 +279,16 @@ class CDMRecs extends Component {
 }
 class RelatedConcept extends Component {
   render() {
-    const {amMain, relationship} = this.props;
+    let {relationship} = this.props;
     let ci = this.props.conceptInfo;
-    if (!amMain) return null;
-    let recs = ci[relationship]();
+    if (!ci.isRole('main')) return null;
+    //let recs = ci[relationship]();
+    let recs = ci.getRelatedRecs(relationship);
     if (_.isEmpty(recs)) return null;
     return  <div className={relationship}>
               <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
               {recs.map(
-                rec=> <ConceptDescWrapper mainConcept={ci} 
+                rec=> <ConceptDescWrapper
                         key={rec.concept_id} conceptInfo={rec} />)}
             </div>
   }
@@ -441,7 +435,7 @@ export class ConceptViewPage extends Component {
       this.setState({conceptSet: conceptInfo});
       return;
     }
-    if (conceptInfo.valid()) {
+    if (conceptInfo.validLookup()) {
       this.setState({ concept_id: conceptInfo.concept_id,
                       concept_code: conceptInfo.concept_code});
     } else {
@@ -474,7 +468,7 @@ export class ConceptViewPage extends Component {
 
     conceptInfo.subscribe(this.conceptInfoUpdate);
     newState.conceptInfo = conceptInfo;
-    if (conceptInfo.valid()) {
+    if (conceptInfo.validLookup()) {
       newState.concept_id = conceptInfo.concept_id;
       newState.concept_code = conceptInfo.concept_code;
     }
@@ -495,7 +489,7 @@ export class ConceptViewPage extends Component {
         return 'error';
       } else if (conceptInfo.concept_id !== concept_id) {
         throw new Error("not sure what's up");
-      } else if (conceptInfo.valid()) {
+      } else if (conceptInfo.validLookup()) {
         return 'success';
       }
     } else if (field === 'concept_code') {
@@ -503,7 +497,7 @@ export class ConceptViewPage extends Component {
         return null;
       } else if (!conceptInfo || conceptInfo.failed()) {
         return 'error';
-      } else if (conceptInfo.valid()) {
+      } else if (conceptInfo.validLookup()) {
         return 'success';
       } else if (conceptInfo.isMultiple()) {
         return 'warning';
@@ -555,7 +549,7 @@ export class ConceptViewPage extends Component {
 
     } else if (conceptInfo.loaded()) {
       cv =  <div className="concept-view-container" >
-              <ConceptDescWrapper amMain={true} conceptInfo={conceptInfo} />
+              <ConceptDescWrapper conceptInfo={conceptInfo} />
             </div>
     }
     /*
