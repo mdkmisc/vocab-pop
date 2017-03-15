@@ -1,6 +1,7 @@
 import * as AppState from './AppState';
 import _ from 'supergroup'; // in global space anyway...
 import Rx from 'rxjs/Rx';
+import React, { Component } from 'react';
 
 export class ConceptSet {
   constructor({cis, params, title}) {
@@ -279,7 +280,7 @@ export default class ConceptInfo {
     if (context === 'header')
       return [ {title: this.scTitle(), value: this.get('concept_name'), className: 'name', 
                 //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-                linkParams:{concept_id: this.get('concept_id')}},
+                linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')}},
       ];
     let bits = [
       {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
@@ -298,16 +299,27 @@ export default class ConceptInfo {
                     title: `${countRec.src} CDM source records in`,
                     value: this.tblcol(countRec),
                     data: {drill:{ci:this, countRec}, drillType:'src'},})));
-    let cgs = this.get('relatedConceptGroups',[]);
+    let cgs = this.get('relatedConceptGroups',[])
+                  .filter(
+                    rec=>!_.some(['mapsto','mappedfrom'],
+                                rel => rec.relationship_id === this.fieldTitle(rel)))
     let cgcnt = _.sum(cgs.map(d=>d.cc));
     let MAX_TO_SHOW = 4;
-    if (cgcnt > MAX_TO_SHOW) {
+    if (cgcnt <= MAX_TO_SHOW) {
       let relatedRecs = this.getRelatedRecs('relatedConcepts',[]);
-      bits.concat({title:"put related recs here"});
+      bits = bits.concat(relatedRecs.map(rec => ({
+        title: <span>
+                  <strong>{rec.get('relationship_id')}</strong>:{' '}
+                  {rec.get('domain_id')} {rec.get('vocabulary_id')} {' '}
+                  {rec.get('concept_class_id')}{' '}
+                  {rec.get('defines_ancestry') ? '(ancestry)' : ''}{' '}
+                  {rec.get('is_hierarchical') ? '(hierarchical)' : ''}
+               </span>,
+        value: rec.get('concept_name'), className: rec.scClassName(),
+        linkParams:{concept_id: rec.get('concept_id')},
+      })));
     } else {
-      bits = bits.concat(
-        this.get('relatedConceptGroups',[]).map(
-          grp => ({
+      bits = bits.concat(cgs.map(grp => ({
                         title: `${grp.cc} ${grp.relationship_id} concepts`,
                         value: `${grp.domain_id} ${grp.vocabulary_id} 
                                   ${grp.concept_class_id}

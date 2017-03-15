@@ -7,10 +7,11 @@ $sc_green_reg: rgba($sc_green, .6);
 $sc_green_dim: rgba($sc_green, .3);
 $sc_green_strong: rgba($sc_green, 1);
 
-$nsc_red: rgb(220,20,60);
-$nsc_red_reg: rgba($nsc_red, .5);
-$nsc_red_dim: rgba($nsc_red, .2);
-$nsc_red_strong: rgba($nsc_red, 1);
+//$nsc_red: rgb(220,20,60);
+$nsc_red: #ffd3dc;
+//$nsc_red_reg: rgba($nsc_red, .5);
+//$nsc_red_dim: rgba($nsc_red, .2);
+//$nsc_red_strong: rgba($nsc_red, 1);
 
 
 
@@ -292,9 +293,9 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   background-color: $color_lightish_purple;
 }
 .sc-non-standard-concept, .src, .sc-X {
-  background-color: $nsc_red_dim;
+  background-color: $nsc_red;
   .strong & {
-    border: 2px solid $nsc_red_reg;
+    border: 2px solid red;
   }
 }
 .invalid-concept {

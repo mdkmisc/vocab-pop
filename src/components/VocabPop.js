@@ -159,14 +159,14 @@ class ConceptDesc extends Component {
     if (mapstoRecs.length) {
       mainCols = 6;
       mapsto =  <Col xs={6}>
-                  <RelatedConcept recs={mapstoRecs} relationship='mapsto' conceptInfo={ci} />;
+                  <RelatedConcept recs={mapstoRecs} relationship='mapsto' conceptInfo={ci} />
                 </Col>
     }
 
     if (mappedfromRecs.length) {
       mainCols = 6;
       mappedfrom =  <Col xs={6}>
-                      <RelatedConcept recs={mappedfromRecs} relationship='mappedfrom' conceptInfo={ci} />;
+                      <RelatedConcept recs={mappedfromRecs} relationship='mappedfrom' conceptInfo={ci} />
                     </Col>
     }
 
@@ -269,7 +269,7 @@ class InfoBit extends Component {
                   </Col>
                 </Row>
     }
-    if (linkParams && !conceptInfo.isRole('main')) {
+    if (linkParams) {
       return  <Nav>
                 <NavItem onClick={
                     ()=>AppState.saveStateN({
