@@ -85,8 +85,11 @@ class ConceptDescWrapper extends Component {
     this.eventHandler = this._eventHandler.bind(this);
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
-    if (target && target.props && target.props.data) {
-      const {drill={}, drillType, } = target.props.data;
+    let data = target && target.props && 
+                (target.props.data || 
+                 (target.props.bit && target.props.bit.data));
+    if (data) {
+      const {drill={}, drillType, } = data;
       const {ci, countRec, } = drill;
       let below, above;
       switch (drillType) {
@@ -102,8 +105,8 @@ class ConceptDescWrapper extends Component {
           below = <RelatedConcept relationship={drillType}
                     conceptInfo={ci} />
       }
-      console.log('drill', drillType, drill, countRec);
-      this.setState({ drill: target.props.data, above, below, });
+      //console.log('drill', drillType, drill, countRec);
+      this.setState({ drill: data, above, below, });
     }
   }
   render() {
@@ -130,7 +133,7 @@ class ConceptDesc extends Component {
   }
   conceptInfoUpdate(ci) {
     if (ci !== this.props.conceptInfo) throw new Error("didn't expect that");
-    console.log('got update from', ci.get('concept_name','no name yet'), ci.role());
+    //console.log('got update from', ci.get('concept_name','no name yet'), ci.role());
     if (ci.isConceptSet()) {
       throw new Error("check this");
       this.setState({conceptSet: ci});
@@ -149,22 +152,6 @@ class ConceptDesc extends Component {
     if (ci.validLookup()) {
       let concept_id = ci.get('concept_id', 'fail');
       related = <div>
-                  <ButtonGroup>
-                    {
-                      ci.get('cdmCounts',[]).map(countRec=>
-                        <HoverButton key={'rc-'+ci.tblcol(countRec)}
-                            data={{drill:{ci, countRec}, drillType:'rc'}}  >
-                          {countRec.rc} CDM records in {ci.tblcol(countRec)}
-                        </HoverButton>)
-                    }
-                    {
-                      ci.get('cdmSrcCounts',[]).map(countRec=>
-                        <HoverButton key={'src-'+ci.tblcol(countRec)}
-                            data={{drill:{ci, countRec}, drillType:'src'}}  >
-                          {countRec.src} CDM source records in {ci.tblcol(countRec)}
-                        </HoverButton>)
-                    }
-                  </ButtonGroup>
 
                   <ButtonGroup>
                     {ci.get('relatedConceptCount') 
@@ -254,8 +241,7 @@ class RelatedConcept extends Component {
     return  <div className={relationship}>
               <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
               {recs.map(
-                rec=> <ConceptDescWrapper
-                        key={rec.concept_id} conceptInfo={rec} />)}
+                (rec,i)=> <ConceptDescWrapper key={i} conceptInfo={rec} />)}
             </div>
   }
 }
@@ -305,13 +291,11 @@ class InfoBit extends Component {
                   {content}
                 </NavItem>
               </Nav>
-    } else { if (data) { // this bit wants to send data on some mouse event
+    } else if (data) { // this bit wants to send data on some mouse event
                          // can't do both links and events for now
-      return  <ListenerTargetWrapper wrapperTag="span" wrappedComponent={this} 
-                  className="hover-button" >
-                <Button bsStyle="primary" bsSize="small" >
-                  {this.props.children}
-                </Button>
+      return  <ListenerTargetWrapper wrapperTag="div" wrappedComponent={this} 
+                  className="drillable-on-hover strong" >
+                {content}
               </ListenerTargetWrapper>
     }
     return content;
@@ -326,7 +310,7 @@ class CDMRecs extends Component {
     this.forceUpdate();
   }
   componentDidUpdate(prevProps, prevState) {
-    const {ci, countRec, rowLimit/*=40*/} = this.props;
+    const {ci, countRec, rowLimit=40} = this.props;
     const {tbl, col} = countRec;
     //updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
       
@@ -348,7 +332,7 @@ class CDMRecs extends Component {
   }
   render() {
     const {recs} = this.state;
-    const {ci, countRec, rowLimit=40} = this.props;
+    const {ci, countRec, } = this.props;
     const {tbl, col} = countRec;
     if (!recs) {
       return <div>
@@ -433,7 +417,7 @@ export class ConceptView extends Component {
       node.conceptInfo = conceptInfo;
       node.label = conceptInfo.concept_name;
     }
-    console.log('ConceptView', node, width, height);
+    //console.log('ConceptView', node, width, height);
     let graphProps = {
       width, height,
       nodes: [node],
@@ -485,7 +469,7 @@ export class ConceptViewPage extends Component {
     let {concept_id, concept_code} = this.state;
     AppState.subscribeState(null,
                             c=>{
-                              console.log('appChange', c);
+                              //console.log('appChange', c);
                               if (c.conceptInfoUserChange) {
                                 AppState.deleteState('conceptInfoUserChange');
                                 if (c.conceptInfoUserChange.match(/concept_id/)) {
@@ -508,7 +492,7 @@ export class ConceptViewPage extends Component {
   }
   conceptInfoUpdate(ci) {
     //throw new Error("updates shouldn't come here anymore. getting them in ConceptDesc");
-    console.log('got update IN CONCEPTVIEWPAGE from', ci.get('concept_name','no name yet'), ci.role());
+    //console.log('got update IN CONCEPTVIEWPAGE from', ci.get('concept_name','no name yet'), ci.role());
     if (ci.isConceptSet()) {
       this.setState({conceptSet: ci});
       return;

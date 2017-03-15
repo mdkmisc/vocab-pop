@@ -34,16 +34,21 @@ export function cachedJsonFetch(url, opts={}) {
   return new Promise(function(resolve, reject) {
     if (!storageExists(key, cache)) {
       jsonFetch(url, opts)
-      .then(function(json) {
-        if (json.error) {
-          console.error(json.error);
-          reject(json.error);
-        } else {
-          storagePut(key, json, cache);
-          //console.log('caching', key);
-          resolve(json);
-        }
-      });
+      .then(
+        function(json) {
+          if (json.error) {
+            console.error("rejecting in success func", json.error);
+            reject(json.error);
+          } else {
+            storagePut(key, json, cache);
+            //console.log('caching', key);
+            resolve(json);
+          }
+        },
+        function(err) {
+          console.error("adding this late...hope it doesn't break anything");
+          reject(err);
+        });
     } else {
       var results = storageGet(key, cache);
       //console.log('already cached', key, results);
@@ -55,7 +60,6 @@ function jsonFetch(url, opts={}) {
   //console.log(url, opts);
   return fetch(url, opts)
     .then(function(results) {
-      //console.log(results);
       return results.json();
     });
 }

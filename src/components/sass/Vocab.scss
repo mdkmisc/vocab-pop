@@ -1,6 +1,20 @@
 //colors
 $gray: grey;
 $blue: blue;
+
+$sc_green: lightgreen;
+$sc_green_reg: rgba($sc_green, .6);
+$sc_green_dim: rgba($sc_green, .3);
+$sc_green_strong: rgba($sc_green, 1);
+
+$nsc_red: rgb(220,20,60);
+$nsc_red_reg: rgba($nsc_red, .5);
+$nsc_red_dim: rgba($nsc_red, .2);
+$nsc_red_strong: rgba($nsc_red, 1);
+
+
+
+// not using anymore?
 $color_granny_smith_apple_approx: lightgreen;
 $color_regent_st_blue_approx: lightblue;
 $color_quill_gray_approx:  lightgray;
@@ -12,12 +26,12 @@ $color_lochmara_10_approx: rgba(0,119,221,0.1);
 $color_amethyst_approx: rgba(163, 53, 238,1);
 $color_amethyst_30_approx: rgba(163, 53, 238,0.3);
 $color_amethyst_10_approx: rgba(163, 53, 238,0.1);
-
-$color_lightish_purple: rgba(200, 150, 255,1);
-
 $crimson_30: rgba(220,20,60,0.3);
 $crimson_10: rgba(220,20,60,0.1);
 $crimson_100: rgba(220,20,60,1);
+
+$color_lightish_purple: rgba(200, 150, 255,1);
+
 $black_30: rgba(0,0,0,0.3);
 $black_10: rgba(0,0,0,0.1);
 $color_claret_30_approx: rgba(120,20,60,0.3);
@@ -268,14 +282,20 @@ div.vocab-map, div.domain-map, div.concept-view-container {
 
 .sc-standard-concept, .rc, .sc-S { // don't use all of these
   //background-color: $color_lochmara_30_approx;
-	background-color: $color_granny_smith_apple_approx;
+	background-color: $sc_green_reg;
+  .strong & {
+    background-color: $sc_green_strong;
+  }
 }
 .sc-classification-concept, .drc, .sc-C {
 	//background-color: $color_regent_st_blue_approx;
   background-color: $color_lightish_purple;
 }
 .sc-non-standard-concept, .src, .sc-X {
-  background-color: $crimson_10;
+  background-color: $nsc_red_dim;
+  .strong & {
+    border: 2px solid $nsc_red_reg;
+  }
 }
 .invalid-concept {
   background-color: $crimson_30;
@@ -303,7 +323,13 @@ div.vocab-map, div.domain-map, div.concept-view-container {
     font-size: 8px;
   }
 }
+.drillable-on-hover {
+  &:hover {
+    box-shadow: inset 0 0 1em gold, 0 0 1em red;
+  }
+}
 .infobit {
+  word-break: break-word;
   border: 1px solid gray;
   &.sc {
     font-weight: bold;

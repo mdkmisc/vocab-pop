@@ -76,7 +76,7 @@ export default class ConceptInfo {
           this._validLookup = true;  // not sure....
           this._status = 'gotCrec'; // partially complete
           this.lookupField = 'concept_id';
-          this.lookupVal = this._crec.concept_id;
+          this.lookupVal = this.get('concept_id');
           this.params = {concept_id:this._crec.concept_id}; // apiParams
           this.fetchRelated('codeLookup got crec'); //this._crec.concept_id;
         } else {
@@ -126,7 +126,7 @@ export default class ConceptInfo {
     //this._status = 'complete'; // getting here means not needing related and already having _crec
   }
   fetchRelated(source) {
-    console.log("in fetchRelated from", source, this._status, this._fetchRelated, this._fetchedRelated);
+    //console.log("in fetchRelated from", source, this._status, this._fetchRelated, this._fetchedRelated);
     if (this._fetchedRelated) debugger;
     if (!this._fetchRelated) {
       if (this._crec) {
@@ -149,7 +149,7 @@ export default class ConceptInfo {
               this._validLookup = true;
               this._status = 'complete';
               this._fetchedRelated = true;
-              console.log('fetchedRelated for ', this.get('concept_name'));
+              //console.log('fetchedRelated for ', this.get('concept_name'));
             }
             this.sendUpdate();
           });
@@ -167,7 +167,7 @@ export default class ConceptInfo {
             this._validLookup = true;
             this._status = 'complete';
             this._fetchedRelated = true;
-            console.log('fetchedRelated for ', this.get('concept_name'));
+            //console.log('fetchedRelated for ', this.get('concept_name'));
           }
           this.sendUpdate();
         });
@@ -177,9 +177,9 @@ export default class ConceptInfo {
   }
   //processRelated() { }
   getRelatedRecs(rel, dflt) { // as ConceptInfo -- right?
-    console.log(`trying to get ${rel} for ${this.get('concept_name')}: fetched: ${this._fetchedRelated}`);
+    //console.log(`trying to get ${rel} for ${this.get('concept_name')}: fetched: ${this._fetchedRelated}`);
     //if (junkCtr++ > 40) debugger;
-    console.log("getRelated count", junkCtr);
+    //console.log("getRelated count", junkCtr);
     if (!this._fetchedRelated) return dflt;
     if (this._relatedRecs[rel]) return this._relatedRecs[rel];
     let recs;
@@ -200,13 +200,17 @@ export default class ConceptInfo {
                                       depth: this.depth() + 1, }));
     return this._relatedRecs[rel];
   }
-  get(field, dflt) {
-    if (this.isRole('conceptAncestors')) field = 'a_' + field;
-    if (this.isRole('conceptDescendants')) field = 'd_' + field;
+  get(field, dflt) { // this is getting too complicated
     if (_.has(this._crec, field)) return this._crec[field];
     if (typeof this[field] === 'function') return this[field]();
     if (this._ci && this._ci[field]) return this._ci[field];
-    if (field === this.lookupField) return this.lookupVal;
+    if (field === this.lookupField && typeof this.lookupVal !== 'undefined') 
+      return this.lookupVal;
+
+    if (this.isRole('conceptAncestors') && !field.match(/^a_/))
+      return this.get('a_'+field,dflt)
+    if (this.isRole('conceptDescendants') && !field.match(/^d_/)) 
+      return this.get('d_'+field,dflt);
     if (dflt === 'fail') throw new Error(`can't find ${field}`);
     return dflt;
   }
@@ -280,12 +284,18 @@ export default class ConceptInfo {
       this.selfInfoBit('domain_id'),
       this.selfInfoBit('concept_class_id'),
     ];
-    let countBits = this.get('cdmCounts').map(
-      cntrec => ({className:this.scMap('className', 'S'),
-                  title: `${cntrec.rc} CDM records in`,
-                  value: this.tblcol(cntrec),
-                  data: {drill:{ci, countRec}, drillType:'rc'},}));
-    bits = bits.concat(countBits);
+    bits = bits.concat(
+      this.get('cdmCounts').map(
+        countRec => ({className:this.scClassName('S'),
+                    title: `${countRec.rc} CDM records in`,
+                    value: this.tblcol(countRec),
+                    data: {drill:{ci:this, countRec}, drillType:'rc'},})));
+    bits = bits.concat(
+      this.get('cdmSrcCounts').map(
+        countRec => ({className:this.scClassName('X'),
+                    title: `${countRec.src} CDM source records in`,
+                    value: this.tblcol(countRec),
+                    data: {drill:{ci:this, countRec}, drillType:'src'},})));
     return bits;
     /*
     if (this.validLookup()) {
@@ -319,8 +329,8 @@ export default class ConceptInfo {
   }
   infoBit(bit, context) {
   }
-  scClassName() {
-    let scVal = this.scMap('className');
+  scClassName(sc) {
+    let scVal = this.scMap('className', sc);
     return scVal ? `sc-${scVal}` : 'invalid-concept';
   }
   scTitle() {
