@@ -309,7 +309,13 @@ div.vocab-map, div.domain-map, div.concept-view-container {
 }
 
 .concept-desc {
-  padding: 5px;
+  padding: 18px;
+  border: 1px solid gray;
+  .header {
+    border: 2px solid darkgray;
+  }
+  //margin: 3px;
+/*
   .hover-button {
     margin-right: 3px;
   }
@@ -322,6 +328,7 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   .depth-2 {
     font-size: 8px;
   }
+*/
 }
 .drillable-on-hover {
   &:hover {
@@ -330,7 +337,7 @@ div.vocab-map, div.domain-map, div.concept-view-container {
 }
 .infobit {
   word-break: break-word;
-  border: 1px solid gray;
+  border: 1px solid white;
   &.sc {
     font-weight: bold;
     padding: 8px;
@@ -343,8 +350,6 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   }
 }
 .concept-info-menu {
-  margin: 3px;
-  border: 1px solid gray;
   & > span {
     margin: 2px 3px 2px 3px;
   }

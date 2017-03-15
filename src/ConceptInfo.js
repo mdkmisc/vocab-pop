@@ -276,42 +276,54 @@ export default class ConceptInfo {
       ];
     }
     // everything else...is a regular concept? no, but for now...
+    if (context === 'header')
+      return [ {title: this.scTitle(), value: this.get('concept_name'), className: 'name', 
+                //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
+                linkParams:{concept_id: this.get('concept_id')}},
+      ];
     let bits = [
-      {title: this.scTitle(), value: this.get('concept_name'), className: 'name', 
-          //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-          linkParams:{concept_id: this.get('concept_id')}},
       {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
       this.selfInfoBit('domain_id'),
       this.selfInfoBit('concept_class_id'),
     ];
     bits = bits.concat(
-      this.get('cdmCounts').map(
+      this.get('cdmCounts',[]).map(
         countRec => ({className:this.scClassName('S'),
                     title: `${countRec.rc} CDM records in`,
                     value: this.tblcol(countRec),
                     data: {drill:{ci:this, countRec}, drillType:'rc'},})));
     bits = bits.concat(
-      this.get('cdmSrcCounts').map(
+      this.get('cdmSrcCounts',[]).map(
         countRec => ({className:this.scClassName('X'),
                     title: `${countRec.src} CDM source records in`,
                     value: this.tblcol(countRec),
                     data: {drill:{ci:this, countRec}, drillType:'src'},})));
-    bits = bits.concat(
-      this.get('relatedConceptGroups').map(
-        grp => ({
-                      title: `${grp.cc} ${grp.relationship_id} concepts`,
-                      value: `${grp.domain_id} ${grp.vocabulary_id} 
-                                ${grp.concept_class_id}
-                                ${grp.defines_ancestry ? ' defines ancestry ' : ''}
-                                ${grp.is_hierarchical ? ' is hierarchical' : ''}
-                                `,
-                      data: {drill:{ci:this, grp}, drillType:'relatedConceptGroups'},})));
+    let cgs = this.get('relatedConceptGroups',[]);
+    let cgcnt = _.sum(cgs.map(d=>d.cc));
+    let MAX_TO_SHOW = 4;
+    if (cgcnt > MAX_TO_SHOW) {
+      let relatedRecs = this.getRelatedRecs('relatedConcepts',[]);
+      bits.concat({title:"put related recs here"});
+    } else {
+      bits = bits.concat(
+        this.get('relatedConceptGroups',[]).map(
+          grp => ({
+                        title: `${grp.cc} ${grp.relationship_id} concepts`,
+                        value: `${grp.domain_id} ${grp.vocabulary_id} 
+                                  ${grp.concept_class_id}
+                                  ${grp.defines_ancestry ? ' defines ancestry ' : ''}
+                                  ${grp.is_hierarchical ? ' is hierarchical' : ''}
+                                  `,
+                        data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},})));
+    }
+    return bits;
+    /*
     let rcc = this.get('relatedConceptCount');
     if (rcc) bits = bits.concat({
                       //className:this.scClassName('X'),
                       wholeRow: `${rcc} related concepts`,
                       data: {drill:{ci:this, }, drillType:'relatedConcepts'},});
-    return bits;
+    */
     /*
     switch (this.role()) {
       case 'mapsto':
@@ -370,7 +382,8 @@ export default class ConceptInfo {
               mappedfrom: 'Mapped from',
               conceptAncestors: 'Ancestor concepts',
               conceptDescendants: 'Descendant concepts',
-              relatedConcepts: 'Related concepts (non-mapping)',
+              //relatedConcepts: 'Related concepts (non-mapping)',
+              relatedConcepts: val,
               //otherRelationship: val,
         })[field] || `no title for ${field}`;
   }

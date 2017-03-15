@@ -78,11 +78,12 @@ export default class VocabPop extends Component {
             </ConceptData>;
   }
 }
-class ConceptDescWrapper extends Component {
+class ConceptDesc extends Component {
   constructor(props) {
     super(props);
     this.state = {};
     this.eventHandler = this._eventHandler.bind(this);
+    this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     let data = target && target.props && 
@@ -109,28 +110,6 @@ class ConceptDescWrapper extends Component {
       this.setState({ drill: data, above, below, });
     }
   }
-  render() {
-    let ci = this.props.conceptInfo;
-    if (!ci) return null;
-    const {above, below, drill, drillType} = this.state;
-                  //sendRefsToParent={getRefsFunc(this,'graphDiv')}
-    return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
-                  eventsToHandle={['onMouseMove']}
-                  eventHandlers={[this.eventHandler]} >
-              {above}
-              <ConceptDesc 
-                  conceptInfo={ci}
-                  drill={drill} drillType={drillType} />
-              {below}
-            </ListenerWrapper>;
-  }
-}
-class ConceptDesc extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-    this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
-  }
   conceptInfoUpdate(ci) {
     if (ci !== this.props.conceptInfo) throw new Error("didn't expect that");
     //console.log('got update from', ci.get('concept_name','no name yet'), ci.role());
@@ -145,14 +124,13 @@ class ConceptDesc extends Component {
     this.props.conceptInfo.subscribe(this.conceptInfoUpdate);
   }
   render() {
-    const {drill, drillType, } = this.props;
+    const {above, below, drill, drillType} = this.state;
     let ci = this.props.conceptInfo;
-    if (ci.get('depth') > 2) return null; //throw new Error('concept too deep');
+    if (ci.get('depth') > 9) return null; //throw new Error('concept too deep');
     let related = '';
     if (ci.validLookup()) {
       let concept_id = ci.get('concept_id', 'fail');
       related = <div>
-
                   <ButtonGroup>
                     {ci.get('conceptAncestorCount') 
                       ? <HoverButton data={{drill:{ci}, drillType:'conceptAncestors'}} >
@@ -192,28 +170,44 @@ class ConceptDesc extends Component {
                     </Col>
     }
 
-    return  <Row className={"concept-desc " + ci.scClassName() }>
-              {mappedfrom}
-              <Col xs={mainCols} >
-                <div className={`self-info container depth-${ci.depth()}`}>
-                    {ci.selfInfo().map(
-                      (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
-                                      cdProps={this.props} />)}
-                </div>
-              </Col>
-              {mapsto}
-              {related}
-            </Row>;
+    return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
+                  eventsToHandle={['onMouseMove']}
+                  eventHandlers={[this.eventHandler]} >
+              <div className={`depth-${ci.depth()} concept-desc ${ci.scClassName()}`}>
+                <Row className="header">
+                  <Col xs={12} >
+                      {ci.selfInfo('header').map(
+                        (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                                        cdProps={this.props} />)}
+                  </Col>
+                </Row>
+                <Row>
+                  <Col xs={12}>
+                    <Row>
+                      {mappedfrom}
+                      <Col xs={mainCols} className={`depth-${ci.depth()}`}>
+                        {above}
+                        {ci.selfInfo().map(
+                          (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                                          cdProps={this.props} />)}
+                        {related}
+                        {below}
+                      </Col>
+                      {mapsto}
+                    </Row>
+                  </Col>
+                </Row>
+              </div>
+            </ListenerWrapper>;
   }
 }
-class RelatedConcept extends Component {
+class RelatedConcept extends Component { // stop using?
   constructor(props) {
     super(props);
     const {recs} = props;
     this.state = {recs};
   }
   componentDidMount() {
-    debugger;
     let {recs} = this.state;
     if (!_.isEmpty(recs)) return;
 
@@ -221,7 +215,7 @@ class RelatedConcept extends Component {
     let ci = this.props.conceptInfo;
     //if (!ci.isRole('main')) return; // probably don't want this...not sure yet
     // try this instead:
-    if (ci.get('depth') > 4) return;
+    if (ci.get('depth') > 9) return;
     recs = ci.getRelatedRecs(relationship);
     this.setState({recs});
   }
@@ -232,12 +226,12 @@ class RelatedConcept extends Component {
     let ci = this.props.conceptInfo;
     //if (!ci.isRole('main')) return null;  // probably don't want this...not sure yet
     // try this instead:
-    if (ci.get('depth') > 4) throw new Error('too deep');
+    if (ci.get('depth') > 9) throw new Error('too deep');
     if (_.isEmpty(recs)) return null;
     return  <div className={relationship}>
               <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
               {recs.map(
-                (rec,i)=> <ConceptDescWrapper key={i} conceptInfo={rec} />)}
+                (rec,i)=> <ConceptDesc key={i} conceptInfo={rec} />)}
             </div>
   }
 }
@@ -248,7 +242,7 @@ class ConceptList extends Component {
     return  <div className={"concept-list " + className }>
               <h4>{cl.title()}</h4>
               {cl.items().map(
-                ci=> <ConceptDescWrapper
+                ci=> <ConceptDesc
                         key={ci.get('concept_id')} conceptInfo={ci} />)}
             </div>;
   }
@@ -260,13 +254,13 @@ class InfoBit extends Component {
     //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
     let content;
     if (wholeRow) {
-      content = <Row className={className + ' infobit '}>
+      content = <Row className={`${className} infobit `}>
                   <Col xs={12} >
                     {wholeRow}
                   </Col>
                 </Row>
     } else {
-      content = <Row className={className + ' infobit '}>
+      content = <Row className={`${className} infobit `}>
                   <Col xs={5} xsOffset={0} className="title" role="button">
                     {title}
                   </Col>
@@ -601,7 +595,7 @@ export class ConceptViewPage extends Component {
             </div>
     } else if (conceptInfo.loaded()) {
       cv =  <div className="concept-view-container" >
-              <ConceptDescWrapper conceptInfo={conceptInfo} />
+              <ConceptDesc conceptInfo={conceptInfo} />
             </div>
     }
     return <div className="flex-box"> 
