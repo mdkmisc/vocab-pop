@@ -85,7 +85,7 @@ export default class ConceptInfo {
                                       depth: this.depth() + 1,
                                       //cb:this.sendUpdate,
                                       //inRelTo: this,
-                                      //role: 'inConceptSet',
+                                      role: 'inConceptSet',
                                       fetchRelated: false,
                                   }));
           this._conceptSet = new ConceptSet(
