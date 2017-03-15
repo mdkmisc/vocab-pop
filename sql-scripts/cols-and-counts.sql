@@ -327,7 +327,7 @@ create table :results.concept_groups_w_cids as
               sum(crc) crc,
               -- doing array_unique in order to sort list, there shouldn't
               -- actually be any duplicates
-              array_unique(array_cat_agg(cids)) cids
+              :results.array_unique(:results.array_cat_agg(cids)) cids
     from :results.record_counts_agg rc
     group by  grouping sets 
                 (rollup(

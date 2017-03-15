@@ -15,11 +15,12 @@ export class ConceptSet {
     return this._cis;
   }
 }
+var junkCtr = 0;
 export default class ConceptInfo {
   //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
   constructor({ // expect lookupField and params, or rec
                 lookupField, 
-                params, // used in api call
+                params={}, // used in api call
                 rec, // if creating from already (partially) fetched data
                 fetchRelated=true, // set to false to not fetch related concepts
                                    // if false and rec not set, just fetch concept record
@@ -35,6 +36,7 @@ export default class ConceptInfo {
     this._amMain = inRelTo ? false : true;
     this._inRelTo = inRelTo;
     this._fetchRelated = fetchRelated;
+    this._fetchedRelated = false;
     this._relatedRecs = {};
     this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
     this.sendUpdate = this.sendUpdate.bind(this);
@@ -42,8 +44,8 @@ export default class ConceptInfo {
     if (rec) {
       this._crec = rec;
       this.lookupField = 'concept_id';
-      this.lookupVal = rec.concept_id;
-      this.params = {concept_id:rec.concept_id}; // apiParams
+      this.lookupVal = this.get('concept_id');
+      this.params = {concept_id: this.lookupVal}; // apiParams
       this._validLookup = true; // assume rec/_crec is always a valid concept
     } else {
       this.lookupField = lookupField;
@@ -73,11 +75,14 @@ export default class ConceptInfo {
           this._crec = results[0];
           this._validLookup = true;  // not sure....
           this._status = 'gotCrec'; // partially complete
+          this.lookupField = 'concept_id';
+          this.lookupVal = this._crec.concept_id;
+          this.params = {concept_id:this._crec.concept_id}; // apiParams
           this.fetchRelated('codeLookup got crec'); //this._crec.concept_id;
         } else {
           let cis = results.map(
             rec => new ConceptInfo({  rec, 
-                                      depth: this._depth + 1,
+                                      depth: this.depth() + 1,
                                       //cb:this.sendUpdate,
                                       //inRelTo: this,
                                       //role: 'inConceptSet',
@@ -121,7 +126,8 @@ export default class ConceptInfo {
     //this._status = 'complete'; // getting here means not needing related and already having _crec
   }
   fetchRelated(source) {
-    console.log("in fetchRelated from", source, this._status, this._fetchRelated);
+    console.log("in fetchRelated from", source, this._status, this._fetchRelated, this._fetchedRelated);
+    if (this._fetchedRelated) debugger;
     if (!this._fetchRelated) {
       if (this._crec) {
         this._status = 'complete';
@@ -129,6 +135,7 @@ export default class ConceptInfo {
       } else {
         throw new Error("should this happen?");
       }
+      this.sendUpdate();
     } else { // supposed to fetch related
       if (!this._crec) {
         if (this.lookupField === 'concept_id') {
@@ -141,6 +148,8 @@ export default class ConceptInfo {
               this._ci = results;
               this._validLookup = true;
               this._status = 'complete';
+              this._fetchedRelated = true;
+              console.log('fetchedRelated for ', this.get('concept_name'));
             }
             this.sendUpdate();
           });
@@ -157,23 +166,29 @@ export default class ConceptInfo {
             this._ci = results;
             this._validLookup = true;
             this._status = 'complete';
+            this._fetchedRelated = true;
+            console.log('fetchedRelated for ', this.get('concept_name'));
           }
           this.sendUpdate();
         });
       }
     }
-    this.sendUpdate();
     return this._status;
   }
   //processRelated() { }
-  getRelatedRecs(rel) { // as ConceptInfo -- right?
+  getRelatedRecs(rel, dflt) { // as ConceptInfo -- right?
+    console.log(`trying to get ${rel} for ${this.get('concept_name')}: fetched: ${this._fetchedRelated}`);
+    //if (junkCtr++ > 40) debugger;
+    console.log("getRelated count", junkCtr);
+    if (!this._fetchedRelated) return dflt;
     if (this._relatedRecs[rel]) return this._relatedRecs[rel];
     let recs;
     if (_.includes(['mapsto','mappedfrom'], rel)) {
-      recs = this.get('relatedConcepts')
-                 .filter(rec=>rec.relationship_id === this.fieldTitle(rel));
+      recs = this.get('relatedConcepts',[])
+                 .filter(rec=>rec.relationship_id === this.fieldTitle(rel))
+                 .filter(rec=>!this.inRelTo() || rec.concept_id !== this.inRelTo().get('concept_id'))
     } else if (rel === 'relatedConcepts') { // except maps
-      recs = this.get('relatedConcepts')
+      recs = this.get('relatedConcepts',[])
                  .filter(
                    rec=>!_.some(['mapsto','mappedfrom'],
                                 rel => rec.relationship_id === this.fieldTitle(rel)));
@@ -181,10 +196,13 @@ export default class ConceptInfo {
       recs = this.get(rel); // conceptAncestors, conceptDescendants, relatedConcepts,
     }
     this._relatedRecs[rel] =
-      recs.map(rec=>new ConceptInfo({rec, role: rel, inRelTo: this,}));
+      recs.map(rec=>new ConceptInfo({rec, role: rel, inRelTo: this,
+                                      depth: this.depth() + 1, }));
     return this._relatedRecs[rel];
   }
   get(field, dflt) {
+    if (this.isRole('conceptAncestors')) field = 'a_' + field;
+    if (this.isRole('conceptDescendants')) field = 'd_' + field;
     if (_.has(this._crec, field)) return this._crec[field];
     if (typeof this[field] === 'function') return this[field]();
     if (this._ci && this._ci[field]) return this._ci[field];
@@ -197,9 +215,15 @@ export default class ConceptInfo {
       return this;
     }
     this.done();
-    return new ConceptInfo({lookupField, params});
+    return new ConceptInfo({lookupField, params, depth: this.depth() + 1, });
   }
   // status methods -- combine?
+  depth() {
+    return this._depth;
+  }
+  inRelTo() {
+    return this._inRelTo;
+  }
   loading() {
     return this._status.match(/loading/);
   }
@@ -247,7 +271,8 @@ export default class ConceptInfo {
                     ${codeInfo.title} ${codeInfo.value}`},
       ];
     }
-    return [
+    // everything else...is a regular concept? no, but for now...
+    let bits = [
       {title: this.scTitle(), value: this.get('concept_name'), className: 'name', 
           //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
           linkParams:{concept_id: this.get('concept_id')}},
@@ -255,6 +280,13 @@ export default class ConceptInfo {
       this.selfInfoBit('domain_id'),
       this.selfInfoBit('concept_class_id'),
     ];
+    let countBits = this.get('cdmCounts').map(
+      cntrec => ({className:this.scMap('className', 'S'),
+                  title: `${cntrec.rc} CDM records in`,
+                  value: this.tblcol(cntrec),
+                  data: {drill:{ci, countRec}, drillType:'rc'},}));
+    bits = bits.concat(countBits);
+    return bits;
     /*
     if (this.validLookup()) {
       return [
@@ -321,7 +353,10 @@ export default class ConceptInfo {
               vocabulary_id: 'Vocabulary',
               mapsto: 'Maps to',
               mappedfrom: 'Mapped from',
-              otherRelationship: val,
+              conceptAncestors: 'Ancestor concepts',
+              conceptDescendants: 'Descendant concepts',
+              relatedConcepts: 'Related concepts (non-mapping)',
+              //otherRelationship: val,
         })[field] || `no title for ${field}`;
   }
   fieldClass(field) {
@@ -348,14 +383,13 @@ export default class ConceptInfo {
       this.cb('fromChild');
     //else
     this.bsubj.next(this);
-    if (this._inRelTo)
-      this._inRelTo.sendUpdate();
+    //if (this._inRelTo) this._inRelTo.sendUpdate();
   }
   cdmCounts() {
-    return (this.get('rcs')||[]).filter(d=>d.rc);
+    return this.get('rcs',[]).filter(d=>d.rc);
   }
   cdmSrcCounts() {
-    return (this.get('rcs')||[]).filter(d=>d.src);
+    return this.get('rcs',[]).filter(d=>d.src);
   }
   rc() {
     return _.sum(this.cdmCount().map(d=>d.rc));

@@ -13,7 +13,7 @@
 drop table if exists :results.cg_dcids;
 create table :results.cg_dcids as
     select  cgwc.cgid,
-            array_unique(
+            :results.array_unique(
                     array_agg(ca.descendant_concept_id order by descendant_concept_id)
                   ) dcids
     from :results.concept_groups_w_cids cgwc
@@ -137,7 +137,7 @@ CREATE OR REPLACE FUNCTION :results.make_dcid_cnts_breakdown() returns integer A
                       count(distinct tbl||col)::integer tblcols,
                       sum(rc) rc,
                       sum(src) src,
-                      array_unique(
+                      :results.array_unique(
                               array_agg(rc.concept_id order by concept_id)
                             ) cids
             from :results.record_counts rc

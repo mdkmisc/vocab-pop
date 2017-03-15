@@ -1,6 +1,13 @@
-drop table if exists :results.ancestors;
+
+-- not sure how much faster this will perform than a view, might not be worth it
+        -- does seem to make a big difference i think
+--drop table if exists :results.ancestors;
 create table :results.ancestors as
-  select a.*,
+--create or replace view :results.ancestors as
+  select a.ancestor_concept_id a_concept_id,
+         a.descendant_concept_id d_concept_id,
+         a.min_levels_of_separation,
+         a.max_levels_of_separation,
          ca.domain_id as a_domain_id,
          ca.standard_concept as a_standard_concept,
          ca.vocabulary_id as a_vocabulary_id,
@@ -12,10 +19,11 @@ create table :results.ancestors as
          cd.concept_class_id as d_concept_class_id,
          cd.concept_name as d_concept_name
   from :cdm.concept_ancestor a
-  join :cdm.concept ca on a.ancestor_concept_id = ca.concept_id
-  join :cdm.concept cd on a.descendant_concept_id = cd.concept_id;
-create index anc1idx on :results.ancestors (ancestor_concept_id);
-create index anc2idx on :results.ancestors (descendant_concept_id);
+  join :cdm.concept ca on a.ancestor_concept_id = ca.concept_id and ca.invalid_reason is null
+  join :cdm.concept cd on a.descendant_concept_id = cd.concept_id and cd.invalid_reason is null
+  where ancestor_concept_id = descendant_concept_id;
+create index anc1idx on :results.ancestors (a_concept_id);
+create index anc2idx on :results.ancestors (d_concept_id);
 
 
 /* 

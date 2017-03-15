@@ -87,28 +87,22 @@ class ConceptDescWrapper extends Component {
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (target && target.props && target.props.data) {
       const {drill={}, drillType, } = target.props.data;
-      const {ci, crec, } = drill;
+      const {ci, countRec, } = drill;
       let below, above;
-      //console.log(ci, drill);
       switch (drillType) {
-        case "ancestors":
-          console.log('drill', drillType, drill);
+        case "rc":
+        case "src":
+          below = <CDMRecs {...{ci, countRec}} />;
+          break;
+        case "conceptAncestors":
           above = <RelatedConcept relationship='conceptAncestors' 
                     conceptInfo={ci} />
           break;
-        case "rc":
-        case "src":
-          console.log('drill', drillType, drill, );
-          //below = <p>drill to {ci.tblcol(crec)}</p>;
-          below = <CDMRecs {...{ci, crec}} />;
-          break;
-        case "related":
-          below = <RelatedConcept relationship='relatedConcepts' 
+        default:
+          below = <RelatedConcept relationship={drillType}
                     conceptInfo={ci} />
-            //<RelatedConcepts {...{ci, crec}} />;
-          console.log('drill', drillType, drill);
-          break;
       }
+      console.log('drill', drillType, drill, countRec);
       this.setState({ drill: target.props.data, above, below, });
     }
   }
@@ -129,43 +123,62 @@ class ConceptDescWrapper extends Component {
   }
 }
 class ConceptDesc extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+    this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
+  }
+  conceptInfoUpdate(ci) {
+    if (ci !== this.props.conceptInfo) throw new Error("didn't expect that");
+    console.log('got update from', ci.get('concept_name','no name yet'), ci.role());
+    if (ci.isConceptSet()) {
+      throw new Error("check this");
+      this.setState({conceptSet: ci});
+      return;
+    }
+    this.forceUpdate();
+  }
+  componentDidMount() {
+    this.props.conceptInfo.subscribe(this.conceptInfoUpdate);
+  }
   render() {
     const {drill, drillType, } = this.props;
     let ci = this.props.conceptInfo;
+    if (ci.get('depth') > 2) return null; //throw new Error('concept too deep');
     let related = '';
     if (ci.validLookup()) {
       let concept_id = ci.get('concept_id', 'fail');
       related = <div>
                   <ButtonGroup>
                     {
-                      ci.get('cdmCounts',[]).map(crec=>
-                        <HoverButton key={'rc-'+ci.tblcol(crec)}
-                            data={{drill:{ci, crec}, drillType:'rc'}}  >
-                          {crec.rc} CDM records in {ci.tblcol(crec)}
+                      ci.get('cdmCounts',[]).map(countRec=>
+                        <HoverButton key={'rc-'+ci.tblcol(countRec)}
+                            data={{drill:{ci, countRec}, drillType:'rc'}}  >
+                          {countRec.rc} CDM records in {ci.tblcol(countRec)}
                         </HoverButton>)
                     }
                     {
-                      ci.get('cdmSrcCounts',[]).map(crec=>
-                        <HoverButton key={'src-'+ci.tblcol(crec)}
-                            data={{drill:{ci, crec}, drillType:'src'}}  >
-                          {crec.src} CDM source records in {ci.tblcol(crec)}
+                      ci.get('cdmSrcCounts',[]).map(countRec=>
+                        <HoverButton key={'src-'+ci.tblcol(countRec)}
+                            data={{drill:{ci, countRec}, drillType:'src'}}  >
+                          {countRec.src} CDM source records in {ci.tblcol(countRec)}
                         </HoverButton>)
                     }
                   </ButtonGroup>
 
                   <ButtonGroup>
                     {ci.get('relatedConceptCount') 
-                      ? <HoverButton data={{drill:{ci}, drillType:'related'}} >
+                      ? <HoverButton data={{drill:{ci}, drillType:'relatedConcepts'}} >
                           {ci.get('relatedConceptCount')} Related concepts{' '}
                         </HoverButton>
                       : ''}
                     {ci.get('conceptAncestorCount') 
-                      ? <HoverButton data={{drill:{ci}, drillType:'ancestors'}} >
+                      ? <HoverButton data={{drill:{ci}, drillType:'conceptAncestors'}} >
                           {ci.get('conceptAncestorCount')} Ancestor concepts{' '}
                         </HoverButton>
                       : ''}
                     {ci.get('conceptDescendantCount') 
-                      ? <HoverButton data={{drill:{ci}, drillType:'descendants'}} >
+                      ? <HoverButton data={{drill:{ci}, drillType:'conceptDescendants'}} >
                           {ci.get('conceptDescendantCount')} Descendant concepts{' '}
                         </HoverButton>
                       : ''}
@@ -176,17 +189,74 @@ class ConceptDesc extends Component {
     if (ci.isConceptSet()) {
       throw new Error("shouldn't be here");
     }
-    return  <div className={"concept-desc " + ci.scClassName() }>
-              <div className="self-info container">
-                  {ci.selfInfo().map(
-                    (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
-                                    cdProps={this.props} />)}
-              </div>
+    let mapsto=null, mappedfrom=null;
 
-              <RelatedConcept relationship='mapsto' conceptInfo={ci} />
-              <RelatedConcept relationship='mappedfrom' conceptInfo={ci} />
+    let mapstoRecs = ci.getRelatedRecs('mapsto',[]);
+    let mappedfromRecs = ci.getRelatedRecs('mappedfrom',[]);
+    if (mapstoRecs.length && mappedfromRecs.length) throw new Error("not expecting that");
+
+    let mainCols = 12;
+    if (mapstoRecs.length) {
+      mainCols = 6;
+      mapsto =  <Col xs={6}>
+                  <RelatedConcept recs={mapstoRecs} relationship='mapsto' conceptInfo={ci} />;
+                </Col>
+    }
+
+    if (mappedfromRecs.length) {
+      mainCols = 6;
+      mappedfrom =  <Col xs={6}>
+                      <RelatedConcept recs={mappedfromRecs} relationship='mappedfrom' conceptInfo={ci} />;
+                    </Col>
+    }
+
+    return  <Row className={"concept-desc " + ci.scClassName() }>
+              {mappedfrom}
+              <Col xs={mainCols} >
+                <div className={`self-info container depth-${ci.depth()}`}>
+                    {ci.selfInfo().map(
+                      (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                                      cdProps={this.props} />)}
+                </div>
+              </Col>
+              {mapsto}
               {related}
-            </div>;
+            </Row>;
+  }
+}
+class RelatedConcept extends Component {
+  constructor(props) {
+    super(props);
+    const {recs} = props;
+    this.state = {recs};
+  }
+  componentDidMount() {
+    let {recs} = this.state;
+    if (!_.isEmpty(recs)) return;
+
+    let {relationship} = this.props;
+    let ci = this.props.conceptInfo;
+    //if (!ci.isRole('main')) return; // probably don't want this...not sure yet
+    // try this instead:
+    if (ci.get('depth') > 4) return;
+    recs = ci.getRelatedRecs(relationship);
+    this.setState({recs});
+  }
+
+  render() {
+    let {recs} = this.state;
+    let {relationship} = this.props;
+    let ci = this.props.conceptInfo;
+    //if (!ci.isRole('main')) return null;  // probably don't want this...not sure yet
+    // try this instead:
+    if (ci.get('depth') > 4) throw new Error('too deep');
+    if (_.isEmpty(recs)) return null;
+    return  <div className={relationship}>
+              <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
+              {recs.map(
+                rec=> <ConceptDescWrapper
+                        key={rec.concept_id} conceptInfo={rec} />)}
+            </div>
   }
 }
 class ConceptList extends Component {
@@ -204,7 +274,7 @@ class ConceptList extends Component {
 class InfoBit extends Component {
   render() {
     const {conceptInfo, bit, cdProps, } = this.props;
-    let {title, className, value, wholeRow, linkParams} = bit; // an infobit should have (at least) title, className, value
+    let {title, className, value, wholeRow, linkParams, data} = bit; // an infobit should have (at least) title, className, value
     //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
     let content;
     if (wholeRow) {
@@ -235,6 +305,14 @@ class InfoBit extends Component {
                   {content}
                 </NavItem>
               </Nav>
+    } else { if (data) { // this bit wants to send data on some mouse event
+                         // can't do both links and events for now
+      return  <ListenerTargetWrapper wrapperTag="span" wrappedComponent={this} 
+                  className="hover-button" >
+                <Button bsStyle="primary" bsSize="small" >
+                  {this.props.children}
+                </Button>
+              </ListenerTargetWrapper>
     }
     return content;
   }
@@ -248,8 +326,8 @@ class CDMRecs extends Component {
     this.forceUpdate();
   }
   componentDidUpdate(prevProps, prevState) {
-    const {ci, crec, rowLimit/*=40*/} = this.props;
-    const {tbl, col} = crec;
+    const {ci, countRec, rowLimit/*=40*/} = this.props;
+    const {tbl, col} = countRec;
     //updateReason(prevProps, prevState, this.props, this.state, 'VocabPop/CDMRecs');
       
     const oldStream = this.state.stream;
@@ -270,12 +348,12 @@ class CDMRecs extends Component {
   }
   render() {
     const {recs} = this.state;
-    const {ci, crec, rowLimit=40} = this.props;
-    const {tbl, col} = crec;
+    const {ci, countRec, rowLimit=40} = this.props;
+    const {tbl, col} = countRec;
     if (!recs) {
       return <div>
                 <Spinner/>
-                <p>Waiting for recs from {ci.tblcol(crec)}</p>
+                <p>Waiting for recs from {ci.tblcol(countRec)}</p>
              </div>;
     }
       //coldefs={cols} 
@@ -285,37 +363,10 @@ class CDMRecs extends Component {
             />
             /*
     <pre>
-              {ci.tblcol(crec)}:
+              {ci.tblcol(countRec)}:
               {recs.slice(0,4).map(d=>JSON.stringify(d,null,2))}
            </pre>;
            */
-  }
-}
-class RelatedConcept extends Component {
-  constructor(props) {
-    super(props);
-    this.state = {};
-  }
-  componentDidMount() {
-    let {relationship} = this.props;
-    let ci = this.props.conceptInfo;
-    if (!ci.isRole('main')) return; // probably don't want this...not sure yet
-    let recs = ci.getRelatedRecs(relationship);
-    this.setState({recs});
-  }
-
-  render() {
-    let {recs} = this.state;
-    let {relationship} = this.props;
-    let ci = this.props.conceptInfo;
-    if (!ci.isRole('main')) return null;  // probably don't want this...not sure yet
-    if (_.isEmpty(recs)) return null;
-    return  <div className={relationship}>
-              <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
-              {recs.map(
-                rec=> <ConceptDescWrapper
-                        key={rec.concept_id} conceptInfo={rec} />)}
-            </div>
   }
 }
 class HoverButton extends Component {
@@ -456,7 +507,8 @@ export class ConceptViewPage extends Component {
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
   conceptInfoUpdate(ci) {
-    console.log('got update from', ci.get('concept_name')||'no name yet', ci.role());
+    //throw new Error("updates shouldn't come here anymore. getting them in ConceptDesc");
+    console.log('got update IN CONCEPTVIEWPAGE from', ci.get('concept_name','no name yet'), ci.role());
     if (ci.isConceptSet()) {
       this.setState({conceptSet: ci});
       return;
@@ -555,7 +607,7 @@ export class ConceptViewPage extends Component {
   render() {
     const {w,h} = this.props; // from ComponentWrapper
     let {concept_id, concept_code, conceptInfo, change} = this.state;
-    concept_id = conceptInfo && conceptInfo.get('concept_id') || '';
+    concept_id = conceptInfo && conceptInfo.get('concept_id', '') || '';
     concept_code = conceptInfo && conceptInfo.get('concept_code') || '';
     //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;

@@ -1,4 +1,8 @@
 ---
+cdmSchema: omop5_synpuf_5pcnt
+resultsSchema: omop5_synpuf_5pcnt_results
+apiRoot: http://localhost:3000/api/cdms
+
 documentation:
   - overall goals:
     - make individual OHDSI vocabularies more approachable - facilitate
@@ -63,9 +67,6 @@ attributes of use:
   - exclude concept_id=0, No matching concept
   - include only primary target columns (e.g., drug_concept_id)
   - include only primary source columns (e.g., drug_source_concept_id)
-cdmSchema: cdm2
-resultsSchema: results2
-apiRoot: http://localhost:3000/api/cdms
 
 filters:
   excludeInvalidConcepts: true
