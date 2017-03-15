@@ -154,11 +154,6 @@ class ConceptDesc extends Component {
       related = <div>
 
                   <ButtonGroup>
-                    {ci.get('relatedConceptCount') 
-                      ? <HoverButton data={{drill:{ci}, drillType:'relatedConcepts'}} >
-                          {ci.get('relatedConceptCount')} Related concepts{' '}
-                        </HoverButton>
-                      : ''}
                     {ci.get('conceptAncestorCount') 
                       ? <HoverButton data={{drill:{ci}, drillType:'conceptAncestors'}} >
                           {ci.get('conceptAncestorCount')} Ancestor concepts{' '}
@@ -218,6 +213,7 @@ class RelatedConcept extends Component {
     this.state = {recs};
   }
   componentDidMount() {
+    debugger;
     let {recs} = this.state;
     if (!_.isEmpty(recs)) return;
 

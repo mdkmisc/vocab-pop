@@ -296,18 +296,23 @@ export default class ConceptInfo {
                     title: `${countRec.src} CDM source records in`,
                     value: this.tblcol(countRec),
                     data: {drill:{ci:this, countRec}, drillType:'src'},})));
+    bits = bits.concat(
+      this.get('relatedConceptGroups').map(
+        grp => ({
+                      title: `${grp.cc} ${grp.relationship_id} concepts`,
+                      value: `${grp.domain_id} ${grp.vocabulary_id} 
+                                ${grp.concept_class_id}
+                                ${grp.defines_ancestry ? ' defines ancestry ' : ''}
+                                ${grp.is_hierarchical ? ' is hierarchical' : ''}
+                                `,
+                      data: {drill:{ci:this, grp}, drillType:'relatedConceptGroups'},})));
+    let rcc = this.get('relatedConceptCount');
+    if (rcc) bits = bits.concat({
+                      //className:this.scClassName('X'),
+                      wholeRow: `${rcc} related concepts`,
+                      data: {drill:{ci:this, }, drillType:'relatedConcepts'},});
     return bits;
     /*
-    if (this.validLookup()) {
-      return [
-        {title: this.scTitle(), className: 'name', 
-            wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-            linkParams:{concept_id: this.get('concept_id')}},
-        {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
-        this.selfInfoBit('domain_id'),
-        this.selfInfoBit('concept_class_id'),
-      ];
-    }
     switch (this.role()) {
       case 'mapsto':
       case 'mappedfrom':
