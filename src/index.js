@@ -11,16 +11,9 @@ import * as AppState from './AppState';
 //import { DrugContainer, Search, Home /*ConceptsContainer, Tables, */ } from './components/VocabPop';
 //import './index.css';
 
+let history = useRouterHistory(createHistory)();
 
-/* 
- * send all requests to index.html so browserHistory works
-app.get('*', function (req, res) {
-  res.sendFile(path.join(__dirname, 'public', 'index.html'))
-})
-*/
-          //<Route path="search" components={{main:ComponentWrapper, compName:'Search', sidebar:Sidebar}} />
-//AppState.initialize({history:useRouterHistory(createHistory)()}) // set global history object
-AppState.initialize({history:useRouterHistory(createHistory)()}) // set global history object
+AppState.initialize(history)
   .then(() => {
     render((
       <Router history={AppState.history}>

@@ -41,13 +41,6 @@ export var myqs = {
  *
  */
 
-//var apiStreams = new Rx.BehaviorSubject({});
-/*
- *  calls initialize with a router history object
- */
-
-
-
 
 export var history; /* global history object set in index.js */
 
@@ -134,7 +127,7 @@ export function subscribeState(path, cb) {
   return stateStream(path).subscribe(cb);
 }
 
-export function initialize({history:_history}) {
+export function initialize(_history) {
   history = _history;
   let urlStateOnLoadingPage = getState();
   let appDefaults = { filters: appSettings.filters, };
