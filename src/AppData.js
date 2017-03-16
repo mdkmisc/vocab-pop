@@ -1,8 +1,12 @@
 const DEBUG = false;
 import _ from 'supergroup';
 import * as util from './utils';
+import config from './config';
 
-export default function({cdmSchema,resultsSchema,apiRoot} = {}) {
+var AppData = appDataGen(config);
+export default AppData;
+
+function appDataGen({cdmSchema,resultsSchema,apiRoot} = config) {
 
   // api calls return promises, except apiCallMeta
   // which returns a promise wrapped in some metadata

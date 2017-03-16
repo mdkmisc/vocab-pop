@@ -5,6 +5,11 @@
 import LZString from 'lz-string';
 import _ from 'lodash';
 import React, { Component } from 'react';
+import {Glyphicon, Row, Col,
+          Nav, Navbar, NavItem, Label,
+          Form, FormGroup, FormControl, ControlLabel, HelpBlock,
+          Button, ButtonToolbar, ButtonGroup,
+          } from 'react-bootstrap';
 import Rx from 'rxjs/Rx';
 var $ = require('jquery');
 var d3 = require('d3');

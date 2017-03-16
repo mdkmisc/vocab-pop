@@ -5,8 +5,11 @@ import Rx from 'rxjs/Rx';
 import _ from 'supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-import yaml from 'js-yaml';
-import settingsYaml from './appSettings.yml';
+//import yaml from 'js-yaml';
+//import settingsYaml from 'raw!:./appSettings.yml';
+//import _appSettings from './src/appSettings';
+import AppData from './AppData';
+import appSettings from './appSettings';
 
 
 //var d3 = require('d3');
@@ -19,21 +22,13 @@ export var myqs = {
 }
 
 
-/* initialization flow
- *
- * 1) index.js imports this (AppState)
- * 2) appSettings.yml is loaded, parsed and exported
- *    as AppState.appSettings, which is immediately
- *    available to any component that imports AppState
- */
-let _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
-export var appSettings = _appSettings; 
+// giving up on yaml stuff because going back to create-react-app
+//let _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
 /* 3) import AppData, but it's not usable until it's
  *    been initialized with appSettings which provides
  *    values for {cdmSchema, resultsSchema, apiRoot}
  */
-import _AppData from './AppData';
-const AppData = _AppData(_appSettings);
+//const AppData = _AppData(_appSettings);
 
 //let apiStreams = {};
 
@@ -142,7 +137,7 @@ export function subscribeState(path, cb) {
 export function initialize({history:_history}) {
   history = _history;
   let urlStateOnLoadingPage = getState();
-  let appDefaults = { filters: _appSettings.filters, };
+  let appDefaults = { filters: appSettings.filters, };
   saveState(_.merge({}, appDefaults, urlStateOnLoadingPage));
   return AppData.cacheDirty();
 }
