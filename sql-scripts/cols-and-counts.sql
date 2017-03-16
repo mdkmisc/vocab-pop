@@ -329,7 +329,7 @@ create table :results.concept_groups_w_cids as
               -- actually be any duplicates
               :results.array_unique(:results.array_cat_agg(cids)) cids
     from :results.record_counts_agg rc
-    group by  grouping sets 
+    group by  grouping sets   -- DON'T NEED ALL THESE GROUPINGS
                 (rollup(
                         domain_id, standard_concept, vocabulary_id, concept_class_id, 
                         (tbl, col, coltype)
