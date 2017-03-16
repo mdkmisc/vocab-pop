@@ -1,5 +1,7 @@
 import React from 'react'
 import { render } from 'react-dom'
+import 'bootstrap/dist/css/bootstrap.css';
+import 'bootstrap/dist/css/bootstrap-theme.css';
 import {  Router, Route, 
           //browserHistory, 
           useRouterHistory, IndexRoute } from 'react-router'
