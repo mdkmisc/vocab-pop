@@ -8,6 +8,7 @@ import {  Router, Route,
 import { createHistory } from 'history';
 import {App, Sidebar, ComponentWrapper} from './App';
 import * as AppState from './AppState';
+import config from './config';
 //import { DrugContainer, Search, Home /*ConceptsContainer, Tables, */ } from './components/VocabPop';
 //import './index.css';
 
@@ -19,7 +20,7 @@ AppState.initialize(history)
     window.H = history;
     render((
       <Router history={history}>
-        <Route path="/" component={App}>
+        <Route path={config.rootPath} component={App}>
           <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
           <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
           <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
