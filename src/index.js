@@ -15,8 +15,10 @@ let history = useRouterHistory(createHistory)();
 
 AppState.initialize(history)
   .then(() => {
+    console.log('rendering, history in H',history);
+    window.H = history;
     render((
-      <Router history={AppState.history}>
+      <Router history={history}>
         <Route path="/" component={App}>
           <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
           <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
