@@ -1,5 +1,5 @@
 const DEBUG = false;
-import _ from 'supergroup';
+import _ from './supergroup';
 import * as util from './utils';
 import config from './config';
 

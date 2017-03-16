@@ -24,7 +24,7 @@ import { //Nav, Navbar, Modal,
 //import { LinkContainer } from 'react-router-bootstrap';
 //import Inspector from 'react-json-inspector';
 //import 'react-json-inspector/json-inspector.css';
-import _ from 'supergroup';
+import _ from '../supergroup';
 import * as AppState from '../AppState';
 import Form from "react-jsonschema-form";
 

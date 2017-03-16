@@ -18,7 +18,7 @@ import React, { Component } from 'react';
 import Rx from 'rxjs/Rx';
 import * as AppState from '../AppState';
 //import * as VocabPop from './VocabPop';
-import _ from 'supergroup'; // in global space anyway...
+import _ from '../supergroup'; // in global space anyway...
 import {commify, cloneToComponentDescendants, firstLastEvent} from '../utils';
 
 export class DataWrapper extends Component { // should replace ConceptData

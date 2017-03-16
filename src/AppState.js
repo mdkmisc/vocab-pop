@@ -2,7 +2,7 @@
 import React, { Component } from 'react';
 //import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
 import Rx from 'rxjs/Rx';
-import _ from 'supergroup'; // lodash would be fine here
+import _ from './supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 //import yaml from 'js-yaml';

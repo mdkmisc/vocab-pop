@@ -33,7 +33,7 @@ import { LinkContainer } from 'react-router-bootstrap';
 var d3 = require('d3');
 var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
-import _ from 'supergroup'; // in global space anyway...
+import _ from '../supergroup'; // in global space anyway...
 import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import ConceptInfo from '../ConceptInfo';

@@ -38,7 +38,7 @@ import Spinner from 'react-spinner';
 //import logo from './logo.svg';
 //import './App.css';
 import './stylesheets/VocabPop.css';
-import _ from 'supergroup';
+import _ from './supergroup';
 //import * as AppState from './AppState';
 //import * as util from './ohdsi.util';
 import {commify, updateReason, setToAncestorSize, getAncestorHeight} from './utils';

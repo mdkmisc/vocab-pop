@@ -6,7 +6,7 @@ import {render} from 'react-dom';
 //import {VocNode, VocEdge} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
-import _ from 'supergroup'; // just for lodash
+import _ from '../supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
 import {sigmaReactRenderer, elType, neighborhoodPlugin} from './sigma-react/sigma.renderers.react';
 import { getRefsFunc, sendRefsToParent, updateReason,

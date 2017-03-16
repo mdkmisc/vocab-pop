@@ -20,7 +20,7 @@ import { Glyphicon, //Row, Col,
           //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label
        } from 'react-bootstrap';
 var d3 = require('d3');
-import _ from 'supergroup'; // in global space anyway
+import _ from '../supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
 //import Rx from 'rxjs/Rx';
 

@@ -1,5 +1,5 @@
 var d3 = require('d3');
-import _ from 'supergroup';
+import _ from '../supergroup';
 import {GNode, Edge} from './SigmaReactGraph';
 
 let maxNodesPerRow = 5; // actual rows will have twice this to make room for stubs

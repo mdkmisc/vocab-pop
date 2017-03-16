@@ -1,5 +1,5 @@
 import * as AppState from './AppState';
-import _ from 'supergroup'; // in global space anyway...
+import _ from './supergroup'; // in global space anyway...
 import Rx from 'rxjs/Rx';
 import React, { Component } from 'react';
 
