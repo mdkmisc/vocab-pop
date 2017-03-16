@@ -1,6 +1,18 @@
 # vocab-pop
 ## OHDSI Vocabulary / Population Browser
 
+You'll need a Postgres OHDSI CDM and https://github.com/Sigfried/ohdsi-api
+
+And change settings in src/config.js appropriately
+
+then `npm i`
+
+and `npm start`
+or `npm run build`
+
+
+
+
   - overall goals:
     - make individual OHDSI vocabularies more approachable
     - facilitate understanding of OHDSI's vocabularies and concepts, relationships between them, and their prevelance in a specific CDM
@@ -35,7 +47,7 @@
       - intersecion of subpopulations
     - Patrick's SNOMED navigation strategy: 
       - using related concepts filter on Class, choose Has ancestor of from Relationship facet, filter on Distance facet
-    - compare vocabulary version as per (http://forums.ohdsi.org/t/new-vocabulary-population-visualization-working-group/2187/17?u=sigfried_gold)[Peter's post]
+    - compare vocabulary version as per [http://forums.ohdsi.org/t/new-vocabulary-population-visualization-working-group/2187/17?u=sigfried_gold](Peter's post)
   - notes and to-dos:
     - other systems to get ideas from:
       - http://outins.com/
