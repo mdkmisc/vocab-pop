@@ -10,6 +10,9 @@
     it would be better to include source but it takes so long to run, I've given
     up on that.
 */
+
+-- this query took a long time on the chco data, but impossibly long on synpuf5%
+-- need to rethink it
 drop table if exists :results.cg_dcids;
 create table :results.cg_dcids as
     select  cgwc.cgid,

@@ -129,6 +129,7 @@ export default class ConceptInfo {
   fetchRelated(source) {
     //console.log("in fetchRelated from", source, this._status, this._fetchRelated, this._fetchedRelated);
     if (this._fetchedRelated) debugger;
+    if (this.depth > 3) console.error("too deep");
     if (!this._fetchRelated) {
       if (this._crec) {
         this._status = 'complete';
@@ -207,6 +208,7 @@ export default class ConceptInfo {
     if (this._ci && this._ci[field]) return this._ci[field];
     if (field === this.lookupField && typeof this.lookupVal !== 'undefined') 
       return this.lookupVal;
+    if (_.has(this, ['_'+field])) return this['_'+field];
 
     if (this.isRole('conceptAncestors') && !field.match(/^a_/))
       return this.get('a_'+field,dflt)

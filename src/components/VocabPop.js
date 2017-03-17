@@ -170,10 +170,12 @@ class ConceptDesc extends Component {
                     </Col>
     }
 
+    console.log(ci.get('concept_code'), ci.get('status'));
     return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
                   eventsToHandle={['onMouseMove']}
                   eventHandlers={[this.eventHandler]} >
               <div className={`depth-${ci.depth()} concept-desc ${ci.scClassName()}`}>
+                <p>status: {ci.get('status')} {ci.get('fetchedRelated') ? 'fetched related' : ''}</p>
                 <Row className="header">
                   <Col xs={12} >
                       {ci.selfInfo('header').map(
