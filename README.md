@@ -11,6 +11,12 @@ and `npm start`
 or `npm run build`
 
 
+  - Priorities:
+    - text search
+    - concept set (source) --> report of concept gain/loss in mapping to standard
+    - see hierarchical relationships not in the concept_ancestor table
+
+
 
 
   - overall goals:

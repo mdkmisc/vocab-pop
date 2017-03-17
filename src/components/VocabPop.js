@@ -89,6 +89,10 @@ class ConceptDesc extends Component {
     let data = target && target.props && 
                 (target.props.data || 
                  (target.props.bit && target.props.bit.data));
+    if (e.type === 'mouseleave') {
+      this.setState({ drill: undefined, above: undefined, below: undefined, });
+      return;
+    }
     if (data) {
       const {drill={}, drillType, } = data;
       const {ci, countRec, } = drill;
@@ -172,7 +176,7 @@ class ConceptDesc extends Component {
 
     console.log(ci.get('concept_code'), ci.get('status'));
     return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
-                  eventsToHandle={['onMouseMove']}
+                  eventsToHandle={['onMouseMove','onMouseLeave']}
                   eventHandlers={[this.eventHandler]} >
               <div className={`depth-${ci.depth()} concept-desc ${ci.scClassName()}`}>
                 <p>status: {ci.get('status')} {ci.get('fetchedRelated') ? 'fetched related' : ''}</p>
@@ -224,14 +228,14 @@ class RelatedConcept extends Component { // stop using?
 
   render() {
     let {recs} = this.state;
+    if (_.isEmpty(recs)) return null;
     let {relationship} = this.props;
     let ci = this.props.conceptInfo;
     //if (!ci.isRole('main')) return null;  // probably don't want this...not sure yet
     // try this instead:
     if (ci.get('depth') > 9) throw new Error('too deep');
-    if (_.isEmpty(recs)) return null;
     return  <div className={relationship}>
-              <h4>{ci.fieldTitle(relationship, ci.get('relationship_id'))}</h4>
+              <h4>{ci.fieldTitle(relationship, recs[0].get('relationship_id'))}</h4>
               {recs.map(
                 (rec,i)=> <ConceptDesc key={i} conceptInfo={rec} />)}
             </div>

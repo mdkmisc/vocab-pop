@@ -385,21 +385,23 @@ export default class ConceptInfo {
   }
   fieldTitle(field, val) { // maybe just a general lookup for nice names
     //if (val) { }
-    return ({
-              concept_id: 'Concept ID',
-              concept_code: 'Concept Code',
-              concept_name: 'Name',
-              domain_id: 'Domain',
-              concept_class_id: 'Class',
-              vocabulary_id: 'Vocabulary',
-              mapsto: 'Maps to',
-              mappedfrom: 'Mapped from',
-              conceptAncestors: 'Ancestor concepts',
-              conceptDescendants: 'Descendant concepts',
-              //relatedConcepts: 'Related concepts (non-mapping)',
-              relatedConcepts: val,
-              //otherRelationship: val,
-        })[field] || `no title for ${field}`;
+    let title = ({
+                    concept_id: 'Concept ID',
+                    concept_code: 'Concept Code',
+                    concept_name: 'Name',
+                    domain_id: 'Domain',
+                    concept_class_id: 'Class',
+                    vocabulary_id: 'Vocabulary',
+                    mapsto: 'Maps to',
+                    mappedfrom: 'Mapped from',
+                    conceptAncestors: 'Ancestor concepts',
+                    conceptDescendants: 'Descendant concepts',
+                    //relatedConcepts: 'Related concepts (non-mapping)',
+                    relatedConcepts: val,
+                    //otherRelationship: val,
+                  })[field];
+    if (!title) debugger;
+    return title || `no title for ${field}`;
   }
   fieldClass(field) {
     return ({
