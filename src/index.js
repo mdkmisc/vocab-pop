@@ -20,7 +20,7 @@ AppState.initialize(history)
     window.H = history;
     render((
       <Router history={history}>
-        <Route path={config.rootPath} component={App}>
+        <Route path={config.rootPath+'/'} component={App}>
           <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
           <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
           <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />

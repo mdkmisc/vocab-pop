@@ -29,6 +29,7 @@ import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
 import VocabPop, {ConceptViewPage} from './components/VocabPop';
           /* Search, DrugContainer, Tables, */
+import config from './config';
 import * as AppState from './AppState';
 var $ = require('jquery');
 import Spinner from 'react-spinner';
@@ -82,7 +83,7 @@ export function locPath(pathname, opts={}) {
     _.each(opts.params, (v,p) => search[p] = v);
   }
 
-  let loc = Object.assign({}, location, {pathname});
+  let loc = Object.assign({}, location, {pathname: config.rootPath + pathname});
   loc.search = '?' + AppState.myqs.stringify(search);
   return loc;
 }
