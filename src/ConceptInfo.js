@@ -3,185 +3,184 @@ import _ from './supergroup'; // in global space anyway...
 import Rx from 'rxjs/Rx';
 import React, { Component } from 'react';
 
-export class ConceptSet {
-  constructor({cis, params, title}) {
-    this._cis = cis; // ConceptInfo array
-    this._params = params;
-    this._title = title;
-  }
-  title() {
-    return this._title;
-  }
-  items() {
-    return this._cis;
-  }
-}
-var junkCtr = 0;
-export default class ConceptInfo {
-  //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
-  constructor({ // expect lookupField and params, or rec
-                lookupField, 
-                params={}, // used in api call
-                rec, // if creating from already (partially) fetched data
-                fetchRelated=true, // set to false to not fetch related concepts
-                                   // if false and rec not set, just fetch concept record
-                cb,           // callback for when child updates (still use?)
-                role='main',  // main, mapsto, etc
-                inRelTo,      // parent ConceptInfo instance
-                depth=0,      // 0 for main, +1 below
+class ConceptAbstract {
+  constructor({ inRelTo, depth, cb, title,
+                relatedToFetch=['relatedConceptGroups','mapsto','mappedfrom',
+                                  'conceptAncestorGroups', 'conceptDescendantGroups'],
               } = {}) {
-    this._status = 'preloading';
-    this._validLookup = false;
-    this._role = role;
-    this._depth = depth;
-    this._amMain = inRelTo ? false : true;
     this._inRelTo = inRelTo;
-    this._fetchRelated = fetchRelated;
-    this._fetchedRelated = false;
-    this._relatedRecs = {};
+    this._depth = depth;
+    this._relatedToFetch = relatedToFetch;
+    this._cb = cb;
+    this._title = title;
     this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
     this.sendUpdate = this.sendUpdate.bind(this);
-    if (cb) this.cb = cb;
+  }
+  get(field, dflt) { // this is getting too complicated
+    if (typeof this[field] === 'function') return this[field]();
+    if (_.has(this, field)) return this[field];
+    if (_.has(this, ['_'+field])) return this['_'+field];
+    if (dflt === 'fail') throw new Error(`can't find ${field}`);
+    return dflt;
+  }
+  inRelTo() {
+    return this._inRelTo;
+  }
+  subscribe(cb) {
+    this.bsubj.subscribe(cb); // get rid of old ones!
+  }
+  done() {
+    console.log("not saving streams for unsubscribing! is that a problem?");
+    //this.stream.unsubscribe();
+    //this.bsubj.unsubscribe();
+  }
+  sendUpdate(source) {
+    //if (this.parentCi) this.parentCi.sendUpdate();
+    if (this.cb) 
+      this.cb('fromChild');
+    //else
+    this.bsubj.next(this);
+    //if (this._inRelTo) this._inRelTo.sendUpdate();
+  }
+}
+export class RelatedConceptsAbstract {
+  constructor(props) {
+    let { inRelTo,
+      } = props;
+    this._inRelTo = inRelTo;
+  }
+}
+export class ConceptSet extends ConceptAbstract {
+  constructor(props) {
+    super(props);
+    let { role='main',       // main, ?
+      } = props;
+    this._items = [];
+  }
+  items() {
+    return this._items;
+  }
+  depth() {
+    return this._depth;
+  }
+  loading() {
+    return this._status.match(/loading/);
+  }
+  loaded() {
+    return !this._status.match(/loading/) && this._status !== 'failed';
+  }
+  failed() {
+    return this._status === 'failed';
+  }
+  validConceptId() {
+    return this._validConceptId;
+  }
+  role() {
+    return this._role;
+  }
+  isRole(role) {
+    return this._role === role;
+  }
+}
+export class ConceptSetFromCode extends ConceptSet {
+  constructor(props) {
+    super(props);
+    let concept_code = this.concept_code = props.concept_code;
+    this._status = 'loading';
+    this.codeLookupStream = new AppState.ApiStream({ 
+      apiCall:'conceptRecordsFromCode', params:{concept_code,}});
+    this.codeLookupStream.subscribe((results,stream)=>{
+      if (!results.length) {
+        this._status = 'failed';
+      } else {
+        this._items = results.map(
+          rec => new ConceptInfo({  rec, 
+                                    depth: this.depth() + 1,
+                                    //cb:this.sendUpdate,
+                                    inRelTo: this,
+                                    role: 'inConceptSet',
+                                    relatedToFetch: this._relatedToFetch,
+                                }));
+        this.title = `Concept code ${concept_code} matches ${this._items.length} concepts`;
+        this._status = 'complete'; // partially complete
+        this.sendUpdate();
+        //return conceptSet;  //   ??? maybe not a good idea, or doesn't do anything...confused
+      }
+    });
+  }
+}
+export class ConceptSetFromText extends ConceptSet {
+}
+export class ConceptInfo extends ConceptAbstract {
+  //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
+  constructor(props) {
+    super(props);
+    let { concept_id, 
+          rec, // if creating from already (partially) fetched data
+          role='main',  // main, mapsto, etc
+      } = props;
+    this._validConceptId = false;
+    this._role = role;
+    this._amMain = this.inRelTo ? false : true;
+    this._fetchedRelated = false;
+    this._relatedRecs = {};
     if (rec) {
       this._crec = rec;
-      this.lookupField = 'concept_id';
-      this.lookupVal = this.get('concept_id');
-      this.params = {concept_id: this.lookupVal}; // apiParams
-      this._validLookup = true; // assume rec/_crec is always a valid concept
+      this._validConceptId = true; // assume rec/_crec is always a valid concept
+      this.concept_id = rec.concept_id;
+      this._status = 'loading';
     } else {
-      this.lookupField = lookupField;
-      this.params = params;
-      if (!_.has(params, lookupField)) throw new Error(`expected params[${lookupField}]`);
-      this.lookupVal = params[lookupField];
+      this.concept_id = concept_id;
+      this._status = 'preloading';
     }
-    this[this.lookupField] = this.lookupVal;
     this.fetchData();
   }
   fetchData() {
     // at some point allow specifying what specifically needs fetching 
     //  (beyond conceptRecord and related)
 
-    if (this._status !== 'preloading') return;
+    //if (this._status !== 'preloading') return;
     this._status = 'loading';
-    if (this.lookupField === 'concept_code') {
-      if (this._crec) {
-        throw new Error("that's weird");
-      }
-      let apiCall = 'conceptRecordsFromCode';
-      let codeLookupStream = new AppState.ApiStream({ apiCall, params:this.params});
-      codeLookupStream.subscribe((results,stream)=>{
-        if (!results.length) {
-          this._status = 'failed';
-        } else if (results.length === 1) {
-          this._crec = results[0];
-          this._validLookup = true;  // not sure....
-          this._status = 'gotCrec'; // partially complete
-          this.lookupField = 'concept_id';
-          this.lookupVal = this.get('concept_id');
-          this.params = {concept_id:this._crec.concept_id}; // apiParams
-          this.fetchRelated('codeLookup got crec'); //this._crec.concept_id;
-        } else {
-          let cis = results.map(
-            rec => new ConceptInfo({  rec, 
-                                      depth: this.depth() + 1,
-                                      //cb:this.sendUpdate,
-                                      //inRelTo: this,
-                                      role: 'inConceptSet',
-                                      fetchRelated: false,
-                                  }));
-          this._conceptSet = new ConceptSet(
-            { cis, params: this.params,
-              title: `Concept code ${this.lookupVal} matches ${cis.length} concepts`,
-            });
-          //this._validLookup = true;
-          this._status = 'complete'; // partially complete
-          this.sendUpdate();
-          //return conceptSet;  //   ??? maybe not a good idea, or doesn't do anything...confused
-        }
-      });
-      return;
-    } else { // lookup === concept_id
-      if (!this._fetchRelated) {
-        if (this._crec) {
-          this._status = 'complete';
-        } else {
-          let apiCall = 'conceptRecord';
-          let cidLookupStream = new AppState.ApiStream({ apiCall, params:this.params});
-          cidLookupStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-            if (_.isEmpty(results)) {
-              this._status = 'failed';
-            } else {
-              this._crec = results;
-              this._validLookup = true;
-              this._status = 'complete';
-            }
-          });
-        }
+    let conceptStream = new AppState.ApiStream({ apiCall:'conceptRecord', 
+                                                  params:{concept_id:this.concept_id}});
+    conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+      this._status = 'loading';
+      if (_.isEmpty(results)) {
+        this._status = 'failed';
       } else {
-        this.fetchRelated("concept lookup, don't know if got crec"); //this.lookupVal;
+        this._crec = results;
+        this._validConceptId = true;
       }
+      this._status = 'loading related';
+      this.fetchRelated();
       this.sendUpdate();
-      return;
-    }
-    throw new Error("not sure what's up");
-    //this._status = 'complete'; // getting here means not needing related and already having _crec
+    });
+    this.sendUpdate();
   }
-  fetchRelated(source) {
-    //console.log("in fetchRelated from", source, this._status, this._fetchRelated, this._fetchedRelated);
-    if (this._fetchedRelated) debugger;
-    if (this.depth > 3) console.error("too deep");
-    if (!this._fetchRelated) {
-      if (this._crec) {
-        this._status = 'complete';
-        this._validLookup = true; // should already be set?
+  fetchRelated() {
+    if (!this._relatedToFetch.length) {
+      this._status = 'complete';
+      this.sendUpdate();
+      return;
+    }
+    if (this.depth > 8) console.error("too deep");
+    if (!this._crec) debugger;
+    this.stream = new AppState.ApiStream({ apiCall: 'relatedConcepts', params:{concept_id:this.concept_id}});
+    this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+      if (_.isEmpty(results)) {
+        this._status = 'failed';
+        //throw new Error("impossible!");
       } else {
-        throw new Error("should this happen?");
+        this._relatedConcepts = results;
+        this._status = 'complete';
+        this._fetchedRelated = true;
       }
       this.sendUpdate();
-    } else { // supposed to fetch related
-      if (!this._crec) {
-        if (this.lookupField === 'concept_id') {
-          this.stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
-          this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-            if (_.isEmpty(results)) {
-              this._status = 'failed';
-            } else {
-              this._crec = results.conceptRecord;
-              this._ci = results;
-              this._validLookup = true;
-              this._status = 'complete';
-              this._fetchedRelated = true;
-              //console.log('fetchedRelated for ', this.get('concept_name'));
-            }
-            this.sendUpdate();
-          });
-        } else {
-          throw new Error("no crec yet");
-        }
-      } else { // have crec
-        // calling conceptInfo which will grab crec again... will ignore it i guess
-        this.stream = new AppState.ApiStream({ apiCall: 'conceptInfo', params:this.params});
-        this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-          if (_.isEmpty(results)) {
-            throw new Error("impossible!");
-          } else {
-            this._ci = results;
-            this._validLookup = true;
-            this._status = 'complete';
-            this._fetchedRelated = true;
-            //console.log('fetchedRelated for ', this.get('concept_name'));
-          }
-          this.sendUpdate();
-        });
-      }
-    }
+    });
     return this._status;
   }
   //processRelated() { }
   getRelatedRecs(rel, dflt) { // as ConceptInfo -- right?
-    //console.log(`trying to get ${rel} for ${this.get('concept_name')}: fetched: ${this._fetchedRelated}`);
-    //if (junkCtr++ > 40) debugger;
-    //console.log("getRelated count", junkCtr);
     if (!this._fetchedRelated) return dflt;
     if (this._relatedRecs[rel]) return this._relatedRecs[rel];
     let recs;
@@ -206,8 +205,6 @@ export default class ConceptInfo {
     if (_.has(this._crec, field)) return this._crec[field];
     if (typeof this[field] === 'function') return this[field]();
     if (this._ci && this._ci[field]) return this._ci[field];
-    if (field === this.lookupField && typeof this.lookupVal !== 'undefined') 
-      return this.lookupVal;
     if (_.has(this, ['_'+field])) return this['_'+field];
 
     if (this.isRole('conceptAncestors') && !field.match(/^a_/))
@@ -217,14 +214,6 @@ export default class ConceptInfo {
     if (dflt === 'fail') throw new Error(`can't find ${field}`);
     return dflt;
   }
-  want({lookupField, params, } = {}) {
-    if (this.lookupField === lookupField && this.lookupVal === params[lookupField]) {
-      return this;
-    }
-    this.done();
-    return new ConceptInfo({lookupField, params, depth: this.depth() + 1, });
-  }
-  // status methods -- combine?
   depth() {
     return this._depth;
   }
@@ -240,8 +229,8 @@ export default class ConceptInfo {
   failed() {
     return this._status === 'failed';
   }
-  validLookup() {
-    return this._validLookup;
+  validConceptId() {
+    return this._validConceptId;
   }
   role() {
     return this._role;
@@ -259,26 +248,16 @@ export default class ConceptInfo {
     if (this.loading()) {
       return [
         {title:'Status', className:'ci-status', value: 'Loading'},
-        this.selfInfoBit(this.lookupField),
+        this.selfInfoBit('concept_id'),
       ];
     }
     if (this.failed()) {
-      let lookupInfo = this.selfInfoBit(this.lookupField);
+      let lookupInfo = this.selfInfoBit('concept_id');
       return [
         {title:'Status', className:'ci-status', 
-          value: `No concepts matching 
-                    ${lookupInfo.title} ${lookupInfo.value}`},
+          value: `No concept id ${this.concept_id}`} 
       ];
     }
-    if (this.isConceptSet()) { // this is the main ConceptInfo, 
-      let codeInfo = this.selfInfoBit('concept_code');
-      return [
-        {title:'Status', className:'name', 
-          wholeRow: `${this.conceptSet().length} concepts matching 
-                    ${codeInfo.title} ${codeInfo.value}`},
-      ];
-    }
-    // everything else...is a regular concept? no, but for now...
     if (context === 'header')
       return [ {title: this.scTitle(), value: this.get('concept_name'), className: 'name', 
                 //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
@@ -413,22 +392,6 @@ export default class ConceptInfo {
               vocabulary_id: 'vocabulary-id',
         })[field] || `no-class-for-${field}`;
   }
-  subscribe(cb) {
-    this.bsubj.subscribe(cb); // get rid of old ones!
-  }
-  done() {
-    console.log("not saving streams for unsubscribing! is that a problem?");
-    //this.stream.unsubscribe();
-    //this.bsubj.unsubscribe();
-  }
-  sendUpdate(source) {
-    //if (this.parentCi) this.parentCi.sendUpdate();
-    if (this.cb) 
-      this.cb('fromChild');
-    //else
-    this.bsubj.next(this);
-    //if (this._inRelTo) this._inRelTo.sendUpdate();
-  }
   cdmCounts() {
     return this.get('rcs',[]).filter(d=>d.rc);
   }
@@ -443,4 +406,3 @@ export default class ConceptInfo {
       return crec.tbl+':'+crec.col;
   }
 }
-

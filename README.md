@@ -12,9 +12,11 @@ or `npm run build`
 
 
   - Priorities:
+    - put record counts back
     - text search
     - concept set (source) --> report of concept gain/loss in mapping to standard
     - see hierarchical relationships not in the concept_ancestor table
+    - fix where drill content shows up
 
 
 

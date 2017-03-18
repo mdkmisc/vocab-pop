@@ -36,7 +36,7 @@ var $ = require('jquery');
 import _ from '../supergroup'; // in global space anyway...
 import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
-import ConceptInfo from '../ConceptInfo';
+import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../ConceptInfo';
 import {AgTable} from './TableStuff';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
@@ -115,6 +115,9 @@ class ConceptDesc extends Component {
     }
   }
   conceptInfoUpdate(ci) {
+    this.forceUpdate();
+    return;
+    throw new Error("what's this?");
     if (ci !== this.props.conceptInfo) throw new Error("didn't expect that");
     //console.log('got update from', ci.get('concept_name','no name yet'), ci.role());
     if (ci.isConceptSet()) {
@@ -122,7 +125,6 @@ class ConceptDesc extends Component {
       this.setState({conceptSet: ci});
       return;
     }
-    this.forceUpdate();
   }
   componentDidMount() {
     this.props.conceptInfo.subscribe(this.conceptInfoUpdate);
@@ -132,7 +134,7 @@ class ConceptDesc extends Component {
     let ci = this.props.conceptInfo;
     if (ci.get('depth') > 9) return null; //throw new Error('concept too deep');
     let related = '';
-    if (ci.validLookup()) {
+    if (ci.validConceptId()) {
       let concept_id = ci.get('concept_id', 'fail');
       related = <div>
                   <ButtonGroup>
@@ -242,11 +244,18 @@ class RelatedConcept extends Component { // stop using?
   }
 }
 class ConceptList extends Component {
+  componentDidMount() {
+    let cl = this.props.conceptList;
+    cl.subscribe(()=>{
+      console.log("concept list got update", cl);
+      this.forceUpdate();
+    });
+  }
   render() {
     let {className} = this.props;
     let cl = this.props.conceptList;
     return  <div className={"concept-list " + className }>
-              <h4>{cl.title()}</h4>
+              <h4>{cl.get('title')}</h4>
               {cl.items().map(
                 ci=> <ConceptDesc
                         key={ci.get('concept_id')} conceptInfo={ci} />)}
@@ -441,10 +450,11 @@ export class ConceptViewPage extends Component {
   constructor(props) {
     super(props);
     //this.transformResults = d=>new ConceptInfo(d);
-    let concept_id = AppState.getState('conceptInfoParams.concept_id') || '';
-    let concept_code = AppState.getState('conceptInfoParams.concept_code') || '';
-    this.state = {concept_id, concept_code};
-    this.handleChange = this.handleChange.bind(this);
+    let concept_id = AppState.getState('concept_id') || '';
+    let concept_code = AppState.getState('concept_code') || '';
+    let concept_text = AppState.getState('concept_text') || '';
+    this.state = {concept_id, concept_code, concept_text,};
+    //this.handleChange = this.handleChange.bind(this);
     this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
     //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
@@ -462,29 +472,37 @@ export class ConceptViewPage extends Component {
   }
   */
   componentDidMount() {
-    let {concept_id, concept_code} = this.state;
+    let {concept_id, concept_code, concept_text} = this.state;
     AppState.subscribeState(null,
                             c=>{
+                              /*
                               //console.log('appChange', c);
                               if (c.conceptInfoUserChange) {
                                 AppState.deleteState('conceptInfoUserChange');
                                 if (c.conceptInfoUserChange.match(/concept_id/)) {
                                   AppState.deleteState('conceptInfoParams.concept_code');
-                                  this.getConceptInfo(c.conceptInfoParams, 'user', 'concept_id');
+                                  AppState.deleteState('conceptInfoParams.concept_text');
+                                  this.conceptIdFetch(c.conceptInfoParams, 'user', 'concept_id');
                                 } else if (c.conceptInfoUserChange.match(/concept_code/)) {
                                   AppState.deleteState('conceptInfoParams.concept_id');
-                                  this.getConceptInfo(c.conceptInfoParams, 'user', 'concept_code');
+                                  AppState.deleteState('conceptInfoParams.concept_text');
+                                  this.conceptCodeFetch(c.conceptInfoParams, 'user', 'concept_code');
+                                } else if (c.conceptInfoUserChange.match(/concept_text/)) {
+                                  AppState.deleteState('conceptInfoParams.concept_id');
+                                  AppState.deleteState('conceptInfoParams.concept_code');
+                                  this.conceptTextFetch(c.conceptInfoParams, 'user', 'concept_code');
                                 }
                               }
                               //this.setState({change:'appState',appStateChange:c}));
+                              */
                             });
     if (concept_id !== '') {
-      this.getConceptInfo({concept_id}, 'init', 'concept_id');
+      this.conceptIdFetch(concept_id);
     } else if (concept_code !== '') {
-      this.getConceptInfo({concept_code}, 'init', 'concept_code');
+      this.conceptCodeFetch(concept_code);
+    } else if (concept_text !== '') {
+      this.conceptTextFetch(concept_text);
     }
-    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
-    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
   }
   conceptInfoUpdate(ci) {
     //throw new Error("updates shouldn't come here anymore. getting them in ConceptDesc");
@@ -493,7 +511,7 @@ export class ConceptViewPage extends Component {
       this.setState({conceptSet: ci});
       return;
     }
-    if (ci.validLookup()) {
+    if (ci.validConceptId()) {
       this.setState({ concept_id: ci.concept_id,
                       concept_code: ci.concept_code});
     } else {
@@ -504,26 +522,21 @@ export class ConceptViewPage extends Component {
     const {conceptInfo} = this.state;
     conceptInfo && conceptInfo.done();
   }
-  getConceptInfo(params, source, lookupField) {
-    //console.log('getConceptInfo', loadChange, params);
-    let {concept_id, concept_code, conceptInfo, } = this.state;
-    //this.unsub();
-    let newState = Object.assign( {}, this.state, 
-        { concept_id:'', concept_code:'', },
-          params, 
-          {change: `${source} triggered getConceptInfo:${lookupField}:${params[lookupField]}`});
-
-    conceptInfo = conceptInfo 
-          ? conceptInfo.want({lookupField, params})
-          : new ConceptInfo({lookupField, params});
-
+  conceptIdFetch(concept_id) {
+    if (this.state.conceptInfo && this.state.conceptInfo.get('concept_id') === concept_id) return;
+    let conceptInfo = new ConceptInfo({concept_id});
     conceptInfo.subscribe(this.conceptInfoUpdate);
-    newState.conceptInfo = conceptInfo;
-    if (conceptInfo.validLookup()) {
-      newState.concept_id = conceptInfo.concept_id;
-      newState.concept_code = conceptInfo.concept_code;
-    }
-    this.setState(newState);
+    this.setState({concept_id, conceptInfo});
+  }
+  conceptCodeFetch(concept_code) {
+    let conceptSet = new ConceptSetFromCode({concept_code});
+    conceptSet.subscribe(this.conceptSetUpdate);
+    this.setState({concept_code, conceptSet});
+  }
+  conceptTextFetch(concept_text) {
+    let conceptSet = new ConceptSetFromText({concept_text});
+    conceptSet.subscribe(this.conceptSetUpdate);
+    this.setState({concept_text, conceptSet});
   }
   componentWillUnmount() {
     this.unsub();
@@ -540,7 +553,7 @@ export class ConceptViewPage extends Component {
         return 'error';
       } else if (conceptInfo.concept_id !== concept_id) {
         throw new Error("not sure what's up");
-      } else if (conceptInfo.validLookup()) {
+      } else if (conceptInfo.validConceptId()) {
         return 'success';
       }
     } else if (field === 'concept_code') {
@@ -548,7 +561,7 @@ export class ConceptViewPage extends Component {
         return null;
       } else if (!conceptInfo || conceptInfo.failed()) {
         return 'error';
-      } else if (conceptInfo.validLookup()) {
+      } else if (conceptInfo.validConceptId()) {
         return 'success';
       } else if (conceptInfo.isConceptSet()) {
         return 'warning';
@@ -557,6 +570,7 @@ export class ConceptViewPage extends Component {
     //else if (concept_id === '') return 'warning';
     return 'error';
   }
+  /*
   handleChange(e) {
     e.preventDefault();
     let conceptInfoParams = {};
@@ -584,57 +598,115 @@ export class ConceptViewPage extends Component {
     if (!_.isEqual(AppState.getState('conceptInfoParams'), conceptInfoParams))
       AppState.saveState({conceptInfoParams, conceptInfoUserChange:change});
   }
+  */
   render() {
     const {w,h} = this.props; // from ComponentWrapper
-    let {concept_id, concept_code, conceptInfo, change} = this.state;
-    concept_id = conceptInfo && conceptInfo.get('concept_id', '') || '';
-    concept_code = conceptInfo && conceptInfo.get('concept_code') || '';
+    let {concept_id, concept_code, concept_text, conceptInfo, conceptSet, change} = this.state;
+    //concept_id = conceptInfo && conceptInfo.get('concept_id', '') || '';
+    //concept_code = conceptInfo && conceptInfo.get('concept_code') || '';
     //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
     let cv = 'No concept chosen';
     // do I really need a wrapper?  ... switching to state to pass data down
-    if (!conceptInfo) {
-
-    } else if (conceptInfo.isConceptSet()) {
+    if (conceptSet) {
       cv =  <div className="concept-set-container" >
-              <ConceptList conceptList={conceptInfo.conceptSet()} />
+              <ConceptList conceptList={conceptSet} />
             </div>
-    } else if (conceptInfo.loaded()) {
+    } else if (conceptInfo) {
       cv =  <div className="concept-view-container" >
               <ConceptDesc conceptInfo={conceptInfo} />
             </div>
     }
+    const conceptIdValidation = 
+      () => (this.state.valid_concept_id === true && 'success') ||
+            (this.state.valid_concept_id === 'loading' && 'warning') ||
+            (this.state.valid_concept_id === 'false' ? 'error' : null );
+    /*
+    const conceptCodeValidation = 
+      () => (this.state.conceptSet && this.state.conceptSet.length && 'success') ||
+            (this.state.valid_concept_id === 'loading' && 'warning') ||
+            'error';
+    */
     return <div className="flex-box"> 
+
             <Form horizontal className="flex-fixed-height-40">
               <FormGroup controlId="concept_id_input"
-                      validationState={this.getValidationState('concept_id')} >
+                      validationState={conceptIdValidation()} >
                 <Col componentClass={ControlLabel}>Concept Id</Col>
                 <Col xs={4}>
-                  <FormControl type="number" step="1"
-                              value={concept_id}
-                              placeholder="Concept Id"
-                    //inputRef={d=>this.cidInput=d}
-                    onChange={this.handleChange}
+                  <FormControl type="number" step="1" value={concept_id} placeholder="Concept Id"
+                    onChange={ e => {
+                              e.preventDefault();
+                              let concept_id = e.target.value;
+                              concept_id = parseInt(concept_id,10);
+                              if (!_.isNumber(concept_id)) {
+                                this.setState({concept_id, valid_concept_id:false});
+                                return;
+                              }
+                              if (conceptInfo && conceptInfo.concept_id === concept_id) return;
+                              AppState.saveState({conceptInfoUserChange:'user:concept_id',
+                                            concept_id, });
+                              this.setState({concept_id,
+                                            valid_concept_id: 'loading',
+                                            conceptInfo: this.conceptIdFetch(concept_id)});
+                      }}
                   />
                   <FormControl.Feedback />
-                  <HelpBlock>{this.getValidationState('concept_id') === 'error'
-                                && 'Invalid concept id'}</HelpBlock>
+                  <HelpBlock>{(this.state.valid_concept_id === 'loading' && 'Loading...') ||
+                              (this.state.valid_concept_id === false 
+                                  && 'Invalid concept id') || ''}</HelpBlock>
                 </Col>
               </FormGroup>
+
               <FormGroup controlId="concept_code_input"
-                      validationState={this.getValidationState('concept_code')} >
+                      //validationState={conceptCodeValidation()} 
+                >
                 <Col componentClass={ControlLabel}>Concept Code</Col>
                 <Col xs={4}>
-                  <FormControl  type="string" step="1"
-                                value={concept_code}
-                                placeholder="Concept Code"
-                                onChange={this.handleChange}
+                  <FormControl type="string" value={concept_code} placeholder="Concept Code"
+                    onChange={
+                      e => {
+                              e.preventDefault();
+                              let concept_code = e.target.value;
+                              if (conceptInfo && conceptInfo.concept_code === concept_code) return;
+                              AppState.saveState({conceptInfoUserChange:'user:concept_code', concept_code, });
+                              this.setState({concept_code,
+                                            valid_concept_code: 'loading',
+                                            conceptSet: this.conceptCodeFetch(concept_code)});
+                      }}
                   />
                   <FormControl.Feedback />
-                  <HelpBlock>{this.getValidationState('concept_code') === 'error'
-                                && 'Invalid concept Code'}</HelpBlock>
+                  {/*<HelpBlock>{(this.state.valid_concept_code === 'loading' && 'Loading...') ||
+                              (this.state.valid_concept_code === false 
+                                  && 'Invalid concept id') || ''}</HelpBlock> */}
                 </Col>
               </FormGroup>
+
+              <FormGroup controlId="concept_text_input"
+                      //validationState={conceptTextValidation()} 
+                >
+                <Col componentClass={ControlLabel}>Concept Text</Col>
+                <Col xs={4}>
+                  <FormControl type="string" value={concept_text} placeholder="Concept Text"
+                    onChange={
+                      e => {
+                              e.preventDefault();
+                              let concept_text = e.target.value;
+                              if (conceptInfo && conceptInfo.concept_text === concept_text) return;
+                              AppState.saveState({conceptInfoUserChange:'user:concept_text', concept_text, });
+                              this.setState({concept_text,
+                                            valid_concept_text: 'loading',
+                                            conceptSet: this.conceptTextFetch(concept_text)});
+                      }}
+                  />
+                  <FormControl.Feedback />
+                  {/*<HelpBlock>{(this.state.valid_concept_text === 'loading' && 'Loading...') ||
+                              (this.state.valid_concept_text === false 
+                                  && 'Invalid concept id') || ''}</HelpBlock> */}
+                </Col>
+              </FormGroup>
+
+
             </Form>
             <Row className="flex-remaining-height">
               <Col xs={10} xsOffset={0} >
