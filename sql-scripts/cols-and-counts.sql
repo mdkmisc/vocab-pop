@@ -11,7 +11,7 @@
  cdm2.observation       | observation       | observation_source_concept_id | source
  cdm2.observation       | observation       | observation_type_concept_id   | type
 */
-create or replace view :results.concept_cols as
+create or replace view :results.cols_with_concept_ids as
   with cols as (
     select (table_schema||'.'||table_name)::regclass as tbl, 
               table_name,
@@ -61,6 +61,7 @@ create or replace view :results.concept_cols as
             end as column_type
   from cols;
 
+comment on view :results.cols_with_concept_ids is 'List of all CDM tables/columns with concept_ids, and a classification of what kind of column it is. Code in https://github.com/Sigfried/vocab-pop/blob/master/sql-scripts/cols-and-counts.sql';
 /* the following table, function, query are used to generate record counts
     for each concept_id for each column it appears in:
 
@@ -144,7 +145,7 @@ select :results.store_concept_id_counts(
           column_type,
           current_setting('my.vars.results')::text target_schema, 
           'concept_id_occurrence'::text target_table
-    from :results.concept_cols cc) x;
+    from :results.cols_with_concept_ids cc) x;
 alter table :results.concept_id_occurrence add primary key (table_name, column_name, concept_id);
 create index cio_idx1 on :results.concept_id_occurrence (concept_id);
 

@@ -1,4 +1,7 @@
 
+
+
+
 -- not sure how much faster this will perform than a view, might not be worth it
         -- does seem to make a big difference i think
 --drop table if exists :results.ancestors;
@@ -25,6 +28,16 @@ create table :results.ancestors as
 create index anc1idx on :results.ancestors (a_concept_id);
 create index anc2idx on :results.ancestors (d_concept_id);
 
+create or replace view :results.anc as
+  select d_concept_id base_concept_id,
+         a_concept_id concept_id,
+         a_domain_id as domain_id,
+         a_standard_concept as standard_concept,
+         a_vocabulary_id as vocabulary_id,
+         a_concept_class_id as concept_class_id,
+         a_concept_name as concept_name,
+         a_concept_code as concept_code
+  from :results.ancestors;
 
 /* 
 NOT USING ANYMORE

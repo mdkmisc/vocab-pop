@@ -1,3 +1,11 @@
+
+create or replace function d(objname text) returns setof text
+  language sql
+as
+$func$
+  SELECT obj_description(objname::regclass::oid,'pg_class');
+$func$;
+
 CREATE OR REPLACE FUNCTION :results.array_unique(arr anyarray)
  RETURNS anyarray
  LANGUAGE sql

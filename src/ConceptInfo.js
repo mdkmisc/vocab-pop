@@ -5,8 +5,9 @@ import React, { Component } from 'react';
 
 class ConceptAbstract {
   constructor({ inRelTo, depth, cb, title,
-                relatedToFetch=['relatedConceptGroups','mapsto','mappedfrom',
-                                  'conceptAncestorGroups', 'conceptDescendantGroups'],
+                relatedToFetch=['concept_all',
+                                  //'mapsto','mappedfrom', 'conceptAncestorGroups', 'conceptDescendantGroups'
+                                ],
               } = {}) {
     this._inRelTo = inRelTo;
     this._depth = depth;
@@ -141,7 +142,7 @@ export class ConceptInfo extends ConceptAbstract {
 
     //if (this._status !== 'preloading') return;
     this._status = 'loading';
-    let conceptStream = new AppState.ApiStream({ apiCall:'conceptRecord', 
+    let conceptStream = new AppState.ApiStream({ apiCall:'concept_record', 
                                                   params:{concept_id:this.concept_id}});
     conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       this._status = 'loading';
@@ -165,7 +166,7 @@ export class ConceptInfo extends ConceptAbstract {
     }
     if (this.depth > 8) console.error("too deep");
     if (!this._crec) debugger;
-    this.stream = new AppState.ApiStream({ apiCall: 'relatedConcepts', params:{concept_id:this.concept_id}});
+    this.stream = new AppState.ApiStream({ apiCall: 'concept_all', params:{concept_id:this.concept_id}});
     this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       if (_.isEmpty(results)) {
         this._status = 'failed';
@@ -285,6 +286,7 @@ export class ConceptInfo extends ConceptAbstract {
                     rec=>!_.some(['mapsto','mappedfrom'],
                                 rel => rec.relationship_id === this.fieldTitle(rel)))
     let cgcnt = _.sum(cgs.map(d=>d.cc));
+    /*
     let MAX_TO_SHOW = 4;
     if (cgcnt <= MAX_TO_SHOW) {
       let relatedRecs = this.getRelatedRecs('relatedConcepts',[]);
@@ -309,6 +311,7 @@ export class ConceptInfo extends ConceptAbstract {
                                   `,
                         data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},})));
     }
+    */
     return bits;
     /*
     let rcc = this.get('relatedConceptCount');
