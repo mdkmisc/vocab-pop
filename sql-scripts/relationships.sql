@@ -144,7 +144,7 @@ create table :results.relcnts as
                           related_concept_id,
                           related_cgid
                 ) as _
-              )) as _relcnts
+              )) as relcnts
       from related_concept rc --where rc.concept_id in (8504, 8505, 44631062)
       group by 1;
 alter table :results.relcnts add primary key (concept_id);
@@ -166,10 +166,7 @@ create table :results.cdmcnts as
                     ) as _
                   ))
                   else to_json(ARRAY[]::json[])
-                end as cdmcnts,
-                sum(cg.rc) cgrc,
-                sum(cg.src) cgsrc,
-                sum(cg.crc) cgcrc
+                end as cdmcnts
         from results2.record_counts rc
         join results2.concept_group cg
            on   rc.domain_id = cg.domain_id and
@@ -182,51 +179,121 @@ alter table :results.cdmcnts add primary key (concept_id);
 
 drop table if exists :results.concept_cnts cascade;
 create table :results.concept_cnts as
-  select  relcnts.*, 
-          cdmcnts.rc,
-          cdmcnts.src,
-          cdmcnts.crc,
-          cdmcnts.cdmcnts
-  from relcnts
-  left join cdmcnts -- shouldn't need left
-    on relcnts.concept_id = cdmcnts.concept_id
+  select  cdmcnts.*, 
+          relcnts.relcids,
+          relcnts.relcgids,
+          relcnts.relcnts
+  from cdmcnts -- shouldn't need left
+  left join relcnts
+    on cdmcnts.concept_id = relcnts.concept_id
   ;
 alter table :results.concept_cnts add primary key (concept_id);
 
+/* counts of related concepts and related concept groups
+    for concept groups */
+drop table if exists :results.grelcnts cascade;
+create table :results.grelcnts as
+with cnts as (
+      select  rc.cgid,
+              rc.relationship,
+              rc.source,
+              rc.da,
+              rc.ih,
+              min(rc.minlev) minlev,
+              max(rc.maxlev) maxlev,
+              count(distinct related_concept_id) relcids,
+              count(distinct related_cgid) relcgids
+      from related_concept rc
+      /*
+      where rc.concept_id in (8504, 8505, 44631062)
+       */
+      group by 1,2,3,4,5
+    )
+    select  cgid,
+            sum(relcids) relcids,
+            sum(relcgids) relgcids,
+            json_agg((
+              select row_to_json(_)
+              from (
+                  select  distinct
+                          cnts.relationship,
+                          cnts.source,
+                          cnts.da,
+                          cnts.ih,
+                          cnts.minlev,
+                          cnts.maxlev,
+                          relcids,
+                          relcgids
+              ) as _
+            )) as relcnts
+    from cnts
+    group by 1
+;
+alter table :results.grelcnts add primary key (cgid);
+
+/* counts of cdm records for concept groups */
+drop table if exists :results.gcdmcnts cascade;
+create table :results.gcdmcnts as
+        select  cgid,
+                sum(rc.rc) rc,
+                sum(rc.src) src,
+                sum(rc.crc) crc,
+                case when sum(rc.rc) > 0 or sum(rc.src) > 0 or sum(rc.crc) > 0 then
+                  json_agg((
+                    select row_to_json(_)
+                    from (
+                      select  rc.tbl, rc.col, rc.coltype,
+                              rc.rc, rc.src, rc.crc
+                      where rc.rc > 0 or rc.src > 0 or rc.crc > 0
+                    ) as _
+                  ))
+                  else to_json(ARRAY[]::json[])
+                end as cdmcnts
+        from results2.record_counts rc
+        join results2.concept_group cg
+           on   rc.domain_id = cg.domain_id and
+                rc.standard_concept = cg.standard_concept and
+                rc.vocabulary_id = cg.vocabulary_id and
+                rc.concept_class_id = cg.concept_class_id
+        --where rc.concept_id in (8504, 8505, 44631062, 44514581)
+group by 1;
+alter table :results.gcdmcnts add primary key (cgid);
 
 
-select * from record_counts limit 2;
-select * from concept_group limit 2;
-select * from related_concept limit 2;
-select * from relcnts limit 2;
-select * from cdmcnts limit 2;
-select * from concept_cnts limit 2;
+drop table if exists :results.cgcnts cascade;
+create table :results.gcnts as
+  select  gcdmcnts.*, 
+          grelcnts.relcids,
+          grelcnts.relgcids,
+          grelcnts.relcnts
+  from gcdmcnts
+  left join grelcnts
+    on gcdmcnts.cgid = grelcnts.cgid
+  ;
+alter table :results.gcnts add primary key (cgid);
 
-
-
--- maybe skip those two and combine them in:
 create or replace view concept_info as
+  select
+          cc.concept_id,
+          cc.cgid,
+          rc.concept_code,
+          rc.concept_name,
+          rc.domain_id,
+          rc.standard_concept,
+          rc.vocabulary_id,
+          rc.concept_class_id,
+          cc.cdmcnts,
+          cc.relcids,
+          cc.relcgids,
+          cc.relcnts,
+          cc.rc,
+          cc.src,
+          cc.crc
+  from concept_cnts cc
+  join record_counts rc on cc.concept_id = rc.concept_id
+  ;
 
--- deal with concept groups
-
-select cgid, related_cgid, relationship, 
-       count(distinct concept_id) cids, 
-       count(distinct related_concept_id) relcids 
-from related_concept group by 1,2,3 limit 5;
-/*
-+------+--------------+--------------+------+---------+
-| cgid | related_cgid | relationship | cids | relcids |
-+------+--------------+--------------+------+---------+
-|    1 |            4 | HOI - MedDRA |    8 |       6 |
-|    1 |            5 | HOI - MedDRA |   50 |     241 |
-|    1 |            8 | ancestor     |   43 |    4935 |
-|    1 |            8 | HOI - SNOMED |   43 |     485 |
-|    1 |           41 | HOI - SNOMED |    2 |       8 |
-+------+--------------+--------------+------+---------+
-*/
-
-
-create or replace view related_concept_all as
+create or replace view related_concept_plus as
   select
           rc.concept_id,
           rc.cgid,
@@ -264,30 +331,20 @@ create or replace view related_concept_all as
   join concept_record cr on rc.concept_id = cr.concept_id
   join concept_record crr on rc.related_concept_id = crr.concept_id
   ;
-  
+create index relcntidx on related_concept (cgid, relationship, source, da, ih, minlev, maxlev);
 
-/*
-create table :results.relatedConcepts as
-select          cr.concept_id_1 base_concept_id,
-                r.defines_ancestry,
-                r.is_hierarchical,
-                r.relationship_id,
-                r.relationship_name,
-                r.reverse_relationship_id,
 
-                c.*
+--select * from record_counts where concept_id in (8504, 8505, 44631062, 0);
+select * from concept_group where cgid in (405, 115, 200);
+select * from related_concept where concept_id in (8504, 8505, 44631062, 0);
 
-                from :cdm.concept_relationship cr
-                join :cdm.relationship r
-                      on cr.relationship_id=r.relationship_id
-                join :results.concept_record c
-                      on cr.concept_id_2 = c.concept_id
+--select * from relcnts where concept_id in (8504, 8505, 44631062, 0);
+--select * from cdmcnts where concept_id in (8504, 8505, 44631062, 0);
+select * from concept_cnts where concept_id in (8504, 8505, 44631062);
 
-                where cr.invalid_reason is null
-                  and cr.concept_id_2 != cr.concept_id_1
+--select * from grelcnts limit 2;
+--select * from gcdmcnts limit 2;
+select * from gcnts limit 2;
+select * from concept_info limit 2;
+select * from related_concept_plus where concept_id in (8504, 8505, 44631062, 0);
 
-                order by relationship_name, domain_id, standard_concept,
-                          vocabulary_id, concept_class_id, concept_name
-                          ;
-create index ridx on :results.conceptRelationship (base_concept_id);
-*/
