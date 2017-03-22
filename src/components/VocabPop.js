@@ -86,15 +86,17 @@ class ConceptDesc extends Component {
     this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
-    let data = target && target.props && 
-                (target.props.data || 
-                 (target.props.bit && target.props.bit.data));
-    if (e.type === 'mouseleave') {
+    if (e.type === 'mouseleave' || !target) {
       this.setState({ drill: undefined, above: undefined, below: undefined, });
       return;
     }
-    if (data) {
-      const {drill={}, drillType, } = data;
+    let ci = _.get(target, 'props.conceptInfo');
+    let bit = _.get(target, 'props.bit');
+    let cdProps = _.get(target, 'props.cdProps');
+    let data = _.get(target, 'props.data') || _.get(target, 'props.bit.data') ||{};
+    let {drill={}, drillType, } = data;
+
+    if (drill && drillType) {
       const {ci, countRec, } = drill;
       let below, above;
       switch (drillType) {
@@ -164,6 +166,7 @@ class ConceptDesc extends Component {
     let mainCols = 12;
     if (mapstoRecs.length) {
       mainCols = 6;
+      debugger;
       mapsto =  <Col xs={6}>
                   <RelatedConcept recs={mapstoRecs} relationship='mapsto' conceptInfo={ci} />
                 </Col>
@@ -285,17 +288,16 @@ class InfoBit extends Component {
                 </Row>
     }
     if (linkParams) {
-      return  <Nav>
-                <NavItem onClick={
-                    ()=>AppState.saveStateN({
-                      change:{
-                        conceptInfoParams: linkParams,
-                        conceptInfoUserChange:'user:concept_id'
-                      },
-                      deepMerge: false, }) } >
-                  {content}
-                </NavItem>
-              </Nav>
+      return  <ListenerTargetWrapper wrapperTag="div" wrappedComponent={this} 
+                  className="click-link strong" >
+                <Nav>
+                  <NavItem 
+                  //onClick={ ()=>AppState.saveStateN({ change:{ ...linkParams, conceptInfoUserChange:'user:concept_id' }, deepMerge: false, }) } 
+                  >
+                    {content}
+                  </NavItem>
+                </Nav>
+              </ListenerTargetWrapper>
     } else if (data) { // this bit wants to send data on some mouse event
                          // can't do both links and events for now
       return  <ListenerTargetWrapper wrapperTag="div" wrappedComponent={this} 
@@ -456,9 +458,44 @@ export class ConceptViewPage extends Component {
     this.state = {concept_id, concept_code, concept_text,};
     //this.handleChange = this.handleChange.bind(this);
     this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
+    this.conceptSetUpdate = this.conceptSetUpdate.bind(this);
+    this.conceptIdFetch = this.conceptIdFetch.bind(this);
+    this.conceptCodeFetch = this.conceptCodeFetch.bind(this);
+    this.eventHandler = this._eventHandler.bind(this);
     //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
     //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
     //this.wrapperUpdate = this._wrapperUpdate.bind(this);
+  }
+  _eventHandler({e, target, targetEl, listenerWrapper}) {
+    if (e.type === 'click') {
+      let concept_id = _.get(target, 'props.bit.data.concept_id');
+      if (typeof concept_id !== 'undefined') {
+        this.conceptIdFetch(concept_id);
+        return;
+      }
+    }
+    /*
+    if (data) {
+      const {drill={}, drillType, } = data;
+      const {ci, countRec, } = drill;
+      let below, above;
+      switch (drillType) {
+        case "rc":
+        case "src":
+          below = <CDMRecs {...{ci, countRec}} />;
+          break;
+        case "conceptAncestors":
+          above = <RelatedConcept relationship='conceptAncestors' 
+                    conceptInfo={ci} />
+          break;
+        default:
+          below = <RelatedConcept relationship={drillType}
+                    conceptInfo={ci} />
+      }
+      //console.log('drill', drillType, drill, countRec);
+      this.setState({ drill: data, above, below, });
+    }
+    */
   }
   /*
   _wrapperUpdate(wrapperSelf) {
@@ -505,35 +542,60 @@ export class ConceptViewPage extends Component {
     }
   }
   conceptInfoUpdate(ci) {
-    //throw new Error("updates shouldn't come here anymore. getting them in ConceptDesc");
-    //console.log('got update IN CONCEPTVIEWPAGE from', ci.get('concept_name','no name yet'), ci.role());
-    if (ci.isConceptSet()) {
-      this.setState({conceptSet: ci});
-      return;
-    }
-    if (ci.validConceptId()) {
-      this.setState({ concept_id: ci.concept_id,
-                      concept_code: ci.concept_code});
-    } else {
-      this.forceUpdate();
-    }
+    console.log(this);
+    //if (this.state.conceptInfo === ci) return;
+    //this.forceUpdate();
+    this.setState({conceptInfo:ci});
+  }
+  conceptSetUpdate(cs) {
+    console.log(this);
+    //if (this.state.conceptSet === cs) return;
+    //this.forceUpdate();
+    this.setState({conceptSet:cs},
+                 function(){
+                   console.log("setting conceptSet from conceptSetUpdate", this.state);
+                 });
   }
   unsub() {
     const {conceptInfo} = this.state;
     conceptInfo && conceptInfo.done();
   }
   conceptIdFetch(concept_id) {
-    if (this.state.conceptInfo && this.state.conceptInfo.get('concept_id') === concept_id) return;
-    let conceptInfo = new ConceptInfo({concept_id});
-    conceptInfo.subscribe(this.conceptInfoUpdate);
-    this.setState({concept_id, conceptInfo});
+    let {conceptInfo} = this.state;
+    let newState = {  //conceptInfoUserChange:'user:concept_id', 
+                      concept_id, concept_code:'', conceptSet:undefined,}
+    if (!conceptInfo || conceptInfo.concept_id !== concept_id) {
+      conceptInfo && conceptInfo.done();
+      conceptInfo = new ConceptInfo({concept_id});
+      conceptInfo.subscribe(this.conceptInfoUpdate);
+    }
+    let appState = AppState.getState();
+    let newAppState = _.merge({}, appState, newState);
+    if (!_.isEqual(appState, newAppState)) {
+      AppState.saveState(newState);
+    }
+    newState.conceptInfo = conceptInfo;
+    this.setState(newState);
   }
   conceptCodeFetch(concept_code) {
-    let conceptSet = new ConceptSetFromCode({concept_code});
-    conceptSet.subscribe(this.conceptSetUpdate);
-    this.setState({concept_code, conceptSet});
+    let {conceptSet} = this.state;
+    let newState = {  //conceptSetUserChange:'user:concept_code', 
+                      concept_code, concept_id:'', conceptInfo:undefined,}
+    if (!conceptSet || conceptSet.concept_code !== concept_code) {
+      conceptSet && conceptSet.done();
+      conceptSet = new ConceptSetFromCode({concept_code});
+      conceptSet.subscribe(this.conceptSetUpdate);
+    }
+    let appState = AppState.getState();
+    let newAppState = _.merge({}, appState, newState);
+    if (!_.isEqual(appState, newAppState)) {
+      AppState.saveState(newState);
+    }
+    newState.conceptSet = conceptSet;
+    this.setState(newState);
   }
   conceptTextFetch(concept_text) {
+    console.error("not handling text input yet");
     let conceptSet = new ConceptSetFromText({concept_text});
     conceptSet.subscribe(this.conceptSetUpdate);
     this.setState({concept_text, conceptSet});
@@ -543,6 +605,7 @@ export class ConceptViewPage extends Component {
     //console.log('ConceptViewPage unmounting');
   }
   componentDidUpdate(prevProps, prevState) {
+    updateReason(prevProps, prevState, this.props, this.state, this);
   }
   getValidationState(field) {
     const {concept_id, concept_code, conceptInfo, } = this.state;
@@ -627,92 +690,92 @@ export class ConceptViewPage extends Component {
             (this.state.valid_concept_id === 'loading' && 'warning') ||
             'error';
     */
+    return  <ListenerWrapper wrapperTag="div" className="flex=box"
+                  eventsToHandle={['onClick']}
+                  eventHandlers={[this.eventHandler]} >
+              <Form horizontal className="flex-fixed-height-40">
+                <FormGroup controlId="concept_id_input"
+                        validationState={conceptIdValidation()} >
+                  <Col componentClass={ControlLabel}>Concept Id</Col>
+                  <Col xs={4}>
+                    <FormControl type="number" step="1" value={concept_id} placeholder="Concept Id"
+                      onChange={ e => {
+                                e.preventDefault();
+                                let concept_id = e.target.value;
+                                concept_id = parseInt(concept_id,10);
+                                if (!_.isNumber(concept_id)) {
+                                  concept_id = null;
+                                  //this.setState({concept_id, valid_concept_id: 'error', conceptInfo: undefined, });
+                                  //return;
+                                }
+                                this.conceptIdFetch(concept_id);
+                        }}
+                    />
+                    <FormControl.Feedback />
+                    <HelpBlock>{(this.state.valid_concept_id === 'loading' && 'Loading...') ||
+                                (this.state.valid_concept_id === false 
+                                    && 'Invalid concept id') || ''}</HelpBlock>
+                  </Col>
+                </FormGroup>
+
+                <FormGroup controlId="concept_code_input"
+                        //validationState={conceptCodeValidation()} 
+                  >
+                  <Col componentClass={ControlLabel}>Concept Code</Col>
+                  <Col xs={4}>
+                    <FormControl type="string" value={concept_code} placeholder="Concept Code"
+                      onChange={
+                        e => {
+                                e.preventDefault();
+                                let concept_code = e.target.value;
+                                this.conceptCodeFetch(concept_code);
+                        }}
+                    />
+                    <FormControl.Feedback />
+                    {/*<HelpBlock>{(this.state.valid_concept_code === 'loading' && 'Loading...') ||
+                                (this.state.valid_concept_code === false 
+                                    && 'Invalid concept id') || ''}</HelpBlock> */}
+                  </Col>
+                </FormGroup>
+
+                <FormGroup controlId="concept_text_input"
+                        //validationState={conceptTextValidation()} 
+                  >
+                  <Col componentClass={ControlLabel}>Concept Text</Col>
+                  <Col xs={4}>
+                    <FormControl type="string" value={concept_text} placeholder="Concept Text"
+                      onChange={
+                        e => {
+                          throw new Error("not handling this yet");
+                          /*
+                                e.preventDefault();
+                                let concept_text = e.target.value;
+                                if (conceptInfo && conceptInfo.concept_text === concept_text) return;
+                                AppState.saveState({conceptInfoUserChange:'user:concept_text', concept_text, });
+                                this.setState({concept_text,
+                                              valid_concept_text: 'loading',
+                                              conceptSet: this.conceptTextFetch(concept_text)});
+                          */
+                        }}
+                    />
+                    <FormControl.Feedback />
+                    {/*<HelpBlock>{(this.state.valid_concept_text === 'loading' && 'Loading...') ||
+                                (this.state.valid_concept_text === false 
+                                    && 'Invalid concept id') || ''}</HelpBlock> */}
+                  </Col>
+                </FormGroup>
+
+
+              </Form>
+              <Row className="flex-remaining-height">
+                <Col xs={10} xsOffset={0} >
+                  {cv}
+                </Col>
+              </Row>
+
+            </ListenerWrapper>;
     return <div className="flex-box"> 
 
-            <Form horizontal className="flex-fixed-height-40">
-              <FormGroup controlId="concept_id_input"
-                      validationState={conceptIdValidation()} >
-                <Col componentClass={ControlLabel}>Concept Id</Col>
-                <Col xs={4}>
-                  <FormControl type="number" step="1" value={concept_id} placeholder="Concept Id"
-                    onChange={ e => {
-                              e.preventDefault();
-                              let concept_id = e.target.value;
-                              concept_id = parseInt(concept_id,10);
-                              if (!_.isNumber(concept_id)) {
-                                this.setState({concept_id, valid_concept_id:false});
-                                return;
-                              }
-                              if (conceptInfo && conceptInfo.concept_id === concept_id) return;
-                              AppState.saveState({conceptInfoUserChange:'user:concept_id',
-                                            concept_id, });
-                              this.setState({concept_id,
-                                            valid_concept_id: 'loading',
-                                            conceptInfo: this.conceptIdFetch(concept_id)});
-                      }}
-                  />
-                  <FormControl.Feedback />
-                  <HelpBlock>{(this.state.valid_concept_id === 'loading' && 'Loading...') ||
-                              (this.state.valid_concept_id === false 
-                                  && 'Invalid concept id') || ''}</HelpBlock>
-                </Col>
-              </FormGroup>
-
-              <FormGroup controlId="concept_code_input"
-                      //validationState={conceptCodeValidation()} 
-                >
-                <Col componentClass={ControlLabel}>Concept Code</Col>
-                <Col xs={4}>
-                  <FormControl type="string" value={concept_code} placeholder="Concept Code"
-                    onChange={
-                      e => {
-                              e.preventDefault();
-                              let concept_code = e.target.value;
-                              if (conceptInfo && conceptInfo.concept_code === concept_code) return;
-                              AppState.saveState({conceptInfoUserChange:'user:concept_code', concept_code, });
-                              this.setState({concept_code,
-                                            valid_concept_code: 'loading',
-                                            conceptSet: this.conceptCodeFetch(concept_code)});
-                      }}
-                  />
-                  <FormControl.Feedback />
-                  {/*<HelpBlock>{(this.state.valid_concept_code === 'loading' && 'Loading...') ||
-                              (this.state.valid_concept_code === false 
-                                  && 'Invalid concept id') || ''}</HelpBlock> */}
-                </Col>
-              </FormGroup>
-
-              <FormGroup controlId="concept_text_input"
-                      //validationState={conceptTextValidation()} 
-                >
-                <Col componentClass={ControlLabel}>Concept Text</Col>
-                <Col xs={4}>
-                  <FormControl type="string" value={concept_text} placeholder="Concept Text"
-                    onChange={
-                      e => {
-                              e.preventDefault();
-                              let concept_text = e.target.value;
-                              if (conceptInfo && conceptInfo.concept_text === concept_text) return;
-                              AppState.saveState({conceptInfoUserChange:'user:concept_text', concept_text, });
-                              this.setState({concept_text,
-                                            valid_concept_text: 'loading',
-                                            conceptSet: this.conceptTextFetch(concept_text)});
-                      }}
-                  />
-                  <FormControl.Feedback />
-                  {/*<HelpBlock>{(this.state.valid_concept_text === 'loading' && 'Loading...') ||
-                              (this.state.valid_concept_text === false 
-                                  && 'Invalid concept id') || ''}</HelpBlock> */}
-                </Col>
-              </FormGroup>
-
-
-            </Form>
-            <Row className="flex-remaining-height">
-              <Col xs={10} xsOffset={0} >
-                {cv}
-              </Col>
-            </Row>
           </div>
   }
 }

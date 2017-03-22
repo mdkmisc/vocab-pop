@@ -147,7 +147,7 @@ export class JsonFetcher { // this.url is the unique key
       return instance;
     }
     this.queryName = params.queryName || 'no query name';
-    console.log("apicall", this.url);
+    //console.log("apicall", this.url);
     this.fetchPromise = cachedJsonFetch(this.url);
     this.jsonPromise = this.fetchPromise.then(
                           json => {

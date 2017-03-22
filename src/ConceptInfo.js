@@ -5,7 +5,7 @@ import React, { Component } from 'react';
 
 class ConceptAbstract {
   constructor({ inRelTo, depth, cb, title,
-                relatedToFetch=['concept_all',
+                relatedToFetch=[
                                   //'mapsto','mappedfrom', 'conceptAncestorGroups', 'conceptDescendantGroups'
                                 ],
               } = {}) {
@@ -87,9 +87,10 @@ export class ConceptSetFromCode extends ConceptSet {
   constructor(props) {
     super(props);
     let concept_code = this.concept_code = props.concept_code;
+    if (!concept_code.length) throw new Error("missing concept_code");
     this._status = 'loading';
     this.codeLookupStream = new AppState.ApiStream({ 
-      apiCall:'conceptRecordsFromCode', params:{concept_code,}});
+      apiCall:'concept_info_from_code', params:{concept_code,}});
     this.codeLookupStream.subscribe((results,stream)=>{
       if (!results.length) {
         this._status = 'failed';
@@ -142,9 +143,9 @@ export class ConceptInfo extends ConceptAbstract {
 
     //if (this._status !== 'preloading') return;
     this._status = 'loading';
-    let conceptStream = new AppState.ApiStream({ apiCall:'concept_record', 
+    this.conceptStream = new AppState.ApiStream({ apiCall:'concept_info', 
                                                   params:{concept_id:this.concept_id}});
-    conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+    this.conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       this._status = 'loading';
       if (_.isEmpty(results)) {
         this._status = 'failed';
@@ -166,8 +167,8 @@ export class ConceptInfo extends ConceptAbstract {
     }
     if (this.depth > 8) console.error("too deep");
     if (!this._crec) debugger;
-    this.stream = new AppState.ApiStream({ apiCall: 'concept_all', params:{concept_id:this.concept_id}});
-    this.stream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
+    this.relatedStream = new AppState.ApiStream({ apiCall: 'related_concept_plus', params:{concept_id:this.concept_id}});
+    this.relatedStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       if (_.isEmpty(results)) {
         this._status = 'failed';
         //throw new Error("impossible!");
@@ -260,10 +261,14 @@ export class ConceptInfo extends ConceptAbstract {
       ];
     }
     if (context === 'header')
-      return [ {title: this.scTitle(), value: this.get('concept_name'), className: 'name', 
-                //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-                linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')}},
-      ];
+      return [{
+        title: this.scTitle(), 
+        value: this.get('concept_name'), 
+        className: 'name', 
+        //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
+        linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')},
+        data: {concept_id: this.concept_id},
+      }];
     let bits = [
       {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
       this.selfInfoBit('domain_id'),
@@ -275,18 +280,38 @@ export class ConceptInfo extends ConceptAbstract {
                     title: `${countRec.rc} CDM records in`,
                     value: this.tblcol(countRec),
                     data: {drill:{ci:this, countRec}, drillType:'rc'},})));
+
     bits = bits.concat(
       this.get('cdmSrcCounts',[]).map(
         countRec => ({className:this.scClassName('X'),
                     title: `${countRec.src} CDM source records in`,
                     value: this.tblcol(countRec),
                     data: {drill:{ci:this, countRec}, drillType:'src'},})));
-    let cgs = this.get('relatedConceptGroups',[])
+
+    let relgrps = this.get('relgrps');
+    let rg = _.supergroup(relgrps, ['relationship','domain_id','vocabulary_id','concept_class_id']);
+    bits = bits.concat(
+      rg.leafNodes().map(grp => ({
+        wholeRow: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
+        /*
+        title: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
+        value: `${grp.domain_id} ${grp.vocabulary_id} 
+                  ${grp.concept_class_id}
+                  ${grp.defines_ancestry ? ' defines ancestry ' : ''}
+                  ${grp.is_hierarchical ? ' is hierarchical' : ''}
+                  `,
+        */
+        data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},
+      })));
+
+    /*
+    let cgs = this.get('relgrps',[])
                   .filter(
                     rec=>!_.some(['mapsto','mappedfrom'],
                                 rel => rec.relationship_id === this.fieldTitle(rel)))
+
     let cgcnt = _.sum(cgs.map(d=>d.cc));
-    /*
+
     let MAX_TO_SHOW = 4;
     if (cgcnt <= MAX_TO_SHOW) {
       let relatedRecs = this.getRelatedRecs('relatedConcepts',[]);
@@ -396,13 +421,10 @@ export class ConceptInfo extends ConceptAbstract {
         })[field] || `no-class-for-${field}`;
   }
   cdmCounts() {
-    return this.get('rcs',[]).filter(d=>d.rc);
+    return this.get('cdmcnts',[]).filter(d=>d.rc);
   }
   cdmSrcCounts() {
-    return this.get('rcs',[]).filter(d=>d.src);
-  }
-  rc() {
-    return _.sum(this.cdmCount().map(d=>d.rc));
+    return this.get('cdmcnts',[]).filter(d=>d.src);
   }
   tblcol(crec) { // old...not sure if working
     if (crec)
