@@ -1,7 +1,7 @@
 # vocab-pop
 ## OHDSI Vocabulary / Population Browser
 
-You'll need a Postgres OHDSI CDM and https://github.com/Sigfried/ohdsi-api
+You'll need a Postgres OHDSI CDM (see below) and https://github.com/Sigfried/ohdsi-api
 
 And change settings in src/config.js appropriately
 
@@ -19,7 +19,20 @@ or `npm run build`
     - fix where drill content shows up
 
 
+### Setting up OHDSI CDM with Postgres
 
+  - Create CDM schema from here: https://github.com/OHDSI/CommonDataModel/tree/master/PostgreSQL
+  - Get vocabulary files from Athena: http://athena.ohdsi.org/
+  - Get synthetic data if you need it, maybe from: http://www.ltscomputingllc.com/downloads/
+
+  - Just for loading vocab files, I modified Lee's script from: https://github.com/OHDSI/CommonDataModel/blob/master/PostgreSQL/VocabImport/OMOP%20CDM%20vocabulary%20load%20-%20PostgreSQL.sql
+  - To run, make sure .env file is in place in home directory, then:
+
+     psql -d $PGDATABASE -v vocdir=`pwd`/VOCAB/vocab_data_files -v schema=$CDM_SCHEMA < ./VOCAB/vocabLoad_psql_version.sql
+
+
+
+### Some documentation of intentions, likely not totally current
 
   - overall goals:
     - make individual OHDSI vocabularies more approachable
