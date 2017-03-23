@@ -13,10 +13,6 @@ $nsc_red: #ffd3dc;
 //$nsc_red_dim: rgba($nsc_red, .2);
 //$nsc_red_strong: rgba($nsc_red, 1);
 
-.click-link {
-  background-color: $color_lightish_purple;
-}
-
 
 // not using anymore?
 $color_granny_smith_apple_approx: lightgreen;
@@ -46,6 +42,7 @@ $alice_blue: aliceblue;
 $steel_blue:  steelblue;
 $mute_opacity: 0.3;
 $color_green_30: rgba(20,255,50,.3);
+
 
 @media (min-width: 450px) {
   .nav-bar {
@@ -312,10 +309,17 @@ div.vocab-map, div.domain-map, div.concept-view-container {
   background-color: $black_10;
 }
 
+.click-link {
+  //background-color: lightblue;
+}
 .concept-desc {
+  .nav > li > a {
+    padding: 0px;
+  }
   padding: 18px;
   border: 1px solid gray;
-  .header {
+  .main-desc {
+    //background-color: lightblue;
     border: 2px solid darkgray;
   }
   //margin: 3px;

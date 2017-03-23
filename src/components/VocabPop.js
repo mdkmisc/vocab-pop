@@ -134,8 +134,15 @@ class ConceptDesc extends Component {
   render() {
     const {above, below, drill, drillType} = this.state;
     let ci = this.props.conceptInfo;
+    let mainCols = 12;
     if (ci.get('depth') > 9) return null; //throw new Error('concept too deep');
+    /*  NOT USING RIGHT NOW
     let related = '';
+                        {related}
+                        {below}
+                        {above}
+                      {mappedfrom}
+                      {mapsto}
     if (ci.validConceptId()) {
       let concept_id = ci.get('concept_id', 'fail');
       related = <div>
@@ -154,16 +161,12 @@ class ConceptDesc extends Component {
                 </div>
     }
     //console.log('rendering', ci.get('concept_name'), ci.role(), 'isConceptSet', ci.isConceptSet());
-    if (ci.isConceptSet()) {
-      throw new Error("shouldn't be here");
-    }
     let mapsto=null, mappedfrom=null;
 
     let mapstoRecs = ci.getRelatedRecs('mapsto',[]);
     let mappedfromRecs = ci.getRelatedRecs('mappedfrom',[]);
     if (mapstoRecs.length && mappedfromRecs.length) throw new Error("not expecting that");
 
-    let mainCols = 12;
     if (mapstoRecs.length) {
       mainCols = 6;
       debugger;
@@ -178,33 +181,33 @@ class ConceptDesc extends Component {
                       <RelatedConcept recs={mappedfromRecs} relationship='mappedfrom' conceptInfo={ci} />
                     </Col>
     }
-
-    console.log(ci.get('concept_code'), ci.get('status'));
+    */
+    //console.log(this,ci.get('concept_code'), ci.get('status'));
     return  <ListenerWrapper wrapperTag="div" className="concept-info-menu"
                   eventsToHandle={['onMouseMove','onMouseLeave']}
                   eventHandlers={[this.eventHandler]} >
               <div className={`depth-${ci.depth()} concept-desc ${ci.scClassName()}`}>
-                <p>status: {ci.get('status')} {ci.get('fetchedRelated') ? 'fetched related' : ''}</p>
-                <Row className="header">
+                <Row className="main-desc strong">
                   <Col xs={12} >
-                      {ci.selfInfo('header').map(
+                      <Spinner style={{display: ci.loading() ? null : 'none'}} />
+                      {ci.bits('main-desc','header').map(
+                        (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                                        cdProps={this.props} />)}
+                      {ci.bits('main-desc', null, d=>d.name !== 'header').map(
                         (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
                                         cdProps={this.props} />)}
                   </Col>
                 </Row>
+
                 <Row>
                   <Col xs={12}>
                     <Row>
-                      {mappedfrom}
                       <Col xs={mainCols} className={`depth-${ci.depth()}`}>
-                        {above}
-                        {ci.selfInfo().map(
+                        <h5>CDM Recs</h5>
+                        {ci.bits(/^cdm/).map(
                           (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
                                           cdProps={this.props} />)}
-                        {related}
-                        {below}
                       </Col>
-                      {mapsto}
                     </Row>
                   </Col>
                 </Row>
@@ -278,8 +281,8 @@ class InfoBit extends Component {
                   </Col>
                 </Row>
     } else {
-      content = <Row className={`${className} infobit `}>
-                  <Col xs={5} xsOffset={0} className="title" role="button">
+      content = <Row className={`${className} infobit `} role="button">
+                  <Col xs={5} xsOffset={0} className="title" >
                     {title}
                   </Col>
                   <Col xs={7} xsOffset={0} className="value">

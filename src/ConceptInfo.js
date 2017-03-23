@@ -10,7 +10,9 @@ class ConceptAbstract {
                                 ],
               } = {}) {
     this._inRelTo = inRelTo;
-    this._depth = depth;
+    this._depth = typeof depth === 'undefined'
+                    ? (inRelTo ? inRelTo.depth() + 1 : 0)
+                    : 0;
     this._relatedToFetch = relatedToFetch;
     this._cb = cb;
     this._title = title;
@@ -43,6 +45,27 @@ class ConceptAbstract {
     this.bsubj.next(this);
     //if (this._inRelTo) this._inRelTo.sendUpdate();
   }
+  loading() {
+    return this._status.match(/loading/);
+  }
+  loaded() {
+    return !this._status.match(/loading/) && this._status !== 'failed';
+  }
+  failed() {
+    return this._status === 'failed';
+  }
+  depth() {
+    return this._depth;
+  }
+  inRelTo() {
+    return this._inRelTo;
+  }
+  role() {
+    return this._role;
+  }
+  isRole(role) {
+    return this._role === role;
+  }
 }
 export class RelatedConceptsAbstract {
   constructor(props) {
@@ -60,27 +83,6 @@ export class ConceptSet extends ConceptAbstract {
   }
   items() {
     return this._items;
-  }
-  depth() {
-    return this._depth;
-  }
-  loading() {
-    return this._status.match(/loading/);
-  }
-  loaded() {
-    return !this._status.match(/loading/) && this._status !== 'failed';
-  }
-  failed() {
-    return this._status === 'failed';
-  }
-  validConceptId() {
-    return this._validConceptId;
-  }
-  role() {
-    return this._role;
-  }
-  isRole(role) {
-    return this._role === role;
   }
 }
 export class ConceptSetFromCode extends ConceptSet {
@@ -216,93 +218,83 @@ export class ConceptInfo extends ConceptAbstract {
     if (dflt === 'fail') throw new Error(`can't find ${field}`);
     return dflt;
   }
-  depth() {
-    return this._depth;
+  sendUpdate(source) {
+    this.assembleInfo();
+    super.sendUpdate(this);
   }
-  inRelTo() {
-    return this._inRelTo;
-  }
-  loading() {
-    return this._status.match(/loading/);
-  }
-  loaded() {
-    return !this._status.match(/loading/) && this._status !== 'failed';
-  }
-  failed() {
-    return this._status === 'failed';
-  }
-  validConceptId() {
-    return this._validConceptId;
-  }
-  role() {
-    return this._role;
-  }
-  isRole(role) {
-    return this._role === role;
-  }
-  conceptSet() {
-    return this._conceptSet;
-  }
-  isConceptSet() {
-    return !!this.conceptSet();
-  }
-  selfInfo(context) { // not using context
+  assembleInfo() {
+    /*
     if (this.loading()) {
       return [
         {title:'Status', className:'ci-status', value: 'Loading'},
         this.selfInfoBit('concept_id'),
       ];
     }
+    */
+    this._bits = [];
+    this._bitIdx = 0;
     if (this.failed()) {
-      let lookupInfo = this.selfInfoBit('concept_id');
-      return [
-        {title:'Status', className:'ci-status', 
-          value: `No concept id ${this.concept_id}`} 
-      ];
+      this._bits.push({title:'Status', className:'ci-status', 
+                  value: `No concept id ${this.concept_id}`});
+      return;
     }
-    if (context === 'header')
-      return [{
+    this.addBit({
+        context: 'main-desc',
+        name: 'header',
         title: this.scTitle(), 
         value: this.get('concept_name'), 
         className: 'name', 
+        //handlers: { 'onClick': },
         //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
         linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')},
         data: {concept_id: this.concept_id},
-      }];
-    let bits = [
-      {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
-      this.selfInfoBit('domain_id'),
-      this.selfInfoBit('concept_class_id'),
-    ];
-    bits = bits.concat(
-      this.get('cdmCounts',[]).map(
-        countRec => ({className:this.scClassName('S'),
-                    title: `${countRec.rc} CDM records in`,
-                    value: this.tblcol(countRec),
-                    data: {drill:{ci:this, countRec}, drillType:'rc'},})));
+    });
+    this.addBit({context:'main-desc', title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') });
+    this.addBit({context:'main-desc', title: this.fieldTitle('domain_id'), className: this.fieldClass('domain_id'), value: this.get('domain_id')});
+    this.addBit({context:'main-desc', title: this.fieldTitle('concept_class_id'), className: this.fieldClass('concept_class_id'), value: this.get('concept_class_id')});
 
-    bits = bits.concat(
-      this.get('cdmSrcCounts',[]).map(
-        countRec => ({className:this.scClassName('X'),
-                    title: `${countRec.src} CDM source records in`,
-                    value: this.tblcol(countRec),
-                    data: {drill:{ci:this, countRec}, drillType:'src'},})));
+    ['C','S','X'].forEach( 
+      sc => {
+        let cfld = ({S: 'rc', X: 'src', C: 'crc'})[sc];
+        let j = this.get('cdmcnts',[])
+            .filter(d=>d[cfld])
+            .map(countRec => ({
+              context:`cdm-${cfld}`,
+              name: `${cfld}-${this.tblcol(countRec)}`,
+              className:this.scClassName('S'),
+              title: `${countRec.rc} CDM ${({S:'', X:'source ',C:'C (which is weird)'})[sc]} records in`,
+              value: this.tblcol(countRec),
+              data: {drill:{ci:this, countRec}, drillType:cfld},}));
+        console.log(j);
+        j.forEach(d => this.addBit(d));
+      })
 
     let relgrps = this.get('relgrps');
     let rg = _.supergroup(relgrps, ['relationship','domain_id','vocabulary_id','concept_class_id']);
-    bits = bits.concat(
-      rg.leafNodes().map(grp => ({
-        wholeRow: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
-        /*
-        title: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
-        value: `${grp.domain_id} ${grp.vocabulary_id} 
-                  ${grp.concept_class_id}
-                  ${grp.defines_ancestry ? ' defines ancestry ' : ''}
-                  ${grp.is_hierarchical ? ' is hierarchical' : ''}
-                  `,
-        */
-        data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},
-      })));
+
+    rg.map(rel => ({
+            context:`rel-${rel}`,
+            //name: `${cfld}-${this.tblcol(countRec)}`,
+            title: `Related to ${rel.aggregate(_.sum, 'relcidcnt')} ${rel} concepts`,
+            value: rel.leafNodes()
+                      .map((grp,i) => <p key={i}>{grp.aggregate(_.sum, 'relcidcnt')} {grp.namePath()} concepts</p>),
+            data: {drill:{ci:this, rel}, drillType:'relatedConcepts'},
+          }))
+      .forEach(d => this.addBit(d));
+
+    rg.leafNodes().map(grp => ({
+            wholeRow: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
+            /*
+            title: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
+            value: `${grp.domain_id} ${grp.vocabulary_id} 
+                      ${grp.concept_class_id}
+                      ${grp.defines_ancestry ? ' defines ancestry ' : ''}
+                      ${grp.is_hierarchical ? ' is hierarchical' : ''}
+                      `,
+            */
+            data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},
+          }))
+      .forEach(d => this.addBit(d));
 
     /*
     let cgs = this.get('relgrps',[])
@@ -337,7 +329,6 @@ export class ConceptInfo extends ConceptAbstract {
                         data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},})));
     }
     */
-    return bits;
     /*
     let rcc = this.get('relatedConceptCount');
     if (rcc) bits = bits.concat({
@@ -360,12 +351,37 @@ export class ConceptInfo extends ConceptAbstract {
         ];
     }
     */
-    throw new Error("what am I?");
   }
-  selfInfoBit(bit, context) {
-    return {title: this.fieldTitle(bit), className: this.fieldClass(bit), value: this.get(bit)};
+  bits(context, name, filt) {
+    let ret = this._bits.slice(0);
+    if (context instanceof RegExp) {
+      ret = ret.filter(d => d.context && d.context.match(context));
+    } else if (context) {
+      ret = ret.filter(d => d.context === context);
+    }
+
+    if (name instanceof RegExp) {
+      ret = ret.filter(d => d.name && d.name.match(name));
+    } else if (name) {
+      ret = ret.filter(d => d.name === name);
+    }
+
+    if (filt) {
+      ret = ret.filter(filt);
+    }
+
+    return ret;
   }
-  infoBit(bit, context) {
+  addBit(o) {
+    o.ci = this;
+    this._bits.push(o);
+    return o;
+    /*
+    let {context='general', name} = o;
+    name = name || `${context}-${this._bitIdx++}`;
+    let cobj = this._bits[context] = this._bits[context] || {};
+    cobj[name] = o
+    */
   }
   scClassName(sc) {
     let scVal = this.scMap('className', sc);
@@ -374,6 +390,9 @@ export class ConceptInfo extends ConceptAbstract {
   scTitle() {
     let scVal = this.scMap('title');
     return scVal || `Can't find standard_concept`;
+  }
+  validConceptId() {
+    return this._validConceptId;
   }
   scMap(out, sc) { // out = title or className
     sc = sc || this.get('standard_concept', false);
@@ -426,8 +445,7 @@ export class ConceptInfo extends ConceptAbstract {
   cdmSrcCounts() {
     return this.get('cdmcnts',[]).filter(d=>d.src);
   }
-  tblcol(crec) { // old...not sure if working
-    if (crec)
-      return crec.tbl+':'+crec.col;
-  }
+  tbl(crec) { if (crec) return crec.tbl; }
+  col(crec) { if (crec) return crec.col; }
+  tblcol(crec) { if (crec) return `${this.tbl(crec)}-->${this.col(crec)}`; }
 }
