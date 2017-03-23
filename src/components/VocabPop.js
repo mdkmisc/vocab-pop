@@ -196,6 +196,10 @@ class ConceptDesc extends Component {
                       {ci.bits('main-desc', null, d=>d.name !== 'header').map(
                         (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
                                         cdProps={this.props} />)}
+                      <h5>CDM Recs</h5>
+                      {ci.bits(/^cdm/).map(
+                        (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                                        cdProps={this.props} />)}
                   </Col>
                 </Row>
 
@@ -203,8 +207,8 @@ class ConceptDesc extends Component {
                   <Col xs={12}>
                     <Row>
                       <Col xs={mainCols} className={`depth-${ci.depth()}`}>
-                        <h5>CDM Recs</h5>
-                        {ci.bits(/^cdm/).map(
+                        <h5>Related Concepts</h5>
+                        {ci.bits(/^rel-/).map(
                           (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
                                           cdProps={this.props} />)}
                       </Col>
@@ -291,15 +295,15 @@ class InfoBit extends Component {
                 </Row>
     }
     if (linkParams) {
-      return  <ListenerTargetWrapper wrapperTag="div" wrappedComponent={this} 
-                  className="click-link strong" >
+      /*
                 <Nav>
-                  <NavItem 
-                  //onClick={ ()=>AppState.saveStateN({ change:{ ...linkParams, conceptInfoUserChange:'user:concept_id' }, deepMerge: false, }) } 
-                  >
-                    {content}
+                  <NavItem //onClick={ ()=>AppState.saveStateN({ change:{ ...linkParams, conceptInfoUserChange:'user:concept_id' }, deepMerge: false, }) } >
                   </NavItem>
                 </Nav>
+      */
+      return  <ListenerTargetWrapper wrapperTag="div" wrappedComponent={this} 
+                  className="click-link strong" >
+                    {content}
               </ListenerTargetWrapper>
     } else if (data) { // this bit wants to send data on some mouse event
                          // can't do both links and events for now

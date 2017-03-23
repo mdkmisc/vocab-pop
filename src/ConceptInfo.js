@@ -272,10 +272,14 @@ export class ConceptInfo extends ConceptAbstract {
     let relgrps = this.get('relgrps');
     let rg = _.supergroup(relgrps, ['relationship','domain_id','vocabulary_id','concept_class_id']);
 
-    rg.map(rel => ({
+    rg.sortBy(d=>d.toLowerCase()).map(rel => ({
             context:`rel-${rel}`,
             //name: `${cfld}-${this.tblcol(countRec)}`,
-            title: `Related to ${rel.aggregate(_.sum, 'relcidcnt')} ${rel} concepts`,
+            title: <span>
+                      Related to {' '}
+                      <span style={{fontWeight:'bold'}}>
+                        {rel.aggregate(_.sum, 'relcidcnt')} {rel}
+                      </span> concepts</span>,
             value: rel.leafNodes()
                       .map((grp,i) => <p key={i}>{grp.aggregate(_.sum, 'relcidcnt')} {grp.namePath()} concepts</p>),
             data: {drill:{ci:this, rel}, drillType:'relatedConcepts'},

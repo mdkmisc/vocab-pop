@@ -38,3 +38,14 @@ begin
 end;
 $func$
 LANGUAGE 'plpgsql';
+
+create or replace function drop_table(_t regtype) returns varchar
+as
+$func$
+begin
+  --RAISE NOTICE 'dropping: %s', _t;
+  execute 'DROP TABLE ' || _t || ' cascade';
+  return 'dropped ' || _t;
+end;
+$func$
+LANGUAGE 'plpgsql';
