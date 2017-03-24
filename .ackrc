@@ -3,3 +3,5 @@
 --ignore-dir=OLD
 --ignore-dir=build
 --ignore-file=ext:css
+
+--ignore-dir=VOCAB/vocab_data_files

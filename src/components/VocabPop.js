@@ -81,39 +81,44 @@ export default class VocabPop extends Component {
 class ConceptDesc extends Component {
   constructor(props) {
     super(props);
-    this.state = {};
+    this.state = { drill: {}};
     this.eventHandler = this._eventHandler.bind(this);
     this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (e.type === 'mouseleave' || !target) {
-      this.setState({ drill: undefined, above: undefined, below: undefined, });
+      this.setState({ drill: {}, drillType: undefined, });
       return;
     }
     let ci = _.get(target, 'props.conceptInfo');
-    let bit = _.get(target, 'props.bit');
+    if (!ci) throw new Error("need a ci");
+    let infobit = _.get(target, 'props.infobit');
     let cdProps = _.get(target, 'props.cdProps');
-    let data = _.get(target, 'props.data') || _.get(target, 'props.bit.data') ||{};
+    let data = _.get(target, 'props.data') || _.get(target, 'props.infobit.data') ||{};
     let {drill={}, drillType, } = data;
+    console.log(e.type,  drill, drillType);
+    // getting pretty confused here
 
+    let ibCollection = ci._bits; // FIX THIS!!!!
+    ibCollection.currentEvent({e, target, targetEl});
+// REALLY NEEDS CLEANUP
     if (drill && drillType) {
       const {ci, countRec, } = drill;
-      let below, above;
       switch (drillType) {
         case "rc":
         case "src":
-          below = <CDMRecs {...{ci, countRec}} />;
+          infobit.drillContent(<CDMRecs {...{ci, countRec}} />);
           break;
         case "conceptAncestors":
-          above = <RelatedConcept relationship='conceptAncestors' 
-                    conceptInfo={ci} />
+          infobit.drillContent(<RelatedConcept relationship='conceptAncestors' 
+                    conceptInfo={ci} />);
           break;
         default:
-          below = <RelatedConcept relationship={drillType}
-                    conceptInfo={ci} />
+          infobit.drillContent(<RelatedConcept relationship={drillType}
+                    conceptInfo={ci} />);
       }
       //console.log('drill', drillType, drill, countRec);
-      this.setState({ drill: data, above, below, });
+      this.setState({ drill: data, });
     }
   }
   conceptInfoUpdate(ci) {
@@ -132,7 +137,7 @@ class ConceptDesc extends Component {
     this.props.conceptInfo.subscribe(this.conceptInfoUpdate);
   }
   render() {
-    const {above, below, drill, drillType} = this.state;
+    const {drill, drillType} = this.state;
     let ci = this.props.conceptInfo;
     let mainCols = 12;
     if (ci.get('depth') > 9) return null; //throw new Error('concept too deep');
@@ -190,15 +195,14 @@ class ConceptDesc extends Component {
                 <Row className="main-desc strong">
                   <Col xs={12} >
                       <Spinner style={{display: ci.loading() ? null : 'none'}} />
-                      {ci.bits('main-desc','header').map(
-                        (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                      {ci.bits('main-desc','header')
+                         .map((ib,i)=><InfoBitDisp conceptInfo={ci} infobit={ib} key={i}
                                         cdProps={this.props} />)}
-                      {ci.bits('main-desc', null, d=>d.name !== 'header').map(
-                        (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                      {ci.bits('main-desc', null, d=>d.name !== 'header')
+                         .map((ib,i)=><InfoBitDisp conceptInfo={ci} infobit={ib} key={i}
                                         cdProps={this.props} />)}
                       <h5>CDM Recs</h5>
-                      {ci.bits(/^cdm/).map(
-                        (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                      {ci.bits(/^cdm/).map((ib,i)=><InfoBitDisp conceptInfo={ci} infobit={ib} key={i}
                                         cdProps={this.props} />)}
                   </Col>
                 </Row>
@@ -209,7 +213,7 @@ class ConceptDesc extends Component {
                       <Col xs={mainCols} className={`depth-${ci.depth()}`}>
                         <h5>Related Concepts</h5>
                         {ci.bits(/^rel-/).map(
-                          (ib,i)=><InfoBit conceptInfo={ci} bit={ib} key={i}
+                          (ib,i)=><InfoBitDisp conceptInfo={ci} infobit={ib} key={i}
                                           cdProps={this.props} />)}
                       </Col>
                     </Row>
@@ -272,27 +276,40 @@ class ConceptList extends Component {
             </div>;
   }
 }
-class InfoBit extends Component {
+class InfoBitDisp extends Component {
   render() {
-    const {conceptInfo, bit, cdProps, } = this.props;
-    let {title, className, value, wholeRow, linkParams, data} = bit; // an infobit should have (at least) title, className, value
+    const {conceptInfo, infobit, cdProps, } = this.props;
+    let {title, className, value, wholeRow, linkParams, data} = infobit; // an infobit should have (at least) title, className, value
     //<Glyphicon glyph="map-marker" title="Concept (name)" />&nbsp;
+    // CLEAN UP!!!!!!!!!!!!!!!!!!
+    let drillContent = infobit.drillContent()
+      ? <Row className={`${className} drill-content `} role="button">
+          <Col xs={12} xsOffset={0} className="value">
+            <h5>drill content</h5>
+            {infobit.drillContent()}
+          </Col>
+        </Row>
+      //? 'got some recs to show'
+      : '';
     let content;
-    if (wholeRow) {
+    if (wholeRow) {     // not using wholeRow right now
       content = <Row className={`${className} infobit `}>
                   <Col xs={12} >
                     {wholeRow}
                   </Col>
                 </Row>
     } else {
-      content = <Row className={`${className} infobit `} role="button">
-                  <Col xs={5} xsOffset={0} className="title" >
-                    {title}
-                  </Col>
-                  <Col xs={7} xsOffset={0} className="value">
-                    {value}
-                  </Col>
-                </Row>
+      content = <div>
+                  <Row className={`${className} infobit `} role="button">
+                    <Col xs={5} xsOffset={0} className="title" >
+                      {title}
+                    </Col>
+                    <Col xs={7} xsOffset={0} className="value">
+                      {value}
+                    </Col>
+                  </Row>
+                  {drillContent}
+                </div>
     }
     if (linkParams) {
       /*
@@ -305,7 +322,7 @@ class InfoBit extends Component {
                   className="click-link strong" >
                     {content}
               </ListenerTargetWrapper>
-    } else if (data) { // this bit wants to send data on some mouse event
+    } else if (data) { // this infobit wants to send data on some mouse event
                          // can't do both links and events for now
       return  <ListenerTargetWrapper wrapperTag="div" wrappedComponent={this} 
                   className="drillable-on-hover strong" >
@@ -475,46 +492,13 @@ export class ConceptViewPage extends Component {
   }
   _eventHandler({e, target, targetEl, listenerWrapper}) {
     if (e.type === 'click') {
-      let concept_id = _.get(target, 'props.bit.data.concept_id');
+      let concept_id = _.get(target, 'props.infobit.data.concept_id');
       if (typeof concept_id !== 'undefined') {
         this.conceptIdFetch(concept_id);
         return;
       }
     }
-    /*
-    if (data) {
-      const {drill={}, drillType, } = data;
-      const {ci, countRec, } = drill;
-      let below, above;
-      switch (drillType) {
-        case "rc":
-        case "src":
-          below = <CDMRecs {...{ci, countRec}} />;
-          break;
-        case "conceptAncestors":
-          above = <RelatedConcept relationship='conceptAncestors' 
-                    conceptInfo={ci} />
-          break;
-        default:
-          below = <RelatedConcept relationship={drillType}
-                    conceptInfo={ci} />
-      }
-      //console.log('drill', drillType, drill, countRec);
-      this.setState({ drill: data, above, below, });
-    }
-    */
   }
-  /*
-  _wrapperUpdate(wrapperSelf) {
-    const parentClass = this.props.parentClass || "flex-remaining-height";
-    //console.log('new conceptInfo data', wrapperSelf.state);
-    this.divRef = wrapperSelf.refs.conceptViewWrapper;
-    setToAncestorSize(this, this.divRef, '.'+parentClass, false, 'VocabPop:ConceptViewPage');
-    //this.props.fullyRenderedCb(true);
-    //console.log("resizing ConceptViewPage to ", parentClass);
-    this.setState(wrapperSelf.state); // conceptInfo
-  }
-  */
   componentDidMount() {
     let {concept_id, concept_code, concept_text} = this.state;
     AppState.subscribeState(null,

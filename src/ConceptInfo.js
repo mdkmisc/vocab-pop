@@ -4,7 +4,7 @@ import Rx from 'rxjs/Rx';
 import React, { Component } from 'react';
 
 class ConceptAbstract {
-  constructor({ inRelTo, depth, cb, title,
+  constructor({ inRelTo, depth, cb, title, infoBitCollection,
                 relatedToFetch=[
                                   //'mapsto','mappedfrom', 'conceptAncestorGroups', 'conceptDescendantGroups'
                                 ],
@@ -18,6 +18,10 @@ class ConceptAbstract {
     this._title = title;
     this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
     this.sendUpdate = this.sendUpdate.bind(this);
+    this._bits = infoBitCollection || new InfoBitCollection({parent:this});
+  }
+  bits(context, name, filt) {
+    return this._bits.select(context, name, filt);
   }
   get(field, dflt) { // this is getting too complicated
     if (typeof this[field] === 'function') return this[field]();
@@ -227,18 +231,17 @@ export class ConceptInfo extends ConceptAbstract {
     if (this.loading()) {
       return [
         {title:'Status', className:'ci-status', value: 'Loading'},
-        this.selfInfoBit('concept_id'),
+        {title:'Concept Id', value: ci.concept_id},
       ];
     }
     */
-    this._bits = [];
     this._bitIdx = 0;
     if (this.failed()) {
-      this._bits.push({title:'Status', className:'ci-status', 
+      this._bits.add({ci:this, title:'Status', className:'ci-status', 
                   value: `No concept id ${this.concept_id}`});
       return;
     }
-    this.addBit({
+    this._bits.add({
         context: 'main-desc',
         name: 'header',
         title: this.scTitle(), 
@@ -249,14 +252,14 @@ export class ConceptInfo extends ConceptAbstract {
         linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')},
         data: {concept_id: this.concept_id},
     });
-    this.addBit({context:'main-desc', title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') });
-    this.addBit({context:'main-desc', title: this.fieldTitle('domain_id'), className: this.fieldClass('domain_id'), value: this.get('domain_id')});
-    this.addBit({context:'main-desc', title: this.fieldTitle('concept_class_id'), className: this.fieldClass('concept_class_id'), value: this.get('concept_class_id')});
+    this._bits.add({context:'main-desc', name: 'vocabulary_id', title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') });
+    this._bits.add({context:'main-desc', name: 'domain_id', title: this.fieldTitle('domain_id'), className: this.fieldClass('domain_id'), value: this.get('domain_id')});
+    this._bits.add({context:'main-desc', name: 'concept_class_id', title: this.fieldTitle('concept_class_id'), className: this.fieldClass('concept_class_id'), value: this.get('concept_class_id')});
 
     ['C','S','X'].forEach( 
       sc => {
         let cfld = ({S: 'rc', X: 'src', C: 'crc'})[sc];
-        let j = this.get('cdmcnts',[])
+        let j = this.get('rcs',[])
             .filter(d=>d[cfld])
             .map(countRec => ({
               context:`cdm-${cfld}`,
@@ -266,7 +269,7 @@ export class ConceptInfo extends ConceptAbstract {
               value: this.tblcol(countRec),
               data: {drill:{ci:this, countRec}, drillType:cfld},}));
         console.log(j);
-        j.forEach(d => this.addBit(d));
+        j.forEach(d => this._bits.add(d));
       })
 
     let relgrps = this.get('relgrps');
@@ -274,7 +277,7 @@ export class ConceptInfo extends ConceptAbstract {
 
     rg.sortBy(d=>d.toLowerCase()).map(rel => ({
             context:`rel-${rel}`,
-            //name: `${cfld}-${this.tblcol(countRec)}`,
+            name: `${rel}-${rel.related_cgid}`,
             title: <span>
                       Related to {' '}
                       <span style={{fontWeight:'bold'}}>
@@ -284,8 +287,9 @@ export class ConceptInfo extends ConceptAbstract {
                       .map((grp,i) => <p key={i}>{grp.aggregate(_.sum, 'relcidcnt')} {grp.namePath()} concepts</p>),
             data: {drill:{ci:this, rel}, drillType:'relatedConcepts'},
           }))
-      .forEach(d => this.addBit(d));
+      .forEach(d => this._bits.add(d));
 
+    /*
     rg.leafNodes().map(grp => ({
             wholeRow: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
             /*
@@ -295,11 +299,11 @@ export class ConceptInfo extends ConceptAbstract {
                       ${grp.defines_ancestry ? ' defines ancestry ' : ''}
                       ${grp.is_hierarchical ? ' is hierarchical' : ''}
                       `,
-            */
+            * /
             data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},
           }))
-      .forEach(d => this.addBit(d));
-
+      .forEach(d => this._bits.add(d));
+    */
     /*
     let cgs = this.get('relgrps',[])
                   .filter(
@@ -350,41 +354,8 @@ export class ConceptInfo extends ConceptAbstract {
               wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
               linkParams:{concept_id: this.get('concept_id')}},
           {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
-          this.selfInfoBit('domain_id'),
-          this.selfInfoBit('concept_class_id'),
         ];
     }
-    */
-  }
-  bits(context, name, filt) {
-    let ret = this._bits.slice(0);
-    if (context instanceof RegExp) {
-      ret = ret.filter(d => d.context && d.context.match(context));
-    } else if (context) {
-      ret = ret.filter(d => d.context === context);
-    }
-
-    if (name instanceof RegExp) {
-      ret = ret.filter(d => d.name && d.name.match(name));
-    } else if (name) {
-      ret = ret.filter(d => d.name === name);
-    }
-
-    if (filt) {
-      ret = ret.filter(filt);
-    }
-
-    return ret;
-  }
-  addBit(o) {
-    o.ci = this;
-    this._bits.push(o);
-    return o;
-    /*
-    let {context='general', name} = o;
-    name = name || `${context}-${this._bitIdx++}`;
-    let cobj = this._bits[context] = this._bits[context] || {};
-    cobj[name] = o
     */
   }
   scClassName(sc) {
@@ -443,13 +414,81 @@ export class ConceptInfo extends ConceptAbstract {
               vocabulary_id: 'vocabulary-id',
         })[field] || `no-class-for-${field}`;
   }
-  cdmCounts() {
-    return this.get('cdmcnts',[]).filter(d=>d.rc);
-  }
-  cdmSrcCounts() {
-    return this.get('cdmcnts',[]).filter(d=>d.src);
-  }
   tbl(crec) { if (crec) return crec.tbl; }
   col(crec) { if (crec) return crec.col; }
   tblcol(crec) { if (crec) return `${this.tbl(crec)}-->${this.col(crec)}`; }
+}
+export class InfoBit {
+  constructor(o) {
+    Object.assign(this, o);
+    this._id = InfoBit.id(o);
+  }
+  id() {
+    return this._id;
+  }
+  drillContent(c) {
+    if (typeof(c) !== 'undefined') {
+      this._drillContent = c;
+    }
+    return this._drillContent;
+  }
+  static id(o) {
+    if (!o.context) throw new Error("expected context");
+    if (!o.name) throw new Error("expected name");
+    return `${o.context}/${o.name}`;
+  }
+}
+export class InfoBitCollection {
+  constructor(o) {
+    Object.assign(this, o);
+    this._collection = {};
+  }
+  currentEvent(p) { // no idea what I'm doing yet
+  let {e, target, targetEl} = p;
+    this._currentEvent = p;
+  }
+  collection() {
+    return this._collection;
+  }
+  add(o) {
+    if (!o.ci) {
+      if (this.parent && this.parent instanceof ConceptAbstract) {
+        o.ci = this.parent;
+      } else {
+        throw new Error("expecting a ci");
+      }
+    }
+    let ib = this.findById(InfoBit.id(o)) || new InfoBit(o);
+    this._collection[ib.id()] = ib;
+    return ib;
+    /*
+    let {context='general', name} = o;
+    name = name || `${context}-${this._bitIdx++}`;
+    let cobj = this._bits[context] = this._bits[context] || {};
+    cobj[name] = o
+    */
+  }
+  findById(id) {
+    return this._collection[id];
+  }
+  select(context, name, filt) {
+    let ret = _.values(this.collection());
+    if (context instanceof RegExp) {
+      ret = ret.filter(d => d.context && d.context.match(context));
+    } else if (context) {
+      ret = ret.filter(d => d.context === context);
+    }
+
+    if (name instanceof RegExp) {
+      ret = ret.filter(d => d.name && d.name.match(name));
+    } else if (name) {
+      ret = ret.filter(d => d.name === name);
+    }
+
+    if (filt) {
+      ret = ret.filter(filt);
+    }
+
+    return ret;
+  }
 }
