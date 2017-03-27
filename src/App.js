@@ -17,13 +17,13 @@ Copyright 2016 Sigfried Gold
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 
-import { /*Route, RouteHandler, */ Link } from 'react-router';
+import { /*Route, RouteHandler, */ Link } from 'react-router-dom';
 import { Nav, Navbar, //Modal,
          NavItem, //Button,
          Row, Col, Glyphicon,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
-import { LinkContainer } from 'react-router-bootstrap';
+//import { LinkContainer } from 'react-router-bootstrap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import {FilterForm} from './components/Filters';
@@ -95,29 +95,29 @@ class DefaultNavBar extends Component {
         <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
           <Navbar.Header>
             <Navbar.Brand>
-              <NavLink to={locPath('/',{clear:['domain_id']})} onlyActiveOnIndex>
+              <Link to='/concepts' >
                 Vocab Viz
-              </NavLink>
+              </Link>
             </Navbar.Brand>
             <Navbar.Toggle />
           </Navbar.Header>
           <Navbar.Collapse>
+              <Link to='/concepts' >
+                Drug
+              </Link>
+              <Link to='/concepts' >
+                Condition
+              </Link>
+              <Link to='/concepts'>
+                All Domains
+              </Link>
+              <Link to='/conceptview'>
+                Concept View
+              </Link>
+              <Link to='/sourcetargetsource'>
+                Source-&gt;Target-&gt;Source
+              </Link>
             <Nav >
-              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
-                <NavItem eventKey={1}>Drug</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
-                <NavItem eventKey={2}>Condition</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
-                <NavItem eventKey={3}>All Domains</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/conceptview',{clear:['domain_id']})}>
-                <NavItem eventKey={4}>Concept View</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/sourcetargetsource',{clear:['domain_id']})}>
-                <NavItem eventKey={4}>Source-&gt;Target-&gt;Source</NavItem>
-              </LinkContainer>
             </Nav>
           </Navbar.Collapse>
         </Navbar>

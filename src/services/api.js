@@ -6,42 +6,44 @@
 import * as AppState from '../AppState';
 /*
 let API = feathers()
-	.configure(rest('/api').superagent(superagent))
-	.configure(hooks());
+  .configure(rest('/api').superagent(superagent))
+  .configure(hooks());
 */
 const dataService = store => next => action => {
-	next(action)
-	switch (action.type) {
-	case 'GET_TODO_DATA':
-    let stream = new AppState.ApiStream({
-      apiCall: 'codesToSource',
-      params: { concept_codes: '401.1%,401.2,401.3% 706% 401',
-                vocabulary_id: 'ICD9CM' },
-      //params: {vocabulary_id, concept_codes}, // get these somehow
-      //meta: { statePath },
-      //transformResults,
-    });
-    stream.subscribe(
-      recs => {
-        console.log('do something with the recs!', recs);
-        /* forget where to get errors -- probably stop using ApiStream?
-				if (err) {
-					return next({
-						type: 'GET_TODO_DATA_ERROR',
-						err
-					})
-				}
-        */
-				//const data = JSON.parse(res.text)
-				next({
-					type: 'GET_TODO_DATA_RECEIVED',
-					recs,
-				});
+  next(action)
+  console.log('dataservice', action);
+  switch (action.type) {
+    case 'GET_FROM_SOURCE_CODES':
+    case '@@redux-form/SET_SUBMIT_SUCCEEDED':
+      let stream = new AppState.ApiStream({
+        apiCall: 'codesToSource',
+        params: { concept_codes: '401.1%,401.2,401.3% 706% 401',
+                  vocabulary_id: 'ICD9CM' },
+        //params: {vocabulary_id, concept_codes}, // get these somehow
+        //meta: { statePath },
+        //transformResults,
       });
-		break
-	default:
-		break
-	}
+      return stream.subscribe(
+        recs => {
+          console.log('do something with the recs!', recs);
+          /* forget where to get errors -- probably stop using ApiStream?
+          if (err) {
+            return next({
+              type: 'GET_FROM_SOURCE_CODES_ERROR',
+              err
+            })
+          }
+          */
+          //const data = JSON.parse(res.text)
+          next({
+            type: 'GET_FROM_SOURCE_CODES_RECEIVED',
+            recs,
+          });
+        });
+      break
+    default:
+      break
+  }
 };
 let API = function(...args) {
   console.log('trying to call api', args);
@@ -51,22 +53,22 @@ function sourceTargetSourceReducer(something, action) {
   return action;
 };
 let services = {
-                API, 
                 'sourceTargetSource': { 
-                  get: dataService,   // ????
-                  reducer:  sourceTargetSourceReducer,
+                  load: dataService,   // ????
+                  //reducer:  sourceTargetSourceReducer,
                 },
+                API, 
 };
 export default API;
 export {
-	services, dataService,
+  services, dataService,
 };
 /*
 let services = reduxifyServices(
-	API,
-	{
-		'sourceTargetSource': 'sourceTargetSource',
-	}
+  API,
+  {
+    'sourceTargetSource': 'sourceTargetSource',
+  }
 );
 */
 /*

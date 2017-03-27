@@ -1,5 +1,6 @@
 import sourceTargetSource from './sourceTargetSource';
 
-export default {
-  sourceTargetSource,
-};
+var actions = {
+                sourceTargetSource,
+              };
+export default actions;

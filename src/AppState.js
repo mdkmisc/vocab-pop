@@ -111,6 +111,8 @@ window.getState = getState;
 window.saveState = saveState;
 window.deleteState = deleteState;
 export function getState(path) {
+  console.log('this stuff is broken for now! switching to redux');
+  return {};
   var loc = OLD_GLOBAL_HISTORY.getCurrentLocation();
   //var state = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
   var state = myqs.parse(loc.search.substr(1));
@@ -128,6 +130,8 @@ export function subscribeState(path, cb) {
 }
 
 export function initialize(history, store, JUNK_HISTORY_FOR_GLOBAL) {
+  console.log('this stuff is broken for now! switching to redux');
+  return AppData.cacheDirty();
   OLD_GLOBAL_HISTORY = JUNK_HISTORY_FOR_GLOBAL;
   let urlStateOnLoadingPage = getState();
   let appDefaults = { filters: appSettings.filters, };

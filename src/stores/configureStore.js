@@ -1,6 +1,6 @@
 import { createStore, compose, applyMiddleware } from 'redux';
-import { browserHistory } from 'react-router';
-import { routerMiddleware } from 'react-router-redux';
+//import { browserHistory } from 'react-router';
+//import { routerMiddleware } from 'react-router-redux';
 import thunk from 'redux-thunk';
 import reduxPromiseMiddleware from 'redux-promise-middleware'; // for feathersjs
 //import createLogger from 'redux-logger';
@@ -14,9 +14,10 @@ import {dataService} from '../services/api';
 
 
 const logger = createLogger();
-const router = routerMiddleware(browserHistory);
+//const router = routerMiddleware(browserHistory);
 
-const appMiddleware = [thunk, router, reduxPromiseMiddleware(), logger, dataService];
+//const appMiddleware = [thunk, router, reduxPromiseMiddleware(), logger, dataService];
+const appMiddleware = [thunk, reduxPromiseMiddleware(), logger, dataService];
 
 export default function configureStore(initialState = {}) {
   const middlewareEnhancer = applyMiddleware(...appMiddleware);

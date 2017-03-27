@@ -6,8 +6,8 @@ import 'bootstrap/dist/css/bootstrap-theme.css';
 
 
 import configureStore from './stores/configureStore';
-import { browserHistory } from 'react-router';
-import { syncHistoryWithStore } from 'react-router-redux';
+import { BrowserRouter as Router, Route, browserHistory, IndexRoute, Link } from 'react-router-dom'
+//import { syncHistoryWithStore } from 'react-router-redux';
 //import routes from './routes';
 
 
@@ -20,9 +20,6 @@ import { bindActionCreators } from 'redux';
 
 import { Provider } from 'react-redux';
 
-import {  Router, Route, 
-          //browserHistory, 
-          useRouterHistory, IndexRoute } from 'react-router'
 import App, {Sidebar, ComponentWrapper} from './App';
 import * as AppState from './AppState';
 import config from './config';
@@ -31,27 +28,30 @@ import config from './config';
 
 
 const store = configureStore();
-const history = syncHistoryWithStore(browserHistory, store);
+//const history = syncHistoryWithStore(browserHistory, store);
 
-import { createHistory } from 'history';
-const JUNK_HISTORY_FOR_GLOBAL = useRouterHistory(createHistory)();
+//import { createHistory } from 'history';
+//const JUNK_HISTORY_FOR_GLOBAL = useRouterHistory(createHistory)();
 
 
-AppState.initialize(history, store, JUNK_HISTORY_FOR_GLOBAL)
+//AppState.initialize(history, store, JUNK_HISTORY_FOR_GLOBAL)
+AppState.initialize(store)
   .then(() => {
-    console.log('rendering, history in H',history);
-    window.H = history;
+    //console.log('rendering, history in H',history);
+    window.H = browserHistory;
+            //<IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
     render((
       <Provider store={store}>
-        <Router history={history}>
-          <Route path={config.rootPath+'/'} component={App}>
-            <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
-            <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
-            <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
+        <Router history={browserHistory}>
+          <Route path={config.rootPath+'/'} >
+            <App>
+              <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
+              <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
 
-            <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptViewPage', }} />
+              <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptViewPage', }} />
 
-            <Route path="sourcetargetsource" components={{main:ComponentWrapper, compName:'SourceTargetSource', }} />
+              <Route path="sourcetargetsource" components={{main:ComponentWrapper, compName:'SourceTargetSource', }} />
+            </App>
           </Route>
         </Router>
       </Provider>
