@@ -145,10 +145,8 @@ export default class ConceptData extends Component {
     params.grpset = 'domain_id,standard_concept,vocabulary_id';
     this.requestStream({apiCall:'conceptCounts',dataRequested:'agg',
                         statePath:'agg', queryName:'agg',targetOrSource:'both',});
-    this.requestStream({apiCall:'concept_groups', params,
-                        statePath:'concept_groups', });
-    this.requestStream({apiCall:'dcid_cnts_breakdown', params,
-                        statePath:'dcid_cnts_breakdown', });
+    //this.requestStream({apiCall:'concept_groups', params, statePath:'concept_groups', });
+    //this.requestStream({apiCall:'dcid_cnts_breakdown', params, statePath:'dcid_cnts_breakdown', });
 
 
     this.requestStream({
@@ -179,11 +177,12 @@ export default class ConceptData extends Component {
             targetOrSource, transformResults, filters=this.props.filters}) {
     const {domain_id} = this.props;
     let params = {...filters, queryName,
+                    apiModel: 'cdms',
                     domain_id, dataRequested,
                     targetOrSource,
                   }; 
     let stream = new AppState.ApiStream({
-        apiCall,
+        apiCall, apiModel: 'cdms',
         params,
         meta: { statePath },
         transformResults,

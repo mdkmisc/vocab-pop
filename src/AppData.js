@@ -6,14 +6,28 @@ import config from './config';
 var AppData = appDataGen(config);
 export default AppData;
 
-function appDataGen({cdmSchema,resultsSchema,apiRoot} = config) {
+function appDataGen({cdmSchema,resultsSchema,apiRoot,apiModel} = config) {
 
+  function apiCallBaseUrl(apiCall, params={}) {
+    params.cdmSchema = params.cdmSchema || cdmSchema;
+    params.resultsSchema = params.resultsSchema || resultsSchema;
+
+    let _apiRoot = params.apiRoot || apiRoot;
+    let _apiModel = params.apiModel || apiModel;
+    delete params.apiRoot;
+    delete params.apiModel;
+    return `${_apiRoot}/${_apiModel}/${apiCall}`;
+  }
+  function apiGetUrl(apiCall, params) {
+    DEBUG && console.log(util.getUrl(apiCallBaseUrl(apiCall, params), params));
+    return util.getUrl(apiCallBaseUrl(apiCall), params);
+  }
   // api calls return promises, except apiCallMeta
   // which returns a promise wrapped in some metadata
 
   function cacheDirty() {
     DEBUG && console.error('running cacheDirty');
-    return fetch(`${apiRoot}/cacheDirty`)
+    return fetch(`${apiCallBaseUrl('')}cacheDirty`)
       .then(response => {
         return response.json()
           .then(
@@ -31,8 +45,7 @@ function appDataGen({cdmSchema,resultsSchema,apiRoot} = config) {
   }
   class ApiFetcher extends util.JsonFetcher {
     constructor({apiCall, params, meta, transformResults}) {
-      params = _.merge({}, params, {cdmSchema, resultsSchema});
-      let baseUrl = apiCallBaseUrl(apiCall);
+      let baseUrl = apiCallBaseUrl(apiCall, params);
       let instance = super(baseUrl, params, meta);
       if (!instance.newInstance) return instance;
       // AppState.ApiStream should do it's own transforming
@@ -42,18 +55,7 @@ function appDataGen({cdmSchema,resultsSchema,apiRoot} = config) {
       }
     }
   }
-  function apiCallBaseUrl(apiCall) {
-    return `${apiRoot}/${apiCall}`;
-  }
-  function apiGetUrl(apiCall, params) {
-    params.resultsSchema = resultsSchema;
-    params.cdmSchema = cdmSchema;
-    DEBUG && console.log(util.getUrl(apiCallBaseUrl(apiCall), params));
-    return util.getUrl(apiCallBaseUrl(apiCall), params);
-  }
   function apiCall(apiCall, params={}) {
-    params.resultsSchema = resultsSchema;
-    params.cdmSchema = cdmSchema;
     return (
       util.cachedGetJsonFetch(
             apiCallBaseUrl(apiCall), params

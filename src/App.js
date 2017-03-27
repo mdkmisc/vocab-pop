@@ -15,6 +15,7 @@ Copyright 2016 Sigfried Gold
 */
 
 import React, { Component } from 'react';
+import { connect } from 'react-redux';
 
 import { /*Route, RouteHandler, */ Link } from 'react-router';
 import { Nav, Navbar, //Modal,
@@ -361,7 +362,7 @@ export class ComponentWrapper extends Component {
             </div>;
   }
 }
-export class App extends Component {
+class App extends Component {
   componentDidUpdate() {
     //console.log('app updating');
   }
@@ -396,3 +397,18 @@ export class App extends Component {
     );
   }
 }
+
+function mapStateToProps(state) {
+  return {
+  };
+}
+
+function mapDispatchToProps(dispatch) {
+  return {
+  };
+}
+
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(App);

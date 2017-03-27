@@ -42,7 +42,7 @@ export var myqs = {
  */
 
 
-export var history; /* global history object set in index.js */
+export var OLD_GLOBAL_HISTORY; /* global history object set in index.js */
 
 export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({filters:{}});
@@ -62,7 +62,7 @@ export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
       change = _.set({}, key, val);
     }
   }
-  let loc = history.getCurrentLocation();
+  let loc = OLD_GLOBAL_HISTORY.getCurrentLocation();
   //let oldState = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
   let oldState = myqs.parse(loc.search.substr(1));
   let newState = deepMerge
@@ -87,7 +87,7 @@ export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
                   search: '?' + myqs.stringify(newState),
                 };
   //console.log('new location', newLoc);
-  history.push(newLoc);
+  OLD_GLOBAL_HISTORY.push(newLoc);
   //console.log('state change', change);
   stateChange.next(change);
   /*
@@ -111,7 +111,7 @@ window.getState = getState;
 window.saveState = saveState;
 window.deleteState = deleteState;
 export function getState(path) {
-  var loc = history.getCurrentLocation();
+  var loc = OLD_GLOBAL_HISTORY.getCurrentLocation();
   //var state = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
   var state = myqs.parse(loc.search.substr(1));
   return _.getPath(state, path);
@@ -127,8 +127,8 @@ export function subscribeState(path, cb) {
   return stateStream(path).subscribe(cb);
 }
 
-export function initialize(_history) {
-  history = _history;
+export function initialize(history, store, JUNK_HISTORY_FOR_GLOBAL) {
+  OLD_GLOBAL_HISTORY = JUNK_HISTORY_FOR_GLOBAL;
   let urlStateOnLoadingPage = getState();
   let appDefaults = { filters: appSettings.filters, };
   saveState(_.merge({}, appDefaults, urlStateOnLoadingPage));
