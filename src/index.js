@@ -27,6 +27,8 @@ AppState.initialize(history)
 
           <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptViewPage', }} />
 
+          <Route path="sourcetargetsource" components={{main:ComponentWrapper, compName:'SourceTargetSource', }} />
+
           {/*
 
           <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', sidebar:Sidebar}} />

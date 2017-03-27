@@ -18,6 +18,8 @@ or `npm run build`
     - see hierarchical relationships not in the concept_ancestor table
     - fix where drill content shows up
 
+    - use superagent? http://visionmedia.github.io/superagent/#aborting-requests
+    - state, etc. too complex now...think about redux? https://github.com/tstringer/create-react-app-with-redux
 
 ### Setting up OHDSI CDM with Postgres
 

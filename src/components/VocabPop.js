@@ -52,7 +52,6 @@ import {commify, updateReason,
         LoadingButton} from '../utils';
 
 import * as AppState from '../AppState';
-import {locPath} from '../App';
 //import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
 //require('./fileBrowser.css');
 
@@ -285,7 +284,6 @@ class InfoBitDisp extends Component {
     let drillContent = infobit.drillContent()
       ? <Row className={`${className} drill-content `} role="button">
           <Col xs={12} xsOffset={0} className="value">
-            <h5>drill content</h5>
             {infobit.drillContent()}
           </Col>
         </Row>
@@ -293,14 +291,15 @@ class InfoBitDisp extends Component {
       : '';
     let content;
     if (wholeRow) {     // not using wholeRow right now
+      if (drillContent) throw new Error("put drillContent in here");
       content = <Row className={`${className} infobit `}>
                   <Col xs={12} >
                     {wholeRow}
                   </Col>
                 </Row>
     } else {
-      content = <div>
-                  <Row className={`${className} infobit `} role="button">
+      content = <div className={`${className} infobit ${drillContent ? 'strong' : ''}`} >
+                  <Row role="button" >
                     <Col xs={5} xsOffset={0} className="title" >
                       {title}
                     </Col>

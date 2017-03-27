@@ -328,6 +328,7 @@ select          cd.descendant_concept_id as concept_id,
                           ;
 alter table :results.related_concept 
   add primary key (concept_id,relationship,related_concept_id);
+alter index related_concept_pkey rename to pkey_related_concept; -- just to get rid of annoying auto complete in psql
 --create index rccidx on :results.related_concept (concept_id);
 create index rccgidx on :results.related_concept (cgid);
 create index rcrelidx on :results.related_concept (relationship);
@@ -373,47 +374,62 @@ create table :results.relcnts as
   from percid
   group by 1,2;
 alter table :results.relcnts add primary key (concept_id);
-/*
-forgot the sums, so wrote this to fix it because query takes so long to run
- with ints as (
-      select  concept_id,
-              (json_array_elements(relcnts)->>'relcidcnt')::integer as rcnt,
-              (json_array_elements(relcnts)->>'relcgidcnt')::integer as rgcnt
-      from relcnts
-      --where concept_id between 8500 and 8520
-  ),
-  grp as (
-    select concept_id, sum(rcnt) rcnt, sum(rgcnt) rgcnt from ints group by 1
-  )
-  update relcnts as rc
-  set relcidcnt = grp.rcnt, relcgidcnt = grp.rgcnt
-  from grp
-  where rc.concept_id = grp.concept_id
-*/
+create index idx_relcntscgid on :results.relcnts (cgid);
 
 drop table if exists :results.concept_info cascade;
 create table :results.concept_info as
   select
-          cr.concept_id,
+          cr.cgid,
           cr.concept_name,
           cr.concept_code,
           cr.domain_id,
           cr.standard_concept,
           cr.vocabulary_id,
           cr.concept_class_id,
-          cr.cgid,
-          sum((rcsr).rc) rc,
-          sum((rcsr).src) src,
-          sum((rcsr).crc) crc,
-          json_agg(row_to_json(rcsr)) rcs
+          rct.relgrps,
+          ci.*
   from :results.concept_record cr
-  left join lateral unnest(cr.rcs) rcsr on true
-  where concept_id in (40221875,917910,19031854,19029814,19121752,40169747,19019693,19028938,1750196,40172391,138225)
-  group by 1,2,3,4,5,6,7,8;
+  join (select  cr.concept_id,
+                sum((rcsr).rc) rc,
+                sum((rcsr).src) src,
+                sum((rcsr).crc) crc,
+                json_agg(row_to_json(rcsr)) rcs
+        from :results.concept_record cr
+        left join lateral unnest(cr.rcs) rcsr on true
+        --where cr.concept_id in (40221875,917910,19031854,19029814,19121752,40169747,19019693,19028938,1750196,40172391,138225)
+        group by 1) ci on cr.concept_id = ci.concept_id
+  left join relcnts rct on cr.concept_id = rct.concept_id;
+
 alter table :results.concept_info add primary key (concept_id);
 
 
 
+create or replace view :results.related_concept_plus as
+  select
+          rc.concept_id,
+          rc.cgid,
+          rc.related_concept_id,
+          rc.related_cgid,
+          rc.source,
+          rc.relationship,
+          rc.da,
+          rc.ih,
+          rc.minlev,
+          rc.maxlev,
+
+          cr.concept_code, -- rest refers to related concept
+          cr.concept_name,
+          cr.domain_id,
+          cr.standard_concept,
+          cr.vocabulary_id,
+          cr.concept_class_id,
+          cr.rcs
+  from :results.related_concept rc
+  join :results.concept_record cr on rc.related_concept_id = cr.concept_id
+  ;
+--alter table :results.related_concept_plus add primary key (concept_id,relationship,related_concept_id);
+
+/*
 create or replace view :results.related_concept_plus as
   select
           rc.concept_id,
@@ -453,7 +469,7 @@ create or replace view :results.related_concept_plus as
   join :results.concept_record crr on rc.related_concept_id = crr.concept_id
   ;
 --alter table :results.related_concept_plus add primary key (concept_id,relationship,related_concept_id);
-
+*/
 analyze;
 
 
@@ -706,4 +722,29 @@ group by 1,2;
 alter table :results.cdmcnts add primary key (concept_id);
 
 */
+
+
+-- source - standard - source report...
+
+create temp table ami_icd9 as select concept_id from concept_info where vocabulary_id = 'ICD9CM' and concept_code like '410%';
+
+select  ami.concept_id src_concept_id,
+        cr.concept_code src_concept_code,
+        rc.relationship,
+        crr.concept_id target_concept_id,
+        crr.concept_code target_concept_code,
+        crr.standard_concept,
+        crr.vocabulary_id,
+        crr.domain_id,
+        crr.concept_class_id,
+        (unnest(coalesce(cr.rcs, ARRAY[null::rcs]::rcs[]))).src,
+        (unnest(coalesce(crr.rcs, ARRAY[null::rcs]::rcs[]))).rc
+from ami_icd9 ami
+join concept_record cr on ami.concept_id = cr.concept_id
+left join related_concept rc on ami.concept_id = rc.concept_id
+left join concept_record crr on rc.related_concept_id = crr.concept_id
+where crr.standard_concept = 'S'
+order by 2
+;
+group by 1,2,3;
 

@@ -29,6 +29,7 @@ import {FilterForm} from './components/Filters';
 import Draggable from 'react-draggable'; // The default
 import VocabPop, {ConceptViewPage} from './components/VocabPop';
           /* Search, DrugContainer, Tables, */
+import SourceTargetSource from './components/SourceTargetSource';
 import config from './config';
 import * as AppState from './AppState';
 var $ = require('jquery');
@@ -112,6 +113,9 @@ class DefaultNavBar extends Component {
               </LinkContainer>
               <LinkContainer to={locPath('/conceptview',{clear:['domain_id']})}>
                 <NavItem eventKey={4}>Concept View</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/sourcetargetsource',{clear:['domain_id']})}>
+                <NavItem eventKey={4}>Source-&gt;Target-&gt;Source</NavItem>
               </LinkContainer>
             </Nav>
           </Navbar.Collapse>
@@ -334,6 +338,7 @@ export class ComponentWrapper extends Component {
     const Comp = ({
       VocabPop: VocabPop,
       ConceptViewPage: ConceptViewPage,
+      SourceTargetSource: SourceTargetSource,
       Home: Home,
       //Search: Search,
     })[this.props.route.components.compName];

@@ -487,12 +487,24 @@ export class AgSgTreeBrowser extends Component {
     }
 
   }
-  render() {
+  render() { // base on AgTable instead of AgGridReact?
     const {
             //rowSelect, 
             coldefs, tree, 
             height=400, width='100%'
            } = this.props;
+
+
+    // TEMPORARY!
+    let autoColDefs = tree && tree.records.length && 
+          _.keys(tree.records[0]).map(col=>{
+            return {  headerName: col,
+                      colId: col,
+                      valueGetter: ({data:d}={}) => d[col],
+            }});
+
+
+
     if (!tree || !tree.length)
       return <Label bsStyle="warning">No data yet</Label>;
     const {gridOptions, nodeSelected} = this.state;
@@ -509,7 +521,7 @@ export class AgSgTreeBrowser extends Component {
                 <AgGridReact
                   {...gridOptions}
                   //onGridReady={this.onGridReady.bind(this)}
-                  columnDefs={coldefs}
+                  columnDefs={coldefs || autoColDefs}
                   rowData={tree}
                   /*
                   rowHeight="22"
