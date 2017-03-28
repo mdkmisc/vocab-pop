@@ -6,7 +6,7 @@ import 'bootstrap/dist/css/bootstrap-theme.css';
 
 
 import configureStore from './stores/configureStore';
-import { BrowserRouter as Router, Route, browserHistory, IndexRoute, Link } from 'react-router-dom'
+//import { BrowserRouter as Router, Route, browserHistory, IndexRoute, Link } from 'react-router-dom'
 //import { syncHistoryWithStore } from 'react-router-redux';
 //import routes from './routes';
 
@@ -28,6 +28,13 @@ import config from './config';
 
 
 const store = configureStore();
+
+render(
+  <App store={store}  />,
+  document.getElementById('root')
+);
+
+
 //const history = syncHistoryWithStore(browserHistory, store);
 
 //import { createHistory } from 'history';
@@ -35,6 +42,7 @@ const store = configureStore();
 
 
 //AppState.initialize(history, store, JUNK_HISTORY_FOR_GLOBAL)
+/*
 AppState.initialize(store)
   .then(() => {
     //console.log('rendering, history in H',history);
@@ -57,5 +65,6 @@ AppState.initialize(store)
       </Provider>
     ), document.getElementById('root'))
   });
+*/
 
 

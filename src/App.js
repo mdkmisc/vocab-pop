@@ -15,11 +15,12 @@ Copyright 2016 Sigfried Gold
 */
 
 import React, { Component } from 'react';
-import { connect } from 'react-redux';
+import { connect, Provider, } from 'react-redux';
 
-import { /*Route, RouteHandler, */ Link } from 'react-router-dom';
+import { BrowserRouter as Router, Route, Link, NavLink, } from 'react-router-dom';
+import { withRouter } from 'react-router';
 import { Nav, Navbar, //Modal,
-         NavItem, //Button,
+         NavItem, Button,
          Row, Col, Glyphicon,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap';
@@ -46,6 +47,146 @@ import _ from './supergroup';
 //import * as util from './ohdsi.util';
 import {commify, updateReason, setToAncestorSize, getAncestorHeight} from './utils';
 
+/*
+export default const App = () => {
+      <Router history={history}>
+        <Route path={config.rootPath+'/'} component={App}>
+          <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
+          <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
+          <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
+          <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptViewPage', }} />
+        </Route>
+      </Router>
+}
+*/
+const routes = [
+  { path: '/',
+    exact: true,
+    main: ComponentWrapper,
+    compName: VocabPop,
+  },
+  { path: '/appstate',
+    sidebar: Sidebar,
+    main: AppState.AppState,
+  },
+  { path: '/conceptview',
+    main: ComponentWrapper,
+    compName: ConceptViewPage,
+  },
+  { path: '/sourcetargetsource',
+    main: ComponentWrapper,
+    compName: SourceTargetSource,
+  },
+]
+// use: https://reacttraining.com/react-router/web/example/sidebar
+const Settings = ({props}) => <h4>Settings</h4>;
+const History = ({props}) => <h4>History</h4>;
+const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
+export function locPath(pathname, opts={}) {
+
+  //browserHistory.push(opts, pathname);
+
+  // not sure whether to get state from AppState.getState()
+  // here. this does the same:
+  let search = AppState.myqs.parse(location.search.substr(1));
+  if (opts.clear) {
+    opts.clear.forEach(param=>delete search[param]);
+  }
+  if (opts.params) {
+    _.each(opts.params, (v,p) => search[p] = v);
+  }
+
+  // let's try putting pathname in hash instead of pathname because prod build isn't working
+
+  let loc = Object.assign({}, location, {pathname: config.rootPath, });
+  //let loc = Object.assign({}, location, {pathname: config.rootPath, hash: pathname});
+  loc.search = '?' + AppState.myqs.stringify(search);
+  return loc;
+}
+class App extends Component {
+  render() {
+    const {store, location, history} = this.props;
+    //const {main, sidebar} = this.props;
+    //let NavBar = DefaultNavBar;
+                      //<Nav > </Nav>
+    return (
+          <Provider store={store}>
+            <Router >
+              <div className="vocab-app flex-box">
+                <div className="flex-content-height container" style={{width:'100%'}} >
+                        <Link to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
+                          Drug
+                        </Link>
+                  <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
+                    <Navbar.Header>
+                      <Navbar.Brand>
+                        <NavLink to={locPath('/',{clear:['domain_id']})} /*onlyActiveOnIndex*/ >
+                          Vocab Viz
+                        </NavLink>
+                      </Navbar.Brand>
+                      <Navbar.Toggle />
+                    </Navbar.Header>
+                    <Navbar.Collapse>
+                        <NavLink to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
+                          <Button >Drug</Button>
+                        </NavLink>
+                        <NavLink to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
+                          <Button >Condition</Button>
+                        </NavLink>
+                        <NavLink to={locPath('/concepts',{clear:['domain_id']})}>
+                          <Button >All Domains</Button>
+                        </NavLink>
+                        <NavLink to={locPath('/conceptview',{clear:['domain_id']})}>
+                          <Button >Concept View</Button>
+                        </NavLink>
+                    </Navbar.Collapse>
+                  </Navbar>
+                </div>
+                { routes.filter(d=>d.sidebar).map((route, index) => (
+                    <div key={index} className="flex-remaining-height container" style={{width:'100%'}}>
+                      <Row>
+                        <Col xs={2} md={2} className="sidebar">
+                          <Route key={index} path={route.path} exact={route.exact} 
+                              component={route.sidebar} />
+                        </Col>
+                        <Col xs={10} md={10} >
+                          <Route path={route.path} exact={route.exact} 
+                              component={route.main} compNam={route.compName} />
+                        </Col>
+                      </Row>
+                    </div>
+                ))}
+                { routes.filter(d=>!d.sidebar).map((route, index) => (
+                    <div key={index} className="flex-remaining-height container" style={{width:'100%'}}>
+                      <Row>
+                        <Col xs={12} md={12} >
+                          <Route path={route.path} exact={route.exact} 
+                              component={route.main} compNam={route.compName} />
+                        </Col>
+                      </Row>
+                    </div>
+                ))}
+              </div>
+            </Router>
+          </Provider>
+    );
+    /*
+              <div>
+                <ul>
+                  <li><Link to="/">Home</Link></li>
+                  <li><Link to="/about">About</Link></li>
+                  <li><Link to="/topics">Topics</Link></li>
+                </ul>
+
+                <hr/>
+
+                <Route exact path="/" component={Home}/>
+                <Route path="/about" component={About}/>
+                <Route path="/topics" component={Topics}/>
+              </div>
+    */
+  }
+}
 export class Home extends Component {
   constructor(props) {
     super(props);
@@ -74,50 +215,33 @@ export class Home extends Component {
             </div>;
   }
 }
-export function locPath(pathname, opts={}) {
-  // not sure whether to get state from AppState.getState()
-  // here. this does the same:
-  let search = AppState.myqs.parse(location.search.substr(1));
-  if (opts.clear) {
-    opts.clear.forEach(param=>delete search[param]);
-  }
-  if (opts.params) {
-    _.each(opts.params, (v,p) => search[p] = v);
-  }
-
-  let loc = Object.assign({}, location, {pathname: config.rootPath + pathname});
-  loc.search = '?' + AppState.myqs.stringify(search);
-  return loc;
-}
+/*
 class DefaultNavBar extends Component {
   render() {
     return (
         <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
           <Navbar.Header>
             <Navbar.Brand>
-              <Link to='/concepts' >
+              <NavLink to={locPath('/',{clear:['domain_id']})} /*onlyActiveOnIndex* / >
                 Vocab Viz
-              </Link>
+              </NavLink>
             </Navbar.Brand>
             <Navbar.Toggle />
           </Navbar.Header>
           <Navbar.Collapse>
-              <Link to='/concepts' >
-                Drug
-              </Link>
-              <Link to='/concepts' >
-                Condition
-              </Link>
-              <Link to='/concepts'>
-                All Domains
-              </Link>
-              <Link to='/conceptview'>
-                Concept View
-              </Link>
-              <Link to='/sourcetargetsource'>
-                Source-&gt;Target-&gt;Source
-              </Link>
             <Nav >
+              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
+                <NavItem eventKey={1}>Drug</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
+                <NavItem eventKey={2}>Condition</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
+                <NavItem eventKey={3}>All Domains</NavItem>
+              </LinkContainer>
+              <LinkContainer to={locPath('/conceptview',{clear:['domain_id']})}>
+                <NavItem eventKey={4}>Concept View</NavItem>
+              </LinkContainer>
             </Nav>
           </Navbar.Collapse>
         </Navbar>
@@ -224,9 +348,6 @@ class DraggableWrapper extends Component {
     */
   }
 };
-const Settings = ({props}) => <h4>Settings</h4>;
-const History = ({props}) => <h4>History</h4>;
-const DataLoaded = ({props}) => <h4>DataLoaded</h4>;
 
 export class Sidebar extends Component {
   constructor(props) {
@@ -362,41 +483,6 @@ export class ComponentWrapper extends Component {
             </div>;
   }
 }
-class App extends Component {
-  componentDidUpdate() {
-    //console.log('app updating');
-  }
-  render() {
-    const {main, sidebar} = this.props;
-    let NavBar = DefaultNavBar;
-    let belowNav = sidebar
-      ? <div className="flex-remaining-height container" style={{width:'100%'}}>
-          <Row>
-            <Col xs={2} md={2} className="sidebar">
-              {sidebar}
-            </Col>
-            <Col xs={10} md={10} >
-              {main}
-            </Col>
-          </Row>
-        </div>
-      : <div className="flex-remaining-height container" style={{width:'100%'}}>
-          <Row>
-            <Col xs={12} md={12} >
-              {main}
-            </Col>
-          </Row>
-        </div>;
-    return (
-      <div className="vocab-app flex-box">
-        <div className="flex-content-height container" style={{width:'100%'}} >
-          <NavBar />
-        </div>
-        {belowNav}
-      </div>
-    );
-  }
-}
 
 function mapStateToProps(state) {
   return {
@@ -411,4 +497,4 @@ function mapDispatchToProps(dispatch) {
 export default connect(
   mapStateToProps,
   mapDispatchToProps
-)(App);
+)(withRouter(App));
