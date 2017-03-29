@@ -1,3 +1,4 @@
+/* eslint-disable */
 //const DEBUG = true;
 import React, { Component } from 'react';
 //import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';

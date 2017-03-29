@@ -1,3 +1,4 @@
+/* eslint-disable */
 //import { services } from '../services/api'
 import { browserHistory, } from 'react-router'
 import * as AppState from '../AppState'

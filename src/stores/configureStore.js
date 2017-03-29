@@ -1,3 +1,4 @@
+/* eslint-disable */
 
 import config from '../config'
 import AppData from '../AppData';
@@ -15,6 +16,12 @@ import { createStore, compose, applyMiddleware } from 'redux';
 import { createDevTools } from 'redux-devtools'
 import LogMonitor from 'redux-devtools-log-monitor'
 import DockMonitor from 'redux-devtools-dock-monitor'
+const DevTools = createDevTools(
+  <DockMonitor toggleVisibilityKey="ctrl-h" changePositionKey="ctrl-q">
+    <LogMonitor theme="tomorrow" preserveScrollTop={false} />
+  </DockMonitor>
+)
+
 
 
 import reduxPromiseMiddleware from 'redux-promise-middleware';
@@ -49,12 +56,6 @@ const history = createHistory()
 
 
 
-const DevTools = createDevTools(
-  <DockMonitor toggleVisibilityKey="ctrl-h" changePositionKey="ctrl-q">
-    <LogMonitor theme="tomorrow" preserveScrollTop={false} />
-  </DockMonitor>
-)
-
 
 //const appMiddleware = [thunk, router, reduxPromiseMiddleware(), logger, dataService];
 //const appMiddleware = [reduxPromiseMiddleware(), dataService];
@@ -71,9 +72,10 @@ export default function configureStore(initialState = {}) {
   let query = _.fromPairs(Array.from(new URLSearchParams(history.getCurrentLocation().search.slice(1)).entries()));
   const store = createStore(
     reducers,
+    {},
     //query,
     //{...initialState, ...DevTools.instrument()},
-    DevTools.instrument(),
+    //DevTools.instrument(),
     enhancer
   );
   //const history = syncHistoryWithStore(browserHistory, store)

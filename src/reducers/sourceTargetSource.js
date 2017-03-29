@@ -1,3 +1,4 @@
+/* eslint-disable */
 const LOAD_1 = 'STS/LOAD_1'
 
 let someDefaultVals = {
@@ -13,12 +14,13 @@ const reducer = (state=someDefaultVals, action) => {
       return {
         data: action.data
       }
+    case 'LOAD_FROM_SOURCECODES':
+      console.error("not sure", {state,action});
     case 'LOAD_FROM_SOURCECODES_PENDING':
-      return { isPending: true };
-    case 'LOAD_FROM_SOURCE_CODES_FULFILLED':
-      console.error("got recs!?", {state,action})
-      return { recs: action.payload.recs }
-      //return Object.assign({}, state, {recs:action.recs})
+      return Object.assign({}, state, {isPending:true})
+    case 'LOAD_FROM_SOURCECODES_FULFILLED':
+      console.log("got recs!?", {state,action})
+      return Object.assign({}, state, {isPending:false, recs:action.payload})
     default:
       return state
   }

@@ -1,3 +1,4 @@
+/* eslint-disable */
 import _ from '../../supergroup'; // in global space anyway...
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
@@ -10,9 +11,6 @@ import { Field, reduxForm, formValueSelector } from 'redux-form'
 
 import * as AppState from '../../AppState'
 
-const asyncValidate = (values, dispatch) => {
-  return actions.loadFromSourceCodes(values)
-}
 const renderField = ({ input, label, type, meta: { asyncValidating, touched, error } }) => (
   <div>
     <label>{label}</label>
@@ -22,14 +20,19 @@ const renderField = ({ input, label, type, meta: { asyncValidating, touched, err
     </div>
   </div>
 )
+function asyncValidate(values, dispatch) {
+  dispatch(actions.loadFromSourceCodes(values));
+}
 class SourceTargetSourceForm extends Component {
+  constructor(props) {
+    super(props)
+    asyncValidate = asyncValidate.bind(this);
+  }
   componentDidMount() {
     let {dispatch, initialValues} = this.props;
-    const boundActions = bindActionCreators(actions, dispatch)
-    this.setState(boundActions);
     console.log("mounting", this.props);
     if (initialValues) {
-      let x = boundActions.loadFromSourceCodes(initialValues)
+      let x = dispatch(actions.loadFromSourceCodes(initialValues));
       console.log("initializing action", x);
         //.then(recs=>console.log("this is dumb", recs), err=>console.error("even dumber", err));
     }
@@ -95,18 +98,22 @@ const selector = formValueSelector('stsform')
 // You have to connect() to any reducers that you wish to connect to yourself
 SourceTargetSourceForm = connect(
   (state, ownProps) => { // mapStateToProps
-    console.log('sts CONNECT', {state, ownProps});
     //console.log('sts vocab state', selector(state,'vocabulary_id'))
-    const {vocabulary_id, concept_codes, recs} = 
-      selector(state, 'vocabulary_id', 'concept_codes','recs')
+    const {vocabulary_id, concept_codes, } = 
+      selector(state, 'vocabulary_id', 'concept_codes')
     //return state
+    let recs = state.vocabPop.sourceTargetSource.recs;
+    console.log('sts CONNECT', {state, ownProps}, 'did recs change?', recs);
     return {
       initialValues: state.vocabPop.sourceTargetSource,
       vocabulary_id, concept_codes, recs,
       formRef: state.form.stsform,
     }
   },
-  {}
+  {
+    actions
+    //this.boundActions = bindActionCreators(actions, dispatch)
+  }
 )(SourceTargetSourceForm)
 /*
 const WrapForm = ()=><SourceTargetSourceForm

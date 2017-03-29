@@ -1,3 +1,4 @@
+/* eslint-disable */
 // @ flow // flow breaking on new.target, so not using right now
 
 const DEBUG = true;

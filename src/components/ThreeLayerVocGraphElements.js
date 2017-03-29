@@ -1,3 +1,4 @@
+/* eslint-disable */
 var d3 = require('d3');
 import _ from '../supergroup';
 import {GNode, Edge} from './SigmaReactGraph';

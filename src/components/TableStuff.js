@@ -1,3 +1,4 @@
+/* eslint-disable */
 
 import React, { Component } from 'react';
 var d3 = require('d3');

@@ -13,7 +13,7 @@ Copyright 2016 Sigfried Gold
    See the License for the specific language governing permissions and
    limitations under the License.
 */
-
+/* eslint-disable */
 
 var d3 = require('d3')
 var $ = require('jquery')
@@ -88,7 +88,7 @@ class XXSourceTargetSourceForm extends Component {
               //<STSReport vocabulary_id={vocabulary_id} concept_codes={concept_codes} />
 }
 
-let STSReport = props => {
+export const STSReport = props => {
   let {vocabulary_id, concept_codes, recs=[], } = props
   let sg = _.supergroup(recs, [
     'src_code_match_str',

@@ -1,3 +1,4 @@
+/* eslint-disable */
 /*
  * # supergroup.js
  * Author: [Sigfried Gold](http://sigfried.org)  
