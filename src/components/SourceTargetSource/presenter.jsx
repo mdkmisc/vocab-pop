@@ -1,7 +1,7 @@
 /*
 Copyright 2016 Sigfried Gold
 
-   Licensed under the Apache License, Version 2.0 (the "License");
+   Licensed under the Apache License, Version 2.0 (the "License")
    you may not use this file except in compliance with the License.
    You may obtain a copy of the License at
 
@@ -15,48 +15,46 @@ Copyright 2016 Sigfried Gold
 */
 
 
-var d3 = require('d3');
-var $ = require('jquery');
+var d3 = require('d3')
+var $ = require('jquery')
 import _ from '../../supergroup'; // in global space anyway...
-import React, { Component } from 'react';
+import React, { Component } from 'react'
 
 
-import { connect } from 'react-redux';
-import { Field, reduxForm } from 'redux-form';
-import { load as loadParams } from '../../reducers/sourceTargetSource';
+import { connect } from 'react-redux'
+import { Field, reduxForm, formValueSelector } from 'redux-form'
+import stsState from '../../reducers/sourceTargetSource'
+import stsActions from '../../actions/sourceTargetSource'
 
 
-import Spinner from 'react-spinner';
+import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
           Nav, Navbar, NavItem, Label,
           Form, FormGroup, FormControl, ControlLabel, HelpBlock,
           Button, ButtonToolbar, ButtonGroup,
-          } from 'react-bootstrap';
-//if (DEBUG) window.d3 = d3;
-//import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../ConceptInfo';
-import {AgTable, AgSgTreeBrowser, } from '../TableStuff';
-require('../sass/Vocab.css');
+          } from 'react-bootstrap'
+//if (DEBUG) window.d3 = d3
+//import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../ConceptInfo'
+import {AgTable, AgSgTreeBrowser, } from '../TableStuff'
+require('../sass/Vocab.css')
 
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper,
-        LoadingButton} from '../../utils';
-//import * as AppState from '../../AppState';
+        LoadingButton} from '../../utils'
+//import * as AppState from '../../AppState'
 
 
 
 class XXSourceTargetSourceForm extends Component {
   constructor(props) {
-    console.log("in new one");
-    super(props);
-    this.state = {
-      vocabulary_id:'ICD9CM', 
-      concept_codes:'401.1%,401.2,401.3%',
-    };
+    console.log("in new one")
+    super(props)
+    this.state = {}
   }
   render() {
-    let {vocabulary_id='ICD9CM', concept_codes='401.1%,401.2,401.3%'} = this.state;
+    let {vocabulary_id='ICD9CM', concept_codes='401.1%,401.2,401.3%'} = this.state
     return  <div>
               <Form horizontal className="flex-fixed-height-40">
                 <FormGroup controlId="vocabulary_id_input" >
@@ -64,9 +62,9 @@ class XXSourceTargetSourceForm extends Component {
                   <Col xs={4}>
                     <FormControl type="string" value={vocabulary_id}
                       onChange={ e => {
-                                      e.preventDefault();
-                                      vocabulary_id = e.target.value;
-                                      this.setState({vocabulary_id, });
+                                      e.preventDefault()
+                                      vocabulary_id = e.target.value
+                                      this.setState({vocabulary_id, })
                                 }} />
                   </Col>
                 </FormGroup>
@@ -77,9 +75,9 @@ class XXSourceTargetSourceForm extends Component {
                     <FormControl type="string" value={concept_codes}
                       onChange={
                         e => {
-                                e.preventDefault();
-                                concept_codes= e.target.value;
-                                this.setState({concept_codes, });
+                                e.preventDefault()
+                                concept_codes= e.target.value
+                                this.setState({concept_codes, })
                         }} />
                   </Col>
                 </FormGroup>
@@ -89,55 +87,15 @@ class XXSourceTargetSourceForm extends Component {
   }
               //<STSReport vocabulary_id={vocabulary_id} concept_codes={concept_codes} />
 }
-let SourceTargetSourceForm = props => {
-  const { handleSubmit, load, pristine, reset, submitting,
-            vocabulary_id, concept_codes, recs, } = props
-  //let data = {vocabulary_id:'ICD9CM', concept_codes:'401.1%,401.2,401.3%'};
-  return (
-    <form onSubmit={handleSubmit}>
-      <div>
-        <label>Vocabulary ID</label>
-        <div>
-          <Field name="vocabulary_id" component="input" type="text" placeholder="Vocabulary ID"/>
-        </div>
-      </div>
-      <div>
-        <label>Concept Codes</label>
-        <div>
-          <Field name="concept_codes" component="input" type="text" placeholder="Concept Codes"/>
-        </div>
-      </div>
-      <div>
-        <button type="submit" disabled={pristine || submitting}>Submit</button>
-        <button type="button" disabled={pristine || submitting} onClick={reset}>Undo Changes</button>
-      </div>
-      <STSReport recs={recs} vocabulary_id={vocabulary_id} concept_codes={concept_codes} />
-    </form>
-  )
-}
-
-// Decorate with reduxForm(). It will read the initialValues prop provided by connect()
-SourceTargetSourceForm = reduxForm({
-  form: 'SourceTargetSourceForm'  // a unique identifier for this form
-})(SourceTargetSourceForm)
-
-// You have to connect() to any reducers that you wish to connect to yourself
-SourceTargetSourceForm = connect(
-  state => ({ }),
-  { load: loadParams }               // bind sourceTargetSource loading action creator
-)(SourceTargetSourceForm)
-
-export default SourceTargetSourceForm;
-
 
 let STSReport = props => {
-  let {vocabulary_id, concept_codes, recs=[], } = props;
+  let {vocabulary_id, concept_codes, recs=[], } = props
   let sg = _.supergroup(recs, [
     'src_code_match_str',
     'src_concept_code',
     'src_concept_id',
     'relationship',
-    'target_concept_id']);
+    'target_concept_id'])
   return  <div>
             <h3>Source codes from {vocabulary_id}: {concept_codes}:</h3>
             <AgTable data={recs}

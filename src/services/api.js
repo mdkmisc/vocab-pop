@@ -11,14 +11,13 @@ let API = feathers()
 */
 const dataService = store => next => action => {
   next(action)
-  console.log('dataservice', action);
+  //console.log('dataservice', action);
   switch (action.type) {
     case 'GET_FROM_SOURCE_CODES':
     case '@@redux-form/SET_SUBMIT_SUCCEEDED':
       let stream = new AppState.ApiStream({
         apiCall: 'codesToSource',
-        params: { concept_codes: '401.1%,401.2,401.3% 706% 401',
-                  vocabulary_id: 'ICD9CM' },
+        params: action.params,
         //params: {vocabulary_id, concept_codes}, // get these somehow
         //meta: { statePath },
         //transformResults,
@@ -46,15 +45,15 @@ const dataService = store => next => action => {
   }
 };
 let API = function(...args) {
-  console.log('trying to call api', args);
+  console.error('trying to call api', args);
 }
 function sourceTargetSourceReducer(something, action) {
-  console.log('trying to reduce sourceTargetSource', {something, action})
+  //console.log('trying to reduce sourceTargetSource', {something, action})
   return action;
 };
 let services = {
                 'sourceTargetSource': { 
-                  load: dataService,   // ????
+                  //load: dataService,   // ????
                   //reducer:  sourceTargetSourceReducer,
                 },
                 API, 

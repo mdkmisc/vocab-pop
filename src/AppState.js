@@ -11,6 +11,17 @@ import 'react-json-inspector/json-inspector.css';
 import AppData from './AppData';
 import appSettings from './appSettings';
 
+var reduxStore = {};
+var reduxHistory = {};
+var router = {};
+export function giveAwayStore(store, _router, history) {
+  reduxStore = store;
+  reduxHistory = history;
+  router = _router;
+}
+
+
+
 
 //var d3 = require('d3');
 //import qs from 'qs';
@@ -42,7 +53,7 @@ export var myqs = {
  */
 
 
-export var OLD_GLOBAL_HISTORY; /* global history object set in index.js */
+//export var OLD_GLOBAL_HISTORY; /* global history object set in index.js */
 
 export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({filters:{}});
@@ -53,6 +64,8 @@ export function deleteState(key) {
   saveState(key, null, true);
 }
 export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
+  console.error("switching to redux!", change, key, val, reduxStore);
+  /*
   // need a named param version but don't want to break the original
   if (!change) {
     if (typeof val === 'undefined') {
@@ -90,13 +103,6 @@ export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
   OLD_GLOBAL_HISTORY.push(newLoc);
   //console.log('state change', change);
   stateChange.next(change);
-  /*
-  console.warn('get rid of userSettings');
-  userSettings.next(newState);
-  if (_.has(change, 'filters')) {
-    console.warn("quit fetching data on filter change like this");
-    fetchData();
-  }
   */
 }
 export function saveState(key, val, deleteProp) {
@@ -111,12 +117,15 @@ window.getState = getState;
 window.saveState = saveState;
 window.deleteState = deleteState;
 export function getState(path) {
-  console.log('this stuff is broken for now! switching to redux');
+  return _.get(reduxStore.getState(), path);
+  console.log('get state from redux!!', path);
   return {};
+  /*
   var loc = OLD_GLOBAL_HISTORY.getCurrentLocation();
   //var state = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
   var state = myqs.parse(loc.search.substr(1));
   return _.getPath(state, path);
+  */
 }
 export function stateStream(path) {
   if (!path) return stateChange;
@@ -130,6 +139,8 @@ export function subscribeState(path, cb) {
 }
 
 export function initialize(history, store, JUNK_HISTORY_FOR_GLOBAL) {
+  console.error('figure out how to initialize state from redux!!');
+  /*
   console.log('this stuff is broken for now! switching to redux');
   return AppData.cacheDirty();
   OLD_GLOBAL_HISTORY = JUNK_HISTORY_FOR_GLOBAL;
@@ -137,6 +148,7 @@ export function initialize(history, store, JUNK_HISTORY_FOR_GLOBAL) {
   let appDefaults = { filters: appSettings.filters, };
   saveState(_.merge({}, appDefaults, urlStateOnLoadingPage));
   return AppData.cacheDirty();
+  */
 }
 
 /* @class ApiStream

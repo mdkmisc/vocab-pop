@@ -259,7 +259,8 @@ export class ConceptInfo extends ConceptAbstract {
     ['C','S','X'].forEach( 
       sc => {
         let cfld = ({S: 'rc', X: 'src', C: 'crc'})[sc];
-        let j = this.get('rcs',[])
+        let j = _.compact(this.get('rcs',[])) 
+        // _.comapact is to fix temporary bug where rcs can equal [null] instead of []
             .filter(d=>d[cfld])
             .map(countRec => ({
               context:`cdm-${cfld}`,

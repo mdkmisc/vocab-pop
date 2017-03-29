@@ -1,3 +1,3 @@
-import SourceTargetSource from './container';
+import SourceTargetSource from './container'
 
-export default SourceTargetSource;
+export default SourceTargetSource

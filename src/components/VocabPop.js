@@ -474,6 +474,7 @@ export class ConceptView extends Component {
 export class ConceptViewPage extends Component {
   constructor(props) {
     super(props);
+    console.error(props);
     //this.transformResults = d=>new ConceptInfo(d);
     let concept_id = AppState.getState('concept_id') || '';
     let concept_code = AppState.getState('concept_code') || '';

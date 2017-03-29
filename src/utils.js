@@ -2,6 +2,8 @@
 
 
 // adapted from cachedAjax in ohdsi.utils
+import * as AppState from './AppState'
+import Spinner from 'react-spinner'
 import LZString from 'lz-string';
 import _ from 'lodash';
 import React, { Component } from 'react';
@@ -529,5 +531,87 @@ export class LoadingButton extends Component {
       // Completed of async action, set loading state back
       this.setState({isLoading: false});
     }, 2000);
+  }
+}
+export class ComponentWrapper extends Component {
+  constructor(props) {
+    super(props)
+    this.state = { childReady: false,}
+  }
+  componentDidMount() {
+    this.forceUpdate()
+  }
+  componentDidUpdate(prevProps, prevState) {
+    const {parentClass="flex-remaining-height"} = this.props
+    //updateReason(prevProps, prevState, this.props, this.state, 'App/ComponentWrapper')
+    const {width, height} = setToAncestorSize(this, this.contentDiv, '.'+parentClass, false, 'App/ComponentWrapper')
+    if (width !== this.state.width && height !== this.state.height)
+      return
+    let growing = this.state.growing||0
+    if (growing > 15) debugger
+    if (height > this.state.height) {
+      growing++
+    } else {
+      growing = 0
+    }
+    this.setState({width, height, growing})
+  }
+  render() {
+    const {InnerComp, compProps, compInstance} = this.props;
+    console.log('ComponentWrapper', this.props);
+    const {w:width, h:height} = this.state
+    /*
+    let {filters} = AppState.getState()
+    let domain_id = AppState.getState('domain_id')
+    let props = {
+      filters, domain_id,
+    }
+    */
+    let props = {};
+    //Object.assign(props, this.props, this.state)
+    Object.assign(props, this.props)
+    //delete props.childReady
+    // not using fullyRendered thing at moment, but might bring it back
+    props.fullyRenderedCb=(childReady=>this.setState({childReady})).bind(this)
+    /*
+    const Comp = ({
+      VocabPop: VocabPop,
+      ConceptViewPage: ConceptViewPage,
+      SourceTargetSource: SourceTargetSource,
+      Home: Home,
+      //Search: Search,
+    })[this.props.route.components.compName]
+    */
+    let spinner = this.state.childReady ? '' : <Spinner />
+    // w,h will be sent down to Comp as props!!!! 
+    //{spinner}  was screwing up height calcs and 
+    // making infinite loop with page growing longer and longer
+// passing w,h not working so well...
+    //console.log("rendering main-content")
+
+
+    //trying without:
+                  //style={{width,height}}
+    // remember to fix if this doesn't save the day
+    // ... hmm...seems working for now with container class and width:100% below
+
+    let {children} = this.props;
+    if (compInstance) {
+      children = compInstance;
+    }
+    if (children) {
+      return  <div className="main-content" ref={d=>this.contentDiv=d} 
+              >
+                {children}
+              </div>
+    }
+    props.classNames = ""; // not sure why this
+    if (compProps) {
+      props = compProps;
+    }
+    return  <div className="main-content" ref={d=>this.contentDiv=d} 
+            >
+              <InnerComp {...props} />
+            </div>
   }
 }

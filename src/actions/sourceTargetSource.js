@@ -1,14 +1,22 @@
-import { services } from '../services/api';
+//import { services } from '../services/api'
 import { browserHistory, } from 'react-router'
+import * as AppState from '../AppState'
 
-function loadFromSourceCodes(p) {
-  let {vocabulary_id, concept_codes} = p;
-  console.log("IN LOADFROMSOURCECODES", p);
-  debugger;
-  browserHistory.push({vocabulary_id, concept_codes});
-  return services.sourceTargetSource.load(p);
+function loadFromSourceCodes(values) {
+  let {vocabulary_id, concept_codes} = values
+  console.log("IN LOADFROMSOURCECODES", values)
+  let stream = new AppState.ApiStream({
+    apiCall: 'codesToSource',
+    params: values,
+  })
+  return {
+    type: 'LOAD_FROM_SOURCECODES',
+    payload: stream.jsonPromise,
+  }
+  //browserHistory.push({vocabulary_id, concept_codes})
+  //return services.sourceTargetSource.load(values)
 }
 
 export default {
   loadFromSourceCodes,
-};
+}

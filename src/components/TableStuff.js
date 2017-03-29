@@ -5,7 +5,7 @@ var $ = require('jquery');
 import * as AppState from '../AppState';
 //if (DEBUG) window.d3 = d3;
 import _ from '../supergroup'; // in global space anyway...
-import ConceptData, {DataWrapper} from './ConceptData';
+//import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
