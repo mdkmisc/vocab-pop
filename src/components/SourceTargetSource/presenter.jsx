@@ -23,8 +23,7 @@ import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
-import stsState from '../../reducers/sourceTargetSource'
-import stsActions from '../../actions/sourceTargetSource'
+import stsState from '../../redux/ducks/sourceTargetSource'
 
 
 import Spinner from 'react-spinner'

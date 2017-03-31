@@ -3,7 +3,8 @@ const DEBUG = true;
 
 import * as AppState from '../AppState'
 import _ from '../supergroup';
-import appReducer from '../reducers/index';
+
+import sourceTargetSource from './ducks/sourceTargetSource'
 
 import React, { Component } from 'react'
 import { createStore, compose, combineReducers, applyMiddleware } from 'redux'

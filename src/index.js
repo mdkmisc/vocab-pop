@@ -5,7 +5,7 @@ import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap/dist/css/bootstrap-theme.css'
 import Routes from './App'
 
-import configureStore from './stores/configureStore'
+import configureStore from './redux/configureStore'
 const {store, history} = configureStore()
 
 render(
