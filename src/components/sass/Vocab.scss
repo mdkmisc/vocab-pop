@@ -43,6 +43,9 @@ $steel_blue:  steelblue;
 $mute_opacity: 0.3;
 $color_green_30: rgba(20,255,50,.3);
 
+.async-validating {
+  background-color: yellow;
+}
 
 @media (min-width: 450px) {
   .nav-bar {

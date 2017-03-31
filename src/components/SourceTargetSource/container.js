@@ -8,6 +8,7 @@ import actions from '../../actions/sourceTargetSource'
 import {STSReport} from './presenter'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
+import Spinner from 'react-spinner'
 
 import * as AppState from '../../AppState'
 
@@ -18,8 +19,11 @@ const renderField =
     console.log('rendering field with', opts);
     return (<div>
               <label>{label}</label>
+              {'is it? ' + asyncValidating}
               <div className={asyncValidating ? 'async-validating' : ''}>
-                <input {...input} type={type} placeholder={label}/>
+                <input {...input} type={type} placeholder={label}/>{' '}
+                {asyncValidating ? <Spinner/> : ''}
+                <br/>
                 {touched && error && 
                   <span style={{fontWeight:700, color:'#700'}}>
                     {error}
