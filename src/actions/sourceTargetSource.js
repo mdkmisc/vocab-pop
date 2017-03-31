@@ -5,14 +5,17 @@ import * as AppState from '../AppState'
 
 function loadFromSourceCodes(values) {
   let {vocabulary_id, concept_codes} = values
-  console.log("IN LOADFROMSOURCECODES", values)
+  //console.log("IN LOADFROMSOURCECODES", values)
   let stream = new AppState.ApiStream({
     apiCall: 'codesToSource',
     params: values,
   })
   return {
     type: 'LOAD_FROM_SOURCECODES',
-    payload: stream.jsonPromise,
+    payload: {
+      stream,
+      promise: stream.fetchPromise
+    },
   }
   //browserHistory.push({vocabulary_id, concept_codes})
   //return services.sourceTargetSource.load(values)

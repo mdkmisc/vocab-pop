@@ -389,15 +389,18 @@ create table :results.concept_info as
           rct.relgrps,
           ci.*
   from :results.concept_record cr
-  join (select  cr.concept_id,
-                sum((rcsr).rc) rc,
-                sum((rcsr).src) src,
-                sum((rcsr).crc) crc,
-                json_agg(row_to_json(rcsr)) rcs
+  join (
+        select  cr.concept_id,
+                coalesce(sum((rcsr).rc),0) rc,
+                coalesce(sum((rcsr).src),0) src,
+                coalesce(sum((rcsr).crc),0) crc,
+                json_array_no_null(json_agg(row_to_json(rcsr))) rcs
         from :results.concept_record cr
         left join lateral unnest(cr.rcs) rcsr on true
+        where concept_id = 44826853
         --where cr.concept_id in (40221875,917910,19031854,19029814,19121752,40169747,19019693,19028938,1750196,40172391,138225)
-        group by 1) ci on cr.concept_id = ci.concept_id
+        group by 1
+      ) ci on cr.concept_id = ci.concept_id
   left join relcnts rct on cr.concept_id = rct.concept_id;
 
 alter table :results.concept_info add primary key (concept_id);
@@ -737,8 +740,8 @@ select  ami.concept_id src_concept_id,
         crr.vocabulary_id,
         crr.domain_id,
         crr.concept_class_id,
-        (unnest(coalesce(cr.rcs, ARRAY[null::rcs]::rcs[]))).src,
-        (unnest(coalesce(crr.rcs, ARRAY[null::rcs]::rcs[]))).rc
+        (unnest(coalesce(cr.rcs, ARRAY[]::rcs[]))).src,
+        (unnest(coalesce(crr.rcs, ARRAY[]::rcs[]))).rc
 from ami_icd9 ami
 join concept_record cr on ami.concept_id = cr.concept_id
 left join related_concept rc on ami.concept_id = rc.concept_id

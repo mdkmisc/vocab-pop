@@ -14,6 +14,7 @@ Copyright 2016 Sigfried Gold
    limitations under the License.
 */
 
+import config, {notBeingUsedRightNow} from '../config'
 import React, { Component } from 'react';
 
 import { //Nav, Navbar, Modal,
@@ -45,7 +46,7 @@ export class FilterForm extends Component {
     this.filtSub && this.filtSub.unsubscribe();
   }
   render() {
-    const {filterFormSchema, filterFormUISchema} = AppState.appSettings;
+    const {filterFormSchema, filterFormUISchema} = notBeingUsedRightNow;
     const filterSettings = this.state.filters || {};
     return <Form schema={filterFormSchema}
                   uiSchema={filterFormUISchema}

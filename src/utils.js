@@ -30,47 +30,6 @@ export function fetchKey(url, opts={}) {
   // return key;
   return getUrl(url, opts);
 }
-export function cachedJsonFetch(url, opts={}) {  
-  var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
-  if (allowed) {
-    //console.log(`using cache for ${url}. remove ${allowed} from ohdsi.util.ALLOW_CACHING to disable caching for it`);
-  } else {
-    //console.log(`not caching ${url}. add to ohdsi.util.ALLOW_CACHING to enable caching for it`);
-    return jsonFetch(url, opts);
-  }
-  var key = fetchKey(url, opts);
-  return new Promise(function(resolve, reject) {
-    if (!storageExists(key, cache)) {
-      jsonFetch(url, opts)
-      .then(
-        function(json) {
-          if (json.error) {
-            console.error("rejecting in success func", json.error);
-            reject(json.error);
-          } else {
-            storagePut(key, json, cache);
-            //console.log('caching', key);
-            resolve(json);
-          }
-        },
-        function(err) {
-          console.error("adding this late...hope it doesn't break anything");
-          reject(err);
-        });
-    } else {
-      var results = storageGet(key, cache);
-      //console.log('already cached', key, results);
-      resolve(results);
-    }
-  });
-}
-function jsonFetch(url, opts={}) {
-  //console.log(url, opts);
-  return fetch(url, opts)
-    .then(function(results) {
-      return results.json();
-    });
-}
 export function getUrl(url, params={}) {
   if (url.match(/(post|get)/i)) {
     console.warn('quit using post/get in api names');
@@ -134,8 +93,54 @@ export function jsonFetchMeta(url, params={}, meta={}) {
   return {key, promise, meta};
 }
 */
+function handleErrors(p) {
+    let {jsonPromise,response} = p
+    if (!response.ok) {
+      //console.error('got error with', response)
+      throw p
+    }
+    return p
+}
+function jsonFetch(url, opts={}, readyPromise) {
+  console.log(url, opts, readyPromise);
+  return (readyPromise
+            .then(()=>fetch(url, opts))
+            .then(response=>response.json().then(json=>({json, response}))))
+            .catch(err=>{throw err})
+}
+export function cachedJsonFetch(url, opts={}, readyPromise) {
+  var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
+  if (allowed) {
+    //console.log(`using cache for ${url}. remove ${allowed} from ohdsi.util.ALLOW_CACHING to disable caching for it`);
+  } else {
+    //console.log(`not caching ${url}. add to ohdsi.util.ALLOW_CACHING to enable caching for it`);
+    return jsonFetch(url, opts, readyPromise);
+  }
+  var key = fetchKey(url, opts)
+  if (storageExists(key, cache)) {
+    var results = storageGet(key, cache)
+    //console.log('already cached', key, results)
+    return Promise.resolve(results)
+  }
+  let promise = jsonFetch(url, opts, readyPromise)
+  return (promise.then(handleErrors)
+                  .then(({json,response}) => {
+                    storagePut(key, json, cache)
+                    return json
+                  })
+                  .catch(({json,response}) => {
+                    json.error = response
+                    throw json
+                  })
+         )
+}
 export class JsonFetcher { // this.url is the unique key
-  constructor(baseUrl, params, meta) {
+  constructor(baseUrl, params, meta, readyPromise) {
+    /*
+    if (JsonFetcher.blockTillReadyForFetching) {
+      throw new Error("not ready to fetch");
+    }
+    */
     this.baseUrl = baseUrl;
     this.params = params;
     this.meta = meta;
@@ -151,21 +156,20 @@ export class JsonFetcher { // this.url is the unique key
     }
     this.queryName = params.queryName || 'no query name';
     //console.log("apicall", this.url);
-    this.fetchPromise = cachedJsonFetch(this.url);
-    this.jsonPromise = this.fetchPromise.then(
-                          json => {
-                                if (json.error) {
-                                  debugger;  // not sure what to do
-                                  //json.error.url = get;
-                                  //json.error.queryName = queryName;
-                                }
-                                return this.json=json
-                          });
+    this.fetchPromise = cachedJsonFetch(this.url, undefined, readyPromise);
+    this.fetchPromise.then(json => {
+                        //console.log('fetchPromise resolved in utils!!!', json)
+                        return this.json=json
+                      })
+                      .catch(err => {
+                        //console.log('fetchPromise failed in utils!!!', err)
+                      })
     this.newInstance = true;
     JsonFetcher.instances[this.url] = this;
   }
 }
-JsonFetcher.instances = {};
+JsonFetcher.instances = {}
+JsonFetcher.blockTillReadyForFetching = true // modified in AppState
 
 export function storagePut(key, val, store = sessionStorage) {
   store[key] = LZString.compressToBase64(JSON.stringify(val));
@@ -559,7 +563,7 @@ export class ComponentWrapper extends Component {
   }
   render() {
     const {InnerComp, compProps, compInstance} = this.props;
-    console.log('ComponentWrapper', this.props);
+    //console.log('ComponentWrapper', this.props);
     const {w:width, h:height} = this.state
     /*
     let {filters} = AppState.getState()

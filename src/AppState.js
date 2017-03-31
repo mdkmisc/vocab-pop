@@ -1,5 +1,6 @@
 /* eslint-disable */
 //const DEBUG = true;
+import * as util from './utils';
 import React, { Component } from 'react';
 //import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
 import Rx from 'rxjs/Rx';
@@ -7,22 +8,91 @@ import _ from './supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 //import yaml from 'js-yaml';
-//import settingsYaml from 'raw!:./appSettings.yml';
-//import _appSettings from './src/appSettings';
-import AppData from './AppData';
-import appSettings from './appSettings';
 
 var reduxStore = {};
 var reduxHistory = {};
-var router = {};
-export function giveAwayStore(store, _router, history) {
-  reduxStore = store;
-  reduxHistory = history;
-  router = _router;
+var config;
+var {cdmSchema,resultsSchema,apiRoot,apiModel} = {} // nothing till init
+var {apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = {} // nothing till init
+var ready = new Rx.Subject();
+var readyPromise = ready.toPromise();
+
+export function initialize(store, history) {
+  //console.error('initializing AppState with history and store')
+  reduxStore = store
+  reduxHistory = history
+  config = reduxStore.getState().app.config;
+  ({cdmSchema,resultsSchema,apiRoot,apiModel} = config);
+  ({apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = appDataGen(config));
+  let dirtyPromise = cacheDirty()
+  dirtyPromise.then(() => {
+    util.JsonFetcher.blockTillReadyForFetching = false
+    ready.next(true);
+    ready.complete();
+  })
+  /*
+  console.log('this stuff is broken for now! switching to redux');
+  OLD_GLOBAL_HISTORY = JUNK_HISTORY_FOR_GLOBAL;
+  let urlStateOnLoadingPage = getState();
+  return AppData.cacheDirty();
+  */
 }
+function appDataGen({cdmSchema,resultsSchema,apiRoot,apiModel} = config) {
+  function apiCallBaseUrl(apiCall, params={}) {
+    params.cdmSchema = params.cdmSchema || cdmSchema;
+    params.resultsSchema = params.resultsSchema || resultsSchema;
 
+    let _apiRoot = params.apiRoot || apiRoot;
+    let _apiModel = params.apiModel || apiModel;
+    delete params.apiRoot;
+    delete params.apiModel;
+    return `${_apiRoot}/${_apiModel}/${apiCall}`;
+  }
+  function apiGetUrl(apiCall, params) {
+    DEBUG && console.log(util.getUrl(apiCallBaseUrl(apiCall, params), params));
+    return util.getUrl(apiCallBaseUrl(apiCall), params);
+  }
+  // api calls return promises, except apiCallMeta
+  // which returns a promise wrapped in some metadata
 
-
+  function cacheDirty() {
+    //DEBUG && console.error('running cacheDirty');
+    return fetch(`${apiCallBaseUrl('')}cacheDirty`)
+      .then(response => {
+        return response.json()
+          .then(
+            results => {
+              if (results) {
+                //console.warn('sessionStorage cache is dirty, emptying it');
+                DEBUG && console.warn(`cache dirty. removing ${_.keys(sessionStorage).length} items in sessionStorage`);
+                sessionStorage.clear();
+              } else {
+                DEBUG && console.warn(`cache clean. ${_.keys(sessionStorage).length} items in sessionStorage`);
+              }
+              return results;
+            })
+      });
+  }
+  function apiCall(apiCall, params={}) {
+    return (
+      util.cachedGetJsonFetch(
+            apiCallBaseUrl(apiCall), params
+      )
+        .then(function(json) {
+          if (json.error)
+            console.error(json.error.message, json.error.queryName, json.error.url);
+          /*
+          json.forEach(rec=>{
+            //rec.conceptrecs = parseInt(rec.conceptrecs, 10);
+            //rec.dbrecs = parseInt(rec.dbrecs, 10);
+            //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
+          })
+          */
+          return json;
+        }));
+  }
+  return {apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl};
+}
 
 //var d3 = require('d3');
 //import qs from 'qs';
@@ -32,17 +102,6 @@ export var myqs = {
   stringify: obj=>encodeURI(JSON.stringify(obj)),
   parse: json=>JSON.parse(decodeURI(json||'{}'))
 }
-
-
-// giving up on yaml stuff because going back to create-react-app
-//let _appSettings = yaml.safeLoad(settingsYaml); // default app settings:
-/* 3) import AppData, but it's not usable until it's
- *    been initialized with appSettings which provides
- *    values for {cdmSchema, resultsSchema, apiRoot}
- */
-//const AppData = _AppData(_appSettings);
-
-//let apiStreams = {};
 
 
 /* makeStream should only make api calls once
@@ -65,7 +124,11 @@ export function deleteState(key) {
   saveState(key, null, true);
 }
 export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
-  console.error("switching to redux!", change, key, val, reduxStore);
+  //if (!ready.isStopped) throw {err: "not ready!"}
+  console.error("switching to redux!", change, key, val, reduxStore, reduxHistory );
+  //router.history.push(router.history.location.pathname, {[key]:val});
+  //return router.history.location; // just to return something...this is all broken
+
   /*
   // need a named param version but don't want to break the original
   if (!change) {
@@ -139,19 +202,6 @@ export function subscribeState(path, cb) {
   return stateStream(path).subscribe(cb);
 }
 
-export function initialize(history, store, JUNK_HISTORY_FOR_GLOBAL) {
-  console.error('figure out how to initialize state from redux!!');
-  /*
-  console.log('this stuff is broken for now! switching to redux');
-  return AppData.cacheDirty();
-  OLD_GLOBAL_HISTORY = JUNK_HISTORY_FOR_GLOBAL;
-  let urlStateOnLoadingPage = getState();
-  let appDefaults = { filters: appSettings.filters, };
-  saveState(_.merge({}, appDefaults, urlStateOnLoadingPage));
-  return AppData.cacheDirty();
-  */
-}
-
 /* @class ApiStream
  *  @param opts object
  *  @param opts.apiCall string   // name of api call
@@ -160,21 +210,34 @@ export function initialize(history, store, JUNK_HISTORY_FOR_GLOBAL) {
  *  @param opts.transformResults [function] apply function to rows before returning them
  *  @returns string // streamKey, which is valid get url, though stream is based on post url
  */
-export class ApiStream extends AppData.ApiFetcher {
+export class ApiStream extends util.JsonFetcher {
   // instances are unique (or re-used if they wouldn't be)
   // and stored in ApiStream.instances (as a result
   // of inheriting from util.JsonFetcher)
   constructor({apiCall, params, meta, transformResults, 
               singleValue, cb}) {
-    let instance = super({apiCall, params, meta, }); // don't pass transformResults to ApiFetcher
+
+    // from old AppData.ApiFetcher constructor:
+    let baseUrl = apiCallBaseUrl(apiCall, params);
+    let instance = super(baseUrl, params, meta, readyPromise );
+    if (!instance.newInstance) return instance;
+    // AppState.ApiStream should do it's own transforming
+    // so it can better control (run singleValue first)
+    if (transformResults) {
+      this.fetchPromise = this.fetchPromise.then(transformResults);
+    }
+
+
+
     if (!instance.newInstance) {
       if (instance.resultsSubj && instance.resultsSubj.isStopped)
         instance.resultsSubj = new Rx.BehaviorSubject(instance.results);
       return instance;
     }
     this.resultsSubj = new Rx.BehaviorSubject('NoResultsYet');
-    this.jsonPromise.then(
+    this.fetchPromise.then(
       results=>{
+        //console.log('fetchPromise resolved in ApiState!!!', results)
         if (results.error) {
           this.resultsSubj.error(results.error);
           return;
@@ -196,7 +259,10 @@ export class ApiStream extends AppData.ApiFetcher {
         }
         return this.results;
         //this.resultsSubj.complete();
-      });
+      })
+      .catch(err => {
+        //console.log('fetchPromise failed in utils!!!', err)
+      })
   }
   unsubscribe() { return this.resultsSubj.unsubscribe(); }
   subscribe(cb) { 
@@ -241,14 +307,15 @@ export class AppState extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      appSettings,
+      //appSettings,
     };
   }
   componentDidUpdate() {
   }
   render() {
     return <Inspector 
-              data={ this.state.appSettings['use cases'] } 
+              data={{nothingHereRightNow:true}}
+              //data={ this.state.appSettings['use cases'] } 
               search={false}
               isExpanded={()=>true}
               /*

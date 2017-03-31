@@ -19,8 +19,17 @@ const reducer = (state=someDefaultVals, action) => {
     case 'LOAD_FROM_SOURCECODES_PENDING':
       return Object.assign({}, state, {isPending:true})
     case 'LOAD_FROM_SOURCECODES_FULFILLED':
-      console.log("got recs!?", {state,action})
+      let recs = action.payload
+      /*
+      if (!recs || !recs.length) {
+        debugger;
+        throw {concept_codes: `no matching concepts found`}
+      }
+      */
       return Object.assign({}, state, {isPending:false, recs:action.payload})
+    case 'LOAD_FROM_SOURCECODES_REJECTED':
+      debugger;
+      return Object.assign({}, state, {isPending:false, error:action.payload, recs:[]})
     default:
       return state
   }

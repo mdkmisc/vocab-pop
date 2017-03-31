@@ -53,8 +53,6 @@ import {commify, updateReason,
         LoadingButton} from '../utils';
 
 import * as AppState from '../AppState';
-//import {appData, dataToStateWhenReady, conceptStats} from '../AppData';
-//require('./fileBrowser.css');
 
 
 export default class VocabPop extends Component {

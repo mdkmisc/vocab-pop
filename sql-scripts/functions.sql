@@ -13,6 +13,20 @@ AS $function$
     select array_remove(array( select distinct unnest($1) order by 1 ),null)
 $function$;
 
+CREATE OR REPLACE FUNCTION :results.json_array_no_null(jarr json)
+ RETURNS json
+AS $function$
+  begin
+    if json_array_length(jarr) = 1 then
+      if (jarr::json->0::integer)::text = 'null' then
+        return ARRAY[]::json[];
+      end if;
+    end if;
+    return jarr;
+  end;
+$function$
+LANGUAGE 'plpgsql';
+
 DROP AGGREGATE IF EXISTS :results.array_cat_agg(anyarray);
 CREATE AGGREGATE :results.array_cat_agg(anyarray) (
   SFUNC=array_cat,

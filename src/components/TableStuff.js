@@ -48,6 +48,11 @@ export var statsByTable = new Rx.BehaviorSubject([]);
 export var conceptStats = new Rx.BehaviorSubject([]);
 function fetchData() {
   console.log("NOT FETCHING DATA");
+
+
+if i ever revive this, might need to look at old AppData.js which is
+  disappearing after commit 27ce5015d658935bcff4bcc44037484e83802fbc
+
   AppData.cacheDirty().then(() => {
     AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
     AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));

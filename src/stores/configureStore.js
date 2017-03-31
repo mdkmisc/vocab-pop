@@ -1,86 +1,56 @@
 /* eslint-disable */
+const DEBUG = true;
 
-import config from '../config'
-import AppData from '../AppData';
 import * as AppState from '../AppState'
 import _ from '../supergroup';
-
+import appReducer from '../reducers/index';
 
 import React, { Component } from 'react'
-import { BrowserRouter as Router, 
-          Route, IndexRoute, 
-          } from 'react-router-dom'
-
-import { createStore, compose, applyMiddleware } from 'redux';
-//import { syncHistoryWithStore, routerReducer } from 'react-router-redux'
-import { createDevTools } from 'redux-devtools'
-import LogMonitor from 'redux-devtools-log-monitor'
-import DockMonitor from 'redux-devtools-dock-monitor'
-const DevTools = createDevTools(
-  <DockMonitor toggleVisibilityKey="ctrl-h" changePositionKey="ctrl-q">
-    <LogMonitor theme="tomorrow" preserveScrollTop={false} />
-  </DockMonitor>
-)
-
-
-
+import { createStore, compose, combineReducers, applyMiddleware } from 'redux'
+import { ConnectedRouter, routerReducer, routerMiddleware, push } from 'react-router-redux'
 import reduxPromiseMiddleware from 'redux-promise-middleware';
-//import { routerMiddleware } from 'react-router-redux';
-//import { createLogger } from 'redux-logger'
-//const logger = createLogger();
-
-//import { services } from '../services/api';
-// departing Pavel's framework here and following http://www.sohamkamani.com/blog/2016/06/05/redux-apis/
-// import {dataService} from '../services/api';
-// never mind
-
-
-import { combineReducers } from 'redux';
 import { reducer as formReducer } from 'redux-form';
 
-import vocabPop from '../reducers/index';
-let reducers = combineReducers({
-  vocabPop,
-  //routing: routerReducer,
-  form: formReducer,
-});
-//console.log('REDUCERS', reducers(), reducer);
-
-import createHistory from 'history/lib/createBrowserHistory'
-//console.log(Router, )
-//console.log(Router, createHistory)
+import { BrowserRouter as Router, } from 'react-router-dom'
+//import { browserHistory } from 'react-router';
+//let router = new Router();
+//let history = browserHistory;   // this is working, but going to try react-router-redux
+                                // one more time
+// or, since their example (https://github.com/ReactTraining/react-router/tree/master/packages/react-router-redux)
+// says:
+// Create a history of your choosing (we're using a browser history in this case)
+// maybe i can stick with browserHistory
+// ...
+// maybe not...but this might be a waste of time
+import createHistory from 'history/createBrowserHistory'
 const history = createHistory()
+      // Now you can dispatch navigation actions from anywhere!
+      // store.dispatch(push('/foo'))
 
-//let router = Router();
-//const router = routerMiddleware(browserHistory);
-
-
-
+// ? const router = routerMiddleware(browserHistory);
 
 //const appMiddleware = [thunk, router, reduxPromiseMiddleware(), logger, dataService];
 //const appMiddleware = [reduxPromiseMiddleware(), dataService];
-const appMiddleware = [reduxPromiseMiddleware(), ];
+const middleware = [reduxPromiseMiddleware(), routerMiddleware(history)];
+
+//let query = _.fromPairs(Array.from(new URLSearchParams(history.getCurrentLocation().search.slice(1)).entries()));
+// Add the reducer to your store on the `router` key
+// Also apply our middleware for navigating
+const store = createStore(
+  combineReducers({
+    app: appReducer,
+    form: formReducer,
+    routerReducer
+  }),
+  applyMiddleware(...middleware)
+)
+if (DEBUG) {
+  window.store = store;
+  window.hist = history;
+}
 
 export default function configureStore(initialState = {}) {
-  const middlewareEnhancer = applyMiddleware(...appMiddleware);
-  let enhancer = middlewareEnhancer;
-  
-  if (window && window.__REDUX_DEVTOOLS_EXTENSION__) {
-    enhancer = compose(middlewareEnhancer, window.__REDUX_DEVTOOLS_EXTENSION__());
-  }
-
-  let query = _.fromPairs(Array.from(new URLSearchParams(history.getCurrentLocation().search.slice(1)).entries()));
-  const store = createStore(
-    reducers,
-    {},
-    //query,
-    //{...initialState, ...DevTools.instrument()},
-    //DevTools.instrument(),
-    enhancer
-  );
-  //const history = syncHistoryWithStore(browserHistory, store)
-  AppState.giveAwayStore(store, history);
-  // i'm sure this is dumb, but trying to follow example at
-  //https://github.com/reactjs/react-router-redux/blob/master/examples/basic/app.js
+  if (!_.isEmpty(initialState)) throw new Error("ignoring initialState");
+  AppState.initialize(store, history);
   return {store, history};
 }

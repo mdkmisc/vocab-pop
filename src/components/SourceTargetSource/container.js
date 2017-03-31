@@ -11,40 +11,53 @@ import { Field, reduxForm, formValueSelector } from 'redux-form'
 
 import * as AppState from '../../AppState'
 
-const renderField = ({ input, label, type, meta: { asyncValidating, touched, error } }) => (
-  <div>
-    <label>{label}</label>
-    <div className={asyncValidating ? 'async-validating' : ''}>
-      <input {...input} type={type} placeholder={label}/>
-      {touched && error && <span>{error}</span>}
-    </div>
-  </div>
-)
-function asyncValidate(values, dispatch) {
-  dispatch(actions.loadFromSourceCodes(values));
+const renderField =
+  opts => {
+    let { input, label, type, 
+          meta: { asyncValidating, touched, error } } = opts;
+    console.log('rendering field with', opts);
+    return (<div>
+              <label>{label}</label>
+              <div className={asyncValidating ? 'async-validating' : ''}>
+                <input {...input} type={type} placeholder={label}/>
+                {touched && error && 
+                  <span style={{fontWeight:700, color:'#700'}}>
+                    {error}
+                  </span>}
+              </div>
+            </div>)
+  }
+function asyncValidate(values, dispatch, form) {
+  console.error('VALIDATING', values);
+  if (form && !dispatch) {
+    dispatch = form.dispatch;
+  }
+  let disp = dispatch(actions.loadFromSourceCodes(values));
+  debugger;
 }
 class SourceTargetSourceForm extends Component {
   constructor(props) {
     super(props)
-    asyncValidate = asyncValidate.bind(this);
   }
   componentDidMount() {
     let {dispatch, initialValues} = this.props;
-    console.log("mounting", this.props);
     if (initialValues) {
       let x = dispatch(actions.loadFromSourceCodes(initialValues));
-      console.log("initializing action", x);
         //.then(recs=>console.log("this is dumb", recs), err=>console.error("even dumber", err));
     }
   }
-  componentDidUpdate() {
-    console.log("updating", this.props);
+  componentDidUpdate(prevProps, prevState) {
+    let {vocabulary_id, concept_codes, recs, handleSubmit} = this.props;
+    if (prevProps.vocabulary_id !== vocabulary_id ||
+        prevProps.concept_codes !== concept_codes) {
+      console.error("new props", {vocabulary_id, concept_codes, recs})
+    }
   }
   render() {
-    const { handleSubmit, load, pristine, reset, submitting,
+    const { handleSubmit, load, pristine, reset, submitting, history,
               vocabulary_id, concept_codes, recs, } = this.props
     //let data = {vocabulary_id:'ICD9CM', concept_codes:'401.1%,401.2,401.3%'}
-    console.log("SourceTargetSourceForm", this.props)
+    //console.log("SourceTargetSourceForm", this.props)
     /*
               (ep,e) => {
                 //handleSubmit(ep,e)
@@ -56,11 +69,16 @@ class SourceTargetSourceForm extends Component {
     */
     //let e = sclick(document, handleSubmit)
     let report = recs && recs.length
-      ? <STSReport vocabulary_id={vocabulary_id} concept_codes={concept_codes} />
+      ? <STSReport vocabulary_id={vocabulary_id} concept_codes={concept_codes} 
+                    recs={recs}
+            />
       : null;
     return (
       <div>
-        <form onSubmit={handleSubmit} >
+        <form onSubmit={ data=>{ debugger;
+                                  console.log(history);
+                                  handleSubmit (data) } }
+          >
           <div>
               <Field name="vocabulary_id" 
                     component={renderField}
@@ -87,11 +105,19 @@ class SourceTargetSourceForm extends Component {
 SourceTargetSourceForm = reduxForm({
   form: 'stsform',  // a unique identifier for this form
   asyncValidate,
-  asyncBlurFields: [ 'vocabulary_id' ],
-  onSubmit: (data,arg2,arg3,arg4) => {
-    console.log("SUBMIT", {data,arg2,arg3,arg4})
-    return actions.loadFromSourceCodes(data)
+  onChange: function(fields, dispatch, props) {
+    this.asyncValidate(fields, this.dispatch);
   },
+/*
+  onChange: (fields, dispatch, props) => {
+    asyncValidate(fields, this.dispatch);
+  },
+*/
+  asyncBlurFields: [ 'concept_codes' ],
+  onSubmit: data => {
+    debugger;
+    actions.loadFromSourceCodes(data)
+  }
 })(SourceTargetSourceForm)
 
 const selector = formValueSelector('stsform')
@@ -102,12 +128,13 @@ SourceTargetSourceForm = connect(
     const {vocabulary_id, concept_codes, } = 
       selector(state, 'vocabulary_id', 'concept_codes')
     //return state
-    let recs = state.vocabPop.sourceTargetSource.recs;
-    console.log('sts CONNECT', {state, ownProps}, 'did recs change?', recs);
+    let recs = state.app.sourceTargetSource.recs;
+    //console.log('sts CONNECT', {state, ownProps}, 'did recs change?', recs);
     return {
-      initialValues: state.vocabPop.sourceTargetSource,
+      initialValues: state.app.sourceTargetSource,
       vocabulary_id, concept_codes, recs,
       formRef: state.form.stsform,
+      history
     }
   },
   {
@@ -132,7 +159,7 @@ function mapStateToProps(state) {
   return state
   return {}
   //console.log('sourceTargetSource state', state)
-  //return state.vocabPop.sourceTargetSource
+  //return state.app.sourceTargetSource
   //return { user: get(state, 'sourceTargetSource.recs'), }
 }
 

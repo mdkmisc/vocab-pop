@@ -17,6 +17,7 @@ Copyright 2016 Sigfried Gold
 
 import React, { Component, PropTypes } from 'react'
 import { connect, Provider, } from 'react-redux'
+import { ConnectedRouter, routerReducer, routerMiddleware, push } from 'react-router-redux'
 
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 //import { withRouter } from 'react-router'
@@ -96,7 +97,7 @@ const routes = [
 ]
 class App extends Component {
   render() {
-    console.log("IN APP", this.props);
+    //console.log("IN APP", this.props);
     const {match, store, location, pathname, } = this.props
     //const {main, sidebar} = this.props
     //let NavBar = DefaultNavBar
@@ -217,7 +218,7 @@ class Routes extends Component {
     //let route = <RouteWithSubRoutes component={App} {...routeDesc} />
     return (
           <Provider store={store}>
-            <Router history={history}>
+            <ConnectedRouter history={history}>
               <Route path='/' component={App} />
                 {
                   /*
@@ -237,7 +238,7 @@ class Routes extends Component {
               </Route>
                   */
                 }
-            </Router>
+            </ConnectedRouter>
           </Provider>
     )
     /*
