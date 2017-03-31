@@ -10,6 +10,10 @@ function loadFromSourceCodes(values) {
     apiCall: 'codesToSource',
     params: values,
   })
+  stream.fetchPromise.catch(err => {
+    console.error('sts fetch prob');
+    //throw {concept_codes: "problem getting them", err}
+  })
   return {
     type: 'LOAD_FROM_SOURCECODES',
     payload: {

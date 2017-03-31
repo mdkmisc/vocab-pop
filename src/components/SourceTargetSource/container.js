@@ -32,8 +32,9 @@ function asyncValidate(values, dispatch, form) {
   if (form && !dispatch) {
     dispatch = form.dispatch;
   }
-  let disp = dispatch(actions.loadFromSourceCodes(values));
-  debugger;
+  let disp = dispatch(actions.loadFromSourceCodes(values))
+                .catch(err=>{throw {concept_codes: err.statusText}})
+  return disp;
 }
 class SourceTargetSourceForm extends Component {
   constructor(props) {
