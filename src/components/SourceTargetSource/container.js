@@ -1,104 +1,199 @@
 /* eslint-disable */
 import _ from '../../supergroup'; // in global space anyway...
+import * as utils from '../../utils'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
-import * as actions from '../../redux/ducks/sourceTargetSource'
+import * as sts from '../../redux/ducks/sourceTargetSource'
 import {STSReport} from './presenter'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
+import MenuItem from 'material-ui/MenuItem';
+import Paper from 'material-ui/Paper';
+import FlatButton from 'material-ui/FlatButton';
+import LinkIcon from 'material-ui/svg-icons/content/link';
+import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
+
+//import { AutoComplete as MUIAutoComplete } from 'material-ui'
+import {
+  AutoComplete,
+  Checkbox,
+  DatePicker,
+  TimePicker,
+  RadioButtonGroup,
+  SelectField,
+  Slider,
+  TextField,
+  Toggle
+} from 'redux-form-material-ui'
+
+
 import * as AppState from '../../AppState'
 
-const renderField =
-  opts => {
-    let { input, label, type, 
-          meta: { asyncValidating, touched, error } } = opts;
-    console.log('rendering field with', opts);
-    return (<div>
-              <label>{label}</label>
-              {'is it? ' + asyncValidating}
-              <div className={asyncValidating ? 'async-validating' : ''}>
-                <input {...input} type={type} placeholder={label}/>{' '}
-                {asyncValidating ? <Spinner/> : ''}
-                <br/>
-                {touched && error && 
-                  <span style={{fontWeight:700, color:'#700'}}>
-                    {error}
-                  </span>}
-              </div>
-            </div>)
-  }
-function asyncValidate(values, dispatch, form) {
-  console.error('VALIDATING', values);
-  if (form && !dispatch) {
-    dispatch = form.dispatch;
-  }
-  let disp = dispatch(actions.loadFromSourceCodes(values))
-                .catch(err=>{throw {concept_codes: err.statusText}})
-  return disp;
-}
 class SourceTargetSourceForm extends Component {
   constructor(props) {
     super(props)
+    this.state = {};
   }
   componentDidMount() {
-    let {dispatch, initialValues} = this.props;
+    let {dispatch, initialValues} = this.props
+    dispatch(sts.loadVocabs())
     if (initialValues) {
-      let x = dispatch(actions.loadFromSourceCodes(initialValues));
-        //.then(recs=>console.log("this is dumb", recs), err=>console.error("even dumber", err));
+      dispatch({type:sts.LOAD_FROM_SOURCECODES,payload:initialValues});
+      //dispatch(sts.loadFromSourceCodes(initialValues))
     }
+    utils.setToAncestorSize(this, this.divRef, ".main-content");
+    /*
+    this.refs.concept_codes
+      .getRenderedComponent() // on Field, returns ReduxFormMaterialUITextField
+      .getRenderedComponent() // on ReduxFormMaterialUITextField, returns TextField
+      .focus()                // on TextField
+    */
   }
   componentDidUpdate(prevProps, prevState) {
-    let {vocabulary_id, concept_codes, recs, handleSubmit} = this.props;
+    let {initialValues, handleSubmit} = this.props;
+    let { vocabulary_id, concept_codes, recs, fromSrcErr, isPending, vocabPending }
+            = initialValues;
     if (prevProps.vocabulary_id !== vocabulary_id ||
         prevProps.concept_codes !== concept_codes) {
-      console.error("new props", {vocabulary_id, concept_codes, recs})
+      //console.error("new props", {vocabulary_id, concept_codes, recs})
     }
   }
   render() {
     const { handleSubmit, load, pristine, reset, submitting, history,
-              vocabulary_id, concept_codes, recs, } = this.props
-    //let data = {vocabulary_id:'ICD9CM', concept_codes:'401.1%,401.2,401.3%'}
-    //console.log("SourceTargetSourceForm", this.props)
-    /*
-              (ep,e) => {
-                //handleSubmit(ep,e)
-                ep.stopPropagation()
-                e.stopPropagation()
-                console.log("don't submit")
-                return false
-              }
-    */
-    //let e = sclick(document, handleSubmit)
+              dispatch, initialValues, 
+          } = this.props
+    let { vocabulary_id, concept_codes, recs, fromSrcErr, 
+          isPending, vocabs, vocabPending}
+            = initialValues;
     let report = recs && recs.length
       ? <STSReport vocabulary_id={vocabulary_id} concept_codes={concept_codes} 
                     recs={recs}
             />
       : null;
+    let errMsg = ''
+    if (fromSrcErr) {
+      errMsg =  <p style={{fontColor:'red',fontWeight:'bold'}}>
+                  {fromSrcErr.statusText}
+                </p> 
+    }
+    let vocabulary = (vocabs||[]).find(d=>d.vocabulary_id===vocabulary_id)
+    const cardStyle = {
+      //height: 100,
+      //width: '100%',
+      padding: '0px',
+      //margin: 5,
+      //textAlign: 'center',
+      //display: 'inline-block',
+    };
+    if (!vocabs && vocabulary_id) {
+      return <div ref={d=>this.divRef=d}/>
+    }
     return (
-      <div>
-        <form onSubmit={ data=>{ debugger;
-                                  console.log(history);
-                                  handleSubmit (data) } }
-          >
+      <div ref={d=>this.divRef=d}>
+        <form 
+          //onSubmit={ data=>{ debugger; console.log("submit is just for saving selection?", history); handleSubmit (data) } }
+        >
           <div>
-              <Field name="vocabulary_id" 
-                    component={renderField}
-                    type="text" 
-                    label="Vocabulary ID"/>
+            <Card containerStyle={cardStyle} style={cardStyle}>
+              <CardHeader style={{padding:'0px 8px 0px 8px'}}
+                title="Vocabulary"
+                subtitle={
+                    <FlatButton
+                      style={{padding:'0px', }}
+                      href={vocabulary.vocabulary_reference}
+                      target="_blank"
+                      label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
+                      //primary={true}
+                      icon={<LinkIcon />}
+                    />
+                }
+              />
+              <CardActions>
+                <Field name="vocabulary_id" 
+                      style={{padding:'0px 8px 0px 8px'}}
+                      value={vocabulary_id}
+                      component={SelectField}
+                      fullWidth={true}
+                      hintText="vocabulary_id"
+                      validate={
+                        value=>{
+                          let voc = (vocabs||[]).find(d=>d.vocabulary_id===value)
+                          return voc ? undefined : `can't find ${value}`
+                        }
+                      }
+                      //floatingLabelText="Vocabulary"
+                      //data-lpignore={true}
+                      //floatingLabelText="Type 'peah', fuzzy search"
+                      //filter={MUIAutoComplete.fuzzyFilter}
+                      //filter={MUIAutoComplete.noFilter}
+                      //maxHeight={200}
+                      //onUpdateInput={vocabUpdate}
+                      //onNewRequest={value => { console.log('AutoComplete ', value) // eslint-disable-line no-console }}
+                      //dataSourceConfig={{ }}
+                      //errorText={vocabulary_id}
+                      onChange={
+                        (event, index, value) => {
+                          dispatch({type:sts.VOCABULARY_ID,
+                                  payload: {concept_codes,
+                                              vocabulary_id:index}})
+                        }
+                      }
+                >
+                  {
+                    (vocabs||[]).map(
+                      d=><MenuItem 
+                            key={d.vocabulary_id}
+                            checked={d.vocabulary_id === vocabulary_id}
+                            value={d.vocabulary_id}
+                            primaryText={d.vocabulary_id}
+                            secondaryText={d.vocabulary_name}
+                            />)
+                  }
+                </Field>
+              </CardActions>
+            </Card>
+              
               <Field name="concept_codes" 
-                    component={renderField}
-                    type="text" 
-                    label="Concept Codes"/>
+                    hintText='401.1%,401.2,401.3%'
+                    floatingLabelText="Concept Codes"
+                    component={TextField}
+                    ref="concept_codes" withRef
+                    multiLine={true}
+                    fullWidth={true}
+                    errorText={errMsg}
+                    onChange={
+                      (event, index, value) => {
+                        dispatch({type:sts.SOURCE_CODES,
+                                payload: {
+                                  vocabulary_id,
+                                  concept_codes:index}})
+                      }
+                    }
+  /*
+  ? <span style={{fontWeight:700, color:'#700'}}>
+      {fromSrcErr.statusText}
+    </span>
+    ? <span style={{fontWeight:700, color:'#700'}}>
+        {vocabErr.statusText}
+      </span>
+  */
+                    label="Concept Codes"
+                />
           </div>
+        </form>
+        {/*
           <div>
             <button type="submit" disabled={pristine || submitting}>Submit</button>
             <button type="button" disabled={pristine || submitting} onClick={reset}>Undo Changes</button>
           </div>
-        </form>
+        */}
+        <pre style={{fontSize:8}}>
+          {JSON.stringify(initialValues,null,2)}
+        </pre>
         {report}
       </div>
     )
@@ -109,96 +204,56 @@ class SourceTargetSourceForm extends Component {
 // Decorate with reduxForm(). It will read the initialValues prop provided by connect()
 SourceTargetSourceForm = reduxForm({
   form: 'stsform',  // a unique identifier for this form
-  asyncValidate,
+  //asyncValidate,
   onChange: function(fields, dispatch, props) {
-    this.asyncValidate(fields, this.dispatch);
+    //this.asyncValidate(fields, this.dispatch);
   },
 /*
   onChange: (fields, dispatch, props) => {
     asyncValidate(fields, this.dispatch);
   },
-*/
-  asyncBlurFields: [ 'concept_codes' ],
+  //asyncBlurFields: [ 'concept_codes' ],
   onSubmit: data => {
     debugger;
-    actions.loadFromSourceCodes(data)
+    //sts.loadFromSourceCodes(data)
   }
+*/
 })(SourceTargetSourceForm)
 
 const selector = formValueSelector('stsform')
-// You have to connect() to any reducers that you wish to connect to yourself
 SourceTargetSourceForm = connect(
   (state, ownProps) => { // mapStateToProps
-    //console.log('sts vocab state', selector(state,'vocabulary_id'))
-    const {vocabulary_id, concept_codes, } = 
-      selector(state, 'vocabulary_id', 'concept_codes')
-    //return state
+    const {vocabulary_id, concept_codes, } = selector(state, 'vocabulary_id', 'concept_codes')
+    let apiCallsProcessed = state.app.sourceTargetSource.apiCallsProcessed;
     let recs = state.app.sourceTargetSource.recs;
-    //console.log('sts CONNECT', {state, ownProps}, 'did recs change?', recs);
-    return {
+    let fromSrcErr = state.app.sourceTargetSource.fromSrcErr;
+    //let isPending = state.app.sourceTargetSource.isPending;
+    let newState = {
       initialValues: state.app.sourceTargetSource,
-      vocabulary_id, concept_codes, recs,
+      apiCallsProcessed,
+      //currentValues: state.app.sourceTargetSource,
+      vocabulary_id, concept_codes, recs, fromSrcErr,
+      //curVals:{ vocabulary_id, concept_codes, recs, fromSrcErr,isPending},
       formRef: state.form.stsform,
-      history
+      history: browserHistory,// wrong wrong wrong...i think
     }
+    //console.log({oldState:state, newState})
+    return newState
   },
   {
-    actions
-    //this.boundActions = bindActionCreators(actions, dispatch)
+    sts
+    //this.boundActions = bindActionCreators(sts, dispatch)
   }
 )(SourceTargetSourceForm)
-/*
-const WrapForm = ()=><SourceTargetSourceForm
-                        onSubmit={
-                          (a,b,c,d) => {
-                            console.log("SUBMIT!", a,b,c,d)
-                            debugger
-                          }
-                        } />
-*/
 export default SourceTargetSourceForm
-//export default WrapForm
-
 /*
-function mapStateToProps(state) {
-  return state
-  return {}
-  //console.log('sourceTargetSource state', state)
-  //return state.app.sourceTargetSource
-  //return { user: get(state, 'sourceTargetSource.recs'), }
-}
-
-const mapDispatchToProps = {
-  //loadRecs: actions.sourceTargetSource.loadFromSourceCodes,
-}
-*/
-
-/*
-export default connect (
-  mapStateToProps,
-  mapDispatchToProps
-)(FormVals)
-*/
-function simulateClick(el, cb) {
-  var event = new MouseEvent('click', {
-    'view': window,
-    'bubbles': true,
-    'cancelable': true
-  })
-  el.addEventListener('click', 
-                      (e,a,b,c)=>{
-                        debugger
-                        return cb(e,a,b,c)
-                      })
-  var cancelled = !el.dispatchEvent(event)
-  if (cancelled) {
-    // A handler called preventDefault.
-    alert("cancelled")
-  } else {
-    // None of the handlers called preventDefault.
-    alert("not cancelled")
+function asyncValidate(values, dispatch, form) {
+  //console.error('VALIDATING', values);
+  if (form && !dispatch) {
+    dispatch = form.dispatch;
   }
-  return event
+  return sts.loadFromSourceCodes(values)
+  //let disp = dispatch(sts.loadFromSourceCodes(values)) .catch(err=>{throw {concept_codes: err.statusText}})
+  return disp;
 }
-var sclick = _.once(simulateClick)
-              //handleSubmit={actions.loadFromSourceCodes}
+*/

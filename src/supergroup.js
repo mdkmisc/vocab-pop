@@ -11,7 +11,7 @@
 
 'use strict';
 
-const preventScalarInMultiValuedGroup=false;
+var preventScalarInMultiValuedGroup=false;
 
 if (typeof require !== "undefined") {
     var _ = require('lodash');

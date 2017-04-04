@@ -1,57 +1,87 @@
 /* eslint-disable */
 const DEBUG = true;
 
+import config from '../config'
 import * as AppState from '../AppState'
-import _ from '../supergroup';
+import _ from '../supergroup'
 
-import sourceTargetSource from './ducks/sourceTargetSource'
+import * as myrouter from './myrouter'
+import * as rrRouter from 'react-router-redux'
+//console.log(rrRouter)
+
+import sourceTargetSource, {
+          loadFromSourceCodesEpic,
+          loadVocabsEpic
+        } from './ducks/sourceTargetSource'
 
 import React, { Component } from 'react'
 import { createStore, compose, combineReducers, applyMiddleware } from 'redux'
-import { ConnectedRouter, routerReducer, routerMiddleware, push } from 'react-router-redux'
-import reduxPromiseMiddleware from 'redux-promise-middleware';
+import { combineEpics } from 'redux-observable';
+import { createEpicMiddleware } from 'redux-observable';
 import { reducer as formReducer } from 'redux-form';
 
-import { BrowserRouter as Router, } from 'react-router-dom'
-//import { browserHistory } from 'react-router';
-//let router = new Router();
-//let history = browserHistory;   // this is working, but going to try react-router-redux
-                                // one more time
-// or, since their example (https://github.com/ReactTraining/react-router/tree/master/packages/react-router-redux)
-// says:
-// Create a history of your choosing (we're using a browser history in this case)
-// maybe i can stick with browserHistory
-// ...
-// maybe not...but this might be a waste of time
-import createHistory from 'history/createBrowserHistory'
-const history = createHistory()
-      // Now you can dispatch navigation actions from anywhere!
-      // store.dispatch(push('/foo'))
 
-// ? const router = routerMiddleware(browserHistory);
 
-//const appMiddleware = [thunk, router, reduxPromiseMiddleware(), logger, dataService];
-//const appMiddleware = [reduxPromiseMiddleware(), dataService];
-const middleware = [reduxPromiseMiddleware(), routerMiddleware(history)];
+import { ajax } from 'rxjs/observable/dom/ajax';
 
-//let query = _.fromPairs(Array.from(new URLSearchParams(history.getCurrentLocation().search.slice(1)).entries()));
-// Add the reducer to your store on the `router` key
-// Also apply our middleware for navigating
+const api = (state={}, action) => {
+  return state;
+}
+const configReducer = () => {
+  return config;
+}
+
+console.log({
+  sourceTargetSource,
+  api,
+  config,
+  myrouter,
+  configReducer,
+  routeState: myrouter.routeState
+})
+var appReducer = combineReducers({
+  sourceTargetSource,
+  api,
+  config: configReducer,
+  routeState: myrouter.routeState
+});
+
+export const rootEpic = combineEpics(
+  loadFromSourceCodesEpic,
+  loadVocabsEpic
+);
+const epicMiddleware = createEpicMiddleware(rootEpic);
+//console.log(epicMiddleware)
+
+export const rootReducer = combineReducers({
+  app: appReducer,
+  form: formReducer,
+  //routeReducer: myrouter.routerReducer,
+});
+const middleware = [
+        //reduxPromiseMiddleware(), 
+        //routerMiddleware(history),  // some weirdness
+        rrRouter.routerMiddleware(myrouter.history),
+        epicMiddleware,
+      ];
+
+const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
+
 const store = createStore(
-  combineReducers({
-    app: appReducer,
-    form: formReducer,
-    routerReducer
-  }),
-  applyMiddleware(...middleware)
-)
+  rootReducer,
+  composeEnhancers(
+    applyMiddleware(...middleware)
+  )
+);
+
 if (DEBUG) {
   window.store = store;
-  window.hist = history;
+  window.hist = myrouter.history;
+  //console.log(store,history)
 }
 
 export default function configureStore(initialState = {}) {
   if (!_.isEmpty(initialState)) throw new Error("ignoring initialState");
-  AppState.initialize(store, history);
-  return {store, history};
+  AppState.initialize(store, myrouter.history);
+  return {store, history:myrouter.history};
 }

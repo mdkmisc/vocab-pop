@@ -17,7 +17,7 @@ import Rx from 'rxjs/Rx';
 var $ = require('jquery');
 var d3 = require('d3');
 var ALLOW_CACHING = [
-  '.*',
+  //'.*',
   //'/WebAPI/[^/]+/person/',
 ];
 
@@ -135,7 +135,7 @@ export function cachedJsonFetch(url, opts={}, readyPromise) {
          )
 }
 export class JsonFetcher { // this.url is the unique key
-  constructor(baseUrl, params, meta, readyPromise) {
+  constructor(baseUrl, params, meta, readyPromise, wantRxAjax) {
     /*
     if (JsonFetcher.blockTillReadyForFetching) {
       throw new Error("not ready to fetch");
@@ -156,14 +156,19 @@ export class JsonFetcher { // this.url is the unique key
     }
     this.queryName = params.queryName || 'no query name';
     //console.log("apicall", this.url);
-    this.fetchPromise = cachedJsonFetch(this.url, undefined, readyPromise);
-    this.fetchPromise.then(json => {
-                        //console.log('fetchPromise resolved in utils!!!', json)
-                        return this.json=json
-                      })
-                      .catch(err => {
-                        //console.log('fetchPromise failed in utils!!!', err)
-                      })
+    if (wantRxAjax) { // trying to start using https://redux-observable.js.org/docs/basics/Epics.html
+                      // without breaking a lot of other stuff
+      this.rxAjax = Rx.Observable.ajax.getJSON(this.url)
+    } else {
+      this.fetchPromise = cachedJsonFetch(this.url, undefined, readyPromise);
+      this.fetchPromise.then(json => {
+                          //console.log('fetchPromise resolved in utils!!!', json)
+                          return this.json=json
+                        })
+                        .catch(err => {
+                          //console.log('fetchPromise failed in utils!!!', err)
+                        })
+    }
     this.newInstance = true;
     JsonFetcher.instances[this.url] = this;
   }
@@ -367,6 +372,7 @@ export function getAncestorWidth(el, selector) {
   return width;
 }
 export function setToAncestorWidth(self, el, selector, saveToCompState=true, source='') {
+  if (!self.state) throw new Error("only works on components with some defined state");
   let width = getAncestorWidth(el, selector);
   if (width && width === self.state.width)
     return width;
@@ -382,6 +388,7 @@ export function getAncestorHeight(el, selector) {
   return height;
 }
 export function setToAncestorHeight(self, el, selector, saveToCompState=true, source='') {
+  if (!self.state) throw new Error("only works on components with some defined state");
   let height = getAncestorHeight(el, selector);
   if (height && height === self.state.height)
     return height;

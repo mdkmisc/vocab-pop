@@ -50,7 +50,8 @@ function fetchData() {
   console.log("NOT FETCHING DATA");
 
 
-if i ever revive this, might need to look at old AppData.js which is
+if i ever revive this, might need to look at old AppData.js and appSettings
+  which are
   disappearing after commit 27ce5015d658935bcff4bcc44037484e83802fbc
 
   AppData.cacheDirty().then(() => {

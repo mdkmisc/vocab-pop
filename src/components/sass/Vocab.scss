@@ -1,3 +1,5 @@
+@import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500');
+
 //colors
 $gray: grey;
 $blue: blue;
@@ -43,7 +45,7 @@ $steel_blue:  steelblue;
 $mute_opacity: 0.3;
 $color_green_30: rgba(20,255,50,.3);
 
-.async-validating {
+.is-pending {
   background-color: yellow;
 }
 
@@ -54,6 +56,9 @@ $color_green_30: rgba(20,255,50,.3);
   .short-input {
     max-width: 250px;
   }
+}
+body {
+  font-family: 'Roboto', sans-serif;
 }
 html, body, .height-100 {
   height: 100%;

@@ -3,7 +3,6 @@
 
 const DEBUG = true;
 import React, { Component } from 'react';
-import {render} from 'react-dom';
 //import {VocNode, VocEdge} from './VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;

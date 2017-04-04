@@ -15,6 +15,8 @@ Copyright 2016 Sigfried Gold
    limitations under the License.
 */
 
+
+
 import React, { Component, PropTypes } from 'react'
 import { connect, Provider, } from 'react-redux'
 import { ConnectedRouter, routerReducer, routerMiddleware, push } from 'react-router-redux'
@@ -33,14 +35,11 @@ import {FilterForm} from './components/Filters'
 import Draggable from 'react-draggable'; // The default
 import VocabPop, {ConceptViewPage} from './components/VocabPop'
           /* Search, DrugContainer, Tables, */
-import SourceTargetSource from './components/SourceTargetSource'
 import config from './config'
 import * as AppState from './AppState'
 var $ = require('jquery')
 import Spinner from 'react-spinner'
 //require('react-spinner/react-spinner.css')
-
-
 //import logo from './logo.svg'
 //import './App.css'
 import './stylesheets/VocabPop.css'
@@ -49,34 +48,38 @@ import _ from './supergroup'
 //import * as util from './ohdsi.util'
 import {commify, updateReason, setToAncestorSize, getAncestorHeight, ComponentWrapper} from './utils'
 
-/*
-export default const App = () => {
-      <Router history={history}>
-        <Route path={config.rootPath+'/'} component={App}>
-          <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
-          <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
-          <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
-          <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptViewPage', }} />
-        </Route>
-      </Router>
-}
-*/
+
+import muiThemeable from 'material-ui/styles/muiThemeable';
+import {teal700} from 'material-ui/styles/colors';
+import getMuiTheme from 'material-ui/styles/getMuiTheme';
+import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme';
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+
+// from: https://github.com/callemall/material-ui/issues/5208
+import injectTapEventPlugin from 'react-tap-event-plugin';
+
+const muiTheme = getMuiTheme({
+  palette: {
+    textColor: teal700,
+  },
+  appBar: {
+    height: 50,
+  },
+});
+
+import SourceTargetSource from './components/SourceTargetSource'
+
 const routes = [
   { path: '/',
     exact: true,
-    //main: ComponentWrapper,
-    //InnerComp: VocabPop,
     main: ()=><ComponentWrapper InnerComp={VocabPop} />,
   },
   { path: '/appstate',
     sidebar: Sidebar,
-    //main: AppState.AppState,
     main: ()=><ComponentWrapper InnerComp={AppState.AppState} />,
   },
   { path: '/conceptview',
     main: ()=><ComponentWrapper InnerComp={ConceptViewPage} />,
-    //main: ComponentWrapper,
-    //InnerComp: ConceptViewPage,
   },
   { path: '/sourcetargetsource',
     main: (a,b,c,d,e,f) => {
@@ -95,18 +98,25 @@ const routes = [
     */
   },
 ]
+const defaultRoute = routes[0];
 class App extends Component {
+  constructor(props: any) {
+    // from https://github.com/callemall/material-ui/issues/5208
+    injectTapEventPlugin();
+    super(props);
+  }
+  
   render() {
-    //console.log("IN APP", this.props);
     const {match, store, location, pathname, } = this.props
-    //const {main, sidebar} = this.props
-    //let NavBar = DefaultNavBar
-                      //<Nav > </Nav>
-    let route = _.find(routes, r=>r.path===location.pathname);
+    let route = _.find(routes, r=>r.path===location.pathname)
+                || defaultRoute
     let sidebar = route.sidebar 
                     ? <Route {...route} component={route.sidebar} />
                     : null
     let main = <Route {...route} component={route.main} />;
+    /*
+                  <VVAppBar />
+    */
     return (
               <div className="vocab-app flex-box">
                 <div className="flex-content-height container" style={{width:'100%'}} >
@@ -139,7 +149,6 @@ class App extends Component {
                   </Navbar>
                 </div>
                 <div className="flex-remaining-height container" style={{width:'100%'}}>
-                  <h3>the route? {location.pathname} </h3>
                   {sidebar
                     ? <Row>
                         <h4>should have a sidebar</h4>
@@ -151,7 +160,6 @@ class App extends Component {
                         </Col>
                       </Row>
                     : <Row>
-                        <h4>should not have a sidebar</h4>
                         <Col xs={12} md={12} >
                           {main}
                         </Col>
@@ -167,34 +175,86 @@ class App extends Component {
     //history: PropTypes.object.isRequired
   }
 }
+
+import AppBar from 'material-ui/AppBar';
+import IconButton from 'material-ui/IconButton';
+import IconMenu from 'material-ui/IconMenu';
+import MenuItem from 'material-ui/MenuItem';
+import FlatButton from 'material-ui/FlatButton';
+import Toggle from 'material-ui/Toggle';
+import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
+import NavigationClose from 'material-ui/svg-icons/navigation/close';
+
+class Login extends Component {
+  static muiName = 'FlatButton';
+
+  render() {
+    return (
+      <FlatButton {...this.props} label="Login" />
+    );
+  }
+}
+
+const Logged = (props) => (
+  <IconMenu
+    {...props}
+    iconButtonElement={
+      <IconButton><MoreVertIcon /></IconButton>
+    }
+    targetOrigin={{horizontal: 'right', vertical: 'top'}}
+    anchorOrigin={{horizontal: 'right', vertical: 'top'}}
+  >
+    <MenuItem primaryText="Refresh" />
+    <MenuItem primaryText="Help" />
+    <MenuItem primaryText="Sign out" />
+  </IconMenu>
+);
+
+Logged.muiName = 'IconMenu';
+
+/**
+ * This example is taking advantage of the composability of the `AppBar`
+ * to render different components depending on the application state.
+ * http://www.material-ui.com/#/components/app-bar
+ */
+class VVAppBar extends Component {
+  state = {
+    logged: true,
+  };
+
+  handleChange = (event, logged) => {
+    this.setState({logged: logged});
+  };
+
+  render() {
+    return (
+      <div>
+        <Toggle
+          label="Logged"
+          defaultToggled={true}
+          onToggle={this.handleChange}
+          labelPosition="right"
+          style={{margin: 20}}
+        />
+        <AppBar
+          title="Title"
+          iconElementLeft={<IconButton><NavigationClose /></IconButton>}
+          iconElementRight={this.state.logged ? <Logged /> : <Login />}
+        />
+      </div>
+    );
+  }
+}
+
+
+
+    //console.log("IN APP", this.props);
 const Settings = ({props}) => <h4>Settings</h4>
 const History = ({props}) => <h4>History</h4>
 const DataLoaded = ({props}) => <h4>DataLoaded</h4>
 export function locPath(location, pathname, opts={}) {
   let loc = Object.assign({}, location, {pathname: `${config.rootPath}${pathname}`, })
-  //loc.search = '?' + AppState.myqs.stringify(search)
-  //console.log("WHAT locPath RETURNS", loc);
   return loc;
-  /*
-  //browserHistory.push(opts, pathname)
-
-  // not sure whether to get state from AppState.getState()
-  // here. this does the same:
-  let search = AppState.myqs.parse(location.search.substr(1))
-  if (opts.clear) {
-    opts.clear.forEach(param=>delete search[param])
-  }
-  if (opts.params) {
-    _.each(opts.params, (v,p) => search[p] = v)
-  }
-
-  // let's try putting pathname in hash instead of pathname because prod build isn't working
-
-  let loc = Object.assign({}, location, {pathname: config.rootPath, })
-  //let loc = Object.assign({}, location, {pathname: config.rootPath, hash: pathname})
-  loc.search = '?' + AppState.myqs.stringify(search)
-  return loc
-  */
 }
 
 const RouteWithSubRoutes = (route) => (
@@ -218,44 +278,13 @@ class Routes extends Component {
     //let route = <RouteWithSubRoutes component={App} {...routeDesc} />
     return (
           <Provider store={store}>
-            <ConnectedRouter history={history}>
-              <Route path='/' component={App} />
-                {
-                  /*
-              <Route path={config.rootPath+'/'} >
-                  routes.map((route, index) => (
-                    <Route key={index} path={route.path} exact={route.exact} 
-                        {...route} component={App} />
-                  ))
-                  <Route path="concepts" components={{main:ComponentWrapper, compName:'VocabPop', }} />
-                  <IndexRoute        components={{main:ComponentWrapper, compName:'Home',}}/>
-                  <Route path="appstate" components={{main:AppState.AppState, sidebar:Sidebar}} />
-                  <Route path="conceptview" components={{main:ComponentWrapper, compName:'ConceptViewPage', }} />
-                <App>
-                  <Route path="appstate" main={AppState.AppState} sidebar={Sidebar} />
-                  <Route path="appstate" main={ComponentWrapper} compName='ConceptViewPage' />
-                </App>
-              </Route>
-                  */
-                }
-            </ConnectedRouter>
+            <MuiThemeProvider muiTheme={muiTheme}>
+              <ConnectedRouter history={history}>
+                <Route path='/' component={App} />
+              </ConnectedRouter>
+            </MuiThemeProvider>
           </Provider>
     )
-    /*
-              <div>
-                <ul>
-                  <li><Link to="/">Home</Link></li>
-                  <li><Link to="/about">About</Link></li>
-                  <li><Link to="/topics">Topics</Link></li>
-                </ul>
-
-                <hr/>
-
-                <Route exact path="/" component={Home}/>
-                <Route path="/about" component={About}/>
-                <Route path="/topics" component={Topics}/>
-              </div>
-    */
   }
   static propTypes = {
     store: PropTypes.object.isRequired,
@@ -280,93 +309,6 @@ export default connect(
 
 
 
-export class Home extends Component {
-  constructor(props) {
-    super(props)
-    this.state = {}
-  }
-  componentDidMount() {
-    this.stateSub = AppState.subscribeState('', state => this.setState(state))
-  }
-  componentWillUnmount() {
-    this.stateSub.unsubscribe()
-  }
-  render() {
-    //const {filters, domain_id} = this.props
-    var conceptCount = this.state.conceptCount || 0
-    //console.log(this.props)
-    return  <div>
-              {/*
-              <div>
-                <VocabPop filters={filters} domain_id={domain_id} />
-              </div>
-              */}
-              <Inspector search={false} 
-                data={ AppState.getState() } />
-              <br/>
-              Current concepts: { commify(conceptCount) }
-            </div>
-  }
-}
-/*
-class DefaultNavBar extends Component {
-  render() {
-    return (
-        <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
-          <Navbar.Header>
-            <Navbar.Brand>
-              <NavLink to={locPath('/',{clear:['domain_id']})} /*onlyActiveOnIndex* / >
-                Vocab Viz
-              </NavLink>
-            </Navbar.Brand>
-            <Navbar.Toggle />
-          </Navbar.Header>
-          <Navbar.Collapse>
-            <Nav >
-              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Drug'}})}>
-                <NavItem eventKey={1}>Drug</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/concepts',{params:{domain_id:'Condition'}})}>
-                <NavItem eventKey={2}>Condition</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/concepts',{clear:['domain_id']})}>
-                <NavItem eventKey={3}>All Domains</NavItem>
-              </LinkContainer>
-              <LinkContainer to={locPath('/conceptview',{clear:['domain_id']})}>
-                <NavItem eventKey={4}>Concept View</NavItem>
-              </LinkContainer>
-            </Nav>
-          </Navbar.Collapse>
-        </Navbar>
-    )
-  }
-}
-class NavLink extends Component {
-  render() {
-    return <Link {...this.props} activeClassName="active"/>
-  }
-}
-/*
-const ModalWrapper = ({children, title, closeFunc}) => {
-  return (
-      <Modal bsSize="lg"
-          dialogClassName="sidebar-modal"
-          show={true} 
-          onHide={closeFunc}
-          >
-        <Modal.Header closeButton>
-          <Modal.Title>{title}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          {children}
-        </Modal.Body>
-        <Modal.Footer>
-          <Button onClick={closeFunc}>Close</Button>
-        </Modal.Footer>
-      </Modal>
-  )
-}
-*/
 class DraggableWrapper extends Component {
   constructor(props) {
     super(props)

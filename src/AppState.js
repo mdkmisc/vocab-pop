@@ -215,25 +215,29 @@ export class ApiStream extends util.JsonFetcher {
   // and stored in ApiStream.instances (as a result
   // of inheriting from util.JsonFetcher)
   constructor({apiCall, params, meta, transformResults, 
-              singleValue, cb}) {
+              singleValue, cb, wantRxAjax}) {
 
     // from old AppData.ApiFetcher constructor:
     let baseUrl = apiCallBaseUrl(apiCall, params);
-    let instance = super(baseUrl, params, meta, readyPromise );
+    let instance = super(baseUrl, params, meta, readyPromise, wantRxAjax );
     if (!instance.newInstance) return instance;
+    if (!instance.newInstance) {
+      if (instance.resultsSubj && instance.resultsSubj.isStopped)
+        instance.resultsSubj = new Rx.BehaviorSubject(instance.results);
+      return instance;
+    }
     // AppState.ApiStream should do it's own transforming
     // so it can better control (run singleValue first)
+    if (wantRxAjax) {
+      // sloppy patch
+      return
+    }
     if (transformResults) {
       this.fetchPromise = this.fetchPromise.then(transformResults);
     }
 
 
 
-    if (!instance.newInstance) {
-      if (instance.resultsSubj && instance.resultsSubj.isStopped)
-        instance.resultsSubj = new Rx.BehaviorSubject(instance.results);
-      return instance;
-    }
     this.resultsSubj = new Rx.BehaviorSubject('NoResultsYet');
     this.fetchPromise.then(
       results=>{
