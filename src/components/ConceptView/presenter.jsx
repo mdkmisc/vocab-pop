@@ -44,7 +44,7 @@ import {commify, updateReason,
 
 
 
-class XXSourceTargetSourceForm extends Component {
+class XXConceptViewForm extends Component {
   constructor(props) {
     console.log("in new one")
     super(props)
@@ -94,6 +94,7 @@ export const STSReport = props => {
                             'relationship',
                             'target_concept_id'])
   return  <div>
+            <h3>Source codes from {vocabulary_id}: {concept_codes}:</h3>
             <ConceptTree
                     width={"100%"} height={200}
                     recs={recs}

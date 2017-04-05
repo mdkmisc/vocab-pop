@@ -9,10 +9,9 @@ import * as myrouter from './myrouter'
 import * as rrRouter from 'react-router-redux'
 //console.log(rrRouter)
 
-import sourceTargetSource, {
-          loadFromSourceCodesEpic,
-          loadVocabsEpic
-        } from './ducks/sourceTargetSource'
+import vocab, {
+          loadFromConceptCodesEpic, loadVocabsEpic
+        } from './ducks/vocab'
 
 import React, { Component } from 'react'
 import { createStore, compose, combineReducers, applyMiddleware } from 'redux'
@@ -31,56 +30,65 @@ const configReducer = () => {
   return config;
 }
 
-console.log({
-  sourceTargetSource,
-  api,
-  config,
-  myrouter,
-  configReducer,
-  routeState: myrouter.routeState
-})
-var appReducer = combineReducers({
-  sourceTargetSource,
-  api,
-  config: configReducer,
-  routeState: myrouter.routeState
-});
-
-export const rootEpic = combineEpics(
-  loadFromSourceCodesEpic,
-  loadVocabsEpic
-);
-const epicMiddleware = createEpicMiddleware(rootEpic);
-//console.log(epicMiddleware)
-
-export const rootReducer = combineReducers({
-  app: appReducer,
-  form: formReducer,
-  //routeReducer: myrouter.routerReducer,
-});
-const middleware = [
-        //reduxPromiseMiddleware(), 
-        //routerMiddleware(history),  // some weirdness
-        rrRouter.routerMiddleware(myrouter.history),
-        epicMiddleware,
-      ];
-
-const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
-
-const store = createStore(
-  rootReducer,
-  composeEnhancers(
-    applyMiddleware(...middleware)
-  )
-);
-
-if (DEBUG) {
-  window.store = store;
-  window.hist = myrouter.history;
-  //console.log(store,history)
-}
+import { browserHistory } from 'react-router';
 
 export default function configureStore(initialState = {}) {
+  /*
+  console.log({
+    sourceTargetSource,
+    conceptView,
+    api,
+    config,
+    myrouter,
+    configReducer,
+    routeState: myrouter.routeState
+  })
+  */
+  //console.log(vocab)
+  var appReducer = combineReducers({
+    vocab,
+    api,
+    config: configReducer,
+    routeState: myrouter.routeState
+  });
+  //console.log('done comining reducers', appReducer)
+
+  const rootEpic = combineEpics(
+    loadFromConceptCodesEpic,
+    loadVocabsEpic
+  );
+  const epicMiddleware = createEpicMiddleware(rootEpic);
+  //console.log(epicMiddleware)
+
+  const rootReducer = combineReducers({
+    app: appReducer,
+    form: formReducer,
+    //routeReducer: myrouter.routerReducer,
+  });
+  const middleware = [
+          //reduxPromiseMiddleware(), 
+          //routerMiddleware(history),  // some weirdness
+          rrRouter.routerMiddleware(myrouter.history),
+          epicMiddleware,
+        ];
+
+  const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
+
+  const store = createStore(
+    rootReducer,
+    composeEnhancers(
+      applyMiddleware(...middleware)
+    )
+  );
+
+  if (DEBUG) {
+    window.store = store;
+    window.hist = myrouter.history;
+    window.bhist = browserHistory
+    console.log('global debug stuff: ', {store, hist, bhist})
+    //console.log(store,history)
+  }
+
   if (!_.isEmpty(initialState)) throw new Error("ignoring initialState");
   AppState.initialize(store, myrouter.history);
   return {store, history:myrouter.history};

@@ -7,8 +7,7 @@ import { ConnectedRouter, routerReducer,
 import reduxPromiseMiddleware from 'redux-promise-middleware';
 
 import { BrowserRouter as Router, } from 'react-router-dom'
-//import { browserHistory } from 'react-router';
-//let router = new Router();
+//import { browserHistory } from 'react-router'; //let router = new Router();
 //let history = browserHistory;   // this is working, but going to try react-router-redux
                                 // one more time
 // or, since their example (https://github.com/ReactTraining/react-router/tree/master/packages/react-router-redux)
@@ -31,6 +30,5 @@ export const routeState  = (state={}, action) => {
       return state
   }
 }
-
 
 export const QUERY_PARAMS = 'QUERY_PARAMS';

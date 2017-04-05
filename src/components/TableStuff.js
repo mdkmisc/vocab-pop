@@ -396,18 +396,24 @@ AgTable.propTypes = {
 }
 AgTable.instances = {};
 
-class ConceptTree extends Component {
+export class ConceptTree extends Component {
+  //breaking ConceptTree so it won't work how it was supposed to before
   constructor(props) {
     super(props);
     this.state = { };
   }
   componentWillReceiveProps(nextProps) {
-    if (!_.isEqual(this.props.agg, nextProps.agg)) {
+    // FIX
+    if (!_.isEqual(this.props.recs, nextProps.recs)) {
+      let {recs, treeFunc} = nextProps
+      let tree = treeFunc(recs);
+      /*
       let tree = _.supergroup(nextProps.agg,
             ['domain_id','vocabulary_id',
               'standard_concept','invalid_reason',
               'type_concept_name',
               'concept_class_id']);
+      */
       this.setState({tree});
     }
   }

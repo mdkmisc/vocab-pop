@@ -33,8 +33,6 @@ import Inspector from 'react-json-inspector'
 import 'react-json-inspector/json-inspector.css'
 import {FilterForm} from './components/Filters'
 import Draggable from 'react-draggable'; // The default
-import VocabPop, {ConceptViewPage} from './components/VocabPop'
-          /* Search, DrugContainer, Tables, */
 import config from './config'
 import * as AppState from './AppState'
 var $ = require('jquery')
@@ -46,17 +44,20 @@ import './stylesheets/VocabPop.css'
 import _ from './supergroup'
 //import * as AppState from './AppState'
 //import * as util from './ohdsi.util'
-import {commify, updateReason, setToAncestorSize, getAncestorHeight, ComponentWrapper} from './utils'
-
-
 import muiThemeable from 'material-ui/styles/muiThemeable';
 import {teal700} from 'material-ui/styles/colors';
 import getMuiTheme from 'material-ui/styles/getMuiTheme';
 import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme';
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
-
 // from: https://github.com/callemall/material-ui/issues/5208
 import injectTapEventPlugin from 'react-tap-event-plugin';
+
+
+import {commify, updateReason, setToAncestorSize, getAncestorHeight, ComponentWrapper} from './utils'
+import SourceTargetSource from './components/SourceTargetSource'
+import VocabPop from './components/VocabPop'
+import ConceptView from './components/ConceptView'
+          /* Search, DrugContainer, Tables, */
 
 const muiTheme = getMuiTheme({
   palette: {
@@ -67,7 +68,6 @@ const muiTheme = getMuiTheme({
   },
 });
 
-import SourceTargetSource from './components/SourceTargetSource'
 
 const routes = [
   { path: '/',
@@ -79,11 +79,13 @@ const routes = [
     main: ()=><ComponentWrapper InnerComp={AppState.AppState} />,
   },
   { path: '/conceptview',
-    main: ()=><ComponentWrapper InnerComp={ConceptViewPage} />,
+    //main: ()=><ComponentWrapper InnerComp={ConceptViewPage} />,
+    main: ()=><ConceptView/>,
   },
   { path: '/sourcetargetsource',
     main: (a,b,c,d,e,f) => {
       //console.log("did i get anything in sts main?", {a,b,c,d,e,f});
+      return <SourceTargetSource/>
       return (<ComponentWrapper >
                 <SourceTargetSource />
               </ComponentWrapper>)
@@ -160,7 +162,7 @@ class App extends Component {
                         </Col>
                       </Row>
                     : <Row>
-                        <Col xs={12} md={12} >
+                        <Col xs={12} md={12} className="should-be-12">
                           {main}
                         </Col>
                       </Row>

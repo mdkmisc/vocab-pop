@@ -547,6 +547,7 @@ export class LoadingButton extends Component {
 }
 export class ComponentWrapper extends Component {
   constructor(props) {
+    throw new Error("try not using this anymore")
     super(props)
     this.state = { childReady: false,}
   }
@@ -570,7 +571,7 @@ export class ComponentWrapper extends Component {
   }
   render() {
     const {InnerComp, compProps, compInstance} = this.props;
-    //console.log('ComponentWrapper', this.props);
+    console.log('ComponentWrapper', this.props, this.state);
     const {w:width, h:height} = this.state
     /*
     let {filters} = AppState.getState()
