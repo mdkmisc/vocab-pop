@@ -19,7 +19,7 @@ Copyright 2016 Sigfried Gold
 
 import React, { Component, PropTypes } from 'react'
 import { connect, Provider, } from 'react-redux'
-import { ConnectedRouter, routerReducer, routerMiddleware, push } from 'react-router-redux'
+//import { ConnectedRouter, } from 'react-router-redux'
 
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 //import { withRouter } from 'react-router'
@@ -45,10 +45,45 @@ import _ from './supergroup'
 //import * as AppState from './AppState'
 //import * as util from './ohdsi.util'
 import muiThemeable from 'material-ui/styles/muiThemeable';
-import {teal700} from 'material-ui/styles/colors';
 import getMuiTheme from 'material-ui/styles/getMuiTheme';
-import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme';
+//import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme';
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+
+import {
+  teal500, teal700,
+  greenA200,
+  teal50,
+  brown50,
+  teal100,
+  grey100, grey300, grey400, grey500,
+  white, darkBlack, fullBlack,
+} from 'material-ui/styles/colors';
+import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator';
+import * as colorManipulator from 'material-ui/utils/colorManipulator';
+window.colorManipulator = colorManipulator
+const muiTheme = getMuiTheme({
+  palette: {
+    primary1Color: teal500,
+    primary2Color: teal700,
+    primary3Color: grey400,
+    accent1Color: greenA200,
+    accent2Color: grey100,
+    accent3Color: grey500,
+    textColor: darkBlack,
+    alternateTextColor: white,
+    canvasColor: white,
+    borderColor: grey300,
+    //disabledColor: fade(darkBlack, 0.3),
+    pickerHeaderColor: teal500,
+    //clockCircleColor: fade(darkBlack, 0.07),
+    shadowColor: fullBlack,
+  },
+  appBar: {
+    height: 50,
+  },
+});
+window.muiTheme = muiTheme
+
 // from: https://github.com/callemall/material-ui/issues/5208
 import injectTapEventPlugin from 'react-tap-event-plugin';
 
@@ -58,16 +93,6 @@ import SourceTargetSource from './components/SourceTargetSource'
 import VocabPop from './components/VocabPop'
 import ConceptView from './components/ConceptView'
           /* Search, DrugContainer, Tables, */
-
-const muiTheme = getMuiTheme({
-  palette: {
-    textColor: teal700,
-  },
-  appBar: {
-    height: 50,
-  },
-});
-
 
 const routes = [
   { path: '/',
@@ -120,7 +145,7 @@ class App extends Component {
                   <VVAppBar />
     */
     return (
-              <div className="vocab-app flex-box">
+              <div className="vocab-app flex-box" style={{backgroundColor: brown50}}>
                 <div className="flex-content-height container" style={{width:'100%'}} >
                   <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
                     <Navbar.Header>
@@ -170,11 +195,6 @@ class App extends Component {
                 </div>
               </div>
     )
-  }
-  static propTypes = {
-    //store: PropTypes.object.isRequired,
-    //pathname: PropTypes.string.isRequired,
-    //history: PropTypes.object.isRequired
   }
 }
 
@@ -252,7 +272,7 @@ class VVAppBar extends Component {
 
     //console.log("IN APP", this.props);
 const Settings = ({props}) => <h4>Settings</h4>
-const History = ({props}) => <h4>History</h4>
+const History = ({props}) => <h4>History do something with this someday</h4>
 const DataLoaded = ({props}) => <h4>DataLoaded</h4>
 export function locPath(location, pathname, opts={}) {
   let loc = Object.assign({}, location, {pathname: `${config.rootPath}${pathname}`, })
@@ -267,8 +287,12 @@ const RouteWithSubRoutes = (route) => (
   )}/>
 )
 class Routes extends Component {
+  constructor(props) {
+    super(props)
+    console.log(props)
+  }
   render() {
-    const {store, history, } = this.props
+    const {store, myrouter, } = this.props
     //const {main, sidebar} = this.props
     //let NavBar = DefaultNavBar
                       //<Nav > </Nav>
@@ -278,19 +302,21 @@ class Routes extends Component {
                 />
     */
     //let route = <RouteWithSubRoutes component={App} {...routeDesc} />
+              //<ConnectedRouter history={history}>
+              //</ConnectedRouter>
     return (
           <Provider store={store}>
             <MuiThemeProvider muiTheme={muiTheme}>
-              <ConnectedRouter history={history}>
+              <myrouter.MyRouter>
                 <Route path='/' component={App} />
-              </ConnectedRouter>
+              </myrouter.MyRouter>
             </MuiThemeProvider>
           </Provider>
     )
   }
   static propTypes = {
     store: PropTypes.object.isRequired,
-    history: PropTypes.object.isRequired
+    myrouter: PropTypes.object.isRequired
   }
 }
 function mapStateToProps(state) {

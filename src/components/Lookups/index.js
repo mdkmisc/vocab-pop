@@ -93,6 +93,7 @@ export class ConceptCodesForm extends Component {
     let vocabulary = (vocabs||[]).find(d=>d.vocabulary_id===vocabulary_id)
     const cardStyle = {
       padding: '0px',
+      margin: '14px 0px 20px 0px',
     };
     let validate_vocabulary_id =
       value=>{
@@ -164,35 +165,35 @@ export class ConceptCodesForm extends Component {
                       })
                   }
                 </Field>
+                
+                <Field name="concept_code_search_pattern" 
+                      hintText='401.1%,401.2,401.3%'
+                      floatingLabelText="Concept Codes"
+                      component={TextField}
+                      ref="concept_code_search_pattern" withRef
+                      multiLine={true}
+                      fullWidth={true}
+                      errorText={errMsg}
+                      onChange={
+                        (event, index, value) => {
+                          let concept_code_search_pattern = event.target.value
+                          console.log('code onchange', {event,index,value})
+                          dispatch({type:duck.CONCEPT_CODE_SEARCH_PATTERN,
+                                  payload: {concept_code_search_pattern}})
+                        }
+                      }
+    /*
+    ? <span style={{fontWeight:700, color:'#700'}}>
+        {fromSrcErr.statusText}
+      </span>
+      ? <span style={{fontWeight:700, color:'#700'}}>
+          {vocabErr.statusText}
+        </span>
+    */
+                      label="Concept Codes"
+                  />
               </CardActions>
             </Card>
-              
-              <Field name="concept_code_search_pattern" 
-                    hintText='401.1%,401.2,401.3%'
-                    floatingLabelText="Concept Codes"
-                    component={TextField}
-                    ref="concept_code_search_pattern" withRef
-                    multiLine={true}
-                    fullWidth={true}
-                    errorText={errMsg}
-                    onChange={
-                      (event, index, value) => {
-                        let concept_code_search_pattern = event.target.value
-                        console.log('code onchange', {event,index,value})
-                        dispatch({type:duck.CONCEPT_CODE_SEARCH_PATTERN,
-                                payload: {concept_code_search_pattern}})
-                      }
-                    }
-  /*
-  ? <span style={{fontWeight:700, color:'#700'}}>
-      {fromSrcErr.statusText}
-    </span>
-    ? <span style={{fontWeight:700, color:'#700'}}>
-        {vocabErr.statusText}
-      </span>
-  */
-                    label="Concept Codes"
-                />
           </div>
         </form>
       </div>

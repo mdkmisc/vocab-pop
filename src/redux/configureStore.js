@@ -5,7 +5,7 @@ import config from '../config'
 import * as AppState from '../AppState'
 import _ from '../supergroup'
 
-import * as myrouter from './myrouter'
+import myrouter from './myrouter'
 import * as rrRouter from 'react-router-redux'
 //console.log(rrRouter)
 
@@ -45,12 +45,13 @@ export default function configureStore(initialState = {}) {
   })
   */
   //console.log(vocab)
+  /*
   var appReducer = combineReducers({
     vocab,
     api,
     config: configReducer,
-    routeState: myrouter.routeState
   });
+  */
   //console.log('done comining reducers', appReducer)
 
   const rootEpic = combineEpics(
@@ -61,35 +62,35 @@ export default function configureStore(initialState = {}) {
   //console.log(epicMiddleware)
 
   const rootReducer = combineReducers({
-    app: appReducer,
+    vocab,
+    config: configReducer,
     form: formReducer,
-    //routeReducer: myrouter.routerReducer,
+    routeState: myrouter.routeState,
+    //reduxRouterReducer: myrouter.reduxRouterReducer,
   });
   const middleware = [
-          //reduxPromiseMiddleware(), 
           //routerMiddleware(history),  // some weirdness
-          rrRouter.routerMiddleware(myrouter.history),
+          myrouter.reduxRouterMiddleware,
           epicMiddleware,
         ];
 
   const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
-
   const store = createStore(
     rootReducer,
+    { vocab: myrouter.getQuery() },
     composeEnhancers(
       applyMiddleware(...middleware)
     )
   );
 
   if (DEBUG) {
-    window.store = store;
-    window.hist = myrouter.history;
-    window.bhist = browserHistory
-    console.log('global debug stuff: ', {store, hist, bhist})
+    window.store = store
+    window.myrouter = myrouter
+    console.log('global debug stuff: ', {store, myrouter, })
     //console.log(store,history)
   }
 
   if (!_.isEmpty(initialState)) throw new Error("ignoring initialState");
-  AppState.initialize(store, myrouter.history);
-  return {store, history:myrouter.history};
+  AppState.initialize(store, myrouter);
+  return {store, myrouter};
 }

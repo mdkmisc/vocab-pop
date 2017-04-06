@@ -65,14 +65,6 @@ class SourceTargetSourceForm extends Component {
     //vocabulary_id = vocabulary_id || this.state.vocabulary_id
     //concept_code_search_pattern = concept_code_search_pattern || this.state.concept_code_search_pattern
 
-    const cardStyle = {
-      padding: '0px',
-    };
-    let report = recs && recs.length
-      ? <STSReport vocabulary_id={vocabulary_id} concept_code_search_pattern={concept_code_search_pattern} 
-                    recs={recs}
-            />
-      : null;
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <ConceptCodesForm
@@ -81,19 +73,13 @@ class SourceTargetSourceForm extends Component {
           //concept_code_search_pattern={concept_code_search_pattern}
           //{...initialValues}
         />
-        <Card containerStyle={cardStyle} style={cardStyle}>
-          <CardHeader style={{padding:'0px 8px 0px 8px'}}
-            title={`Searching ${vocabulary_id} for`}
-            subtitle={concept_code_search_pattern}
-          />
-        <CardText>
-          found {recs ? recs.length : 0} concepts
-        </CardText>
-          <CardActions>
-          </CardActions>
-        </Card>
-          
-        {report}
+        {
+          recs && recs.length
+            ? <STSReport vocabulary_id={vocabulary_id} concept_code_search_pattern={concept_code_search_pattern} 
+                          recs={recs}
+                  />
+            : ''
+        }
       </div>
     )
   }
@@ -122,7 +108,7 @@ SourceTargetSourceForm = connect(
   (state, ownProps) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, 
             isPending, vocabPending,
-            recs, fromSrcErr, vocabs, } = state.app.vocab
+            recs, fromSrcErr, vocabs, } = state.vocab
     let newState = {
       recs, fromSrcErr, 
       vocabulary_id, 
@@ -135,7 +121,7 @@ SourceTargetSourceForm = connect(
           isPending, vocabPending,
       },
 
-      //initialValues: state.app.vocab,
+      //initialValues: state.vocab,
       formRef: state.form.stsform,
       history: browserHistory,// wrong wrong wrong...i think
     }

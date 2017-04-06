@@ -1,10 +1,9 @@
 import { browserHistory, } from 'react-router'
 import * as AppState from '../../AppState'
 import Rx from 'rxjs/Rx'
-import * as myrouter from '../myrouter'
+import myrouter from '../myrouter'
 
 /* eslint-disable */
-//export const NEW_PARAMS = 'NEW_PARAMS';
 export const VOCABULARY_ID = 'VOCABULARY_ID'
 export const CONCEPT_CODES = 'CONCEPT_CODES'
 export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
@@ -62,7 +61,7 @@ const vocabReducer = (state=someDefaultVals, action) => {
       return {
         ...state,
         vocabErr: undefined,
-        vocabPernding: true,
+        vocabPending: true,
         values: action.payload,
         vocabs:undefined,
       };
@@ -100,7 +99,7 @@ export const loadFromConceptCodesEpic =
         .do(action=>console.log('epic',action))
         .switchMap(action => {
           let {type, payload} = action
-          let state = store.getState().app.vocab
+          let state = store.getState().vocab
           let params = {}
           if (type === VOCABULARY_ID) {
             params.vocabulary_id = payload.vocabulary_id
@@ -120,11 +119,22 @@ export const loadFromConceptCodesEpic =
           return (
             stream.rxAjax.flatMap(
               response => {
-                console.log('stream', stream.url, 'came back with', response)
+                //console.log('stream', stream.url, 'came back with', response)
+                /*
                 return Rx.Observable.of(
                           { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
                             payload: response});
+                */
                 return (
+                  Rx.Observable.concat(
+                      Rx.Observable.of(
+                          { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
+                            payload: response}),
+                      Rx.Observable.of(
+                          { type: myrouter.QUERY_PARAMS, 
+                            payload: params})
+                  )
+                  /*
                   Rx.Observable.concat(
                       Rx.Observable.of(
                         (payload) => ({
@@ -134,6 +144,7 @@ export const loadFromConceptCodesEpic =
                         { type: myrouter.QUERY_PARAMS, 
                           payload: params})
                   )
+                  */
                   .catch(error => {
                     return Rx.Observable.of({
                               type: `${type}_REJECTED`,

@@ -21,7 +21,7 @@ export function initialize(store, history) {
   //console.error('initializing AppState with history and store')
   reduxStore = store
   reduxHistory = history
-  config = reduxStore.getState().app.config;
+  config = reduxStore.getState().config;
   ({cdmSchema,resultsSchema,apiRoot,apiModel} = config);
   ({apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = appDataGen(config));
   let dirtyPromise = cacheDirty()
