@@ -2,9 +2,11 @@
 const DEBUG=true
 var d3 = require('d3');
 var $ = require('jquery');
+import _ from './supergroup'
 if (DEBUG) {
   window.d3 = d3
   window.$ = $
+  window._ = _
 }
 import React, { Component } from 'react'
 import { render } from 'react-dom'

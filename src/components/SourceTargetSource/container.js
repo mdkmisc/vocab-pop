@@ -6,7 +6,7 @@ import { connect } from 'react-redux'
 import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
 import * as duck from '../../redux/ducks/vocab'
-import {STSReport} from './presenter'
+import {STSReport} from './STSReport'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -61,6 +61,8 @@ class SourceTargetSourceForm extends Component {
           dispatch, lookupParams={}, 
           recs, fromSrcErr, 
           vocabulary_id, concept_code_search_pattern, 
+          sourceConceptCodesSG,
+          sourceRelationshipsSG,
         } = this.props
     //vocabulary_id = vocabulary_id || this.state.vocabulary_id
     //concept_code_search_pattern = concept_code_search_pattern || this.state.concept_code_search_pattern
@@ -73,13 +75,17 @@ class SourceTargetSourceForm extends Component {
           //concept_code_search_pattern={concept_code_search_pattern}
           //{...initialValues}
         />
-        {
+        <STSReport vocabulary_id={vocabulary_id} concept_code_search_pattern={concept_code_search_pattern} 
+                    sourceConceptCodesSG={sourceConceptCodesSG}
+                    sourceRelationshipsSG={sourceRelationshipsSG}
+                    recs={recs} />
+        {/*
           recs && recs.length
             ? <STSReport vocabulary_id={vocabulary_id} concept_code_search_pattern={concept_code_search_pattern} 
                           recs={recs}
                   />
             : ''
-        }
+        */}
       </div>
     )
   }
@@ -110,6 +116,8 @@ SourceTargetSourceForm = connect(
             isPending, vocabPending,
             recs, fromSrcErr, vocabs, } = state.vocab
     let newState = {
+      sourceConceptCodesSG: duck.sourceConceptCodesSG(state),
+      sourceRelationshipsSG: duck.sourceRelationshipsSG(state),
       recs, fromSrcErr, 
       vocabulary_id, 
       concept_code_search_pattern,

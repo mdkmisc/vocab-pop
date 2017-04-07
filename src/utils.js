@@ -472,6 +472,7 @@ ListenerTargetWrapper.targets = [];
 
 export class ListenerWrapper extends Component {
   constructor(props) {
+    console.debug('could maybe get rid of this since switching to redux')
     super(props);
     this.state = { eventListeners:{}, };
   }
@@ -547,7 +548,7 @@ export class LoadingButton extends Component {
 }
 export class ComponentWrapper extends Component {
   constructor(props) {
-    throw new Error("try not using this anymore")
+    throw new Error("try not using this anymore, if needing auto size again, try https://github.com/bvaughn/react-virtualized/blob/master/docs/AutoSizer.md")
     super(props)
     this.state = { childReady: false,}
   }

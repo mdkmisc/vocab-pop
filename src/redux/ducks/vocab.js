@@ -3,6 +3,47 @@ import * as AppState from '../../AppState'
 import Rx from 'rxjs/Rx'
 import myrouter from '../myrouter'
 
+import { createSelector } from 'reselect'
+import _ from '../../supergroup'; // in global space anyway...
+var d3 = require('d3')
+
+// selector stuff
+const recs = state => state.vocab.recs
+export const sourceConceptCodesSG = createSelector(
+  recs,
+  recs => {
+    console.log('computing selector for', recs)
+    let scc = 
+      _.supergroup( (recs||[]), 
+                    d=>`${d.src_concept_code}: ${d.src_concept_name}`,
+                    { dimName:'source' }
+                  )
+    scc.forEach(d => {
+                  d.src_concept_code = d.toString().split(/:/)[0]
+                  d.src_concept_name = d.toString().split(/: /)[1]
+                })
+    scc = scc.sort((a,b)=>d3.ascending(a.src_concept_code,b.src_concept_code))
+    scc.addLevel('relationship')
+    scc.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
+
+    /*
+    scc.flattenTree().forEach(
+      val => Object.defineProperty(val, 'title',
+                              {get:function() {return this.toString() }})
+    )
+    */
+    return scc
+  }
+)
+export const sourceRelationshipsSG = createSelector(
+  recs,
+  recs => {
+    let sr = _.supergroup((recs||[]), 'relationship')
+    sr.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
+    return sr
+  }
+)
+
 /* eslint-disable */
 export const VOCABULARY_ID = 'VOCABULARY_ID'
 export const CONCEPT_CODES = 'CONCEPT_CODES'
@@ -23,8 +64,8 @@ let someDefaultVals = {
       vocabulary_id:'ICD9CM', 
       concept_code_search_pattern:'401.1%,401.2,401.3%',
     }
-//const vocabReducer = (state={}, action) => {}
-const vocabReducer = (state=someDefaultVals, action) => {
+const vocabReducer = (state={recs:[]}, action) => {
+//const vocabReducer = (state=someDefaultVals, action) => {}
   //console.log('vocab REDUCER', {state, action})
   switch (action.type) {
     case '@@redux-form/UPDATE_SYNC_ERRORS':
