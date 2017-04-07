@@ -81,7 +81,8 @@ export class STSReport extends Component {
     super(props)
     this.state = {
       sccTreeData: [],
-      srTreeData: [],
+      relationships: [],
+      srcCntTreeData: [],
       scc: [],
     }
   }
@@ -95,53 +96,84 @@ export class STSReport extends Component {
     let {vocabulary_id, concept_code_search_pattern, recs=[], 
           sourceConceptCodesSG, 
           sourceRelationshipsSG, 
+          relcounts, 
         } = this.props
-    let scc = sourceConceptCodesSG
-    if (scc === this.state.scc) return
-    let sccTreeData = 
-      scc.map((d,i)=>({
-                    subtitle: (<ListItem key={i} 
-                                            leftAvatar={
-                                              <Avatar
-                                                color={muiTheme.palette.alternateTextColor}
-                                                backgroundColor={muiTheme.palette.primary1Color}
-                                                size={30}
-                                                style={{width:'auto',
-                                                        margin:'3px 4px 6px -14px',
-                                                        padding:5,}}
-                                              >
-                                                {d.src_concept_code}
-                                              </Avatar>}
-                                          primaryText={d.src_concept_name}
-                                      />),
-                    children: d.children.map(c=>({title:c.toString()}))
-                  }))
-    let sr = sourceRelationshipsSG
-    let srTreeData = sr.map((d,i)=>({
-                    subtitle: (<ListItem key={i} 
-                                            leftAvatar={
-                                              <Avatar
-                                                color={muiTheme.palette.alternateTextColor}
-                                                backgroundColor={muiTheme.palette.primary1Color}
-                                                size={30}
-                                                style={{width:'auto',
-                                                        margin:'3px 4px 6px -14px',
-                                                        padding:5,}}
-                                              >
-                                                {d.toString()}
-                                              </Avatar>}
-                                      />),
-                    children: d.children.map(c=>({title:c.toString()}))
-                  }))
-    this.setState({scc, sccTreeData, sr, srTreeData})
+    try {  
+      let scc = sourceConceptCodesSG
+      if (scc === this.state.scc) return
+      let sccTreeData = 
+        scc.map((d,i)=>({
+                      d,
+                      subtitle: (<ListItem key={i} 
+                                              leftAvatar={
+                                                <Avatar
+                                                  color={muiTheme.palette.alternateTextColor}
+                                                  backgroundColor={muiTheme.palette.primary1Color}
+                                                  size={30}
+                                                  style={{width:'auto',
+                                                          margin:'3px 4px 6px -14px',
+                                                          padding:5,}}
+                                                >
+                                                  {d.src_concept_code}
+                                                </Avatar>}
+                                            primaryText={d.src_concept_name}
+                                        />),
+                      children: d.getChildren(true).map(c=>({c,title:c.toString()}))
+                    }))
+      let sr = sourceRelationshipsSG
+      let relationships = 
+        sr.map((r,i)=>({
+          name: r.toString(),
+          srTreeData: 
+            r.getChildren(true)
+            .map((d,j) => ({
+                      d,
+                      subtitle: (<ListItem key={j} 
+                                              primaryText={d.src_concept_name}
+                                              leftAvatar={
+                                                <Avatar
+                                                  color={muiTheme.palette.alternateTextColor}
+                                                  backgroundColor={muiTheme.palette.primary1Color}
+                                                  size={30}
+                                                  style={{width:'auto',
+                                                          margin:'3px 4px 6px -14px',
+                                                          padding:5,}}
+                                                >
+                                                  {d.src_concept_code}
+                                                </Avatar>}
+                                        />),
+                      children: d.getChildren(true).map(c=>({c,title:c.toString()}))
+            }))
+      }))
+      debugger
+      let srcTblsSG = _.supergroup(relcounts.filter(d=>d.src), 'tbl')
+      
+      let srcCntTreeData = 
+        relcounts.map((d,i)=>({
+                      d,
+                      title: d.toString(),
+                      subtitle: `${commify(d.aggregate(_.sum,'total'))} CDM o`,
+                      children: 
+                        d.getChildren(true)
+                         .map(c=>({
+                           c,
+                           title:c.toString()}))
+                    }))
+      this.setState({scc, sccTreeData, sr, relationships, srcCntTreeData})
+    }
+    catch(e) {
+      console.error(e)
+      debugger
+    }
   }
   render() {
     let {vocabulary_id, concept_code_search_pattern, recs=[], 
           sourceConceptCodesSG,
           sourceRelationshipsSG,
+          relcounts,
           sortableRowHeight=50,
     } = this.props
-    let {scc, sccTreeData, srTreeData} = this.state;
+    let {scc, sccTreeData, sr, relationships, srcCntTreeData} = this.state;
     let treeFunc = recs => _.supergroup(recs, [
                               'src_code_match_str',
                               'src_concept_code',
@@ -202,7 +234,7 @@ export class STSReport extends Component {
                       title={ <p style={{ fontSize: '.7em',
                                         fontWeight: 'regular',}}
                               >
-                                Relationships
+                                CDM Records with matched concepts
                               </p>}
                     />
                     <CardText>
@@ -210,15 +242,43 @@ export class STSReport extends Component {
                               isVirtualized={false}
                               rowHeight={sortableRowHeight}
                               canDrag={false}
-                              treeData={srTreeData}
-                              onChange={srTreeData => {
-                                console.log('got srTreeData', srTreeData)
-                                this.setState({ srTreeData })
+                              treeData={srcCntTreeData}
+                              onChange={srcCntTreeData => {
+                                console.log('got srcCntTreeData', srcCntTreeData)
+                                this.setState({ srcCntTreeData })
                               }}
                           />
                     </CardText>
                   </Card>
 
+                  {relationships.map(
+                    ({name, srTreeData},i) => (
+                      <Card key={i} containerStyle={{margin:5}} style={cardStyle}>
+                        <CardHeader 
+                          style={{ fontSize: '.7em' }}
+                          title={ <p style={{ fontSize: '.7em',
+                                            fontWeight: 'regular',}}
+                                  >
+                                  {name} Relationship
+                                  </p>}
+                        />
+                        <CardText>
+                              <SortableTree
+                                  isVirtualized={false}
+                                  rowHeight={sortableRowHeight}
+                                  canDrag={false}
+                                  treeData={srTreeData}
+                                  onChange={srTreeData => {
+                                    console.log('got srTreeData', srTreeData)
+                                    this.setState({ srTreeData })
+                                  }}
+                              />
+                        </CardText>
+                      </Card>
+                    ))
+                  }
+
+                  {/*
                   <Card containerStyle={cardStyle} style={cardStyle}>
                     <div style={{ height: Math.min(sccTreeData.length*sortableRowHeight, 300) }}>
                         <SortableTree
@@ -232,6 +292,7 @@ export class STSReport extends Component {
                         />
                     </div>
                   </Card>
+                  */}
                 </CardText>
                 <CardText>
               {/*
@@ -250,7 +311,7 @@ export class STSReport extends Component {
                                           primaryText={d.toString().split(/: /)[1]} 
                                           open={true}
                                           nestedItems={
-                                            d.getChildren().map(
+                                            d.getChildren(true).map(
                                               (rel,i) => <ListItem
                                                             key={i}
                                                             primaryText={rel.toString()}

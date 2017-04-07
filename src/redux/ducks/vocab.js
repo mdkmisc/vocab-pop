@@ -39,17 +39,21 @@ export const sourceRelationshipsSG = createSelector(
   recs,
   recs => {
     let sr = _.supergroup((recs||[]), 'relationship')
+    sr.addLevel(d=>`${d.src_concept_code}: ${d.src_concept_name}`,{dimName:'src'})
+    sr.leafNodes().forEach(d => {
+                  d.src_concept_code = d.toString().split(/:/)[0]
+                  d.src_concept_name = d.toString().split(/: /)[1]
+                })
     sr.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
     return sr
   }
 )
-export const sourceRecordCountsSG = createSelector(
+export const relcounts = createSelector(
   recs,
   // recs.filter(d=>(d.src_rcs||[]).length).map(d=>(d.src_rcs||[]))
-  recs => {
-    let cnts = 
+  recs => (
       _.flattenDeep(
-        recs.map(
+        (recs||[]).map(
           d=>[
             (d.target_rcs||[]).map(c=>({rec:d,cnt:c})),
             (d.src_rcs||[]).map(c=>({rec:d,cnt:c}))
@@ -59,12 +63,23 @@ export const sourceRecordCountsSG = createSelector(
       .map(d=>({
         cnt:d.cnt,
         rec:d.rec,
+        tbl:d.cnt.tbl,
+        col:d.cnt.col,
         tblcol:`${d.cnt.tbl}.${d.cnt.col}`,
         rc:d.cnt.rc,
         src:d.cnt.src,
         crc:d.cnt.crc,
+        total:_.sum(['rc','src','crc'].map(c=>d.cnt[c])),
       }))
-    let tblcols = _.supergroup(cnts, 'tblcol')
+  )
+)
+export const sourceRecordCountsSG = createSelector(
+  relcounts,
+  relcounts => {
+    let tblcols = _.supergroup(relcounts, 'tbl')
+    tblcols.addLevel(
+      d=>(['rc','src','crc'].filter(c=>d[c])),
+          {multiValuedGroup:true, dimName:'count'})
     return tblcols
   }
 )

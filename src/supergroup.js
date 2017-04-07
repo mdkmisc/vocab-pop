@@ -403,7 +403,8 @@ var supergroup = (function() {
     };
     Value.prototype.getChildren = function(emptyListOk = false) {
       if (emptyListOk)
-        return childProp in this && this[childProp];
+        // FIX IN vocab-pop ONLY!!!! add to main
+        return childProp in this && this[childProp] || [];
       return childProp in this && this[childProp].length && this[childProp];
     };
     Value.prototype.hasChildren = function(emptyListOk = false) {
