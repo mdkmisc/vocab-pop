@@ -162,7 +162,7 @@ export class STSReport extends Component {
     const cardStyle = {
       padding: '0px',
     };
-    let codes = concept_code_search_pattern.split(/[\s,]/)
+    let codes = concept_code_search_pattern.split(/[\s,]+/)
     let styles = {
                         chip: {
                           margin: 4,
@@ -172,8 +172,11 @@ export class STSReport extends Component {
                           flexWrap: 'wrap',
                         },
     }
-    let chips = (codes||[]).map(code => (
-                  <Chip key={code} style={styles.chip}
+    if (_.uniq(codes).length !== codes.length) {
+      console.error("didn't expect duplicate codes")
+    }
+    let chips = (codes||[]).map((code,i) => (
+                  <Chip key={i} style={styles.chip}
                       onRequestDelete={() => alert('not working yet')}
                   >
                     {code}

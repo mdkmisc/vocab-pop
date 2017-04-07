@@ -111,6 +111,8 @@ export class ConceptCodesForm extends Component {
           <div>
             <Card containerStyle={cardStyle} style={cardStyle}>
               <CardHeader style={{padding:'0px 8px 0px 8px'}}
+                actAsExpander={true}
+                showExpandableButton={true}
                 title='Vocabulary'
                 subtitle={
                     <FlatButton
@@ -123,13 +125,13 @@ export class ConceptCodesForm extends Component {
                     />
                 }
               />
-              <CardActions>
+              <CardText expandable={true}>
                 <Field name="vocabulary_id" 
                       value={vocabulary_id}
                       style={{padding:'0px 8px 0px 8px'}}
                       component={SelectField}
                       fullWidth={true}
-                      hintText="vocabulary_id"
+                      floatingLabelText="vocabulary_id"
                       //validate={validate_vocabulary_id}
                       //floatingLabelText="Vocabulary"
                       //data-lpignore={true}
@@ -168,7 +170,7 @@ export class ConceptCodesForm extends Component {
                 
                 <Field name="concept_code_search_pattern" 
                       hintText='401.1%,401.2,401.3%'
-                      floatingLabelText="Concept Codes"
+                      floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
                       component={TextField}
                       ref="concept_code_search_pattern" withRef
                       multiLine={true}
@@ -192,7 +194,7 @@ export class ConceptCodesForm extends Component {
     */
                       label="Concept Codes"
                   />
-              </CardActions>
+              </CardText>
             </Card>
           </div>
         </form>

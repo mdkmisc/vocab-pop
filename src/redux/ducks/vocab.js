@@ -43,6 +43,31 @@ export const sourceRelationshipsSG = createSelector(
     return sr
   }
 )
+export const sourceRecordCountsSG = createSelector(
+  recs,
+  // recs.filter(d=>(d.src_rcs||[]).length).map(d=>(d.src_rcs||[]))
+  recs => {
+    let cnts = 
+      _.flattenDeep(
+        recs.map(
+          d=>[
+            (d.target_rcs||[]).map(c=>({rec:d,cnt:c})),
+            (d.src_rcs||[]).map(c=>({rec:d,cnt:c}))
+          ]
+        )
+      )
+      .map(d=>({
+        cnt:d.cnt,
+        rec:d.rec,
+        tblcol:`${d.cnt.tbl}.${d.cnt.col}`,
+        rc:d.cnt.rc,
+        src:d.cnt.src,
+        crc:d.cnt.crc,
+      }))
+    let tblcols = _.supergroup(cnts, 'tblcol')
+    return tblcols
+  }
+)
 
 /* eslint-disable */
 export const VOCABULARY_ID = 'VOCABULARY_ID'
