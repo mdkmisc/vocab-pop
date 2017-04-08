@@ -305,6 +305,22 @@ var supergroup = (function() {
           return this.parentVal.rootList();
         return this;
     };
+    List.prototype.collapseOnlyChildren = function() {
+      this.forEach(val => {
+        if (val.hasChildren() && val.getChildren().length === 1) {
+          var child = val.getChildren()[0];
+          if (child.hasChildren()) {
+            val[childProp] = child[childProp];
+            // reduce depths?
+          }
+          val[child.dim] = child;
+          delete val[childProp];
+        }
+        if (val.hasChildren()) {
+          val.getChildren().collapseOnlyChildren()
+        }
+      })
+    }
 
     function makeValue(v_arg) {
         if (isNaN(v_arg)) {

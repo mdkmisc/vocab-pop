@@ -15,6 +15,7 @@ import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
+import Chip from 'material-ui/Chip'
 
 //import { AutoComplete as MUIAutoComplete } from 'material-ui'
 import {
@@ -102,6 +103,36 @@ export class ConceptCodesForm extends Component {
         let voc = (vocabs||[]).find(d=>d.vocabulary_id===value)
         return voc ? undefined : `can't find ${value}`
       }
+
+
+
+    let styles = {
+                        chip: {
+                          margin: 4,
+                          backgroundColor:muiTheme.palette.primary1Color,
+                        },
+                        items: {
+                          color:muiTheme.palette.alternateTextColor,
+                        },
+                        wrapper: {
+                          display: 'flex',
+                          flexWrap: 'wrap',
+                        },
+    }
+    let patterns = concept_code_search_pattern.split(/[\s,]+/)
+    if (_.uniq(patterns).length !== patterns.length) {
+      console.error("didn't expect duplicate patterns")
+    }
+    let chips = (patterns||[]).map((code,i) => (
+                  <Chip key={i} style={styles.chip}
+                      onRequestDelete={() => alert('not working yet')}
+                  >
+                    <span style={styles.items}>
+                      {code}
+                    </span>
+                  </Chip>))
+                
+
     //console.log({vocabulary_id, vocabulary, vocabs})
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
@@ -116,7 +147,9 @@ export class ConceptCodesForm extends Component {
                 title='Vocabulary'
                 subtitle={
                     <FlatButton
-                      style={{padding:'0px', }}
+                      style={{padding:'0px', 
+                              color:muiTheme.palette.primary1Color,
+                              }}
                       href={vocabulary.vocabulary_reference}
                       target="_blank"
                       label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
@@ -194,6 +227,15 @@ export class ConceptCodesForm extends Component {
     */
                       label="Concept Codes"
                   />
+
+
+
+                          <div style={styles.wrapper}>
+                            {chips}
+                          </div>
+
+
+
               </CardText>
             </Card>
           </div>
