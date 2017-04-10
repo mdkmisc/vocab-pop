@@ -81,7 +81,7 @@ export class STSReport extends Component {
     this.state = {
       sccTreeData: [],
       relationships: [],
-      srcCntTreeData: [],
+      counts: [],
       srcTblsSG: _.supergroup([], ['tbl','col']),
       scc: [],
     }
@@ -96,6 +96,7 @@ export class STSReport extends Component {
     let {vocabulary_id, concept_code_search_pattern, recs=[], 
           sourceConceptCodesSG, 
           sourceRelationshipsSG, 
+          sourceRecordCountsSG, 
           relcounts, 
         } = this.props
     try {  
@@ -118,8 +119,9 @@ export class STSReport extends Component {
                                                 </Avatar>}
                                             primaryText={d.src_concept_name}
                                         />),
-                      children: d.getChildren(true).map(c=>({c,title:c.toString()}))
+                      //children: d.getChildren(true).map(c=>({c,title:c.toString()}))
                     }))
+      let counts = sourceRecordCountsSG || []
       let sr = sourceRelationshipsSG
       let relationships = 
         sr.map((r,i)=>({
@@ -148,6 +150,7 @@ export class STSReport extends Component {
       let srcTblsSG = _.supergroup(relcounts.filter(d=>d.src), ['tbl','col'])
       srcTblsSG.collapseOnlyChildren()
       
+      /*
       let srcCntTreeData = 
         srcTblsSG.map((d,i)=>({
                       d,
@@ -160,7 +163,8 @@ export class STSReport extends Component {
                            subtitle: `${commify(d.aggregate(_.sum,'total'))} src records`,
                            title:c.toString()}))
                     }))
-      this.setState({scc, sccTreeData, sr, relationships, srcTblsSG, srcCntTreeData})
+      */
+      this.setState({scc, sccTreeData, sr, relationships, srcTblsSG, counts})
     }
     catch(e) {
       console.error(e)
@@ -174,7 +178,7 @@ export class STSReport extends Component {
           relcounts,
           sortableRowHeight=50,
     } = this.props
-    let {scc, sccTreeData, sr, relationships, srcTblsSG, srcCntTreeData} = this.state;
+    let {scc, sccTreeData, sr, relationships, srcTblsSG, counts} = this.state;
     let treeFunc = recs => _.supergroup(recs, [
                               'src_code_match_str',
                               'src_concept_code',
@@ -203,13 +207,13 @@ export class STSReport extends Component {
                     primaryText={
                       <p style={{color:muiTheme.palette.primary1Color}}>
                         {`${scc.length} ${vocabulary_id} concepts 
-                            [check #] 
-                          matching ${concept_code_search_pattern}`
+                            [check #] matching ${concept_code_search_pattern}`
                         }
                       </p>}
                       initiallyOpen	={false}
                       nestedItems={
-                        scc.map((d,i) => <ListItem key={i} 
+                        scc.map((d,i) => {
+                          return          <ListItem key={i} 
                                             innerDivStyle={{
                                               padding: '10px 10px 10px 78px',
                                             }}
@@ -249,15 +253,29 @@ export class STSReport extends Component {
                                                               primaryText={rel.toString()}
                                                             />)}
                                             */
-                                          />)
+                                          />
+                          })
                         }
                   />
                   <ListItem
-                    primaryText={
-                      <p style={{color:muiTheme.palette.primary1Color}}>
-                        {`${srcTblsSG.rawValues()} where recs are`}
-                      </p>}
-                      initiallyOpen	={false}
+                    primaryText="CDM Records with matched concepts"
+                    initiallyOpen	={true}
+                    nestedItems={
+                      counts.map((tbl,i) => {
+                        return <ListItem key={i} 
+                                  primaryText={tbl.toString()}
+                                  initiallyOpen	={true}
+                                  nestedItems={
+                                    tbl.getChildren().map((col,j) => {
+                                      return <ListItem key={j} 
+                                                primaryText={col.toString()}
+                                                secondaryText={col.aggregate(_.sum,'cnt')}
+                                            />
+                                    })
+                                  }
+                               />
+                      })
+                    }
                   />
                   <ListItem
                     primaryText={
@@ -286,28 +304,6 @@ export class STSReport extends Component {
 
 
               <CardText expandable={true}>
-                <Card containerStyle={{margin:5}} style={cardStyle}>
-                  <CardHeader 
-                    style={{ fontSize: '.7em' }}
-                    title={ <p style={{ fontSize: '.7em',
-                                      fontWeight: 'regular',}}
-                            >
-                              CDM Records with matched concepts
-                            </p>}
-                  />
-                  <CardText>
-                        <SortableTree
-                            isVirtualized={false}
-                            rowHeight={sortableRowHeight}
-                            canDrag={false}
-                            treeData={srcCntTreeData}
-                            onChange={srcCntTreeData => {
-                              console.log('got srcCntTreeData', srcCntTreeData)
-                              this.setState({ srcCntTreeData })
-                            }}
-                        />
-                  </CardText>
-                </Card>
 
                 {relationships.map(
                   ({name, srTreeData},i) => (

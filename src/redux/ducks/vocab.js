@@ -15,16 +15,16 @@ export const sourceConceptCodesSG = createSelector(
     console.log('computing selector for', recs)
     let scc = 
       _.supergroup( (recs||[]), 
-                    d=>`${d.src_concept_code}: ${d.src_concept_name}`,
+                    d=>`${d.concept_code}: ${d.concept_name}`,
                     { dimName:'source' }
                   )
     scc.forEach(d => {
-                  d.src_concept_code = d.toString().split(/:/)[0]
-                  d.src_concept_name = d.toString().split(/: /)[1]
+                  d.concept_code = d.toString().split(/:/)[0]
+                  d.concept_name = d.toString().split(/: /)[1]
                 })
-    scc = scc.sort((a,b)=>d3.ascending(a.src_concept_code,b.src_concept_code))
-    scc.addLevel('relationship')
-    scc.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
+    scc = scc.sort((a,b)=>d3.ascending(a.concept_code,b.concept_code))
+    //scc.addLevel('relationship')
+    //scc.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
 
     /*
     scc.flattenTree().forEach(
@@ -35,14 +35,25 @@ export const sourceConceptCodesSG = createSelector(
     return scc
   }
 )
+export const sourceRecordCountsSG = createSelector(
+  recs,
+  recs => {
+    let tblcols = _.supergroup( (recs||[]).map(d=>d.cdmCounts), 
+                                d => d.map(c=>c.table_name),
+                                {dimName:'tbl', multiValuedGroup:true})
+    tblcols.addLevel( d => d.map(c=>c.column_name),
+                                {dimName:'col', multiValuedGroup:true})
+    return tblcols
+  }
+)
 export const sourceRelationshipsSG = createSelector(
   recs,
   recs => {
     let sr = _.supergroup((recs||[]), 'relationship')
-    sr.addLevel(d=>`${d.src_concept_code}: ${d.src_concept_name}`,{dimName:'src'})
+    sr.addLevel(d=>`${d.concept_code}: ${d.concept_name}`,{dimName:'src'})
     sr.leafNodes().forEach(d => {
-                  d.src_concept_code = d.toString().split(/:/)[0]
-                  d.src_concept_name = d.toString().split(/: /)[1]
+                  d.concept_code = d.toString().split(/:/)[0]
+                  d.concept_name = d.toString().split(/: /)[1]
                 })
     sr.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
     return sr
@@ -50,13 +61,13 @@ export const sourceRelationshipsSG = createSelector(
 )
 export const relcounts = createSelector(
   recs,
-  // recs.filter(d=>(d.src_rcs||[]).length).map(d=>(d.src_rcs||[]))
+  // recs.filter(d=>(d.rcs||[]).length).map(d=>(d.rcs||[]))
   recs => (
       _.flattenDeep(
         (recs||[]).map(
           d=>[
             (d.target_rcs||[]).map(c=>({rec:d,cnt:c})),
-            (d.src_rcs||[]).map(c=>({rec:d,cnt:c}))
+            (d.rcs||[]).map(c=>({rec:d,cnt:c}))
           ]
         )
       )
@@ -72,16 +83,6 @@ export const relcounts = createSelector(
         total:_.sum(['rc','src','crc'].map(c=>d.cnt[c])),
       }))
   )
-)
-export const sourceRecordCountsSG = createSelector(
-  relcounts,
-  relcounts => {
-    let tblcols = _.supergroup(relcounts, 'tbl')
-    tblcols.addLevel(
-      d=>(['rc','src','crc'].filter(c=>d[c])),
-          {multiValuedGroup:true, dimName:'count'})
-    return tblcols
-  }
 )
 
 /* eslint-disable */
@@ -192,13 +193,45 @@ export const loadFromConceptCodesEpic =
             params.vocabulary_id = payload.vocabulary_id
             params.concept_code_search_pattern = payload.concept_code_search_pattern
           }
-          let stream = new AppState.ApiStream({
-            apiCall: 'codesToSource',
-            params,
-            wantRxAjax: true,
-          })
+          let ajax = new AppState.ApiStream({
+                          apiCall: 'codeSearchToCids',
+                          params,
+                          wantRxAjax: true,
+                        })
+                        .rxAjax
+                        .switchMap(
+                          codes => 
+                            new AppState.ApiStream({
+                                          apiCall: 'conceptInfo',
+                                          params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
+                                            //Object.assign({},params,{concept_ids:[codes.map(d=>d.concept_id)]}),
+                                          wantRxAjax: true,
+                                        }).rxAjax
+                                        .map(info=>
+                                             info.map(inf=>
+                                              Object.assign({}, inf, {
+                                                match_strs: codes.find(
+                                                  c=>c.concept_id===inf.concept_id).match_strs
+                                              }))
+                                        )
+                                .switchMap(
+                                  info => 
+                                    new AppState.ApiStream({
+                                                  apiCall: 'cdmCounts',
+                                                  params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
+                                                  wantRxAjax: true,
+                                                }).rxAjax
+                                                .map(counts=>
+                                                    info.map(inf=>
+                                                      Object.assign({}, inf, {
+                                                        cdmCounts: counts.find(
+                                                          c=>c.concept_id===inf.concept_id).counts
+                                                      }))
+                                                )
+                                )
+                        )
           return (
-            stream.rxAjax.flatMap(
+            ajax.flatMap( // not using flatMap because I understand why...not sure why it's here
               response => {
                 //console.log('stream', stream.url, 'came back with', response)
                 /*
