@@ -38,24 +38,32 @@ export const sourceConceptCodesSG = createSelector(
 export const sourceRecordCountsSG = createSelector(
   recs,
   recs => {
-    let tblcols = _.supergroup( (recs||[]).map(d=>d.cdmCounts), 
-                                d => d.map(c=>c.table_name),
-                                {dimName:'tbl', multiValuedGroup:true})
-    tblcols.addLevel( d => d.map(c=>c.column_name),
-                                {dimName:'col', multiValuedGroup:true})
+    let tblcols = _.supergroup( 
+                      _.flatten((recs||[]).map(d=>d.rcs)),
+                      ['tbl','col'])
     return tblcols
   }
 )
 export const sourceRelationshipsSG = createSelector(
   recs,
   recs => {
-    let sr = _.supergroup((recs||[]), 'relationship')
-    sr.addLevel(d=>`${d.concept_code}: ${d.concept_name}`,{dimName:'src'})
+    let sr = _.supergroup( 
+                      _.flatten((recs||[]).map(d=>d.rels)),
+                      ['relationship',])
+
+    sr.addLevel(d=>`${d.vocabulary_id} / ${d.domain_id} / ${d.concept_class_id}`,{dimName:'vocab/domain/class'})
     sr.leafNodes().forEach(d => {
-                  d.concept_code = d.toString().split(/:/)[0]
-                  d.concept_name = d.toString().split(/: /)[1]
-                })
-    sr.addLevel(d=>`${d.target_concept_code}: ${d.target_concept_name}`,{dimName:'target'})
+      d.vocabulary_id = _.uniq(d.records.map(r=>r.vocabulary_id)).join(',')
+      d.domain_id = _.uniq(d.records.map(r=>r.domain_id)).join(',')
+      d.concept_class_id = _.uniq(d.records.map(r=>r.concept_class_id)).join(',')
+      d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
+    })
+
+    sr.addLevel('concept_id')
+    sr.leafNodes().forEach(d => {
+      d.concept_name = _.uniq(d.records.map(r=>r.concept_name)).join(',')
+      d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
+    })
     return sr
   }
 )
@@ -168,6 +176,7 @@ export const loadFromConceptCodesEpic =
     //console.log(action$)
     return (
       action$
+        //.do(action=>console.log('epic sees',action))
         .filter(
           action=>{
             //console.log('filtering',action.type)
@@ -178,7 +187,7 @@ export const loadFromConceptCodesEpic =
             ], action.type)
           }
         )
-        .do(action=>console.log('epic',action))
+        //.do(action=>console.log('epic performing',action))
         .switchMap(action => {
           let {type, payload} = action
           let state = store.getState().vocab
@@ -200,8 +209,10 @@ export const loadFromConceptCodesEpic =
                         })
                         .rxAjax
                         .switchMap(
-                          codes => 
-                            new AppState.ApiStream({
+                          codes => {
+                            if (!codes || codes.length === 0)
+                              return []
+                            return new AppState.ApiStream({
                                           apiCall: 'conceptInfo',
                                           params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
                                             //Object.assign({},params,{concept_ids:[codes.map(d=>d.concept_id)]}),
@@ -214,6 +225,7 @@ export const loadFromConceptCodesEpic =
                                                   c=>c.concept_id===inf.concept_id).match_strs
                                               }))
                                         )
+                                /*
                                 .switchMap(
                                   info => 
                                     new AppState.ApiStream({
@@ -229,16 +241,12 @@ export const loadFromConceptCodesEpic =
                                                       }))
                                                 )
                                 )
+                                */
+                          }
                         )
           return (
             ajax.flatMap( // not using flatMap because I understand why...not sure why it's here
               response => {
-                //console.log('stream', stream.url, 'came back with', response)
-                /*
-                return Rx.Observable.of(
-                          { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
-                            payload: response});
-                */
                 return (
                   Rx.Observable.concat(
                       Rx.Observable.of(
@@ -248,17 +256,6 @@ export const loadFromConceptCodesEpic =
                           { type: myrouter.QUERY_PARAMS, 
                             payload: params})
                   )
-                  /*
-                  Rx.Observable.concat(
-                      Rx.Observable.of(
-                        (payload) => ({
-                          type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
-                          payload})),
-                      Rx.Observable.of(
-                        { type: myrouter.QUERY_PARAMS, 
-                          payload: params})
-                  )
-                  */
                   .catch(error => {
                     return Rx.Observable.of({
                               type: `${type}_REJECTED`,

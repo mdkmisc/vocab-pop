@@ -123,6 +123,7 @@ export class STSReport extends Component {
                     }))
       let counts = sourceRecordCountsSG || []
       let sr = sourceRelationshipsSG
+      /*
       let relationships = 
         sr.map((r,i)=>({
           name: r.toString(),
@@ -147,6 +148,7 @@ export class STSReport extends Component {
                       children: d.getChildren(true).map(c=>({c,title:c.toString()}))
             }))
       }))
+      */
       let srcTblsSG = _.supergroup(relcounts.filter(d=>d.src), ['tbl','col'])
       srcTblsSG.collapseOnlyChildren()
       
@@ -164,7 +166,7 @@ export class STSReport extends Component {
                            title:c.toString()}))
                     }))
       */
-      this.setState({scc, sccTreeData, sr, relationships, srcTblsSG, counts})
+      this.setState({scc, sccTreeData, sr, srcTblsSG, counts})
     }
     catch(e) {
       console.error(e)
@@ -172,204 +174,245 @@ export class STSReport extends Component {
     }
   }
   render() {
-    let {vocabulary_id, concept_code_search_pattern, recs=[], 
-          sourceConceptCodesSG,
-          sourceRelationshipsSG,
-          relcounts,
-          sortableRowHeight=50,
-    } = this.props
-    let {scc, sccTreeData, sr, relationships, srcTblsSG, counts} = this.state;
-    let treeFunc = recs => _.supergroup(recs, [
-                              'src_code_match_str',
-                              'src_concept_code',
-                              'src_concept_id',
-                              'relationship',
-                              'target_concept_id'])
-    const cardStyle = {
-      padding: '0px',
-    };
+    try {
+      let {vocabulary_id, concept_code_search_pattern, recs=[], 
+            sourceConceptCodesSG,
+            sourceRelationshipsSG,
+            relcounts,
+            sortableRowHeight=50,
+      } = this.props
+      let {scc, sccTreeData, sr, srcTblsSG, counts} = this.state;
+      let treeFunc = recs => _.supergroup(recs, [
+                                'src_code_match_str',
+                                'src_concept_code',
+                                'src_concept_id',
+                                'relationship',
+                                'target_concept_id'])
+      const cardStyle = {
+        padding: '0px',
+      };
 
-    return  <Card initiallyExpanded={true} containerStyle={cardStyle} style={cardStyle}>
-              <CardHeader style={{padding:'0px 8px 0px 8px'}}
-                actAsExpander={true}
-                showExpandableButton={true}
-                title="Source Target Source Report"
-              />
+      return  <Card initiallyExpanded={true} containerStyle={cardStyle} style={cardStyle}>
+                <CardHeader style={{padding:'0px 8px 0px 8px'}}
+                  actAsExpander={true}
+                  showExpandableButton={true}
+                  title="Source Target Source Report"
+                />
 
 
-              <CardText expandable={true} >
-                <List >
-                  <ListItem
-                    innerDivStyle={{
-                      //padding: 0,
-                      //padding: '10px 10px 10px 78px',
-                    }}
-                    primaryText={
-                      <p style={{color:muiTheme.palette.primary1Color}}>
-                        {`${scc.length} ${vocabulary_id} concepts 
-                            [check #] matching ${concept_code_search_pattern}`
-                        }
-                      </p>}
-                      initiallyOpen	={false}
-                      nestedItems={
-                        scc.map((d,i) => {
-                          return          <ListItem key={i} 
-                                            innerDivStyle={{
-                                              padding: '10px 10px 10px 78px',
-                                            }}
-                                            leftAvatar={
-                                              <Avatar
-                                                color={muiTheme.palette.alternateTextColor}
-                                                backgroundColor={muiTheme.palette.primary1Color}
-                                                size={30}
-                                                style={{width:'auto',
-                                                        textAlign: 'right',
-                                                        margin:'-4px 10px 10px -10px',
-                                                        padding:5,}}
-                                              >
-                                                {d.toString().split(/:/)[0]} 
-                                              </Avatar>
-                                            }
-                                            containerElement={
-                                              <span style={{
-                                                margin: 0,
-                                                padding:0,
-                                              }} />
-                                            }
-                                            primaryText={
-                                              <span style={{
-                                                margin: 0,
-                                                padding:0,
-                                              }}>
-                                                {d.toString().split(/: /)[1]}
-                                              </span>
-                                            }
-                                            open={true}
-                                            /*
-                                            nestedItems={
-                                              d.getChildren(true).map(
-                                                (rel,i) => <ListItem
-                                                              key={i}
-                                                              primaryText={rel.toString()}
-                                                            />)}
-                                            */
-                                          />
-                          })
-                        }
-                  />
-                  <ListItem
-                    primaryText="CDM Records with matched concepts"
-                    initiallyOpen	={true}
-                    nestedItems={
-                      counts.map((tbl,i) => {
-                        return <ListItem key={i} 
-                                  primaryText={tbl.toString()}
-                                  initiallyOpen	={true}
-                                  nestedItems={
-                                    tbl.getChildren().map((col,j) => {
-                                      return <ListItem key={j} 
-                                                primaryText={col.toString()}
-                                                secondaryText={col.aggregate(_.sum,'cnt')}
+                <CardText expandable={true} >
+                  <List >
+                    <ListItem
+                      innerDivStyle={{
+                        //padding: 0,
+                        //padding: '10px 10px 10px 78px',
+                      }}
+                      primaryText={
+                        <p style={{color:muiTheme.palette.primary1Color}}>
+                          {`${scc.length} ${vocabulary_id} concepts 
+                              matching ${concept_code_search_pattern}`
+                          }
+                        </p>}
+                        initiallyOpen	={false}
+                        nestedItems={
+                          scc.map((d,i) => {
+                            return          <ListItem key={i} 
+                                              innerDivStyle={{
+                                                padding: '10px 10px 10px 78px',
+                                              }}
+                                              leftAvatar={
+                                                <Avatar
+                                                  color={muiTheme.palette.alternateTextColor}
+                                                  backgroundColor={muiTheme.palette.primary1Color}
+                                                  size={30}
+                                                  style={{width:'auto',
+                                                          textAlign: 'right',
+                                                          margin:'-4px 10px 10px -10px',
+                                                          padding:5,}}
+                                                >
+                                                  {d.toString().split(/:/)[0]} 
+                                                </Avatar>
+                                              }
+                                              containerElement={
+                                                <span style={{
+                                                  margin: 0,
+                                                  padding:0,
+                                                }} />
+                                              }
+                                              primaryText={
+                                                <span style={{
+                                                  margin: 0,
+                                                  padding:0,
+                                                }}>
+                                                  {d.toString().split(/: /)[1]}
+                                                </span>
+                                              }
+                                              initiallyOpen={true}
+                                              /*
+                                              nestedItems={
+                                                d.getChildren(true).map(
+                                                  (rel,i) => <ListItem
+                                                                key={i}
+                                                                primaryText={rel.toString()}
+                                                              />)}
+                                              */
                                             />
-                                    })
-                                  }
-                               />
-                      })
-                    }
-                  />
-                  <ListItem
-                    primaryText={
-                      <h4 style={{color:muiTheme.palette.primary1Color}}>
-                        Nothing
-                      </h4>}
+                            })
+                          }
+                    />
+                    <ListItem
+                      primaryText="CDM Records with matched concepts"
+                      initiallyOpen	={true}
                       nestedItems={
-                        _.range(5).map(i=><ListItem key={i} 
-                                            style={{border:'1px solid pink',}}
-                                            leftAvatar={
-                                              <Avatar
-                                                color={muiTheme.palette.alternateTextColor}
-                                                backgroundColor={muiTheme.palette.primary1Color}
-                                                size={30}
-                                                style={{width:'auto',
-                                                        margin:'3px 10px 0px 0px',
-                                                        padding:5,}}
-                                              >{i}
-                                            </Avatar>}
-                                          />)
-                        }
-                  />
-                </List>
-              </CardText>
+                        counts.map((tbl,i) => {
+                          return <ListItem key={i} 
+                                    primaryText={tbl.toString()}
+                                    initiallyOpen	={true}
+                                    nestedItems={
+                                      tbl.getChildren().map((col,j) => {
+                                        return <ListItem key={j} 
+                                                  primaryText={col.toString()}
+                                                  secondaryText={
+                                                    ['rc','src','crc']
+                                                    .map(c=>`${c}: ${col.aggregate(_.sum,c)}`).join(', ')
+                                                  }
+                                              />
+                                      })
+                                    }
+                                />
+                        })
+                      }
+                    />
+                  </List>
+                </CardText>
 
 
 
-              <CardText expandable={true}>
-
-                {relationships.map(
-                  ({name, srTreeData},i) => (
-                    <Card key={i} containerStyle={{margin:5}} style={cardStyle}>
-                      <CardHeader 
-                        style={{ fontSize: '.7em' }}
-                        title={ <p style={{ fontSize: '.7em',
-                                          fontWeight: 'regular',}}
-                                >
-                                {name} Relationship
-                                </p>}
-                      />
-                      <CardText>
-                            <SortableTree
-                                isVirtualized={false}
-                                rowHeight={sortableRowHeight}
-                                canDrag={false}
-                                treeData={srTreeData}
-                                onChange={srTreeData => {
-                                  console.log('got srTreeData', srTreeData)
-                                  this.setState({ srTreeData })
-                                }}
-                            />
-                      </CardText>
-                    </Card>
-                  ))
-                }
-
-                {/*
-                <Card containerStyle={cardStyle} style={cardStyle}>
-                  <div style={{ height: Math.min(sccTreeData.length*sortableRowHeight, 300) }}>
-                      <SortableTree
-                          rowHeight={sortableRowHeight}
-                          canDrag={false}
-                          treeData={sccTreeData}
-                          onChange={sccTreeData => {
-                            console.log('got sccTreeData', sccTreeData)
-                            this.setState({ sccTreeData })
+                <CardText expandable={true}>
+                  <List >
+                    {sourceRelationshipsSG.map(
+                      (rel,i) => {
+                        return (
+                        <ListItem
+                          key={i}
+                          innerDivStyle={{
+                            //padding: 0,
+                            //padding: '10px 10px 10px 78px',
                           }}
-                      />
-                  </div>
-                </Card>
-                */}
-              </CardText>
-              <CardText>
-            {/*
-            */}
-              </CardText>
-            </Card>
-          
-            {/*
-            <ConceptTree
-                    width={"100%"} height={200}
-                    recs={recs}
-                    treeFunc={treeFunc}
-                    //rowSelect={node => selectCb(node)}
-            />
-            <pre>
-              {treeFunc(recs).flattenTree().namePaths().join('\n')}
-            </pre>
-            <AgTable data={recs}
-                    width={"100%"} height={250}
-                    id="src_target_recs" />
-          
-            <pre>{JSON.stringify(recs,null,2)}</pre>
-            */}
+                          primaryText={
+                            <p style={{color:muiTheme.palette.primary1Color}}>
+                              {rel.toString()}
+                            </p>}
+                            initiallyOpen	={true}
+                            nestedItems={
+                              rel.getChildren().map((vocab,i) => {
+                                return          <ListItem key={i} 
+                                                  innerDivStyle={{
+                                                    //padding: '10px 10px 10px 78px',
+                                                  }}
+                                                  containerElement={
+                                                    <span style={{
+                                                    }} />
+                                                  }
+                                                  primaryText={
+                                                    <span style={{
+                                                      margin: 0,
+                                                      padding:0,
+                                                    }}>
+                                                      {vocab.toString()}
+                                                    </span>
+                                                  }
+                                                  secondaryText={
+                                                    vocab
+                                                      .counts
+                                                      .leafNodes()
+                                                      .map((col,k)=> <div key={k}>
+                                                                  <span style={{fontWeight:'bold'}}>{col.namePath('-->')}</span>:{' '}
+                                                                  {['rc','src','crc'].map(
+                                                                      c=>`${c}: ${col.aggregate(_.sum,c)}`
+                                                                    ).join(', ')
+                                                                  }
+                                                                </div>)
+                                                  }
+                                                  secondaryTextLines={2}
+                                                  initiallyOpen={false}
+                                                  nestedItems={
+                                                    vocab.getChildren(true).map(
+                                                      (concept,i) => <ListItem
+                                                                    key={i}
+                                                                    primaryText={rel.toString()}
+                                                                    primaryText={
+                                                                      <span style={{
+                                                                      }}>
+                                                                        {concept.concept_name}
+                                                                      </span>
+                                                                    }
+                                                                    secondaryText={
+                                                                      concept
+                                                                        .counts
+                                                                        .leafNodes()
+                                                                        .map((col,k)=> <div key={k}>
+                                                                                    <span style={{fontWeight:'bold'}}>{col.namePath('-->')}</span>:{' '}
+                                                                                    {['rc','src','crc'].map(
+                                                                                        c=>`${c}: ${col.aggregate(_.sum,c)}`
+                                                                                      ).join(', ')
+                                                                                    }
+                                                                                  </div>)
+                                                                    }
+                                                                    secondaryTextLines={2}
+                                                                    initiallyOpen={true}
+                                                                  />)}
+                                                />
+                                })
+                              }
+                        />
+                      )})
+                    }
+                  </List>
+
+                  {/*
+                  <Card containerStyle={cardStyle} style={cardStyle}>
+                    <div style={{ height: Math.min(sccTreeData.length*sortableRowHeight, 300) }}>
+                        <SortableTree
+                            rowHeight={sortableRowHeight}
+                            canDrag={false}
+                            treeData={sccTreeData}
+                            onChange={sccTreeData => {
+                              console.log('got sccTreeData', sccTreeData)
+                              this.setState({ sccTreeData })
+                            }}
+                        />
+                    </div>
+                  </Card>
+                  */}
+                </CardText>
+                <CardText>
+              {/*
+              */}
+                </CardText>
+              </Card>
+            
+              {/*
+              <ConceptTree
+                      width={"100%"} height={200}
+                      recs={recs}
+                      treeFunc={treeFunc}
+                      //rowSelect={node => selectCb(node)}
+              />
+              <pre>
+                {treeFunc(recs).flattenTree().namePaths().join('\n')}
+              </pre>
+              <AgTable data={recs}
+                      width={"100%"} height={250}
+                      id="src_target_recs" />
+            
+              <pre>{JSON.stringify(recs,null,2)}</pre>
+              */}
+    }
+    catch(e) {
+      console.log(e)
+      debugger
+    }
   }
 }
 
