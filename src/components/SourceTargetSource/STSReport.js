@@ -24,6 +24,8 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 
+import * as duck from '../../redux/ducks/vocab'
+
 import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
           Nav, Navbar, NavItem, Label,
@@ -79,7 +81,6 @@ export class STSReport extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      scc: [],
     }
   }
   componentDidMount() {
@@ -89,28 +90,15 @@ export class STSReport extends Component {
     this.dataToState();
   }
   dataToState() {
-    let {vocabulary_id, concept_code_search_pattern, recs=[], 
-          sourceConceptCodesSG, 
-          sourceRelationshipsSG, 
-        } = this.props
-    try {  
-      let scc = sourceConceptCodesSG
-      if (scc === this.state.scc) return
-      let sr = sourceRelationshipsSG
-      this.setState({scc, sr, })
-    }
-    catch(e) {
-      console.error(e)
-      debugger
-    }
   }
   render() {
     try {
       let {vocabulary_id, concept_code_search_pattern, recs=[], 
             sourceRelationshipsSG,
+            sourceConceptCodesSG,
             sortableRowHeight=50,
       } = this.props
-      let {scc, sr, } = this.state;
+      console.log({sourceRelationshipsSG})
       let treeFunc = recs => _.supergroup(recs, [
                                 'src_code_match_str',
                                 'src_concept_code',
@@ -140,7 +128,7 @@ export class STSReport extends Component {
                       }}
                       primaryText={
                         <p style={{color:muiTheme.palette.primary1Color}}>
-                          {`${scc.length} ${vocabulary_id} concepts 
+                          {`${sourceConceptCodesSG.length} ${vocabulary_id} concepts 
                               matching ${concept_code_search_pattern}`
                           }
                         </p>
@@ -149,7 +137,7 @@ export class STSReport extends Component {
                       secondaryTextLines={2}
                       initiallyOpen	={false}
                       nestedItems={
-                        scc.map((d,i) => {
+                        sourceConceptCodesSG.map((d,i) => {
                           return          <ListItem key={i} 
                                             innerDivStyle={{
                                               padding: '10px 10px 0px 78px',
@@ -192,61 +180,19 @@ export class STSReport extends Component {
                   </List>
                   {sourceRelationshipsSG.map(
                     (rel,i) => {
+                      let rrels = duck.sourceRelationshipsSG({vocab:{recs:rel.records}})
+                      //debugger
                       return (
-                      <ListItem
-                        key={i}
-                        innerDivStyle={{
-                          paddingTop: 3,
-                          paddingBottom: 3,
-                          //padding: '10px 10px 10px 78px',
-                        }}
-                        primaryText={
-                          <p style={{color:muiTheme.palette.primary1Color}}>
-                            {rel.toString()}
-                          </p>}
-                          initiallyOpen	={true}
-                          nestedItems={
-                            rel.getChildren().map((vocab,i) => {
-                              return          <ListItem key={i} 
-                                                innerDivStyle={{
-                                                  //padding: '10px 10px 10px 78px',
-                                                }}
-                                                containerElement={
-                                                  <span style={{
-                                                  }} />
-                                                }
-                                                primaryText={
-                                                  <span style={{
-                                                    margin: 0,
-                                                    padding:0,
-                                                  }}>
-                                                    {vocab.toString()}
-                                                  </span>
-                                                }
-                                                secondaryText={ countText(vocab.records) }
-                                                secondaryTextLines={2}
-                                                initiallyOpen={false}
-                                                nestedItems={
-                                                  vocab.getChildren(true).map(
-                                                    (concept,i) => <ListItem
-                                                                  key={i}
-                                                                  primaryText={rel.toString()}
-                                                                  primaryText={
-                                                                    <span style={{
-                                                                    }}>
-                                                                      {concept.concept_name}
-                                                                    </span>
-                                                                  }
-                                                                  secondaryText={ countText(concept.records) }
-                                                                  secondaryTextLines={2}
-                                                                  initiallyOpen={true}
-                                                                />)}
-                                              />
-                              })
-                            }
-                      />
-                    )})
-                  }
+                        <div key={i}>
+                          <Relationship key={i} rel={rel} />
+                          <h4>related to</h4>
+                          {rrels.map(
+                            (rrel,j) => <Relationship key={j} rel={rrel} />
+                          )}
+                        </div>
+                      )
+                    }
+                  )}
                 </CardText>
               </Card>
     } catch(e) {
@@ -254,6 +200,62 @@ export class STSReport extends Component {
       debugger
     }
   }
+}
+const Relationship = props => {
+  let {rel, } = props
+  return (
+    <ListItem
+      innerDivStyle={{
+        paddingTop: 3,
+        paddingBottom: 3,
+        //padding: '10px 10px 10px 78px',
+      }}
+      primaryText={
+        <p style={{color:muiTheme.palette.primary1Color}}>
+          {rel.toString()}
+        </p>}
+        initiallyOpen	={true}
+        nestedItems={
+          rel.getChildren().map((vocab,i) => {
+            return          <ListItem key={i} 
+                              innerDivStyle={{
+                                //padding: '10px 10px 10px 78px',
+                              }}
+                              containerElement={
+                                <span style={{
+                                }} />
+                              }
+                              primaryText={
+                                <span style={{
+                                  margin: 0,
+                                  padding:0,
+                                }}>
+                                  {vocab.toString()}
+                                </span>
+                              }
+                              secondaryText={ countText(vocab.records) }
+                              secondaryTextLines={2}
+                              initiallyOpen={false}
+                              nestedItems={
+                                vocab.getChildren(true).map(
+                                  (concept,i) => <ListItem
+                                                key={i}
+                                                primaryText={rel.toString()}
+                                                primaryText={
+                                                  <span style={{
+                                                  }}>
+                                                    {concept.concept_name}
+                                                  </span>
+                                                }
+                                                secondaryText={ countText(concept.records) }
+                                                secondaryTextLines={2}
+                                                initiallyOpen={true}
+                                              />)}
+                            />
+            })
+          }
+    />
+  )
 }
 const countText = recs => {
   let tblcols = _.supergroup( 

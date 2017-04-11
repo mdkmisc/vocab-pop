@@ -229,23 +229,29 @@ export const loadFromConceptCodesEpic =
                                                   c=>c.concept_id===inf.concept_id).match_strs
                                               }))
                                         )
-                                /*
                                 .switchMap(
-                                  info => 
-                                    new AppState.ApiStream({
-                                                  apiCall: 'cdmCounts',
-                                                  params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
+                                  info => {
+                                    //debugger
+                                    return new AppState.ApiStream({
+                                                  apiCall: 'conceptInfo',
+                                                  params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
                                                   wantRxAjax: true,
                                                 }).rxAjax
-                                                .map(counts=>
-                                                    info.map(inf=>
-                                                      Object.assign({}, inf, {
-                                                        cdmCounts: counts.find(
-                                                          c=>c.concept_id===inf.concept_id).counts
-                                                      }))
-                                                )
+                                                .map(relInfo=> {
+                                                  // MUTATING!
+                                                  //debugger
+                                                  return info.map(inf=> {
+                                                    inf.rels = inf.rels.map(
+                                                      rel=>{
+                                                        let ri = relInfo.find(ri=>ri.concept_id===rel.concept_id)
+                                                        ri.relationship = rel.relationship
+                                                        return ri // replace rel with ri, has all the same stuff and more i think
+                                                      })
+                                                    return inf
+                                                  })
+                                                })
+                                  }
                                 )
-                                */
                           }
                         )
           return (
