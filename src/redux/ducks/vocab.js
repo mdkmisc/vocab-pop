@@ -35,6 +35,7 @@ export const sourceConceptCodesSG = createSelector(
     return scc
   }
 )
+/*
 export const sourceRecordCountsSG = createSelector(
   recs,
   recs => {
@@ -44,6 +45,7 @@ export const sourceRecordCountsSG = createSelector(
     return tblcols
   }
 )
+*/
 export const sourceRelationshipsSG = createSelector(
   recs,
   recs => {
@@ -56,17 +58,18 @@ export const sourceRelationshipsSG = createSelector(
       d.vocabulary_id = _.uniq(d.records.map(r=>r.vocabulary_id)).join(',')
       d.domain_id = _.uniq(d.records.map(r=>r.domain_id)).join(',')
       d.concept_class_id = _.uniq(d.records.map(r=>r.concept_class_id)).join(',')
-      d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
+      //d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
     })
 
     sr.addLevel('concept_id')
     sr.leafNodes().forEach(d => {
       d.concept_name = _.uniq(d.records.map(r=>r.concept_name)).join(',')
-      d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
+      //d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
     })
     return sr
   }
 )
+/*
 export const relcounts = createSelector(
   recs,
   // recs.filter(d=>(d.rcs||[]).length).map(d=>(d.rcs||[]))
@@ -92,6 +95,7 @@ export const relcounts = createSelector(
       }))
   )
 )
+*/
 
 /* eslint-disable */
 export const VOCABULARY_ID = 'VOCABULARY_ID'

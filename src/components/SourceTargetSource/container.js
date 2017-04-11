@@ -62,9 +62,9 @@ class SourceTargetSourceForm extends Component {
           recs, fromSrcErr, 
           vocabulary_id, concept_code_search_pattern, 
           sourceConceptCodesSG,
-          sourceRecordCountsSG,
+          //sourceRecordCountsSG,
           sourceRelationshipsSG,
-          relcounts,
+          //relcounts,
         } = this.props
     //vocabulary_id = vocabulary_id || this.state.vocabulary_id
     //concept_code_search_pattern = concept_code_search_pattern || this.state.concept_code_search_pattern
@@ -79,9 +79,9 @@ class SourceTargetSourceForm extends Component {
         />
         <STSReport vocabulary_id={vocabulary_id} concept_code_search_pattern={concept_code_search_pattern} 
                     sourceConceptCodesSG={sourceConceptCodesSG}
-                    sourceRecordCountsSG={sourceRecordCountsSG}
+                    //sourceRecordCountsSG={sourceRecordCountsSG}
                     sourceRelationshipsSG={sourceRelationshipsSG}
-                    relcounts={relcounts}
+                    //relcounts={relcounts}
                     recs={recs} />
         {/*
           recs && recs.length
@@ -122,8 +122,8 @@ SourceTargetSourceForm = connect(
     let newState = {
       sourceConceptCodesSG: duck.sourceConceptCodesSG(state),
       sourceRelationshipsSG: duck.sourceRelationshipsSG(state),
-      sourceRecordCountsSG: duck.sourceRecordCountsSG(state),
-      relcounts: duck.relcounts(state),
+      //sourceRecordCountsSG: duck.sourceRecordCountsSG(state),
+      //relcounts: duck.relcounts(state),
       recs, fromSrcErr, 
       vocabulary_id, 
       concept_code_search_pattern,

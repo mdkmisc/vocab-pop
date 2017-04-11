@@ -79,10 +79,6 @@ export class STSReport extends Component {
   constructor(props) {
     super(props)
     this.state = {
-      sccTreeData: [],
-      relationships: [],
-      counts: [],
-      srcTblsSG: _.supergroup([], ['tbl','col']),
       scc: [],
     }
   }
@@ -96,77 +92,12 @@ export class STSReport extends Component {
     let {vocabulary_id, concept_code_search_pattern, recs=[], 
           sourceConceptCodesSG, 
           sourceRelationshipsSG, 
-          sourceRecordCountsSG, 
-          relcounts, 
         } = this.props
     try {  
       let scc = sourceConceptCodesSG
       if (scc === this.state.scc) return
-      let sccTreeData = 
-        scc.map((d,i)=>({
-                      d,
-                      subtitle: (<ListItem key={i} 
-                                              leftAvatar={
-                                                <Avatar
-                                                  color={muiTheme.palette.alternateTextColor}
-                                                  backgroundColor={muiTheme.palette.primary1Color}
-                                                  size={30}
-                                                  style={{width:'auto',
-                                                          margin:'3px 4px 6px -14px',
-                                                          padding:5,}}
-                                                >
-                                                  {d.src_concept_code}
-                                                </Avatar>}
-                                            primaryText={d.src_concept_name}
-                                        />),
-                      //children: d.getChildren(true).map(c=>({c,title:c.toString()}))
-                    }))
-      let counts = sourceRecordCountsSG || []
       let sr = sourceRelationshipsSG
-      /*
-      let relationships = 
-        sr.map((r,i)=>({
-          name: r.toString(),
-          srTreeData: 
-            r.getChildren(true)
-            .map((d,j) => ({
-                      d,
-                      subtitle: (<ListItem key={j} 
-                                              primaryText={d.src_concept_name}
-                                              leftAvatar={
-                                                <Avatar
-                                                  color={muiTheme.palette.alternateTextColor}
-                                                  backgroundColor={muiTheme.palette.primary1Color}
-                                                  size={30}
-                                                  style={{width:'auto',
-                                                          margin:'3px 4px 6px -14px',
-                                                          padding:5,}}
-                                                >
-                                                  {d.src_concept_code}
-                                                </Avatar>}
-                                        />),
-                      children: d.getChildren(true).map(c=>({c,title:c.toString()}))
-            }))
-      }))
-      */
-      let srcTblsSG = _.supergroup(relcounts.filter(d=>d.src), ['tbl','col'])
-      srcTblsSG.collapseOnlyChildren()
-      
-      /*
-      let srcCntTreeData = 
-        srcTblsSG.map((d,i)=>({
-                      d,
-                      title: `${d}${ d.hasChildren() ? '' : (' / ' + d.col)}`,
-                      subtitle: `${commify(d.aggregate(_.sum,'src'))} src records`,
-                      children: 
-                        d.getChildren(true)
-                         .map(c=>({
-                           c,
-                           subtitle: `${commify(d.aggregate(_.sum,'total'))} src records`,
-                           title:c.toString()}))
-                    }))
-      */
-      this.setState({scc, sccTreeData, sr, srcTblsSG, counts})
+      this.setState({scc, sr, })
     }
     catch(e) {
       console.error(e)
@@ -176,12 +107,10 @@ export class STSReport extends Component {
   render() {
     try {
       let {vocabulary_id, concept_code_search_pattern, recs=[], 
-            sourceConceptCodesSG,
             sourceRelationshipsSG,
-            relcounts,
             sortableRowHeight=50,
       } = this.props
-      let {scc, sccTreeData, sr, srcTblsSG, counts} = this.state;
+      let {scc, sr, } = this.state;
       let treeFunc = recs => _.supergroup(recs, [
                                 'src_code_match_str',
                                 'src_concept_code',
@@ -204,6 +133,8 @@ export class STSReport extends Component {
                   <List >
                     <ListItem
                       innerDivStyle={{
+                        paddingTop: 3,
+                        paddingBottom: 3,
                         //padding: 0,
                         //padding: '10px 10px 10px 78px',
                       }}
@@ -212,207 +143,129 @@ export class STSReport extends Component {
                           {`${scc.length} ${vocabulary_id} concepts 
                               matching ${concept_code_search_pattern}`
                           }
-                        </p>}
-                        initiallyOpen	={false}
-                        nestedItems={
-                          scc.map((d,i) => {
-                            return          <ListItem key={i} 
-                                              innerDivStyle={{
-                                                padding: '10px 10px 10px 78px',
-                                              }}
-                                              leftAvatar={
-                                                <Avatar
-                                                  color={muiTheme.palette.alternateTextColor}
-                                                  backgroundColor={muiTheme.palette.primary1Color}
-                                                  size={30}
-                                                  style={{width:'auto',
-                                                          textAlign: 'right',
-                                                          margin:'-4px 10px 10px -10px',
-                                                          padding:5,}}
-                                                >
-                                                  {d.toString().split(/:/)[0]} 
-                                                </Avatar>
-                                              }
-                                              containerElement={
-                                                <span style={{
-                                                  margin: 0,
-                                                  padding:0,
-                                                }} />
-                                              }
-                                              primaryText={
-                                                <span style={{
-                                                  margin: 0,
-                                                  padding:0,
-                                                }}>
-                                                  {d.toString().split(/: /)[1]}
-                                                </span>
-                                              }
-                                              initiallyOpen={true}
-                                              /*
-                                              nestedItems={
-                                                d.getChildren(true).map(
-                                                  (rel,i) => <ListItem
-                                                                key={i}
-                                                                primaryText={rel.toString()}
-                                                              />)}
-                                              */
-                                            />
-                            })
-                          }
-                    />
-                    <ListItem
-                      primaryText="CDM Records with matched concepts"
-                      initiallyOpen	={true}
-                      nestedItems={
-                        counts.map((tbl,i) => {
-                          return <ListItem key={i} 
-                                    primaryText={tbl.toString()}
-                                    initiallyOpen	={true}
-                                    nestedItems={
-                                      tbl.getChildren().map((col,j) => {
-                                        return <ListItem key={j} 
-                                                  primaryText={col.toString()}
-                                                  secondaryText={
-                                                    ['rc','src','crc']
-                                                    .map(c=>`${c}: ${col.aggregate(_.sum,c)}`).join(', ')
-                                                  }
-                                              />
-                                      })
-                                    }
-                                />
-                        })
+                        </p>
                       }
+                      secondaryText={ countText(recs) }
+                      secondaryTextLines={2}
+                      initiallyOpen	={false}
+                      nestedItems={
+                        scc.map((d,i) => {
+                          return          <ListItem key={i} 
+                                            innerDivStyle={{
+                                              padding: '10px 10px 0px 78px',
+                                              marginBottom: 0,
+                                            }}
+                                            leftAvatar={
+                                              <Avatar
+                                                color={muiTheme.palette.alternateTextColor}
+                                                backgroundColor={muiTheme.palette.primary1Color}
+                                                size={30}
+                                                style={{width:'auto',
+                                                        textAlign: 'right',
+                                                        margin:'-4px 10px 10px -10px',
+                                                        padding:5,}}
+                                              >
+                                                {d.toString().split(/:/)[0]} 
+                                              </Avatar>
+                                            }
+                                            containerElement={
+                                              <span style={{
+                                                margin: 0,
+                                                padding:0,
+                                              }} />
+                                            }
+                                            primaryText={
+                                              <span style={{
+                                                margin: 0,
+                                                padding:0,
+                                              }}>
+                                                {d.toString().split(/: /)[1]}
+                                              </span>
+                                            }
+                                            secondaryText={ countText(d.records) }
+                                            secondaryTextLines={2}
+                                            initiallyOpen={true}
+                                          />
+                          })
+                        }
                     />
                   </List>
-                </CardText>
-
-
-
-                <CardText expandable={true}>
-                  <List >
-                    {sourceRelationshipsSG.map(
-                      (rel,i) => {
-                        return (
-                        <ListItem
-                          key={i}
-                          innerDivStyle={{
-                            //padding: 0,
-                            //padding: '10px 10px 10px 78px',
-                          }}
-                          primaryText={
-                            <p style={{color:muiTheme.palette.primary1Color}}>
-                              {rel.toString()}
-                            </p>}
-                            initiallyOpen	={true}
-                            nestedItems={
-                              rel.getChildren().map((vocab,i) => {
-                                return          <ListItem key={i} 
-                                                  innerDivStyle={{
-                                                    //padding: '10px 10px 10px 78px',
-                                                  }}
-                                                  containerElement={
-                                                    <span style={{
-                                                    }} />
-                                                  }
-                                                  primaryText={
-                                                    <span style={{
-                                                      margin: 0,
-                                                      padding:0,
-                                                    }}>
-                                                      {vocab.toString()}
-                                                    </span>
-                                                  }
-                                                  secondaryText={
-                                                    vocab
-                                                      .counts
-                                                      .leafNodes()
-                                                      .map((col,k)=> <div key={k}>
-                                                                  <span style={{fontWeight:'bold'}}>{col.namePath('-->')}</span>:{' '}
-                                                                  {['rc','src','crc'].map(
-                                                                      c=>`${c}: ${col.aggregate(_.sum,c)}`
-                                                                    ).join(', ')
+                  {sourceRelationshipsSG.map(
+                    (rel,i) => {
+                      return (
+                      <ListItem
+                        key={i}
+                        innerDivStyle={{
+                          paddingTop: 3,
+                          paddingBottom: 3,
+                          //padding: '10px 10px 10px 78px',
+                        }}
+                        primaryText={
+                          <p style={{color:muiTheme.palette.primary1Color}}>
+                            {rel.toString()}
+                          </p>}
+                          initiallyOpen	={true}
+                          nestedItems={
+                            rel.getChildren().map((vocab,i) => {
+                              return          <ListItem key={i} 
+                                                innerDivStyle={{
+                                                  //padding: '10px 10px 10px 78px',
+                                                }}
+                                                containerElement={
+                                                  <span style={{
+                                                  }} />
+                                                }
+                                                primaryText={
+                                                  <span style={{
+                                                    margin: 0,
+                                                    padding:0,
+                                                  }}>
+                                                    {vocab.toString()}
+                                                  </span>
+                                                }
+                                                secondaryText={ countText(vocab.records) }
+                                                secondaryTextLines={2}
+                                                initiallyOpen={false}
+                                                nestedItems={
+                                                  vocab.getChildren(true).map(
+                                                    (concept,i) => <ListItem
+                                                                  key={i}
+                                                                  primaryText={rel.toString()}
+                                                                  primaryText={
+                                                                    <span style={{
+                                                                    }}>
+                                                                      {concept.concept_name}
+                                                                    </span>
                                                                   }
-                                                                </div>)
-                                                  }
-                                                  secondaryTextLines={2}
-                                                  initiallyOpen={false}
-                                                  nestedItems={
-                                                    vocab.getChildren(true).map(
-                                                      (concept,i) => <ListItem
-                                                                    key={i}
-                                                                    primaryText={rel.toString()}
-                                                                    primaryText={
-                                                                      <span style={{
-                                                                      }}>
-                                                                        {concept.concept_name}
-                                                                      </span>
-                                                                    }
-                                                                    secondaryText={
-                                                                      concept
-                                                                        .counts
-                                                                        .leafNodes()
-                                                                        .map((col,k)=> <div key={k}>
-                                                                                    <span style={{fontWeight:'bold'}}>{col.namePath('-->')}</span>:{' '}
-                                                                                    {['rc','src','crc'].map(
-                                                                                        c=>`${c}: ${col.aggregate(_.sum,c)}`
-                                                                                      ).join(', ')
-                                                                                    }
-                                                                                  </div>)
-                                                                    }
-                                                                    secondaryTextLines={2}
-                                                                    initiallyOpen={true}
-                                                                  />)}
-                                                />
-                                })
-                              }
-                        />
-                      )})
-                    }
-                  </List>
-
-                  {/*
-                  <Card containerStyle={cardStyle} style={cardStyle}>
-                    <div style={{ height: Math.min(sccTreeData.length*sortableRowHeight, 300) }}>
-                        <SortableTree
-                            rowHeight={sortableRowHeight}
-                            canDrag={false}
-                            treeData={sccTreeData}
-                            onChange={sccTreeData => {
-                              console.log('got sccTreeData', sccTreeData)
-                              this.setState({ sccTreeData })
-                            }}
-                        />
-                    </div>
-                  </Card>
-                  */}
-                </CardText>
-                <CardText>
-              {/*
-              */}
+                                                                  secondaryText={ countText(concept.records) }
+                                                                  secondaryTextLines={2}
+                                                                  initiallyOpen={true}
+                                                                />)}
+                                              />
+                              })
+                            }
+                      />
+                    )})
+                  }
                 </CardText>
               </Card>
-            
-              {/*
-              <ConceptTree
-                      width={"100%"} height={200}
-                      recs={recs}
-                      treeFunc={treeFunc}
-                      //rowSelect={node => selectCb(node)}
-              />
-              <pre>
-                {treeFunc(recs).flattenTree().namePaths().join('\n')}
-              </pre>
-              <AgTable data={recs}
-                      width={"100%"} height={250}
-                      id="src_target_recs" />
-            
-              <pre>{JSON.stringify(recs,null,2)}</pre>
-              */}
-    }
-    catch(e) {
+    } catch(e) {
       console.log(e)
       debugger
     }
   }
 }
-
+const countText = recs => {
+  let tblcols = _.supergroup( 
+                    _.flatten((recs||[]).map(d=>d.rcs)),
+                    ['tbl','col'])
+  return (tblcols
+            .leafNodes()
+            .map((col,k) => <div key={k}>
+                              <span style={{fontWeight:'bold'}}>{col.namePath('-->')}</span>:{' '}
+                              {['rc','src','crc'].map(
+                                  c=>`${c}: ${col.aggregate(_.sum,c)}`
+                                ).join(', ')
+                              }
+                            </div>))
+}
