@@ -64,6 +64,7 @@ export const sourceRelationshipsSG = createSelector(
     sr.addLevel('concept_id')
     sr.leafNodes().forEach(d => {
       d.concept_name = _.uniq(d.records.map(r=>r.concept_name)).join(',')
+      d.concept_code = _.uniq(d.records.map(r=>r.concept_code)).join(',')
       //d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
     })
     return sr
@@ -244,7 +245,8 @@ export const loadFromConceptCodesEpic =
                                                     inf.rels = inf.rels.map(
                                                       rel=>{
                                                         let ri = relInfo.find(ri=>ri.concept_id===rel.concept_id)
-                                                        ri.relationship = rel.relationship
+                                                        ri = ri || {}
+                                                        ri.relationship = (rel||{}).relationship
                                                         return ri // replace rel with ri, has all the same stuff and more i think
                                                       })
                                                     return inf

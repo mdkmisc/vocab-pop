@@ -237,8 +237,10 @@ const Relationship = props => {
                               secondaryTextLines={2}
                               initiallyOpen={false}
                               nestedItems={
-                                vocab.getChildren(true).map(
-                                  (concept,i) => <ListItem
+                                vocab.getChildren(true)
+                                  .sort((a,b)=>d3.ascending(a.concept_code,b.concept_code))
+                                  .map(
+                                    (concept,i) => <ListItem
                                                 key={i}
                                                 primaryText={rel.toString()}
                                                 primaryText={
@@ -249,6 +251,19 @@ const Relationship = props => {
                                                 }
                                                 secondaryText={ countText(concept.records) }
                                                 secondaryTextLines={2}
+                                                leftAvatar={
+                                                  <Avatar
+                                                    color={muiTheme.palette.alternateTextColor}
+                                                    backgroundColor={muiTheme.palette.primary1Color}
+                                                    size={30}
+                                                    style={{width:'auto',
+                                                            textAlign: 'right',
+                                                            margin:'-4px 10px 10px -10px',
+                                                            padding:5,}}
+                                                  >
+                                                    {concept.concept_code}
+                                                  </Avatar>
+                                                }
                                                 initiallyOpen={true}
                                               />)}
                             />
