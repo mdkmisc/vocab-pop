@@ -98,13 +98,7 @@ export class STSReport extends Component {
             sourceConceptCodesSG,
             sortableRowHeight=50,
       } = this.props
-      console.log({sourceRelationshipsSG})
-      let treeFunc = recs => _.supergroup(recs, [
-                                'src_code_match_str',
-                                'src_concept_code',
-                                'src_concept_id',
-                                'relationship',
-                                'target_concept_id'])
+      console.log({sourceConceptCodesSG, sourceRelationshipsSG})
       const cardStyle = {
         padding: '0px',
       };

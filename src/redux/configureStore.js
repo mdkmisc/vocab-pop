@@ -10,7 +10,8 @@ import * as rrRouter from 'react-router-redux'
 //console.log(rrRouter)
 
 import vocab, {
-          loadFromConceptCodesEpic, loadVocabsEpic
+          formValToRoute, fetchConceptInfo,
+          fetchConceptIdsForCodes, loadVocabsEpic
         } from './ducks/vocab'
 
 import React, { Component } from 'react'
@@ -55,8 +56,10 @@ export default function configureStore(initialState = {}) {
   //console.log('done comining reducers', appReducer)
 
   const rootEpic = combineEpics(
-    loadFromConceptCodesEpic,
-    loadVocabsEpic
+    loadVocabsEpic,
+    formValToRoute,
+    fetchConceptIdsForCodes,
+    fetchConceptInfo
   );
   const epicMiddleware = createEpicMiddleware(rootEpic);
   //console.log(epicMiddleware)

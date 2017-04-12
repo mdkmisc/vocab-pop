@@ -102,11 +102,14 @@ export const relcounts = createSelector(
 export const VOCABULARY_ID = 'VOCABULARY_ID'
 export const CONCEPT_CODES = 'CONCEPT_CODES'
 export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
-export const VOCABULARY_ID_CONCEPT_CODE_SEARCH_PATTERN = 'VOCABULARY_ID_CONCEPT_CODE_SEARCH_PATTERN'
 
 export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN';
 export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED';
 export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED';
+
+export const LOAD_CONCEPTS = 'LOAD_CONCEPTS';
+export const LOAD_CONCEPTS_FULFILLED = 'LOAD_CONCEPTS_FULFILLED';
+export const LOAD_CONCEPTS_REJECTED = 'LOAD_CONCEPTS_REJECTED';
 
 export const LOAD_VOCABS = 'LOAD_VOCABS';
 export const LOAD_VOCABS_FULFILLED = 'LOAD_VOCABS_FULFILLED';
@@ -128,7 +131,6 @@ const vocabReducer = (state={recs:[]}, action) => {
     case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN:
     case VOCABULARY_ID:
     case CONCEPT_CODE_SEARCH_PATTERN:
-    case VOCABULARY_ID_CONCEPT_CODE_SEARCH_PATTERN:
       let newState = {
         ...state,
         ...action.payload,
@@ -139,14 +141,17 @@ const vocabReducer = (state={recs:[]}, action) => {
       //console.log('state change', state, newState)
       return newState
     case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED:
+      break;
+    case LOAD_CONCEPTS_FULFILLED:
       let recs = action.payload
+      if (typeof recs === 'string') debugger
       if (recs.length) {
         return { ...state, isPending: false, recs, }
       }
       return { ...state, isPending: false, recs:undefined,
         fromSrcErr: {statusText: 'No matching concepts'},
         };
-    case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED:
+    case LOAD_CONCEPTS_REJECTED:
       return {
         ...state,
         isPending: false,
@@ -176,112 +181,151 @@ const vocabReducer = (state={recs:[]}, action) => {
 }
 export default vocabReducer
 
-export const loadFromConceptCodesEpic =
-  (action$, store) => {
-    //console.log(action$)
-    return (
-      action$
-        //.do(action=>console.log('epic sees',action))
-        .filter(
-          action=>{
-            //console.log('filtering',action.type)
-            return _.includes([
-              VOCABULARY_ID,
-              CONCEPT_CODE_SEARCH_PATTERN,
-              LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN
-            ], action.type)
+export const formValToRoute = (action$,store) =>
+  action$
+    .ofType('@@redux-form/CHANGE')
+    .do(action=>console.log('formValToRoute epic sees',action))
+    .filter(action => action.meta.form === 'concept_codes_form')
+    .do(action=>store.dispatch({
+        type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN, 
+        payload: { [action.meta.field]: action.payload },
+    }))
+    .map(
+      action => ({  type: myrouter.QUERY_PARAMS, 
+                    payload: { [action.meta.field]: action.payload }}))
+
+export const fetchConceptIdsForCodes = (action$, store) =>
+  action$.ofType(LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN)
+    .do(action=>console.log('fcidfc epic sees',action))
+    .switchMap(action => {
+      let {type, payload} = action
+      let state = store.getState().vocab
+      let params = _.pick(Object.assign({}, state, payload), 
+                          ['vocabulary_id','concept_code_search_pattern'])
+      let ajax = new AppState.ApiStream({
+                      apiCall: 'codeSearchToCids',
+                      params,
+                      wantRxAjax: true,
+                    })
+                    .rxAjax
+      return (
+        ajax
+          //.flatMap( // not using flatMap because I understand why...not sure why it's here)
+          .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
+                    // i was using flatMap before in order to return 
+                    //   Rx.Observable.concat(Rx.Observable.of(action),
+                    //                        Rx.Observable.of(anotherAction))
+            return (
+              Rx.Observable.of(
+                  { type: LOAD_CONCEPTS, 
+                    payload: response}
+              )
+              .catch(error => {
+                return Rx.Observable.of({
+                          type: `${type}_REJECTED`,
+                          payload: error.xhr.response,
+                          error: true
+                        })
+              })
+            )
           }
         )
-        //.do(action=>console.log('epic performing',action))
-        .switchMap(action => {
-          let {type, payload} = action
-          let state = store.getState().vocab
-          let params = {}
-          if (type === VOCABULARY_ID) {
-            params.vocabulary_id = payload.vocabulary_id
-            params.concept_code_search_pattern = state.concept_code_search_pattern
-          } else if (type === CONCEPT_CODE_SEARCH_PATTERN) {
-            params.concept_code_search_pattern = payload.concept_code_search_pattern
-            params.vocabulary_id = state.vocabulary_id
-          } else if (type === LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN) {
-            params.vocabulary_id = payload.vocabulary_id
-            params.concept_code_search_pattern = payload.concept_code_search_pattern
-          }
-          let ajax = new AppState.ApiStream({
-                          apiCall: 'codeSearchToCids',
-                          params,
-                          wantRxAjax: true,
-                        })
-                        .rxAjax
-                        .switchMap(
-                          codes => {
-                            if (!codes || codes.length === 0)
-                              return []
-                            return new AppState.ApiStream({
-                                          apiCall: 'conceptInfo',
-                                          params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
-                                            //Object.assign({},params,{concept_ids:[codes.map(d=>d.concept_id)]}),
-                                          wantRxAjax: true,
-                                        }).rxAjax
-                                        .map(info=>
-                                             info.map(inf=>
-                                              Object.assign({}, inf, {
-                                                match_strs: codes.find(
-                                                  c=>c.concept_id===inf.concept_id).match_strs
-                                              }))
-                                        )
-                                .switchMap(
-                                  info => {
-                                    //debugger
-                                    return new AppState.ApiStream({
-                                                  apiCall: 'conceptInfo',
-                                                  params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
-                                                  wantRxAjax: true,
-                                                }).rxAjax
-                                                .map(relInfo=> {
-                                                  // MUTATING!
-                                                  //debugger
-                                                  return info.map(inf=> {
-                                                    inf.rels = inf.rels.map(
-                                                      rel=>{
-                                                        let ri = relInfo.find(ri=>ri.concept_id===rel.concept_id)
-                                                        ri = ri || {}
-                                                        ri.relationship = (rel||{}).relationship
-                                                        return ri // replace rel with ri, has all the same stuff and more i think
-                                                      })
-                                                    return inf
-                                                  })
-                                                })
-                                  }
-                                )
-                          }
-                        )
-          return (
-            ajax.flatMap( // not using flatMap because I understand why...not sure why it's here
-              response => {
-                return (
-                  Rx.Observable.concat(
-                      Rx.Observable.of(
-                          { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
-                            payload: response}),
-                      Rx.Observable.of(
-                          { type: myrouter.QUERY_PARAMS, 
-                            payload: params})
-                  )
-                  .catch(error => {
-                    return Rx.Observable.of({
-                              type: `${type}_REJECTED`,
-                              payload: error.xhr.response,
-                              error: true
-                            })
-                  })
-                )
-              }
-            )
-          )
-        })
+      )
+    })
   //browserHistory.push({vocabulary_id, concept_code_search_pattern})
-  )}
+
+export const fetchConceptInfo = (action$, store) =>
+  action$
+    .do(action=>console.log('LOAD_CONCEPTS epic sees',{action,store}))
+    .ofType(LOAD_CONCEPTS)
+    .switchMap(
+      action => {
+        let codes = action.payload
+        if (!codes || codes.length === 0) return []
+        return (
+          new AppState.ApiStream({
+            apiCall: 'conceptInfo',
+            params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
+              //Object.assign({},params,{concept_ids:[codes.map(d=>d.concept_id)]}),
+            wantRxAjax: true,
+          })
+          .rxAjax
+          .map(info=>
+                info.map(inf=>
+                Object.assign({}, inf, {
+                  match_strs: codes.find(
+                    c=>c.concept_id===inf.concept_id).match_strs
+                }))
+          )
+          .catch(error => {
+            return Rx.Observable.of({
+                      type: `${type}_REJECTED`,
+                      payload: error.xhr.response,
+                      error: true
+                    })
+          })
+          .switchMap(
+            info => {
+              //debugger
+              return (
+                  Rx.Observable.of(
+                      { type: LOAD_CONCEPTS_FULFILLED, 
+                        payload: info})
+                        /* this is the second level stuff:
+                new AppState.ApiStream({
+                  apiCall: 'conceptInfo',
+                  params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
+                  wantRxAjax: true,
+                })
+                .rxAjax
+                .map(relInfo=> {
+                  // MUTATING!
+                  //debugger
+                  return info.map(inf=> {
+                    inf.rels = inf.rels.map(
+                      rel=>{
+                        let ri = relInfo.find(ri=>ri.concept_id===rel.concept_id)
+                        ri = ri || {}
+                        ri.relationship = (rel||{}).relationship
+                        return ri // replace rel with ri, has all the same stuff and more i think
+                      })
+                    return inf
+                  })
+                })
+                */
+              )
+            }
+          )
+      )
+      /*
+      return (
+        ajax.flatMap( // not using flatMap because I understand why...not sure why it's here
+          response => {
+            return (
+              Rx.Observable.concat(
+                  Rx.Observable.of(
+                      { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
+                        payload: response})
+/*
+                        ,
+                  Rx.Observable.of(
+                      { type: myrouter.QUERY_PARAMS, 
+                        payload: params})
+* /
+              )
+              .catch(error => {
+                return Rx.Observable.of({
+                          type: `${type}_REJECTED`,
+                          payload: error.xhr.response,
+                          error: true
+                        })
+              })
+            )
+          }
+        )
+      )
+      */
+    })
 
 export const loadVocabs = (
     (values) => ({ type: LOAD_VOCABS, payload: values }))

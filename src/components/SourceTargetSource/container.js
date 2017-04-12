@@ -30,12 +30,13 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-import {ConceptCodesForm} from '../Lookups'
+import {ConceptCodesLookupForm} from '../Lookups'
 import * as AppState from '../../AppState'
 
 class SourceTargetSourceForm extends Component {
   constructor(props) {
     super(props)
+    /*
     let vocabulary_id, concept_code_search_pattern
     // for testing:
     vocabulary_id = 'ICD9CM'
@@ -44,16 +45,18 @@ class SourceTargetSourceForm extends Component {
       vocabulary_id,
       concept_code_search_pattern,
     };
+    */
   }
   componentDidMount() {
-    let {vocabulary_id, concept_code_search_pattern, } = this.props
+    let {dispatch, vocabulary_id, concept_code_search_pattern, } = this.props
+
+    dispatch(duck.loadVocabs())
     if (vocabulary_id && concept_code_search_pattern) {
-      this.props.dispatch({
-        type:duck.VOCABULARY_ID_CONCEPT_CODE_SEARCH_PATTERN,
-        payload: {vocabulary_id, concept_code_search_pattern}})
+      dispatch({
+        type:duck.LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
+        payload:{vocabulary_id,concept_code_search_pattern}
+      });
     }
-  }
-  componentDidUpdate(prevProps, prevState) {
   }
   render() {
     let {
@@ -71,7 +74,7 @@ class SourceTargetSourceForm extends Component {
 
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
-        <ConceptCodesForm
+        <ConceptCodesLookupForm
           {...lookupParams}
           //vocabulary_id={vocabulary_id}
           //concept_code_search_pattern={concept_code_search_pattern}

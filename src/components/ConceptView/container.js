@@ -49,11 +49,9 @@ class ConceptViewForm extends Component {
   }
   componentDidMount() {
     let {dispatch, initialValues} = this.props
-    dispatch(duck.loadVocabs())
-    if (initialValues) {
-      dispatch({type:duck.LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,payload:initialValues});
-      //dispatch(duck.loadFromSourceCodes(initialValues))
-    }
+    throw new Error("look at sts container to fix this")
+    //dispatch(duck.loadVocabs())
+    //if (initialValues) { dispatch({type:duck.xxOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,payload:initialValues}); }
     this.resize()
     /*
     this.refs.concept_code_search_pattern
@@ -242,6 +240,7 @@ class ConceptViewForm extends Component {
                       //onNewRequest={value => { console.log('AutoComplete ', value) // eslint-disable-line no-console }}
                       //dataSourceConfig={{ }}
                       //errorText={vocabulary_id}
+                      /*
                       onChange={
                         (event, index, value) => {
                           let vocabulary_id = index
@@ -250,6 +249,7 @@ class ConceptViewForm extends Component {
                                   payload: {vocabulary_id}})
                         }
                       }
+                      */
                 >
                   {
                     (vocabs||[]).map(
@@ -273,6 +273,7 @@ class ConceptViewForm extends Component {
                     multiLine={true}
                     fullWidth={true}
                     errorText={errMsg}
+                    /*
                     onChange={
                       (event, index, value) => {
                         let concept_code_search_pattern = event.target.value
@@ -280,6 +281,7 @@ class ConceptViewForm extends Component {
                                 payload: {concept_code_search_pattern}})
                       }
                     }
+                    */
   /*
   ? <span style={{fontWeight:700, color:'#700'}}>
       {fromSrcErr.statusText}

@@ -49,8 +49,12 @@ const routeState  = (state=myrouter.myhistory.location, action) => {
       return _.get(state, action.path) // probably wrong
     case QUERY_PARAMS:
       let qp = new URLSearchParams(state.search)
-      qp.set('vocabulary_id', action.payload.vocabulary_id)
-      qp.set('concept_code_search_pattern', action.payload.concept_code_search_pattern)
+      for (var p in action.payload) {
+        qp.set(p, action.payload[p])
+      }
+      //qp = Object.assign(_.fromPairs([...qp.entries()]), action.payload)
+      //qp.set('vocabulary_id', action.payload.vocabulary_id)
+      //qp.set('concept_code_search_pattern', action.payload.concept_code_search_pattern)
       //let huh = reduxPush({pathname:'foo',query:{foo:'baz'}})
       myrouter.myhistory.push({search:qp+''})
       return myrouter.myhistory.location
