@@ -331,12 +331,12 @@ const selector = formValueSelector('stsform')
 ConceptViewForm = connect(
   (state, ownProps) => { // mapStateToProps
     const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
-    let recs = state.app.vocab.recs;
-    let fromSrcErr = state.app.vocab.fromSrcErr;
-    //let isPending = state.app.vocab.isPending;
+    let recs = state.vocab.recs;
+    let fromSrcErr = state.vocab.fromSrcErr;
+    //let isPending = state.vocab.isPending;
     let newState = {
-      initialValues: state.app.vocab,
-      //currentValues: state.app.vocab,
+      initialValues: state.vocab,
+      //currentValues: state.vocab,
       vocabulary_id, concept_code_search_pattern, recs, fromSrcErr,
       //curVals:{ vocabulary_id, concept_code_search_pattern, recs, fromSrcErr,isPending},
       formRef: state.form.stsform,

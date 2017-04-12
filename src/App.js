@@ -104,8 +104,10 @@ const routes = [
     main: ()=><ComponentWrapper InnerComp={AppState.AppState} />,
   },
   { path: '/conceptview',
-    //main: ()=><ComponentWrapper InnerComp={ConceptViewPage} />,
     main: ()=><ConceptView/>,
+  },
+  { path: '/concepts',
+    main: ()=><VocabPop/>,
   },
   { path: '/sourcetargetsource',
     main: (a,b,c,d,e,f) => {

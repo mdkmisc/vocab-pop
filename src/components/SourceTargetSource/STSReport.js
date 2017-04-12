@@ -177,22 +177,23 @@ export class STSReport extends Component {
                           })
                         }
                     />
+                    {sourceRelationshipsSG.map(
+                      (rel,i) => {
+                        let rrels = duck.sourceRelationshipsSG({vocab:{recs:rel.records}})
+                        //debugger
+                        return (
+                          <div key={i} style={{marginLeft:15}} >
+                            <Relationship key={i} rel={rel} />
+                            <div style={{marginLeft:15}} >
+                              {rrels.map(
+                                (rrel,j) => <Relationship key={j} rel={rrel} />
+                              )}
+                            </div>
+                          </div>
+                        )
+                      }
+                    )}
                   </List>
-                  {sourceRelationshipsSG.map(
-                    (rel,i) => {
-                      let rrels = duck.sourceRelationshipsSG({vocab:{recs:rel.records}})
-                      //debugger
-                      return (
-                        <div key={i}>
-                          <Relationship key={i} rel={rel} />
-                          <h4>related to</h4>
-                          {rrels.map(
-                            (rrel,j) => <Relationship key={j} rel={rrel} />
-                          )}
-                        </div>
-                      )
-                    }
-                  )}
                 </CardText>
               </Card>
     } catch(e) {

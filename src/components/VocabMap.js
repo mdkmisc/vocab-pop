@@ -32,7 +32,7 @@ import makeElements from './ThreeLayerVocGraphElements';
 require('./sass/Vocab.css');
 //import from './sigma-react/sigma.renderers.react';
 import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
-import {setToAncestorSize, getAncestorSize} from '../utils';
+//import {setToAncestorSize, getAncestorSize} from '../utils';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 
@@ -119,12 +119,12 @@ export default class VocabMap extends Component {
   }
   componentDidMount() {
     this.dataPrep();
-    setToAncestorSize(this, this.divRef, ".main-content");
+    //setToAncestorSize(this, this.divRef, ".main-content");
   }
   componentDidUpdate() {
     if (!this.state.nodes)
       this.dataPrep();
-    setToAncestorSize(this, this.divRef, ".main-content");
+    //setToAncestorSize(this, this.divRef, ".main-content");
   }
   dataPrep() {
     const {sg} = this.props;
@@ -266,10 +266,10 @@ export class DomainMap extends Component {
               !_.isEqual(this.state.msgInfo, nextState.msgInfo)
   }
   componentDidMount() {
-    setToAncestorSize(this, this.divRef, ".main-content");
+    //setToAncestorSize(this, this.divRef, ".main-content");
   }
   componentDidUpdate() {
-    const { vocgroups, w, h } = this.props;
+    let { vocgroups, agg, w, h } = this.props;
     const {width, height} = this.state;
     /*
     if (w !== width || h !== height) {
@@ -277,6 +277,8 @@ export class DomainMap extends Component {
       return;
     }
     */
+    // after long time just trying to get working again:
+    vocgroups = vocgroups || agg.json
     if (_.isEmpty(vocgroups)) return;
     //console.log('domainmap', vocgroups, w, h);
     let sg = _.supergroup(vocgroups, "domain_id");
@@ -302,7 +304,7 @@ export class DomainMap extends Component {
                   sval: d.parent,
                   tval: d,
               }});
-    setToAncestorSize(this, this.divRef, ".main-content");
+    //setToAncestorSize(this, this.divRef, ".main-content");
     this.setState({nodes, edges});
   }
   render() {
