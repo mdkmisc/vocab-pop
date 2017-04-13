@@ -3,6 +3,7 @@
 .env
 
 VOCAB/vocab_data_files
+VOCAB
 
 src/**/*.css
 

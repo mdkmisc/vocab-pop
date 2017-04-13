@@ -131,17 +131,26 @@ const vocabReducer = (state={recs:[]}, action) => {
     case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN:
     case VOCABULARY_ID:
     case CONCEPT_CODE_SEARCH_PATTERN:
-      let newState = {
+      return {
         ...state,
         ...action.payload,
         fromSrcErr: undefined,
         recs:undefined,
         isPending: true,
       }
-      //console.log('state change', state, newState)
-      return newState
     case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED:
-      break;
+      return {
+        ...state,
+        matchedConceptIds: action.payload,
+        isPending: false,
+      }
+    case LOAD_CONCEPTS:
+      return {
+        ...state,
+        ...action.payload,
+        recs:undefined,
+        isPending: true,
+      }
     case LOAD_CONCEPTS_FULFILLED:
       let recs = action.payload
       if (typeof recs === 'string') debugger
@@ -217,7 +226,7 @@ export const fetchConceptIdsForCodes = (action$, store) =>
                     //                        Rx.Observable.of(anotherAction))
             return (
               Rx.Observable.of(
-                  { type: LOAD_CONCEPTS, 
+                  { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
                     payload: response}
               )
               .catch(error => {
@@ -237,7 +246,7 @@ export const fetchConceptIdsForCodes = (action$, store) =>
 export const fetchConceptInfo = (action$, store) =>
   action$
     .do(action=>console.log('LOAD_CONCEPTS epic sees',{action,store}))
-    .ofType(LOAD_CONCEPTS)
+    .ofType(LOAD_CONCEPTS, LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED)
     .switchMap(
       action => {
         let codes = action.payload

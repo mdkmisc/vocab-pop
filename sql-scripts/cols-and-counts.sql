@@ -238,8 +238,8 @@ create table :results.concept_record as
           cg.vocabulary_id,
           cg.concept_class_id,
           cio.rcs
-  from cdm.concept c
-  join results.concept_group cg on
+  from :cdm.concept c
+  join :results.concept_group cg on
           c.domain_id = cg.domain_id and
           coalesce(c.standard_concept,'X') = cg.standard_concept and
           c.vocabulary_id = cg.vocabulary_id and
@@ -254,11 +254,11 @@ create table :results.concept_record as
                 coalesce(case when c.standard_concept = 'S' then cio.cnt else 0 end, 0) as rc,
                 coalesce(case when c.standard_concept is null then cio.cnt else 0 end, 0) as src,
                 coalesce(case when c.standard_concept = 'C' then cio.cnt else 0 end, 0) as crc
-        from results.concept_id_occurrence cio
-        join cdm.concept c on cio.concept_id = c.concept_id and c.invalid_reason is null
+        from :results.concept_id_occurrence cio
+        join :cdm.concept c on cio.concept_id = c.concept_id and c.invalid_reason is null
       ) x
       group by 1,2
-  ) cio on c.concept_id = cio.concept_id;
+  ) cio on c.concept_id = cio.concept_id
   where c.invalid_reason is null;
 
 alter table :results.concept_record add primary key (concept_id);
@@ -324,14 +324,16 @@ select          cd.descendant_concept_id as concept_id,
                       on cd.descendant_concept_id = crec.concept_id
                 join :results.concept_record crecrel
                       on cd.ancestor_concept_id = crecrel.concept_id
-                where cd.descendant_concept_id != cd.ancestor_concept_id
-                          ;
+                where cd.descendant_concept_id != cd.ancestor_concept_id ;
+
 alter table :results.related_concept 
   add primary key (concept_id,relationship,related_concept_id);
 alter index related_concept_pkey rename to pkey_related_concept; -- just to get rid of annoying auto complete in psql
 --create index rccidx on :results.related_concept (concept_id);
 create index rccgidx on :results.related_concept (cgid);
 create index rcrelidx on :results.related_concept (relationship);
+
+
 
 /* counts of related concepts and related concept groups, 1 rec for each concept */
 drop table if exists :results.relcnts cascade;
@@ -376,6 +378,7 @@ create table :results.relcnts as
 alter table :results.relcnts add primary key (concept_id);
 create index idx_relcntscgid on :results.relcnts (cgid);
 
+
 drop table if exists :results.concept_info cascade;
 create table :results.concept_info as
   select
@@ -397,7 +400,7 @@ create table :results.concept_info as
                 json_array_no_null(json_agg(row_to_json(rcsr))) rcs
         from :results.concept_record cr
         left join lateral unnest(cr.rcs) rcsr on true
-        where concept_id = 44826853
+        --where concept_id = 44826853
         --where cr.concept_id in (40221875,917910,19031854,19029814,19121752,40169747,19019693,19028938,1750196,40172391,138225)
         group by 1
       ) ci on cr.concept_id = ci.concept_id
@@ -405,8 +408,7 @@ create table :results.concept_info as
 
 alter table :results.concept_info add primary key (concept_id);
 
-
-
+/*
 create or replace view :results.related_concept_plus as
   select
           rc.concept_id,
@@ -472,20 +474,20 @@ create or replace view :results.related_concept_plus as
   join :results.concept_record crr on rc.related_concept_id = crr.concept_id
   ;
 --alter table :results.related_concept_plus add primary key (concept_id,relationship,related_concept_id);
+select * from :results.relcnts where concept_id in (8504, 8505, 44631062, 0);
+select * from :results.cdmcnts where concept_id in (8504, 8505, 44631062, 0);
+select * from :results.related_concept_plus where concept_id in (8504, 8505, 44631062, 0);
 */
-analyze;
+analyze; -- this probably needs to be run by ohdsi_admin_user
 
 
 select * from :results.concept_record where concept_id in (8504, 8505, 44631062, 0);
 select * from :results.concept_group where cgid in (405, 115, 200);
 select * from :results.related_concept where concept_id in (8504, 8505, 44631062, 0);
 
-select * from :results.relcnts where concept_id in (8504, 8505, 44631062, 0);
-select * from :results.cdmcnts where concept_id in (8504, 8505, 44631062, 0);
 
 /* these two should have everything...right? */
 select * from :results.concept_info limit 2;
-select * from :results.related_concept_plus where concept_id in (8504, 8505, 44631062, 0);
 
 
 
@@ -724,7 +726,6 @@ create table :results.cdmcnts as
 group by 1,2;
 alter table :results.cdmcnts add primary key (concept_id);
 
-*/
 
 
 -- source - standard - source report...
@@ -751,3 +752,4 @@ order by 2
 ;
 group by 1,2,3;
 
+*/
