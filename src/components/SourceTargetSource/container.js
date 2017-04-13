@@ -34,35 +34,18 @@ import * as AppState from '../../AppState'
 
 import {STSReport} from './STSReport'
 
-/*
-STSReport = connect(
-  (state, ownProps) => { // mapStateToProps
-    const { vocabulary_id, concept_code_search_pattern, 
-            isPending, vocabPending,
-            recs, fromSrcErr, vocabs, } = state.vocab
-    return {
-      sourceConceptCodesSG: duck.sourceConceptCodesSG(state),
-      sourceRelationshipsSG: duck.sourceRelationshipsSG(state),
-      recs, fromSrcErr, 
-      vocabulary_id, 
-      concept_code_search_pattern,
-      vocabs,
-      isPending, vocabPending,
-      formRef: state.form.stsform,
-      //history: browserHistory,// wrong wrong wrong...i think
-    }
-  }, 
-  { duck }
-)(STSReport)
-*/
 
 class SourceTargetSourceForm extends Component {
   componentDidMount() {
-    let {dispatch, vocabulary_id, concept_code_search_pattern, } = this.props
+    let {dispatch, vocabulary_id, concept_code_search_pattern, 
+          localState,
+          } = this.props
     dispatch(duck.loadVocabs())
     if (vocabulary_id && concept_code_search_pattern) {
       dispatch({
-        type:duck.LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
+        type:duck.API_INITIATE,
+        localState,
+        apiCall: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
         payload:{vocabulary_id,concept_code_search_pattern}
       });
     }
@@ -103,6 +86,9 @@ SourceTargetSourceForm = connect(
             isPending, vocabPending,
             recs, fromSrcErr, vocabs, } = state.vocab
     return {
+
+      localState: ownProps.state || state.vocab,
+
       sourceConceptCodesSG: duck.sourceConceptCodesSG(state),
       sourceRelationshipsSG: duck.sourceRelationshipsSG(state),
       recs, fromSrcErr, 

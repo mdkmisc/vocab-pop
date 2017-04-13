@@ -24,9 +24,6 @@ import { reducer as formReducer } from 'redux-form';
 
 import { ajax } from 'rxjs/observable/dom/ajax';
 
-const api = (state={}, action) => {
-  return state;
-}
 const configReducer = () => {
   return config;
 }
@@ -38,22 +35,12 @@ export default function configureStore(initialState = {}) {
   console.log({
     sourceTargetSource,
     conceptView,
-    api,
     config,
     myrouter,
     configReducer,
     routeState: myrouter.routeState
   })
   */
-  //console.log(vocab)
-  /*
-  var appReducer = combineReducers({
-    vocab,
-    api,
-    config: configReducer,
-  });
-  */
-  //console.log('done comining reducers', appReducer)
 
   const rootEpic = combineEpics(
     loadVocabsEpic,

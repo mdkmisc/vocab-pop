@@ -103,9 +103,11 @@ export const VOCABULARY_ID = 'VOCABULARY_ID'
 export const CONCEPT_CODES = 'CONCEPT_CODES'
 export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
 
-export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN';
-export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED';
-export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED';
+// apiCalls
+export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN = 'codeSearchToCids'
+
+//export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED';
+//export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED';
 
 export const LOAD_CONCEPTS = 'LOAD_CONCEPTS';
 export const LOAD_CONCEPTS_FULFILLED = 'LOAD_CONCEPTS_FULFILLED';
@@ -116,14 +118,87 @@ export const LOAD_VOCABS_FULFILLED = 'LOAD_VOCABS_FULFILLED';
 export const LOAD_VOCABS_REJECTED = 'LOAD_VOCABS_REJECTED';
 
 
+const apiCall = (state={}, action) => {
+  switch (action.type) {
+    case INITIATE:
+      return {
+        ...state,
+        params: action.payload,
+                      apiCall: 'codeSearchToCids',
+        apiCall: action.apiCall,
+        err: undefined,
+        results: undefined,
+        pending: true,
+      }
+    case FULFILLED:
+      return {
+        ...state,
+        results: action.payload,
+        err: undefined,
+        pending: false,
+      }
+    case REJECTED:
+      return {
+        ...state,
+        err: action.payload,
+        pending: false,
+      }
+    default:
+      return state
+  }
+}
+/*
+ *    original caller (stsContainer.js):
+      dispatch({
+        type:duck.API_INITIATE,
+        localState,
+        apiCall: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
+        payload:{vocabulary_id,concept_code_search_pattern}
+      });
 
-let someDefaultVals = {
-      vocabulary_id:'ICD9CM', 
-      concept_code_search_pattern:'401.1%,401.2,401.3%',
-    }
+      apiEpic:
+          .do(action=>store.dispatch({
+              type: apiCall,
+              payload,
+              localState
+          }))
+      apiCalls:
+      return {
+        ...state,       // totally don't know what i'm doing
+        ...localState,  // trying to allow for nested states
+        [action.type]: apiCall( localState[action.type], 
+                                { ...action,
+                                  apiCall: action.type,
+                                  [type: INITIATE],
+                                }),
+      }
+*/
+const apiCalls = (state={}, action) => {
+  switch (action.type) {
+    case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN:
+    case LOAD_CONCEPTS:
+    case LOAD_VOCABS:
+      if (state[action.type])
+        throw new Error("already have one going", {action,state})
+      let {type, payload, localState} = action
+      console.log('use localState or state?', {state, localState, action})
+      return {
+        ...state,       // totally don't know what i'm doing
+        ...localState,  // trying to allow for nested states
+        [action.type]: apiCall( localState[action.type], 
+                                { ...action,
+                                  apiCall: action.type,
+                                  [type: INITIATE],
+                                }),
+      }
+    default:
+      return state
+  }
+}
 const vocabReducer = (state={recs:[]}, action) => {
-//const vocabReducer = (state=someDefaultVals, action) => {}
-  //console.log('vocab REDUCER', {state, action})
+  /*
+  return state
+  */
   switch (action.type) {
     case '@@redux-form/UPDATE_SYNC_ERRORS':
       debugger
@@ -190,11 +265,16 @@ const vocabReducer = (state={recs:[]}, action) => {
 }
 export default vocabReducer
 
+const examineAction = o => {
+  let {from, action$, action, store} = o
+  console.log({from, action, state: store.getState()})
+}
+
 export const formValToRoute = (action$,store) =>
   action$
     .ofType('@@redux-form/CHANGE')
-    .do(action=>console.log('formValToRoute epic sees',action))
     .filter(action => action.meta.form === 'concept_codes_form')
+    //.do(action=>examineAction({from:'formValToRoute epic',action$, action, store}))
     .do(action=>store.dispatch({
         type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN, 
         payload: { [action.meta.field]: action.payload },
@@ -203,9 +283,59 @@ export const formValToRoute = (action$,store) =>
       action => ({  type: myrouter.QUERY_PARAMS, 
                     payload: { [action.meta.field]: action.payload }}))
 
+const startAjax = p => {
+  let {apiCall, params} = p
+  let stream = new AppState.ApiStream({
+                  apiCall,
+                  params,
+                  wantRxAjax: true,
+                })
+  return stream.rxAjax
+}
+export const apiCallEpic = (action$, store) => {
+  action$.ofType(API_INITIATE)
+    .do(action=>examineAction({from:'apiCallEpic',action$, action, store}))
+    .switchMap(action => {
+      let {type, payload, localState, apiCall} = action
+      let vocabState = store.getState().vocab
+      let params = _.pick(Object.assign({}, vocabState, localState, payload), 
+                          ['vocabulary_id','concept_code_search_pattern'])
+      let ajax = startAjax({apiCall, params})
+      return (
+        ajax
+          //.flatMap( // not using flatMap because I understand why...not sure why it's here)
+          .do(action=>examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
+          .do(action=>store.dispatch({
+              type: apiCall,
+              payload,
+              localState
+          }))
+          .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
+                    // i was using flatMap before in order to return 
+                    //   Rx.Observable.concat(Rx.Observable.of(action),
+                    //                        Rx.Observable.of(anotherAction))
+            return (
+              Rx.Observable.of(
+                  { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
+                    payload: response}
+              )
+              .catch(error => {
+                return Rx.Observable.of({
+                          type: `${type}_REJECTED`,
+                          payload: error.xhr.response,
+                          error: true
+                        })
+              })
+            )
+          }
+        )
+      )
+    })
+}
+
 export const fetchConceptIdsForCodes = (action$, store) =>
   action$.ofType(LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN)
-    .do(action=>console.log('fcidfc epic sees',action))
+    .do(action=>examineAction({from:'fetchConceptIdsForCodes epic',action$, action, store}))
     .switchMap(action => {
       let {type, payload} = action
       let state = store.getState().vocab
@@ -220,6 +350,7 @@ export const fetchConceptIdsForCodes = (action$, store) =>
       return (
         ajax
           //.flatMap( // not using flatMap because I understand why...not sure why it's here)
+          .do(action=>examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
           .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
                     // i was using flatMap before in order to return 
                     //   Rx.Observable.concat(Rx.Observable.of(action),

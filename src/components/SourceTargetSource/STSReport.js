@@ -196,6 +196,28 @@ export class STSReport extends Component {
     }
   }
 }
+STSReport = connect(
+  (state, ownProps) => { // mapStateToProps
+    const { vocabulary_id, concept_code_search_pattern, 
+            isPending, vocabPending,
+            recs, fromSrcErr, vocabs, } = state.vocab
+    return {
+      sourceConceptCodesSG: duck.sourceConceptCodesSG(state),
+      sourceRelationshipsSG: duck.sourceRelationshipsSG(state),
+      recs, fromSrcErr, 
+      vocabulary_id, 
+      concept_code_search_pattern,
+      vocabs,
+      isPending, vocabPending,
+      formRef: state.form.stsform,
+      //history: browserHistory,// wrong wrong wrong...i think
+    }
+  }, 
+  { duck }
+)(STSReport)
+
+
+
 const Relationship = props => {
   let {rel, } = props
   return (

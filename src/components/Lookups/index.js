@@ -16,8 +16,6 @@ import FlatButton from 'material-ui/FlatButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
 import Chip from 'material-ui/Chip'
-
-//import { AutoComplete as MUIAutoComplete } from 'material-ui'
 import {
   AutoComplete,
   Checkbox,
@@ -29,7 +27,6 @@ import {
   TextField,
   Toggle
 } from 'redux-form-material-ui'
-
 
 import * as AppState from '../../AppState'
 
@@ -45,14 +42,6 @@ export class ConceptCodesLookupForm extends Component {
               isPending, fromSrcErr, vocabs,
               concept_code_search_pattern, vocabulary_id, 
           } = this.props
-    //let { vocabulary_id, concept_code_search_pattern='', fromSrcErr, isPending, vocabs, vocabPending} = initialValues;
-    /*
-    if (!(vocabs && vocabulary_id)) {
-      return  <div ref={d=>this.divRef=d} id="sts-div">
-                <pre>{JSON.stringify(initialValues,null,2)}</pre>
-              </div>
-    }
-    */
     let errMsg = ''
     if (isPending) {
       errMsg =  <p style={{fontColor:'blue',fontWeight:'bold'}}>
@@ -69,15 +58,6 @@ export class ConceptCodesLookupForm extends Component {
       padding: '0px',
       margin: '14px 0px 20px 0px',
     };
-    /*
-    let validate_vocabulary_id =
-      value=>{
-        console.log(`validating ${value}`)
-        if (typeof value === 'undefined') return
-        let voc = (vocabs||[]).find(d=>d.vocabulary_id===value)
-        return voc ? undefined : `can't find ${value}`
-      }
-    */
     let styles = {
                         chip: {
                           margin: 4,
@@ -103,14 +83,8 @@ export class ConceptCodesLookupForm extends Component {
                       {code}
                     </span>
                   </Chip>))
-                
-
-    //console.log({vocabulary_id, vocabulary, vocabs})
     return (
-      <div ref={d=>this.divRef=d} id="sts-div" >
-        <form 
-          //onSubmit={ data=>{ debugger; console.log("submit is just for saving selection?", history); handleSubmit (data) } }
-        >
+        <form >
           <div>
             <Card containerStyle={cardStyle} style={cardStyle}>
               <CardHeader style={{padding:'0px 8px 0px 8px'}}
@@ -138,16 +112,6 @@ export class ConceptCodesLookupForm extends Component {
                       component={SelectField}
                       fullWidth={true}
                       floatingLabelText="vocabulary_id"
-                      /*
-                      onChange={
-                        (event, index, value) => {
-                          let vocabulary_id = index
-                          console.log('voc onchange', this.props)
-                          dispatch({type:duck.VOCABULARY_ID,
-                                  payload: {vocabulary_id}})
-                        }
-                      }
-                      */
                 >
                   {
                     (vocabs||[]).map(
@@ -172,16 +136,6 @@ export class ConceptCodesLookupForm extends Component {
                       multiLine={true}
                       fullWidth={true}
                       errorText={errMsg}
-                      /*
-                      onChange={
-                        (event, index, value) => {
-                          let concept_code_search_pattern = event.target.value
-                          console.log('code onchange', {event,index,value})
-                          dispatch({type:duck.CONCEPT_CODE_SEARCH_PATTERN,
-                                  payload: {concept_code_search_pattern}})
-                        }
-                      }
-                      */
                       label="Concept Codes"
                   />
 
@@ -197,7 +151,6 @@ export class ConceptCodesLookupForm extends Component {
             </Card>
           </div>
         </form>
-      </div>
     )
   }
 }
@@ -212,14 +165,14 @@ const selector = formValueSelector('concept_codes_form')
 ConceptCodesLookupForm = connect(
   (state, ownProps) => { // mapStateToProps
     let newState = {
-      initialValues: ownProps,
+      initialValues: {
+        ...ownProps,
+        foo: {bar: 'baz'},
+      },
       formRef: state.form.concept_codes_form,
       history: browserHistory,// wrong wrong wrong...i think
     }
-    //console.log('Lookup', {oldState:state, newState})
     return newState
-  },
-  {
-    duck
-  }
+  }, 
+  { duck }
 )(ConceptCodesLookupForm)
