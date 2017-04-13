@@ -195,6 +195,61 @@ const apiCalls = (state={}, action) => {
       return state
   }
 }
+
+const startAjax = p => {
+  let {apiCall, params} = p
+  let stream = new AppState.ApiStream({
+                  apiCall,
+                  params,
+                  wantRxAjax: true,
+                })
+  return stream.rxAjax
+}
+export const apiCallEpic = (action$, store) => {
+  action$.ofType(API_INITIATE)
+    .do(action=>examineAction({from:'apiCallEpic',action$, action, store}))
+    .switchMap(action => {
+      let {type, payload, localState, apiCall} = action
+      let vocabState = store.getState().vocab
+      let params = _.pick(
+                      Object.assign({}, 
+                                    vocabState, 
+                                    localState, 
+                                    payload
+                      ), ['vocabulary_id','concept_code_search_pattern'])
+      let ajax = startAjax({apiCall, params})
+      return (
+        ajax
+          //.flatMap( // not using flatMap because I understand why...not sure why it's here)
+          .do(action=>examineAction({from:'apiCallEpic ajax return',action$, action, store}))
+          .do(action=>apiCalls(
+              store.dispatch({
+              type: apiCall,
+              payload,
+              localState
+          }))
+          .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
+                    // i was using flatMap before in order to return 
+                    //   Rx.Observable.concat(Rx.Observable.of(action),
+                    //                        Rx.Observable.of(anotherAction))
+            return (
+              Rx.Observable.of(
+                  { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
+                    payload: response}
+              )
+              .catch(error => {
+                return Rx.Observable.of({
+                          type: `${type}_REJECTED`,
+                          payload: error.xhr.response,
+                          error: true
+                        })
+              })
+            )
+          }
+        )
+      )
+    })
+}
 const vocabReducer = (state={recs:[]}, action) => {
   /*
   return state
@@ -282,56 +337,6 @@ export const formValToRoute = (action$,store) =>
     .map(
       action => ({  type: myrouter.QUERY_PARAMS, 
                     payload: { [action.meta.field]: action.payload }}))
-
-const startAjax = p => {
-  let {apiCall, params} = p
-  let stream = new AppState.ApiStream({
-                  apiCall,
-                  params,
-                  wantRxAjax: true,
-                })
-  return stream.rxAjax
-}
-export const apiCallEpic = (action$, store) => {
-  action$.ofType(API_INITIATE)
-    .do(action=>examineAction({from:'apiCallEpic',action$, action, store}))
-    .switchMap(action => {
-      let {type, payload, localState, apiCall} = action
-      let vocabState = store.getState().vocab
-      let params = _.pick(Object.assign({}, vocabState, localState, payload), 
-                          ['vocabulary_id','concept_code_search_pattern'])
-      let ajax = startAjax({apiCall, params})
-      return (
-        ajax
-          //.flatMap( // not using flatMap because I understand why...not sure why it's here)
-          .do(action=>examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
-          .do(action=>store.dispatch({
-              type: apiCall,
-              payload,
-              localState
-          }))
-          .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
-                    // i was using flatMap before in order to return 
-                    //   Rx.Observable.concat(Rx.Observable.of(action),
-                    //                        Rx.Observable.of(anotherAction))
-            return (
-              Rx.Observable.of(
-                  { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
-                    payload: response}
-              )
-              .catch(error => {
-                return Rx.Observable.of({
-                          type: `${type}_REJECTED`,
-                          payload: error.xhr.response,
-                          error: true
-                        })
-              })
-            )
-          }
-        )
-      )
-    })
-}
 
 export const fetchConceptIdsForCodes = (action$, store) =>
   action$.ofType(LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN)
