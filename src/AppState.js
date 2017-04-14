@@ -1,3 +1,8 @@
+
+// NOTHING LEFT IN THIS FILE EXCEPT ERROR THROWING STUBS SO 
+// I'LL KNOW WHAT OTHER PARTS OF THE CODE NEED FIXING
+
+
 /* eslint-disable */
 //const DEBUG = true;
 import * as util from './utils';
@@ -11,121 +16,34 @@ import 'react-json-inspector/json-inspector.css';
 
 var reduxStore = {};
 var reduxHistory = {};
-var config;
 var {cdmSchema,resultsSchema,apiRoot,apiModel} = {} // nothing till init
 var {apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = {} // nothing till init
 var ready = new Rx.Subject();
 var readyPromise = ready.toPromise();
 
-export function initialize(store, history) {
-  //console.error('initializing AppState with history and store')
-  reduxStore = store
-  reduxHistory = history
-  config = reduxStore.getState().config;
-  ({cdmSchema,resultsSchema,apiRoot,apiModel} = config);
-  ({apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = appDataGen(config));
-  let dirtyPromise = cacheDirty()
-  dirtyPromise.then(() => {
-    util.JsonFetcher.blockTillReadyForFetching = false
-    ready.next(true);
-    ready.complete();
-  })
-  /*
-  console.log('this stuff is broken for now! switching to redux');
-  OLD_GLOBAL_HISTORY = JUNK_HISTORY_FOR_GLOBAL;
-  let urlStateOnLoadingPage = getState();
-  return AppData.cacheDirty();
-  */
-}
-function appDataGen({cdmSchema,resultsSchema,apiRoot,apiModel} = config) {
-  function apiCallBaseUrl(apiCall, params={}) {
-    params.cdmSchema = params.cdmSchema || cdmSchema;
-    params.resultsSchema = params.resultsSchema || resultsSchema;
-
-    let _apiRoot = params.apiRoot || apiRoot;
-    let _apiModel = params.apiModel || apiModel;
-    delete params.apiRoot;
-    delete params.apiModel;
-    return `${_apiRoot}/${_apiModel}/${apiCall}`;
-  }
-  function apiGetUrl(apiCall, params) {
-    DEBUG && console.log(util.getUrl(apiCallBaseUrl(apiCall, params), params));
-    return util.getUrl(apiCallBaseUrl(apiCall), params);
-  }
-  // api calls return promises, except apiCallMeta
-  // which returns a promise wrapped in some metadata
-
-  function cacheDirty() {
-    //DEBUG && console.error('running cacheDirty');
-    return fetch(`${apiCallBaseUrl('')}cacheDirty`)
-      .then(response => {
-        return response.json()
-          .then(
-            results => {
-              if (results) {
-                //console.warn('sessionStorage cache is dirty, emptying it');
-                DEBUG && console.warn(`cache dirty. removing ${_.keys(sessionStorage).length} items in sessionStorage`);
-                sessionStorage.clear();
-              } else {
-                DEBUG && console.warn(`cache clean. ${_.keys(sessionStorage).length} items in sessionStorage`);
-              }
-              return results;
-            })
-      });
-  }
-  function apiCall(apiCall, params={}) {
-    return (
-      util.cachedGetJsonFetch(
-            apiCallBaseUrl(apiCall), params
-      )
-        .then(function(json) {
-          if (json.error)
-            console.error(json.error.message, json.error.queryName, json.error.url);
-          /*
-          json.forEach(rec=>{
-            //rec.conceptrecs = parseInt(rec.conceptrecs, 10);
-            //rec.dbrecs = parseInt(rec.dbrecs, 10);
-            //rec.table_name = rec.table_name.replace(/^[^\.]+\./, '');
-          })
-          */
-          return json;
-        }));
-  }
-  return {apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl};
+throwError = () => {
+  console.error("not using anymore")
+  debugger
 }
 
-//var d3 = require('d3');
-//import qs from 'qs';
-//var qs = require('qs');
-//if (DEBUG) window.qs = qs;
-export var myqs = {
-  stringify: obj=>encodeURI(JSON.stringify(obj)),
-  parse: json=>JSON.parse(decodeURI(json||'{}'))
-}
-
-
-/* makeStream should only make api calls once
- *  (does that already)
- * a component should only need one subscription
- *  for all the api calls (and user settings?)
- *  it wants to track.
- *
- */
-
-
-//export var OLD_GLOBAL_HISTORY; /* global history object set in index.js */
-
+/*
 export var classRelations = new Rx.BehaviorSubject([]);
 export var userSettings = new Rx.BehaviorSubject({filters:{}});
 export var apiCalls = new Rx.Subject({});
-
 var stateChange = new Rx.BehaviorSubject();
+*/
+export var classRelations = throwError
+export var userSettings = throwError
+export var apiCalls = throwError
+
+var stateChange = throwError
 export function deleteState(key) {
-  saveState(key, null, true);
+  throwError()
+  //saveState(key, null, true);
 }
 export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
+  throwError()
   //if (!ready.isStopped) throw {err: "not ready!"}
-  console.error("switching to redux!", change, key, val, reduxStore, reduxHistory );
   //router.history.push(router.history.location.pathname, {[key]:val});
   //return router.history.location; // just to return something...this is all broken
 
@@ -170,8 +88,10 @@ export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
   */
 }
 export function saveState(key, val, deleteProp) {
-  return saveStateN({key,val,deleteProp});
+  throwError()
+  //return saveStateN({key,val,deleteProp});
 }
+/*
 _.mixin({
   getPath: (obj,path) => (_.isEmpty(path) 
                             ? obj
@@ -180,10 +100,14 @@ _.mixin({
 window.getState = getState;
 window.saveState = saveState;
 window.deleteState = deleteState;
+*/
 export function getState(path) {
+  throwError()
+  /*
   return _.get(reduxStore.getState(), path);
   console.log('get state from redux!!', path);
   return {};
+  */
   /*
   var loc = OLD_GLOBAL_HISTORY.getCurrentLocation();
   //var state = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
@@ -192,14 +116,20 @@ export function getState(path) {
   */
 }
 export function stateStream(path) {
+  throwError()
+  /*
   if (!path) return stateChange;
   return (
     stateChange
         .filter(change => _.getPath(change, path))
         .map(change => _.getPath(change, path)));
+  */
 }
 export function subscribeState(path, cb) {
+  throwError()
+  /*
   return stateStream(path).subscribe(cb);
+  */
 }
 
 /* @class ApiStream
@@ -216,7 +146,10 @@ export class ApiStream extends util.JsonFetcher {
   // of inheriting from util.JsonFetcher)
   constructor({apiCall, params, meta, transformResults, 
               singleValue, cb, wantRxAjax}) {
+    throwError()
+    /*
 
+    if (!wantRxAjax) throw new Error("switching to rx and redux")
     // from old AppData.ApiFetcher constructor:
     let baseUrl = apiCallBaseUrl(apiCall, params);
     let instance = super(baseUrl, params, meta, readyPromise, wantRxAjax );
@@ -267,7 +200,9 @@ export class ApiStream extends util.JsonFetcher {
       .catch(err => {
         //console.log('fetchPromise failed in utils!!!', err)
       })
+      */
   }
+  /*
   unsubscribe() { return this.resultsSubj.unsubscribe(); }
   subscribe(cb) { 
     return this.resultsSubj.subscribe(results=>{
@@ -275,6 +210,7 @@ export class ApiStream extends util.JsonFetcher {
       cb(results, this); 
     });
   }
+  */
 }
 /*
 export class StreamsSubscriber {
@@ -309,28 +245,7 @@ export class StreamsSubscriber {
 // this component is just for debugging, it shows current AppState
 export class AppState extends Component {
   constructor(props) {
-    super(props);
-    this.state = {
-      //appSettings,
-    };
-  }
-  componentDidUpdate() {
-  }
-  render() {
-    return <Inspector 
-              data={{nothingHereRightNow:true}}
-              //data={ this.state.appSettings['use cases'] } 
-              search={false}
-              isExpanded={()=>true}
-              /*
-              isExpanded={
-                keypath => {
-                  console.log(keypath);
-                  return keypath.match(/(use cases|to-dos)/);
-                }
-              }
-              */
-            />;
+    throwError()
   }
 }
 

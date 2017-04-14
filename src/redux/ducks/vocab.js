@@ -118,138 +118,30 @@ export const LOAD_VOCABS_FULFILLED = 'LOAD_VOCABS_FULFILLED';
 export const LOAD_VOCABS_REJECTED = 'LOAD_VOCABS_REJECTED';
 
 
-const apiCall = (state={}, action) => {
-  switch (action.type) {
-    case INITIATE:
-      return {
-        ...state,
-        params: action.payload,
-                      apiCall: 'codeSearchToCids',
-        apiCall: action.apiCall,
-        err: undefined,
-        results: undefined,
-        pending: true,
-      }
-    case FULFILLED:
-      return {
-        ...state,
-        results: action.payload,
-        err: undefined,
-        pending: false,
-      }
-    case REJECTED:
-      return {
-        ...state,
-        err: action.payload,
-        pending: false,
-      }
-    default:
-      return state
-  }
-}
 /*
  *    original caller (stsContainer.js):
       dispatch({
         type:duck.API_INITIATE,
-        localState,
-        apiCall: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
+        apiName: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
         payload:{vocabulary_id,concept_code_search_pattern}
       });
 
       apiEpic:
           .do(action=>store.dispatch({
-              type: apiCall,
+              type: apiName,
               payload,
-              localState
           }))
       apiCalls:
       return {
-        ...state,       // totally don't know what i'm doing
-        ...localState,  // trying to allow for nested states
-        [action.type]: apiCall( localState[action.type], 
+        ...state,
+        [action.type]: apiCall( state[action.type], 
                                 { ...action,
-                                  apiCall: action.type,
+                                  apiName: action.type,
                                   [type: INITIATE],
                                 }),
       }
 */
-const apiCalls = (state={}, action) => {
-  switch (action.type) {
-    case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN:
-    case LOAD_CONCEPTS:
-    case LOAD_VOCABS:
-      if (state[action.type])
-        throw new Error("already have one going", {action,state})
-      let {type, payload, localState} = action
-      console.log('use localState or state?', {state, localState, action})
-      return {
-        ...state,       // totally don't know what i'm doing
-        ...localState,  // trying to allow for nested states
-        [action.type]: apiCall( localState[action.type], 
-                                { ...action,
-                                  apiCall: action.type,
-                                  [type: INITIATE],
-                                }),
-      }
-    default:
-      return state
-  }
-}
 
-const startAjax = p => {
-  let {apiCall, params} = p
-  let stream = new AppState.ApiStream({
-                  apiCall,
-                  params,
-                  wantRxAjax: true,
-                })
-  return stream.rxAjax
-}
-export const apiCallEpic = (action$, store) => {
-  action$.ofType(API_INITIATE)
-    .do(action=>examineAction({from:'apiCallEpic',action$, action, store}))
-    .switchMap(action => {
-      let {type, payload, localState, apiCall} = action
-      let vocabState = store.getState().vocab
-      let params = _.pick(
-                      Object.assign({}, 
-                                    vocabState, 
-                                    localState, 
-                                    payload
-                      ), ['vocabulary_id','concept_code_search_pattern'])
-      let ajax = startAjax({apiCall, params})
-      return (
-        ajax
-          //.flatMap( // not using flatMap because I understand why...not sure why it's here)
-          .do(action=>examineAction({from:'apiCallEpic ajax return',action$, action, store}))
-          .do(action=>apiCalls(
-              store.dispatch({
-              type: apiCall,
-              payload,
-              localState
-          }))
-          .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
-                    // i was using flatMap before in order to return 
-                    //   Rx.Observable.concat(Rx.Observable.of(action),
-                    //                        Rx.Observable.of(anotherAction))
-            return (
-              Rx.Observable.of(
-                  { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
-                    payload: response}
-              )
-              .catch(error => {
-                return Rx.Observable.of({
-                          type: `${type}_REJECTED`,
-                          payload: error.xhr.response,
-                          error: true
-                        })
-              })
-            )
-          }
-        )
-      )
-    })
-}
 const vocabReducer = (state={recs:[]}, action) => {
   /*
   return state
@@ -347,7 +239,7 @@ export const fetchConceptIdsForCodes = (action$, store) =>
       let params = _.pick(Object.assign({}, state, payload), 
                           ['vocabulary_id','concept_code_search_pattern'])
       let ajax = new AppState.ApiStream({
-                      apiCall: 'codeSearchToCids',
+                      apiName: 'codeSearchToCids',
                       params,
                       wantRxAjax: true,
                     })
@@ -389,7 +281,7 @@ export const fetchConceptInfo = (action$, store) =>
         if (!codes || codes.length === 0) return []
         return (
           new AppState.ApiStream({
-            apiCall: 'conceptInfo',
+            apiName: 'conceptInfo',
             params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
               //Object.assign({},params,{concept_ids:[codes.map(d=>d.concept_id)]}),
             wantRxAjax: true,
@@ -418,7 +310,7 @@ export const fetchConceptInfo = (action$, store) =>
                         payload: info})
                         /* this is the second level stuff:
                 new AppState.ApiStream({
-                  apiCall: 'conceptInfo',
+                  apiName: 'conceptInfo',
                   params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
                   wantRxAjax: true,
                 })
@@ -482,7 +374,7 @@ export const loadVocabsEpic =
     action$.ofType(LOAD_VOCABS)
       .mergeMap(action => {
         let stream = new AppState.ApiStream({
-          apiCall: 'vocabularies',
+          apiName: 'vocabularies',
           params: {},
           wantRxAjax: true,
         })

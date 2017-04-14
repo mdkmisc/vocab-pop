@@ -2,10 +2,11 @@
 const DEBUG = true;
 
 import config from '../config'
-import * as AppState from '../AppState'
+import * as utils from '../utils'
 import _ from '../supergroup'
 
 import myrouter from './myrouter'
+import * as api from './api'
 import * as rrRouter from 'react-router-redux'
 //console.log(rrRouter)
 
@@ -20,47 +21,28 @@ import { combineEpics } from 'redux-observable';
 import { createEpicMiddleware } from 'redux-observable';
 import { reducer as formReducer } from 'redux-form';
 
-
-
-import { ajax } from 'rxjs/observable/dom/ajax';
-
-const configReducer = () => {
-  return config;
-}
-
-import { browserHistory } from 'react-router';
-
 export default function configureStore(initialState = {}) {
-  /*
-  console.log({
-    sourceTargetSource,
-    conceptView,
+
+  const rootReducer = combineReducers({
+    apiCalls: api.apiCalls,
+    vocab,
     config,
-    myrouter,
-    configReducer,
-    routeState: myrouter.routeState
-  })
-  */
+    form: formReducer,
+    routeState: myrouter.routeState,
+    //reduxRouterReducer: myrouter.reduxRouterReducer,
+  });
 
   const rootEpic = combineEpics(
+    api.apiCallEpic,
     loadVocabsEpic,
     formValToRoute,
     fetchConceptIdsForCodes,
     fetchConceptInfo
   );
   const epicMiddleware = createEpicMiddleware(rootEpic);
-  //console.log(epicMiddleware)
 
-  const rootReducer = combineReducers({
-    vocab,
-    config: configReducer,
-    form: formReducer,
-    routeState: myrouter.routeState,
-    //reduxRouterReducer: myrouter.reduxRouterReducer,
-  });
   const middleware = [
-          //routerMiddleware(history),  // some weirdness
-          myrouter.reduxRouterMiddleware,
+          myrouter.reduxRouterMiddleware, // not sure if needed
           epicMiddleware,
         ];
 
@@ -77,10 +59,9 @@ export default function configureStore(initialState = {}) {
     window.store = store
     window.myrouter = myrouter
     console.log('global debug stuff: ', {store, myrouter, })
-    //console.log(store,history)
   }
 
   if (!_.isEmpty(initialState)) throw new Error("ignoring initialState");
-  AppState.initialize(store, myrouter);
+  //utils.initialize(store, myrouter);
   return {store, myrouter};
 }
