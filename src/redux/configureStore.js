@@ -1,7 +1,7 @@
 /* eslint-disable */
 const DEBUG = true;
 
-import config from '../config'
+//import config from '../config'
 import * as utils from '../utils'
 import _ from '../supergroup'
 
@@ -24,9 +24,10 @@ import { reducer as formReducer } from 'redux-form';
 export default function configureStore(initialState = {}) {
 
   const rootReducer = combineReducers({
+    //config: () => config,
     apiCalls: api.apiCalls,
+    cacheDirty: api.cacheDirty,
     vocab,
-    config,
     form: formReducer,
     routeState: myrouter.routeState,
     //reduxRouterReducer: myrouter.reduxRouterReducer,
@@ -58,7 +59,7 @@ export default function configureStore(initialState = {}) {
   if (DEBUG) {
     window.store = store
     window.myrouter = myrouter
-    console.log('global debug stuff: ', {store, myrouter, })
+    //console.log('global debug stuff: ', {store, myrouter, })
   }
 
   if (!_.isEmpty(initialState)) throw new Error("ignoring initialState");

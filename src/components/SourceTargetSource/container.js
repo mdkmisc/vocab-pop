@@ -5,7 +5,8 @@ import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
-import * as duck from '../../redux/ducks/vocab'
+import * as vocab from '../../redux/ducks/vocab'
+import * as api from '../../redux/api'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -30,20 +31,33 @@ import {
 } from 'redux-form-material-ui'
 
 import {ConceptCodesLookupForm} from '../Lookups'
-import * as AppState from '../../AppState'
 
 import {STSReport} from './STSReport'
 
 
 class SourceTargetSourceForm extends Component {
   componentDidMount() {
+    let {getVocabularies, getIdsByCodeSearch,
+          vocabulary_id, concept_code_search_pattern, } = this.props
+    getVocabularies()
+    if (vocabulary_id && concept_code_search_pattern) {
+      getIdsByCodeSearch({vocabulary_id,concept_code_search_pattern})
+    }
+  }
+  componentWillReceiveProps() {
+    let {getIdsByCodeSearch,
+          vocabulary_id, concept_code_search_pattern, } = this.props
+    if (vocabulary_id && concept_code_search_pattern) {
+      getIdsByCodeSearch({vocabulary_id,concept_code_search_pattern})
+    }
     let {dispatch, vocabulary_id, concept_code_search_pattern, } = this.props
-    dispatch(duck.loadVocabs())
     if (vocabulary_id && concept_code_search_pattern) {
       dispatch({
-        type:duck.API_INITIATE,
-        apiCall: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
-        payload:{vocabulary_id,concept_code_search_pattern}
+        type:api.API_CALL,
+        payload: {
+          apiName: api.CONCEPT_CODES,
+          params: {vocabulary_id,concept_code_search_pattern}
+        }
       });
     }
   }
@@ -77,14 +91,19 @@ SourceTargetSourceForm = reduxForm({
   form: 'stsform',  // a unique identifier for this form
 })(SourceTargetSourceForm)
 
+let apis = _.pick(api, ['getVocabularies', 'getIdsByCodeSearch'])
+function mapDispatchToProps(dispatch) {
+  return bindActionCreators(apis, dispatch)
+}
 SourceTargetSourceForm = connect(
   (state, ownProps) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, 
             isPending, vocabPending,
             recs, fromSrcErr, vocabs, } = state.vocab
     return {
-      sourceConceptCodesSG: duck.sourceConceptCodesSG(state),
-      sourceRelationshipsSG: duck.sourceRelationshipsSG(state),
+      //...apis,
+      sourceConceptCodesSG: vocab.sourceConceptCodesSG(state),
+      sourceRelationshipsSG: vocab.sourceRelationshipsSG(state),
       recs, fromSrcErr, 
       vocabulary_id, 
       concept_code_search_pattern,
@@ -94,6 +113,6 @@ SourceTargetSourceForm = connect(
       //history: browserHistory,// wrong wrong wrong...i think
     }
   },
-  { duck }
+  mapDispatchToProps
 )(SourceTargetSourceForm)
 export default SourceTargetSourceForm

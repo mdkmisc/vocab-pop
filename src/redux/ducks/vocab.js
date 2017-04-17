@@ -1,18 +1,18 @@
 import { browserHistory, } from 'react-router'
-import * as AppState from '../../AppState'
+import * as api from './api'
 import Rx from 'rxjs/Rx'
 import myrouter from '../myrouter'
 
-import { createSelector } from 'reselect'
 import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
 
 // selector stuff
+import { createSelector } from 'reselect'
 const recs = state => state.vocab.recs
 export const sourceConceptCodesSG = createSelector(
   recs,
   recs => {
-    console.log('computing selector for', recs)
+    //console.log('computing selector for', recs)
     let scc = 
       _.supergroup( (recs||[]), 
                     d=>`${d.concept_code}: ${d.concept_name}`,
@@ -143,9 +143,8 @@ export const LOAD_VOCABS_REJECTED = 'LOAD_VOCABS_REJECTED';
 */
 
 const vocabReducer = (state={recs:[]}, action) => {
-  /*
   return state
-  */
+  /*
   switch (action.type) {
     case '@@redux-form/UPDATE_SYNC_ERRORS':
       debugger
@@ -209,19 +208,15 @@ const vocabReducer = (state={recs:[]}, action) => {
       //console.log('unhandled action', action)
       return state
   }
+  */
 }
 export default vocabReducer
-
-const examineAction = o => {
-  let {from, action$, action, store} = o
-  console.log({from, action, state: store.getState()})
-}
 
 export const formValToRoute = (action$,store) =>
   action$
     .ofType('@@redux-form/CHANGE')
     .filter(action => action.meta.form === 'concept_codes_form')
-    //.do(action=>examineAction({from:'formValToRoute epic',action$, action, store}))
+    //.do(action=>api.examineAction({from:'formValToRoute epic',action$, action, store}))
     .do(action=>store.dispatch({
         type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN, 
         payload: { [action.meta.field]: action.payload },
@@ -232,7 +227,7 @@ export const formValToRoute = (action$,store) =>
 
 export const fetchConceptIdsForCodes = (action$, store) =>
   action$.ofType(LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN)
-    .do(action=>examineAction({from:'fetchConceptIdsForCodes epic',action$, action, store}))
+    .do(action=>api.examineAction({from:'fetchConceptIdsForCodes epic',action$, action, store}))
     .switchMap(action => {
       let {type, payload} = action
       let state = store.getState().vocab
@@ -247,7 +242,7 @@ export const fetchConceptIdsForCodes = (action$, store) =>
       return (
         ajax
           //.flatMap( // not using flatMap because I understand why...not sure why it's here)
-          .do(action=>examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
+          .do(action=>api.examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
           .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
                     // i was using flatMap before in order to return 
                     //   Rx.Observable.concat(Rx.Observable.of(action),
@@ -273,7 +268,10 @@ export const fetchConceptIdsForCodes = (action$, store) =>
 
 export const fetchConceptInfo = (action$, store) =>
   action$
-    .do(action=>console.log('LOAD_CONCEPTS epic sees',{action,store}))
+    .ofType("FIX LATER")
+    .do(action=>api.examineAction({from:'fetchConceptInfo',action$, action, store}))
+    .map(action=>({type:"LOAD_CONCEPTS?", payload:{action}}))
+    /*
     .ofType(LOAD_CONCEPTS, LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED)
     .switchMap(
       action => {
@@ -329,7 +327,7 @@ export const fetchConceptInfo = (action$, store) =>
                     return inf
                   })
                 })
-                */
+                * /
               )
             }
           )
@@ -361,8 +359,8 @@ export const fetchConceptInfo = (action$, store) =>
           }
         )
       )
-      */
     })
+      */
 
 export const loadVocabs = (
     (values) => ({ type: LOAD_VOCABS, payload: values }))

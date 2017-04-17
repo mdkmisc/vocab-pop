@@ -21,7 +21,7 @@ var {apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = {} // nothing till init
 var ready = new Rx.Subject();
 var readyPromise = ready.toPromise();
 
-throwError = () => {
+const throwError = () => {
   console.error("not using anymore")
   debugger
 }
@@ -140,7 +140,7 @@ export function subscribeState(path, cb) {
  *  @param opts.transformResults [function] apply function to rows before returning them
  *  @returns string // streamKey, which is valid get url, though stream is based on post url
  */
-export class ApiStream extends util.JsonFetcher {
+export class ApiStream {
   // instances are unique (or re-used if they wouldn't be)
   // and stored in ApiStream.instances (as a result
   // of inheriting from util.JsonFetcher)
@@ -246,6 +246,7 @@ export class StreamsSubscriber {
 export class AppState extends Component {
   constructor(props) {
     throwError()
+    super()
   }
 }
 

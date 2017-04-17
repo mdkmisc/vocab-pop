@@ -98,7 +98,7 @@ export class STSReport extends Component {
             sourceConceptCodesSG,
             sortableRowHeight=50,
       } = this.props
-      console.log({sourceConceptCodesSG, sourceRelationshipsSG})
+      //console.log({sourceConceptCodesSG, sourceRelationshipsSG})
       const cardStyle = {
         padding: '0px',
       };

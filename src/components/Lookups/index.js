@@ -5,7 +5,7 @@ import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
-import * as duck from '../../redux/ducks/vocab'
+import * as vocab from '../../redux/ducks/vocab'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -27,8 +27,6 @@ import {
   TextField,
   Toggle
 } from 'redux-form-material-ui'
-
-import * as AppState from '../../AppState'
 
 export class ConceptCodesLookupForm extends Component {
   constructor(props) {
@@ -174,5 +172,5 @@ ConceptCodesLookupForm = connect(
     }
     return newState
   }, 
-  { duck }
+  { vocab }
 )(ConceptCodesLookupForm)

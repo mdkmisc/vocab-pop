@@ -1,4 +1,6 @@
 /* eslint-disable */
+// debugger not clearing from before reload
+console.clear()
 const DEBUG=true
 import Rx from 'rxjs/Rx'
 var d3 = require('d3');
