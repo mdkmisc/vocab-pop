@@ -1,19 +1,21 @@
 /* eslint-disable */
 const DEBUG = true;
 
-//import config from '../config'
 import * as utils from '../utils'
 import _ from '../supergroup'
 
 import myrouter from './myrouter'
-import * as api from './api'
+import apiReducer, * as api from './api'
 import * as rrRouter from 'react-router-redux'
 //console.log(rrRouter)
 
+import vocab, * as voc from './ducks/vocab'
+/*
 import vocab, {
           formValToRoute, fetchConceptInfo,
           fetchConceptIdsForCodes, loadVocabsEpic
         } from './ducks/vocab'
+*/
 
 import React, { Component } from 'react'
 import { createStore, compose, combineReducers, applyMiddleware } from 'redux'
@@ -24,9 +26,7 @@ import { reducer as formReducer } from 'redux-form';
 export default function configureStore(initialState = {}) {
 
   const rootReducer = combineReducers({
-    //config: () => config,
-    apiCalls: api.apiCalls,
-    cacheDirty: api.cacheDirty,
+    api: apiReducer,
     vocab,
     form: formReducer,
     routeState: myrouter.routeState,
@@ -34,11 +34,8 @@ export default function configureStore(initialState = {}) {
   });
 
   const rootEpic = combineEpics(
-    api.apiCallEpic,
-    loadVocabsEpic,
-    formValToRoute,
-    fetchConceptIdsForCodes,
-    fetchConceptInfo
+    ...api.epics,
+    ...voc.epics,
   );
   const epicMiddleware = createEpicMiddleware(rootEpic);
 

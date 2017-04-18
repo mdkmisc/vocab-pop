@@ -10,6 +10,24 @@ import {Glyphicon, Row, Col,
           } from 'react-bootstrap';
 var $ = require('jquery');
 var d3 = require('d3');
+import LZString from 'lz-string';
+
+let _store = sessionStorage
+export function storage(store = _store) {
+  return store
+}
+export function storageClear(store = _store) {
+  store.clear()
+}
+export function storagePut(key, val, store = _store) {
+  store[key] = LZString.compressToBase64(JSON.stringify(val));
+}
+export function storageExists(key, store = _store) {
+  return _.has(store, key);
+}
+export function storageGet(key, store = _store) {
+  return JSON.parse(LZString.decompressFromBase64(store[key]));
+}
 
 /* SvgLayout class
   * manages layout of subcomponents in zones of an svg

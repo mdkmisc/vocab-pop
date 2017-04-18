@@ -54,11 +54,11 @@ if i ever revive this, might need to look at old AppData.js and appSettings
   which are
   disappearing after commit 27ce5015d658935bcff4bcc44037484e83802fbc
 
-  AppData.cacheDirty().then(() => {
+  //AppData.cacheDirty().then(() => {
     AppData.classRelations(userSettings.getValue().filters).then(d=>classRelations.next(d));
     AppData.conceptCount(userSettings.getValue().filters).then(d=>conceptCount.next(d));
     AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
-  })
+  //})
 
 * was in AppState initialize:
   tableConfig.next(_appSettings.tables);

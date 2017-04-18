@@ -1,6 +1,11 @@
 
 /* eslint-disable */
-//const DEBUG = true;
+const DEBUG = true;
+
+import { createSelector } from 'reselect'
+import { combineReducers, } from 'redux'
+
+import {actionTypes} from './apiGlobal'
 import config from '../config'
 import * as util from '../utils';
 import React, { Component } from 'react';
@@ -10,97 +15,64 @@ import Rx from 'rxjs/Rx';
 import _ from '../supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-import LZString from 'lz-string';
 var ALLOW_CACHING = [
   '.*',
   //'/WebAPI/[^/]+/person/',
 ];
 
-// api names, used as action types
-export const VOCABULARIES = 'vocabularies'
-export const CONCEPT_CODES = 'codeSearchToCids'
-export const CONCEPT_INFO = 'conceptInfo'
-export const API_CALL = 'API_CALL'
-export const API_CALL_NEW = 'API_CALL_NEW'
-export const API_CALL_STARTED = 'API_CALL_STARTED'
-export const API_CALL_FULFILLED = 'API_CALL_FULFILLED'
-export const API_CALL_REJECTED = 'API_CALL_REJECTED'
-export const CACHE_DIRTY = 'CACHE_DIRTY'
+import * as vocab from './ducks/vocab'
+// some of the structure came from
+// https://github.com/reactjs/redux/tree/master/examples/tree-view
 
-export const getVocabularies = 
-  () => ({type:API_CALL,
-          payload: { apiName: VOCABULARIES, }})
+const { API_CALL,
+        API_CALL_NEW,
+        API_CALL_STARTED,
+        API_CALL_FULFILLED,
+        API_CALL_REJECTED,
+        CACHE_DIRTY,
+                      } = actionTypes
 
-export const getIdsByCodeSearch = 
-  (params) => ({type:API_CALL,
-          payload: { apiName: CONCEPT_CODES, params, }})
-
-// for tree ideas, trying to use https://github.com/reactjs/redux/tree/master/examples/tree-view
-// i want to be able to have nested calls of some sort and redux says use a flat,
-// normalized structure with refs between nodes
-//
+export const actionCreators = {
+  ...vocab.apiActionCreators,
+}
 
 // reducers
 const apiCall = (state={}, action) => {
-  const {type, payload={}, meta={}, error } = action
+  let {type, payload={}, meta={}, error } = action
   //const { expectedParamKeys, url, results, status, err } = meta.apiObj
+  if (typeof payload.apiName === 'undefined') return state
   let status = type
+  payload = {...payload, status}
   //examineAction({from:'apiCall',action, state})
   switch (type) {
-    case API_CALL_NEW:
-      if (typeof payload.apiName === 'undefined') return state
-      return {
-        ...payload, // expect apiName and params
-        meta,
-        status: type,
-        pending: false,
-      }
+    case API_CALL:
+      return {...payload, pending: false, status: API_CALL_NEW}
     case API_CALL_STARTED:
-      return {
-        ...state,
-        meta,         // expect ?
-        status: type,
-        pending: true,
-      }
-    case API_CALL_FULFILLED:
-      return {
-        ...state,
-        meta,
-        status: type,
-        results: payload,
-        err: undefined,
-        pending: false,
-      }
+      return {...payload, pending: true}
+    case API_CALL_FULFILLED: // payload should have results
+      return {...payload, pending: false}
     case API_CALL_REJECTED:
-      return {
-        ...state,
-        meta,
-        status: type,
-        err: payload,
-        results: undefined,
-        pending: false,
-      }
-    default:
-      return state
-  }
-}
-
-export const apiCalls = (state={}, action) => {
-  const {type, payload={}, meta={}, error } = action
-  if (type.match('^'+API_CALL)) {
-    let apiName = meta.apiName || payload.apiName
-    let params = meta.params || payload.params
-    let url = apiGetUrl(apiName, params)
-    //examineAction({from:'apiCalls',action, url, state})
-    return {
-      ...state,
-      [url]: apiCall( // apiCall here refers to child reducer
-        state[url], {...action, type, })
-    }
+      return {...payload, pending: false, error: true}
   }
   return state
 }
-
+const apiCalls = (state={}, action) => {
+  let {type, payload={}, meta={}, error } = action
+  if (type.match('^'+API_CALL)) {
+    let {apiName, params, url} = payload
+    let callState = state[url]
+    if (type === API_CALL) {
+      url = apiGetUrl(apiName, params)
+      payload = {...payload, url}
+      action = {...action, payload}
+      callState = undefined
+    }
+    callState = apiCall(callState, action)
+    //examineAction({from:'apiCalls',action, url, state})
+    return { ...state, [url]: callState }
+  }
+  return state
+}
 export const examineAction = o => {
   let {from, action, response, state} = o
   let {type, payload={}, meta={}} = action
@@ -111,90 +83,133 @@ export const examineAction = o => {
   //console.log({from, action, type, response, ...payload, ...meta, state})
 }
 
-export const apiCallEpic = (action$, store) => (
+const apiCallEpic = (action$, store) => (
   action$.ofType(API_CALL)
     //.do(action=>examineAction({from:'apiCallEpic start',action$, action, state:store.getState()}))
     .mergeMap(action=>{
-      let {apiName, params} = action.payload
+      let {payload} = action
+      let {apiName, params} = payload
       let url = apiGetUrl(apiName, params)
-      let apiCall = store.getState().apiCalls[url]
-      // apiCall here refers to state generated by apiCall reducer
+      payload = store.getState().api.apiCalls[url]
+      action = {...action, payload}
       let ajax = 
         checkCacheDirty(store)
                 //.do(response=>examineAction({from:'apiCallEpic after start',action$, response, action, state:store.getState()}))
           .switchMap(dirty=>{
             return cachedAjax(url)
           })
-          .switchMap(response=>{
-            action = {...action, payload:response,
-                      type:API_CALL_FULFILLED}
-            //store.dispatch({...action, type:API_CALL_STARTED, })
-            return (Rx.Observable.of(action)
-                    //.do(results=>examineAction({from:'apiCallEpic fulfilled',action$, action, results, state:store.getState()}))
-                    )
+          .switchMap(results=>{
+            payload = {...payload, results}
+            action = {...action, payload, 
+                        type:API_CALL_FULFILLED}
+            return Rx.Observable.of(action)
           })
-          .catch(error => {
-            return (Rx.Observable.of({
-                      type: API_CALL_REJECTED,
-                      payload: error.xhr.response,
-                      error: true
-                    })
-      //.do(error=>examineAction({from:'apiCallEpic error',action$, action, error, state:store.getState()}))
-                    )
+          .catch(err => {
+            payload = {...payload, err}
+            action = {...action, payload, 
+                        type:API_CALL_REJECTED}
+            return Rx.Observable.of(action)
           })
 
-      action = {
-        ...action, 
-        meta: {
-          ...apiCall.meta, url, apiName, params, ajax
-        }
-      }
+      //payload = {...payload, ajax}
+      action = {...action, payload, type:API_CALL_STARTED}
       //examineAction({from:'starting',action, state:store.getState()})
-      store.dispatch({...action, type:API_CALL_STARTED, })
+      store.dispatch(action)
       return ajax
     })
 )
+export const epics = [
+  apiCallEpic,
+  ...(vocab.apiEpics||{}),
+]
+
 export const cachedAjax = url => {
-  if (isCached(url)) return Rx.Observable.of(storageGet(url))
+  if (isCached(url)) return Rx.Observable.of(util.storageGet(url))
   let rxAjax = Rx.Observable.ajax.getJSON(url)
   rxAjax.subscribe(results => {
-    storagePut(url, results)
+    util.storagePut(url, results)
   })
   return rxAjax
 }
 export const isCached = url => {
   var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
   if (!allowed) return
-  return storageExists(url, cache)
+  return util.storageExists(url)
 }
-// selectors
-//import { createSelector } from 'reselect'
 
-/*
-export const baseUrl = createSelector(
-  cdmSchema,resultsSchema,apiRoot,apiModel,
-  (cdmSchema,resultsSchema,apiRoot,apiModel) =>
-    (apiName, params={}) => {
-      // don't put these schemas in params because then they end up on url...not necessary, right?
-      console.log('quit putting schemas on params!')
-      params.cdmSchema = params.cdmSchema || cdmSchema
-      params.resultsSchema = params.resultsSchema || resultsSchema
-
-      let _apiRoot = params.apiRoot || apiRoot
-      let _apiModel = params.apiModel || apiModel
-      delete params.apiRoot
-      delete params.apiModel
-      return `${_apiRoot}/${_apiModel}/${apiName}`
+function handleErrors(p) {
+    let {jsonPromise,response} = p
+    if (!response.ok) {
+      //console.error('got error with', response)
+      throw p
     }
-)
-*/
-export const {cdmSchema, resultsSchema} = config
-export const baseUrl = () => `${config.apiRoot}/${config.apiModel}`
-export const apiGetUrl = (apiName, params) => 
+    return p
+}
+
+const checkCacheDirty = (store) => { // make sure to use this
+  return (
+    Rx.Observable.ajax.getJSON(apiGetUrl('cacheDirty'))
+      .do(results => {
+        if (results) {
+          DEBUG && console.warn(`cache dirty. removing ${_.keys(util.storage()).length} items in util.storage()`);
+          util.storageClear()
+        } else {
+          DEBUG && console.warn(`cache clean. ${_.keys(util.storage()).length} items in util.storage()`);
+        }
+      })
+      .mergeMap(results => {
+        return Rx.Observable.of({type: CACHE_DIRTY, payload: {[Date()]:results}})
+      })
+  )
+}
+
+/* instructions on connecting selectors with access to props (as well as state)
+ * from: https://github.com/reactjs/reselect#connecting-a-selector-to-the-redux-store
+ * currently wired up in SourceTargetSource/container.js
+ */
+
+// selectors
+const apiState = (state,props) => state.api
+const containerProps = (state,props) => props
+export const selectors = {
+  apiStore: 
+    // this corresponds to makeGetVisibleTodos in
+    // https://github.com/reactjs/reselect#selectorstodoselectorsjs-1
+    createSelector(
+      [apiState, containerProps],
+      (apiState, containerProps) => {
+        //debugger
+        //console.log({msg:'temporarily', apiState, containerProps})
+        return (storeName, path) => {
+          console.log('apiStore!', {apiState,containerProps,storeName,path})
+          if (typeof path !== 'undefined') 
+            throw new Error("not implemented yet")
+          let calls = _.filter(
+                        apiState.apiCalls,//(apiState),
+                        d=>d.storeName === storeName)
+          //if (calls.length !== 1) throw new Error("not prepared for this")
+          if (calls.length) return calls[0].results
+          //let call = calls[0]
+          //return call.results
+        }
+      }
+    ),
+}
+
+
+
+
+
+// these are 'selectors' but they don't need to be
+// connected to anything beyond config, which is
+// imported here. also they might only be used here
+const {cdmSchema, resultsSchema} = config
+const baseUrl = () => `${config.apiRoot}/${config.apiModel}`
+const apiGetUrl = (apiName, params) => 
   getUrl(`${baseUrl()}/${apiName}`, 
          {...params, cdmSchema, resultsSchema})
 
-export const getUrl = (url, params={}) => {
+const getUrl = (url, params={}) => {
   //console.error('in getUrl', {url,params})
   if (_.isEmpty(params)) return url
   return encodeURI(
@@ -205,57 +220,10 @@ export const getUrl = (url, params={}) => {
   )
 }
 
-//var cache = {}; // only save till reload
-//var cache = localStorage; // save indefinitely
-var cache = sessionStorage; // save for session
-function handleErrors(p) {
-    let {jsonPromise,response} = p
-    if (!response.ok) {
-      //console.error('got error with', response)
-      throw p
-    }
-    return p
-}
-export function storagePut(key, val, store = sessionStorage) {
-  store[key] = LZString.compressToBase64(JSON.stringify(val));
-  //let json = JSON.stringify(val);
-  //let compressed = LZString.compressToBase64(json);
-  //alert([json.length, compressed.length]);
-  //console.log(`recs: ${val.length}, json: ${json.length}, compressed: ${compressed.length}`);
-}
-export function storageExists(key, store = sessionStorage) {
-  //console.error(key)
-  //throw new Error('stop here')
-  //debugger
-  return _.has(store, key);
-}
-export function storageGet(key, store = sessionStorage) {
-  //console.error(key)
-  //throw new Error('stop here')
-  //debugger
-  return JSON.parse(LZString.decompressFromBase64(store[key]));
-}
-
-
-export const cacheDirty = (state={}, action) => {
-  if (action.type === CACHE_DIRTY) {
-    return {...state, ...action.payload}
-  }
-  return state
-}
-const checkCacheDirty = (store) => { // make sure to use this
-  return (
-    Rx.Observable.ajax.getJSON(apiGetUrl('cacheDirty'))
-      .do(results => {
-        if (results) {
-          DEBUG && console.warn(`cache dirty. removing ${_.keys(sessionStorage).length} items in sessionStorage`);
-          sessionStorage.clear();
-        } else {
-          DEBUG && console.warn(`cache clean. ${_.keys(sessionStorage).length} items in sessionStorage`);
-        }
-      })
-      .mergeMap(results => {
-        return Rx.Observable.of({type: CACHE_DIRTY, payload: {[Date()]:results}})
-      })
-  )
-}
+export default combineReducers({ 
+  apiCalls, 
+  vocab: vocab.apiReducer,
+  //...selectors,
+  // probably don't need exporting
+  //cdmSchema, resultsSchema, baseUrl, apiGetUrl, 
+})

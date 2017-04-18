@@ -7,7 +7,6 @@ import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
 import * as api from '../../redux/api'
-import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
@@ -37,42 +36,37 @@ import {STSReport} from './STSReport'
 
 class SourceTargetSourceForm extends Component {
   componentDidMount() {
-    let {getVocabularies, getIdsByCodeSearch,
+    let {loadVocabularies, loadConceptIds,
           vocabulary_id, concept_code_search_pattern, } = this.props
-    getVocabularies()
+    loadVocabularies()
     if (vocabulary_id && concept_code_search_pattern) {
-      getIdsByCodeSearch({vocabulary_id,concept_code_search_pattern})
+      loadConceptIds({vocabulary_id,concept_code_search_pattern})
     }
   }
+  componentDidUpdate() {
+    let junk = this.props.apiStore('vocabularies')
+    console.log(junk)
+  }
   componentWillReceiveProps() {
-    let {getIdsByCodeSearch,
-          vocabulary_id, concept_code_search_pattern, } = this.props
+    //let {loadConceptIds, vocabulary_id, concept_code_search_pattern, } = this.props
+    /*
     if (vocabulary_id && concept_code_search_pattern) {
-      getIdsByCodeSearch({vocabulary_id,concept_code_search_pattern})
+      loadConceptIds({vocabulary_id,concept_code_search_pattern})
     }
-    let {dispatch, vocabulary_id, concept_code_search_pattern, } = this.props
-    if (vocabulary_id && concept_code_search_pattern) {
-      dispatch({
-        type:api.API_CALL,
-        payload: {
-          apiName: api.CONCEPT_CODES,
-          params: {vocabulary_id,concept_code_search_pattern}
-        }
-      });
-    }
+    */
   }
   render() {
     let {
           history, dispatch,
-          recs, fromSrcErr, vocabs, isPending, vocabPending,
+          recs, err, vocabularies, isPending, vocabPending,
           vocabulary_id, concept_code_search_pattern, 
           sourceConceptCodesSG,
           sourceRelationshipsSG,
         } = this.props
     let formParams = {  vocabulary_id, 
                         concept_code_search_pattern,
-                        vocabs,
-                        fromSrcErr,
+                        vocabularies,
+                        err,
                         isPending, vocabPending,}
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
@@ -91,26 +85,50 @@ SourceTargetSourceForm = reduxForm({
   form: 'stsform',  // a unique identifier for this form
 })(SourceTargetSourceForm)
 
-let apis = _.pick(api, ['getVocabularies', 'getIdsByCodeSearch'])
-function mapDispatchToProps(dispatch) {
-  return bindActionCreators(apis, dispatch)
+// https://github.com/reactjs/reselect#sharing-selectors-with-props-across-multiple-components
+/* too complicated.... this is probably just to improve memoization, i might not care
+const makeMapStateToProps = () => {
+  console.log(api)
+  /*
+  const apiSelectors = 
+    _.mapValues(
+      api.selectors, 
+      () => {
+        console.log(arguments)
+        debugger
+      })
+  * /
+  let apiStore = api.selectors.apiStore()
+  const mapStateToProps = (state,props) => {
+    const { vocabulary_id, concept_code_search_pattern, } = state.vocab
+    let newProps = {  apiStore: apiStore(state,props),
+                      //vocabulary_id, concept_code_search_pattern,
+                      //formRef: state.form.stsform,
+                   }
+    console.log(newProps)
+    return newProps
+  }
+  return mapStateToProps
 }
+*/
+
+
+let apis = _.pick(api.actionCreators, ['loadVocabularies', 'loadConceptIds'])
+const mapDispatchToProps = dispatch => bindActionCreators(apis, dispatch)
+
 SourceTargetSourceForm = connect(
-  (state, ownProps) => { // mapStateToProps
-    const { vocabulary_id, concept_code_search_pattern, 
-            isPending, vocabPending,
-            recs, fromSrcErr, vocabs, } = state.vocab
+  //makeMapStateToProps,
+  (state, props) => { // mapStateToProps
+    const { vocabulary_id, concept_code_search_pattern, } = state.vocab
+    const apiSelectors =  _.mapValues(api.selectors, 
+                                      selector=>selector(state,props))
+
     return {
-      //...apis,
+      ...apiSelectors,
       sourceConceptCodesSG: vocab.sourceConceptCodesSG(state),
       sourceRelationshipsSG: vocab.sourceRelationshipsSG(state),
-      recs, fromSrcErr, 
-      vocabulary_id, 
-      concept_code_search_pattern,
-      vocabs,
-      isPending, vocabPending,
+      vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
-      //history: browserHistory,// wrong wrong wrong...i think
     }
   },
   mapDispatchToProps

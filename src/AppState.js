@@ -17,7 +17,7 @@ import 'react-json-inspector/json-inspector.css';
 var reduxStore = {};
 var reduxHistory = {};
 var {cdmSchema,resultsSchema,apiRoot,apiModel} = {} // nothing till init
-var {apiCall, apiGetUrl, cacheDirty, apiCallBaseUrl} = {} // nothing till init
+var {apiCall, apiGetUrl, apiCallBaseUrl} = {} // nothing till init
 var ready = new Rx.Subject();
 var readyPromise = ready.toPromise();
 

@@ -1,13 +1,34 @@
+import { createSelector } from 'reselect'
 import { browserHistory, } from 'react-router'
-import * as api from './api'
 import Rx from 'rxjs/Rx'
 import myrouter from '../myrouter'
 
 import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
 
+export const VOCABULARY_ID = 'VOCABULARY_ID'
+export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
+
+import {actionTypes} from '../apiGlobal'
+const { API_CALL,
+        API_CALL_NEW,
+        API_CALL_STARTED,
+        API_CALL_FULFILLED,
+        API_CALL_REJECTED,
+        CACHE_DIRTY,
+                      } = actionTypes
+
+export const apiNames = {
+  VOCABULARIES: 'vocabularies',
+  CONCEPT_CODES: 'codeSearchToCids',
+  CONCEPT_INFO: 'conceptInfo',
+}
+const {
+  VOCABULARIES,
+  CONCEPT_CODES,
+  CONCEPT_INFO, } = apiNames
+
 // selector stuff
-import { createSelector } from 'reselect'
 const recs = state => state.vocab.recs
 export const sourceConceptCodesSG = createSelector(
   recs,
@@ -99,51 +120,12 @@ export const relcounts = createSelector(
 */
 
 /* eslint-disable */
-export const VOCABULARY_ID = 'VOCABULARY_ID'
-export const CONCEPT_CODES = 'CONCEPT_CODES'
-export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
-
-// apiCalls
-export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN = 'codeSearchToCids'
-
-//export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED';
-//export const LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED = 'LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_REJECTED';
-
-export const LOAD_CONCEPTS = 'LOAD_CONCEPTS';
-export const LOAD_CONCEPTS_FULFILLED = 'LOAD_CONCEPTS_FULFILLED';
-export const LOAD_CONCEPTS_REJECTED = 'LOAD_CONCEPTS_REJECTED';
-
-export const LOAD_VOCABS = 'LOAD_VOCABS';
-export const LOAD_VOCABS_FULFILLED = 'LOAD_VOCABS_FULFILLED';
-export const LOAD_VOCABS_REJECTED = 'LOAD_VOCABS_REJECTED';
-
-
-/*
- *    original caller (stsContainer.js):
-      dispatch({
-        type:duck.API_INITIATE,
-        apiName: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN,
-        payload:{vocabulary_id,concept_code_search_pattern}
-      });
-
-      apiEpic:
-          .do(action=>store.dispatch({
-              type: apiName,
-              payload,
-          }))
-      apiCalls:
-      return {
-        ...state,
-        [action.type]: apiCall( state[action.type], 
-                                { ...action,
-                                  apiName: action.type,
-                                  [type: INITIATE],
-                                }),
-      }
-*/
 
 const vocabReducer = (state={recs:[]}, action) => {
-  return state
+  let vocabParams = _.pick(action.payload,
+    ['vocabulary_id','concept_code_search_pattern'])
+  //console.log({...state, ...vocabParams})
+  return {...state, ...vocabParams}
   /*
   switch (action.type) {
     case '@@redux-form/UPDATE_SYNC_ERRORS':
@@ -212,22 +194,27 @@ const vocabReducer = (state={recs:[]}, action) => {
 }
 export default vocabReducer
 
-export const formValToRoute = (action$,store) =>
+export const apiReducer = (state={},action)=>state
+
+const formValToRoute = (action$,store) =>
   action$
     .ofType('@@redux-form/CHANGE')
     .filter(action => action.meta.form === 'concept_codes_form')
+    .do(action=>console.error({action,state:store.getState()}))
     //.do(action=>api.examineAction({from:'formValToRoute epic',action$, action, store}))
+    /*
     .do(action=>store.dispatch({
         type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN, 
         payload: { [action.meta.field]: action.payload },
     }))
+    */
     .map(
       action => ({  type: myrouter.QUERY_PARAMS, 
                     payload: { [action.meta.field]: action.payload }}))
-
-export const fetchConceptIdsForCodes = (action$, store) =>
-  action$.ofType(LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN)
-    .do(action=>api.examineAction({from:'fetchConceptIdsForCodes epic',action$, action, store}))
+/*
+const fetchConceptIdsForCodes = (action$, store) =>
+  action$.ofType(CONCEPT_CODE_SEARCH_PATTERN)
+    //.do(action=>api.examineAction({from:'fetchConceptIdsForCodes epic',action$, action, store}))
     .switchMap(action => {
       let {type, payload} = action
       let state = store.getState().vocab
@@ -242,14 +229,14 @@ export const fetchConceptIdsForCodes = (action$, store) =>
       return (
         ajax
           //.flatMap( // not using flatMap because I understand why...not sure why it's here)
-          .do(action=>api.examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
+          //.do(action=>api.examineAction({from:'fetchConceptIdsForCodes ajax return',action$, action, store}))
           .mergeMap(response => { // or mergeMap...grabbing from https://redux-observable.js.org/docs/basics/Epics.html
                     // i was using flatMap before in order to return 
                     //   Rx.Observable.concat(Rx.Observable.of(action),
                     //                        Rx.Observable.of(anotherAction))
             return (
               Rx.Observable.of(
-                  { type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
+                  { type: CONCEPT_CODE_SEARCH_PATTERN_FULFILLED, 
                     payload: response}
               )
               .catch(error => {
@@ -265,11 +252,11 @@ export const fetchConceptIdsForCodes = (action$, store) =>
       )
     })
   //browserHistory.push({vocabulary_id, concept_code_search_pattern})
-
-export const fetchConceptInfo = (action$, store) =>
+*/
+const fetchConceptInfo = (action$, store) =>
   action$
     .ofType("FIX LATER")
-    .do(action=>api.examineAction({from:'fetchConceptInfo',action$, action, store}))
+    //.do(action=>api.examineAction({from:'fetchConceptInfo',action$, action, store}))
     .map(action=>({type:"LOAD_CONCEPTS?", payload:{action}}))
     /*
     .ofType(LOAD_CONCEPTS, LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED)
@@ -362,12 +349,7 @@ export const fetchConceptInfo = (action$, store) =>
     })
       */
 
-export const loadVocabs = (
-    (values) => ({ type: LOAD_VOCABS, payload: values }))
-export const loadedVocabsFulfilled = 
-    (payload) => ({ type: LOAD_VOCABS_FULFILLED, 
-                   payload})
-export const loadVocabsEpic =
+const XXloadVocabsEpic =
   (action$) => (
     action$.ofType(LOAD_VOCABS)
       .mergeMap(action => {
@@ -388,3 +370,19 @@ export const loadVocabsEpic =
             }))
       })
   )
+
+export const apiActionCreators = {
+  loadVocabularies: (storeName) => ({
+      type:API_CALL, 
+      payload: { apiName: VOCABULARIES,
+                storeName: storeName || 'vocabularies' }
+    }),
+  loadConceptIds: (params, storeName) => ({
+      type:API_CALL,
+      payload: { apiName: CONCEPT_CODES, params,
+                storeName: storeName || 'concept_ids' }
+  }),
+}
+export const epics = [
+  formValToRoute,
+]

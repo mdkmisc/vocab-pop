@@ -37,7 +37,7 @@ export class ConceptCodesLookupForm extends Component {
     let { 
             handleSubmit, load, pristine, reset, submitting, history,
               dispatch, // initialValues, 
-              isPending, fromSrcErr, vocabs,
+              isPending, err, vocabularies,
               concept_code_search_pattern, vocabulary_id, 
           } = this.props
     let errMsg = ''
@@ -46,12 +46,12 @@ export class ConceptCodesLookupForm extends Component {
                   Loading...
                 </p> 
     } else 
-    if (fromSrcErr) {
+    if (err) {
       errMsg =  <p style={{fontColor:'red',fontWeight:'bold'}}>
-                  {fromSrcErr.statusText}
+                  {err.statusText}
                 </p> 
     }
-    let vocabulary = (vocabs||[]).find(d=>d.vocabulary_id===this.props.vocabulary_id)
+    let vocabulary = (vocabularies||[]).find(d=>d.vocabulary_id===this.props.vocabulary_id)
     const cardStyle = {
       padding: '0px',
       margin: '14px 0px 20px 0px',
@@ -112,7 +112,7 @@ export class ConceptCodesLookupForm extends Component {
                       floatingLabelText="vocabulary_id"
                 >
                   {
-                    (vocabs||[]).map(
+                    (vocabularies||[]).map(
                       d=>{
                           return <MenuItem 
                             className="vocab-item"
