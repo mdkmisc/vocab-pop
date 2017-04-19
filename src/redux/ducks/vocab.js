@@ -5,11 +5,10 @@ import myrouter from '../myrouter'
 
 import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
+import {actionTypes, apiStore} from '../apiGlobal'
 
 export const VOCABULARY_ID = 'VOCABULARY_ID'
 export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
-
-import {actionTypes} from '../apiGlobal'
 const { API_CALL,
         API_CALL_NEW,
         API_CALL_STARTED,
@@ -29,13 +28,21 @@ const {
   CONCEPT_INFO, } = apiNames
 
 // selector stuff
-const recs = state => state.vocab.recs
+const conceptInfo = createSelector(
+  apiStore,
+  apiStore => {
+    return apiStore('concept_info')
+  }
+)
+export const apiSelectors = {
+  conceptInfo,
+}
 export const sourceConceptCodesSG = createSelector(
-  recs,
-  recs => {
-    //console.log('computing selector for', recs)
+  conceptInfo,
+  conceptInfo => {
+    //console.log('computing selector for', conceptInfo)
     let scc = 
-      _.supergroup( (recs||[]), 
+      _.supergroup( (conceptInfo||[]), 
                     d=>`${d.concept_code}: ${d.concept_name}`,
                     { dimName:'source' }
                   )
@@ -58,20 +65,20 @@ export const sourceConceptCodesSG = createSelector(
 )
 /*
 export const sourceRecordCountsSG = createSelector(
-  recs,
-  recs => {
+  conceptInfo,
+  conceptInfo => {
     let tblcols = _.supergroup( 
-                      _.flatten((recs||[]).map(d=>d.rcs)),
+                      _.flatten((conceptInfo||[]).map(d=>d.rcs)),
                       ['tbl','col'])
     return tblcols
   }
 )
 */
 export const sourceRelationshipsSG = createSelector(
-  recs,
-  recs => {
+  conceptInfo,
+  conceptInfo => {
     let sr = _.supergroup( 
-                      _.flatten((recs||[]).map(d=>d.rels)),
+                      _.flatten((conceptInfo||[]).map(d=>d.rels)),
                       ['relationship',])
 
     sr.addLevel(d=>`${d.vocabulary_id} / ${d.domain_id} / ${d.concept_class_id}`,{dimName:'vocab/domain/class'})
@@ -93,11 +100,11 @@ export const sourceRelationshipsSG = createSelector(
 )
 /*
 export const relcounts = createSelector(
-  recs,
-  // recs.filter(d=>(d.rcs||[]).length).map(d=>(d.rcs||[]))
-  recs => (
+  conceptInfo,
+  // conceptInfo.filter(d=>(d.rcs||[]).length).map(d=>(d.rcs||[]))
+  conceptInfo => (
       _.flattenDeep(
-        (recs||[]).map(
+        (conceptInfo||[]).map(
           d=>[
             (d.target_rcs||[]).map(c=>({rec:d,cnt:c})),
             (d.rcs||[]).map(c=>({rec:d,cnt:c}))
@@ -121,7 +128,7 @@ export const relcounts = createSelector(
 
 /* eslint-disable */
 
-const vocabReducer = (state={recs:[]}, action) => {
+const vocabReducer = (state={conceptInfo:[]}, action) => {
   let vocabParams = _.pick(action.payload,
     ['vocabulary_id','concept_code_search_pattern'])
   //console.log({...state, ...vocabParams})
@@ -138,7 +145,7 @@ const vocabReducer = (state={recs:[]}, action) => {
         ...state,
         ...action.payload,
         fromSrcErr: undefined,
-        recs:undefined,
+        conceptInfo:undefined,
         isPending: true,
       }
     case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED:
@@ -151,16 +158,16 @@ const vocabReducer = (state={recs:[]}, action) => {
       return {
         ...state,
         ...action.payload,
-        recs:undefined,
+        conceptInfo:undefined,
         isPending: true,
       }
     case LOAD_CONCEPTS_FULFILLED:
-      let recs = action.payload
-      if (typeof recs === 'string') debugger
-      if (recs.length) {
-        return { ...state, isPending: false, recs, }
+      let conceptInfo = action.payload
+      if (typeof conceptInfo === 'string') debugger
+      if (conceptInfo.length) {
+        return { ...state, isPending: false, conceptInfo, }
       }
-      return { ...state, isPending: false, recs:undefined,
+      return { ...state, isPending: false, conceptInfo:undefined,
         fromSrcErr: {statusText: 'No matching concepts'},
         };
     case LOAD_CONCEPTS_REJECTED:
@@ -381,6 +388,15 @@ export const apiActionCreators = {
       type:API_CALL,
       payload: { apiName: CONCEPT_CODES, params,
                 storeName: storeName || 'concept_ids' }
+  }),
+  loadConceptInfo: (concept_ids=[], storeName) => ({
+      type:API_CALL,
+      payload: {apiName: CONCEPT_INFO, 
+                params: {
+                  concept_ids:
+                  `[${concept_ids.map(d=>d.concept_id)}]`},
+//params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
+                storeName: storeName || 'concept_info' }
   }),
 }
 export const epics = [

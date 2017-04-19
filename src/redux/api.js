@@ -5,7 +5,7 @@ const DEBUG = true;
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
 
-import {actionTypes} from './apiGlobal'
+import {actionTypes, apiStore} from './apiGlobal'
 import config from '../config'
 import * as util from '../utils';
 import React, { Component } from 'react';
@@ -34,6 +34,9 @@ const { API_CALL,
 
 export const actionCreators = {
   ...vocab.apiActionCreators,
+}
+export const apiNames = {
+  ...vocab.apiNames,
 }
 
 // reducers
@@ -69,7 +72,17 @@ const apiCalls = (state={}, action) => {
     }
     callState = apiCall(callState, action)
     //examineAction({from:'apiCalls',action, url, state})
-    return { ...state, [url]: callState }
+    return { ...state, [url]: callState, 
+              currentResults:currentResults(callState,action) }
+  }
+  return state
+}
+const currentResults = (state={}, action) => {
+  let {type, payload={}, meta={}, error } = action
+  if (type === API_CALL_FULFILLED) {
+    let {apiName, storeName, url} = payload
+    return {...state,
+            [storeName]: url}
   }
   return state
 }
@@ -168,32 +181,19 @@ const checkCacheDirty = (store) => { // make sure to use this
  * currently wired up in SourceTargetSource/container.js
  */
 
-// selectors
-const apiState = (state,props) => state.api
-const containerProps = (state,props) => props
+/*
+const apiResults = 
+  _.mapValues(apiNames, apiName =>
+        createSelector(
+                  apiStore,
+                  apiStore => {  // assume storeName === apiName
+                    return apiStore(apiName)
+                  }
+                )
+  )
+*/
 export const selectors = {
-  apiStore: 
-    // this corresponds to makeGetVisibleTodos in
-    // https://github.com/reactjs/reselect#selectorstodoselectorsjs-1
-    createSelector(
-      [apiState, containerProps],
-      (apiState, containerProps) => {
-        //debugger
-        //console.log({msg:'temporarily', apiState, containerProps})
-        return (storeName, path) => {
-          console.log('apiStore!', {apiState,containerProps,storeName,path})
-          if (typeof path !== 'undefined') 
-            throw new Error("not implemented yet")
-          let calls = _.filter(
-                        apiState.apiCalls,//(apiState),
-                        d=>d.storeName === storeName)
-          //if (calls.length !== 1) throw new Error("not prepared for this")
-          if (calls.length) return calls[0].results
-          //let call = calls[0]
-          //return call.results
-        }
-      }
-    ),
+  apiStore,
 }
 
 
@@ -222,6 +222,7 @@ const getUrl = (url, params={}) => {
 
 export default combineReducers({ 
   apiCalls, 
+  currentResults, 
   vocab: vocab.apiReducer,
   //...selectors,
   // probably don't need exporting

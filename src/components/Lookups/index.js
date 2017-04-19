@@ -3,7 +3,6 @@ import _ from '../../supergroup'; // in global space anyway...
 import * as utils from '../../utils'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
-import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
 import { get } from 'lodash'
@@ -35,7 +34,7 @@ export class ConceptCodesLookupForm extends Component {
   }
   render() {
     let { 
-            handleSubmit, load, pristine, reset, submitting, history,
+            handleSubmit, load, pristine, reset, submitting,
               dispatch, // initialValues, 
               isPending, err, vocabularies,
               concept_code_search_pattern, vocabulary_id, 
@@ -165,10 +164,8 @@ ConceptCodesLookupForm = connect(
     let newState = {
       initialValues: {
         ...ownProps,
-        foo: {bar: 'baz'},
       },
       formRef: state.form.concept_codes_form,
-      history: browserHistory,// wrong wrong wrong...i think
     }
     return newState
   }, 

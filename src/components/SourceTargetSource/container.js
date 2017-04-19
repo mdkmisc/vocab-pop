@@ -36,16 +36,23 @@ import {STSReport} from './STSReport'
 
 class SourceTargetSourceForm extends Component {
   componentDidMount() {
-    let {loadVocabularies, loadConceptIds,
+    const {loadVocabularies, loadConceptIds,
           vocabulary_id, concept_code_search_pattern, } = this.props
     loadVocabularies()
     if (vocabulary_id && concept_code_search_pattern) {
       loadConceptIds({vocabulary_id,concept_code_search_pattern})
     }
   }
-  componentDidUpdate() {
-    let junk = this.props.apiStore('vocabularies')
-    console.log(junk)
+  componentDidUpdate(prevProps) {
+    const {loadConceptIds, vocabulary_id, concept_code_search_pattern, 
+            concept_ids, loadConceptInfo} = this.props
+    if (vocabulary_id !== prevProps.vocabulary_id ||
+        concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
+      loadConceptIds({vocabulary_id,concept_code_search_pattern})
+    }
+    if (concept_ids !== prevProps.concept_ids) {
+      loadConceptInfo(concept_ids)
+    }
   }
   componentWillReceiveProps() {
     //let {loadConceptIds, vocabulary_id, concept_code_search_pattern, } = this.props
@@ -58,7 +65,7 @@ class SourceTargetSourceForm extends Component {
   render() {
     let {
           history, dispatch,
-          recs, err, vocabularies, isPending, vocabPending,
+          conceptInfo, err, vocabularies, isPending, vocabPending,
           vocabulary_id, concept_code_search_pattern, 
           sourceConceptCodesSG,
           sourceRelationshipsSG,
@@ -71,10 +78,12 @@ class SourceTargetSourceForm extends Component {
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <ConceptCodesLookupForm {...formParams} />
-        <STSReport vocabulary_id={vocabulary_id} concept_code_search_pattern={concept_code_search_pattern} 
+        <STSReport  vocabulary_id={vocabulary_id} 
+                    concept_code_search_pattern={concept_code_search_pattern} 
                     sourceConceptCodesSG={sourceConceptCodesSG}
                     sourceRelationshipsSG={sourceRelationshipsSG}
-                    recs={recs} />
+                    conceptInfo={conceptInfo} 
+                    />
       </div>
     )
   }
@@ -113,7 +122,8 @@ const makeMapStateToProps = () => {
 */
 
 
-let apis = _.pick(api.actionCreators, ['loadVocabularies', 'loadConceptIds'])
+let apis = _.pick(api.actionCreators, ['loadVocabularies', 'loadConceptIds',
+              'loadConceptInfo',])
 const mapDispatchToProps = dispatch => bindActionCreators(apis, dispatch)
 
 SourceTargetSourceForm = connect(
@@ -125,6 +135,9 @@ SourceTargetSourceForm = connect(
 
     return {
       ...apiSelectors,
+      vocabularies: apiSelectors.apiStore('vocabularies'),
+      concept_ids: apiSelectors.apiStore('concept_ids'),
+      conceptInfo: apiSelectors.apiStore('concept_info'),
       sourceConceptCodesSG: vocab.sourceConceptCodesSG(state),
       sourceRelationshipsSG: vocab.sourceRelationshipsSG(state),
       vocabulary_id, concept_code_search_pattern,
