@@ -1,5 +1,4 @@
 /* eslint-disable */
-import * as AppState from './AppState';
 import _ from './supergroup'; // in global space anyway...
 import Rx from 'rxjs/Rx';
 import React, { Component } from 'react';
@@ -96,7 +95,9 @@ export class ConceptSetFromCode extends ConceptSet {
     let concept_code = this.concept_code = props.concept_code;
     if (!concept_code.length) throw new Error("missing concept_code");
     this._status = 'loading';
-    this.codeLookupStream = new AppState.ApiStream({ 
+    throw new Error("FIX")
+    /*
+    this.codeLookupStream = new AxxppState.ApiStream({ 
       apiCall:'concept_info_from_code', params:{concept_code,}});
     this.codeLookupStream.subscribe((results,stream)=>{
       if (!results.length) {
@@ -116,6 +117,7 @@ export class ConceptSetFromCode extends ConceptSet {
         //return conceptSet;  //   ??? maybe not a good idea, or doesn't do anything...confused
       }
     });
+    */
   }
 }
 export class ConceptSetFromText extends ConceptSet {
@@ -150,7 +152,9 @@ export class ConceptInfo extends ConceptAbstract {
 
     //if (this._status !== 'preloading') return;
     this._status = 'loading';
-    this.conceptStream = new AppState.ApiStream({ apiCall:'concept_info', 
+    throw new Error("FIX")
+    /*
+    this.conceptStream = new AxxppState.ApiStream({ apiCall:'concept_info', 
                                                   params:{concept_id:this.concept_id}});
     this.conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       this._status = 'loading';
@@ -165,6 +169,7 @@ export class ConceptInfo extends ConceptAbstract {
       this.sendUpdate();
     });
     this.sendUpdate();
+    */
   }
   fetchRelated() {
     if (!this._relatedToFetch.length) {
@@ -174,7 +179,9 @@ export class ConceptInfo extends ConceptAbstract {
     }
     if (this.depth > 8) console.error("too deep");
     if (!this._crec) debugger;
-    this.relatedStream = new AppState.ApiStream({ apiCall: 'related_concept_plus', params:{concept_id:this.concept_id}});
+    throw new Error("FIX")
+    /*
+    this.relatedStream = new AxxppState.ApiStream({ apiCall: 'related_concept_plus', params:{concept_id:this.concept_id}});
     this.relatedStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       if (_.isEmpty(results)) {
         this._status = 'failed';
@@ -187,6 +194,7 @@ export class ConceptInfo extends ConceptAbstract {
       this.sendUpdate();
     });
     return this._status;
+    */
   }
   //processRelated() { }
   getRelatedRecs(rel, dflt) { // as ConceptInfo -- right?

@@ -3,7 +3,6 @@
 import React, { Component } from 'react';
 var d3 = require('d3');
 var $ = require('jquery');
-import * as AppState from '../AppState';
 //if (DEBUG) window.d3 = d3;
 import _ from '../supergroup'; // in global space anyway...
 //import ConceptData, {DataWrapper} from './ConceptData';
@@ -13,6 +12,7 @@ import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph from './SigmaReactGraph';
 import ConceptInfo from '../ConceptInfo';
 import Spinner from 'react-spinner';
+import * as myrouter from '../redux/myrouter'
 //require('react-spinner/react-spinner.css');
 
 //import sigma from './sigmaSvgReactRenderer';
@@ -42,7 +42,7 @@ import 'ag-grid/dist/styles/theme-fresh.css';
 // not using Tables component, but worth looking at before deleting
 /* if reviving, will need some of this:
 export var conceptCount = new Rx.BehaviorSubject(0);
-* was in AppState:
+* was in AxxppState:
 export var tableConfig = new Rx.BehaviorSubject({});
 export var statsByTable = new Rx.BehaviorSubject([]);
 export var conceptStats = new Rx.BehaviorSubject([]);
@@ -60,7 +60,7 @@ if i ever revive this, might need to look at old AppData.js and appSettings
     AppData.conceptStats(userSettings.getValue().filters).then(d=>conceptStats.next(d));
   //})
 
-* was in AppState initialize:
+* was in AxxppState initialize:
   tableConfig.next(_appSettings.tables);
   conceptStats.subscribe(
     cs => {
@@ -89,9 +89,9 @@ export class Tables extends Component {
     this.state = {};
   }
   componentDidMount() {
-    this.statsByTable = AppState.statsByTable
+    this.statsByTable = AxxppState.statsByTable
           .subscribe(statsByTable=>this.setState({statsByTable}));
-    this.tableConfig = AppState.tableConfig
+    this.tableConfig = AxxppState.tableConfig
           .subscribe(tableConfig=>this.setState({tableConfig}));
   }
   componentWillUnmount() {
@@ -174,7 +174,7 @@ export class Search extends Component {
     this.state = { filters:{}, cols };
   }
   componentDidMount() {
-    this.filtSub = AppState.subscribeState(
+    this.filtSub = AxxppState.subscribeState(
       'filters', filters => {
         //console.log('new search filters', filters);
         this.setState({filters});
@@ -190,7 +190,7 @@ export class Search extends Component {
     this.filtSub.unsubscribe();
   }
   fetchData(filters={}) {
-    new AppState.ApiStream({
+    new AxxppState.ApiStream({
         apiCall: 'concept_groups', 
         params: {...filters, 
           //query:'conceptStats', targetOrSource: 'both', dataRequested: 'agg',
@@ -275,7 +275,7 @@ export class AgTable extends Component {
     this.onGridReady = this.onGridReady.bind(this);
     this.saveGridState = this.saveGridState.bind(this);
     this.state = { 
-      gridState: AppState.getState(`agGrid.${id}`),
+      gridState: myrouter.getQuery(`agGrid.${id}`),
     };
   }
   saveGridState(p) { // for dealing with user changes but also gets called during init
@@ -283,7 +283,7 @@ export class AgTable extends Component {
     const {gridReady, gridState} = this.state;
     if (!this.grid || !(p === 'fromOnGridReady' || gridReady)) return;
     if (p === 'fromOnGridReady') {
-      if (gridState) {
+      if (gridState && gridState.columnState) {
         this.grid.columnApi.setColumnState(gridState.columnState);
         return;
       }
@@ -300,8 +300,7 @@ export class AgTable extends Component {
     if (!_.isEmpty(filterModel)) newGridState.filterModel = filterModel;
 
     if (_.isEqual(gridState, newGridState)) return;
-    console.error("saving appstate");
-    AppState.saveState(`agGrid.${id}`, newGridState);
+    myrouter.addParam(`agGrid.${id}`, newGridState);
     this.setState({gridState: newGridState});
     this.grid.columnApi.setColumnState(newGridState.columnState);
     //if (gridState.sortModel && gridState.sortModel.length) this.grid.api.setSortModel(gridState.sortModel);
@@ -352,8 +351,10 @@ export class AgTable extends Component {
   render() {
     const {coldefs, data=[], height=400, width='100%'} = this.props;
     let autoColDefs = data.length && 
-          _.keys(data[0]).map(col=>{
-            return {  headerName: col,
+          _.keys(data[0])
+           .filter(col => _.isNumber(data[0][col]) || _.isString(data[0][col]))
+           .map(col=>{
+              return {  headerName: col,
                       colId: col,
                       valueGetter: ({data:d}={}) => d[col],
             }});

@@ -25,7 +25,6 @@ import _ from '../supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
 //import Rx from 'rxjs/Rx';
 
-//import * as AppState from '../AppState';
 import { commify, getRefsFunc, sendRefsToParent} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
 //require('./stylesheets/Vocab.css');

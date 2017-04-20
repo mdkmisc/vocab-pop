@@ -26,7 +26,6 @@ import { //Nav, Navbar, Modal,
 //import Inspector from 'react-json-inspector';
 //import 'react-json-inspector/json-inspector.css';
 import _ from '../supergroup';
-import * as AppState from '../AppState';
 import Form from "react-jsonschema-form";
 
 //const log = (type) => console.log.bind(console, type);
@@ -37,10 +36,13 @@ export class FilterForm extends Component {
     };
   }
   componentDidMount() {
-    this.filtSub = AppState.subscribeState(
+    throw new Error("FIX")
+    /*
+    this.filtSub = AxxppState.subscribeState(
       'filters', filters => {
         this.setState({filters});
       });
+    */
   }
   componentWillUnmount() {
     this.filtSub && this.filtSub.unsubscribe();
@@ -59,7 +61,10 @@ export class FilterForm extends Component {
             </Form>
   }
   formChange({edit,errors,formData}) {
-    AppState.saveState('filters', formData);
+    throw new Error("FIX")
+    /*
+    AxxppState.sOLDaveState('filters', formData);
+    */
   }
   formError({edit,errors,formData}) {
     console.error(errors);

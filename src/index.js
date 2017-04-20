@@ -6,13 +6,11 @@ import Rx from 'rxjs/Rx'
 var d3 = require('d3');
 var $ = require('jquery');
 import _ from './supergroup'
-import * as AppState from './AppState'
 if (DEBUG) {
   window.Rx = Rx
   window.d3 = d3
   window.$ = $
   window._ = _
-  window.AppState = AppState
 }
 import React, { Component } from 'react'
 import { render } from 'react-dom'

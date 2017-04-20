@@ -39,8 +39,6 @@ import {Glyphicon, Row, Col,
           Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap';
 
-import * as AppState from '../../AppState'
-
 class ConceptViewForm extends Component {
   constructor(props) {
     super(props)
@@ -183,7 +181,7 @@ class ConceptViewForm extends Component {
                                 e.preventDefault();
                                 let concept_text = e.target.value;
                                 if (conceptInfo && conceptInfo.concept_text === concept_text) return;
-                                AppState.saveState({conceptInfoUserChange:'user:concept_text', concept_text, });
+                                AxxppState.saveState({conceptInfoUserChange:'user:concept_text', concept_text, });
                                 this.setState({concept_text,
                                               valid_concept_text: 'loading',
                                               conceptSet: this.conceptTextFetch(concept_text)});

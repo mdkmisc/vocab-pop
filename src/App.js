@@ -34,7 +34,6 @@ import 'react-json-inspector/json-inspector.css'
 import {FilterForm} from './components/Filters'
 import Draggable from 'react-draggable'; // The default
 import config from './config'
-import * as AppState from './AppState'
 var $ = require('jquery')
 import Spinner from 'react-spinner'
 //require('react-spinner/react-spinner.css')
@@ -42,7 +41,6 @@ import Spinner from 'react-spinner'
 //import './App.css'
 import './stylesheets/VocabPop.css'
 import _ from './supergroup'
-//import * as AppState from './AppState'
 //import * as util from './ohdsi.util'
 import muiThemeable from 'material-ui/styles/muiThemeable';
 import getMuiTheme from 'material-ui/styles/getMuiTheme';
@@ -98,10 +96,6 @@ const routes = [
   { path: '/',
     exact: true,
     main: ()=><ComponentWrapper InnerComp={VocabPop} />,
-  },
-  { path: '/appstate',
-    sidebar: Sidebar,
-    main: ()=><ComponentWrapper InnerComp={AppState.AppState} />,
   },
   { path: '/conceptview',
     main: ()=><ConceptView/>,

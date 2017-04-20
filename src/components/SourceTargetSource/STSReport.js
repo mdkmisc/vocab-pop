@@ -43,7 +43,6 @@ import {commify, updateReason,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from '../../utils'
-//import * as AppState from '../../AppState'
 
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
@@ -267,8 +266,9 @@ const Relationship = props => {
   )
 }
 const countText = conceptInfo => {
+  let recs = Array.isArray(conceptInfo) ? conceptInfo : []
   let tblcols = _.supergroup( 
-                    _.flatten((conceptInfo||[]).map(d=>d.rcs)),
+                    _.flatten(recs.map(d=>d.rcs)),
                     ['tbl','col'])
   return (tblcols
             .leafNodes()

@@ -17,7 +17,6 @@ Copyright 2016 Sigfried Gold
 //import * as util from '../utils';
 import React, { Component } from 'react';
 import Rx from 'rxjs/Rx';
-import * as AppState from '../AppState';
 //import * as VocabPop from './VocabPop';
 import _ from '../supergroup'; // in global space anyway...
 import {commify, cloneToComponentDescendants, firstLastEvent} from '../utils';
@@ -47,7 +46,9 @@ export class DataWrapper extends Component { // should replace ConceptData
   requestStream(opts, apiParams) {
     let {apiCall, statePath, transformResults=d=>d} = opts;
     statePath = statePath || apiCall;
-    let stream = new AppState.ApiStream({
+    throw new Error("FIX")
+    /*
+    let stream = new AxxppState.ApiStream({
         apiCall,
         params:apiParams,
         meta: { statePath },
@@ -60,6 +61,7 @@ export class DataWrapper extends Component { // should replace ConceptData
     }
     this.streamsToWatch[statePath] = stream;
     stream.subscribe(this.newData);
+    */
   }
   componentDidMount() {
     this.newData = this.newData.bind(this);
@@ -182,7 +184,9 @@ export default class ConceptData extends Component {
                     domain_id, dataRequested,
                     targetOrSource,
                   }; 
-    let stream = new AppState.ApiStream({
+    throw new Error("FIX")
+    /*
+    let stream = new AxxppState.ApiStream({
         apiCall, apiModel: 'cdms',
         params,
         meta: { statePath },
@@ -195,6 +199,7 @@ export default class ConceptData extends Component {
     }
     this.streamsToWatch[statePath] = stream;
     stream.subscribe(this.newData.bind(this));
+    */
   }
   componentDidUpdate(prevProps, prevState) {
     // should only need to fetch data if filters change, right?

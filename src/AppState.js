@@ -23,6 +23,8 @@ var readyPromise = ready.toPromise();
 
 const throwError = () => {
   console.error("not using anymore")
+  throw new Error("stop")
+  console.log({reduxStore, reduxHistory, state: reduxStore.getState()})
   debugger
 }
 

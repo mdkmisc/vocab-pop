@@ -5,44 +5,73 @@ import myrouter from '../myrouter'
 
 import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
-import {actionTypes, apiStore} from '../apiGlobal'
+import {apiActions, apiStore, Api} from '../apiGlobal'
 
-export const VOCABULARY_ID = 'VOCABULARY_ID'
-export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
-const { API_CALL,
-        API_CALL_NEW,
-        API_CALL_STARTED,
-        API_CALL_FULFILLED,
-        API_CALL_REJECTED,
-        CACHE_DIRTY,
-                      } = actionTypes
-
-export const apiNames = {
-  VOCABULARIES: 'vocabularies',
-  CONCEPT_CODES: 'codeSearchToCids',
-  CONCEPT_INFO: 'conceptInfo',
-}
-const {
-  VOCABULARIES,
-  CONCEPT_CODES,
-  CONCEPT_INFO, } = apiNames
-
+let vocabularies = new Api({
+  apiName: 'vocabularies',
+})
+let codeSearchToCids = new Api({
+  apiName: 'codeSearchToCids',
+  defaultResults: [],
+})
 // selector stuff
 const conceptInfo = createSelector(
   apiStore,
   apiStore => {
-    return apiStore('concept_info')
+    return apiStore('conceptInfo')
   }
 )
-export const apiSelectors = {
+const conceptInfoWithMatchStrs = createSelector(
+  apiStore,
+  apiStore => {
+    let concepts = apiStore('conceptInfo')
+    if (!concepts)
+      return []
+    let matchedIds = apiStore('codeSearchToCids')
+    //console.log({concepts,matchedIds})
+    return concepts.map(
+      concept => {
+        let match = matchedIds.find(m=>m.concept_id===concept.concept_id) || {}
+        let {match_strs=[]} = match
+        return { ...concept,
+                match_strs:match_strs.join(', ')}
+      }
+    )
+  }
+)
+const selectors = {
   conceptInfo,
+  conceptInfoWithMatchStrs,
 }
+let conceptInfoApi = new Api({
+  apiName: 'conceptInfo',
+  defaultResults: [],
+  paramValidation: ({concept_ids}) => ( 
+      Array.isArray(concept_ids) && concept_ids.length),
+  paramTransform: (concept_ids) => {
+    return ({concept_ids: concept_ids.map(d=>d.concept_id)})
+  },
+  selectors,
+})
+export const apis = {
+  vocabularies,
+  codeSearchToCids,
+  conceptInfo: conceptInfoApi,
+}
+
+export const VOCABULARY_ID = 'VOCABULARY_ID'
+export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
+
+export const epics = [
+  //formValToRoute,
+]
 export const sourceConceptCodesSG = createSelector(
-  conceptInfo,
+  conceptInfoWithMatchStrs,
   conceptInfo => {
     //console.log('computing selector for', conceptInfo)
+    let recs = Array.isArray(conceptInfo) ? conceptInfo : []
     let scc = 
-      _.supergroup( (conceptInfo||[]), 
+      _.supergroup( recs,
                     d=>`${d.concept_code}: ${d.concept_name}`,
                     { dimName:'source' }
                   )
@@ -77,8 +106,9 @@ export const sourceRecordCountsSG = createSelector(
 export const sourceRelationshipsSG = createSelector(
   conceptInfo,
   conceptInfo => {
+    let recs = Array.isArray(conceptInfo) ? conceptInfo : []
     let sr = _.supergroup( 
-                      _.flatten((conceptInfo||[]).map(d=>d.rels)),
+                      _.flatten(recs.map(d=>d.rels)),
                       ['relationship',])
 
     sr.addLevel(d=>`${d.vocabulary_id} / ${d.domain_id} / ${d.concept_class_id}`,{dimName:'vocab/domain/class'})
@@ -127,98 +157,29 @@ export const relcounts = createSelector(
 */
 
 /* eslint-disable */
-
-const vocabReducer = (state={conceptInfo:[]}, action) => {
-  let vocabParams = _.pick(action.payload,
-    ['vocabulary_id','concept_code_search_pattern'])
-  //console.log({...state, ...vocabParams})
-  return {...state, ...vocabParams}
-  /*
-  switch (action.type) {
-    case '@@redux-form/UPDATE_SYNC_ERRORS':
-      debugger
-      return state
-    case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN:
-    case VOCABULARY_ID:
-    case CONCEPT_CODE_SEARCH_PATTERN:
-      return {
-        ...state,
-        ...action.payload,
-        fromSrcErr: undefined,
-        conceptInfo:undefined,
-        isPending: true,
-      }
-    case LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED:
-      return {
-        ...state,
-        matchedConceptIds: action.payload,
-        isPending: false,
-      }
-    case LOAD_CONCEPTS:
-      return {
-        ...state,
-        ...action.payload,
-        conceptInfo:undefined,
-        isPending: true,
-      }
-    case LOAD_CONCEPTS_FULFILLED:
-      let conceptInfo = action.payload
-      if (typeof conceptInfo === 'string') debugger
-      if (conceptInfo.length) {
-        return { ...state, isPending: false, conceptInfo, }
-      }
-      return { ...state, isPending: false, conceptInfo:undefined,
-        fromSrcErr: {statusText: 'No matching concepts'},
-        };
-    case LOAD_CONCEPTS_REJECTED:
-      return {
-        ...state,
-        isPending: false,
-        fromSrcErr: action.payload,
-      };
-    case LOAD_VOCABS:
-      return {
-        ...state,
-        vocabErr: undefined,
-        vocabPending: true,
-        values: action.payload,
-        vocabs:undefined,
-      };
-    case LOAD_VOCABS_FULFILLED:
-      let vocabs = action.payload
-      return { ...state, vocabs,
-                vocabPending: false }
-    case LOAD_VOCABS_REJECTED:
-      return {
-        ...state, vocabPending: false,
-        vocabErr: action.payload,
-      };
-    default:
-      //console.log('unhandled action', action)
-      return state
-  }
-  */
+/*
+const initialVocabState = {
+  conceptInfo: [],
+  vocabulary_id: undefined, // should be elsewhere?
+  concept_code_search_pattern: '',
 }
-export default vocabReducer
-
-export const apiReducer = (state={},action)=>state
-
+*/
+/*
 const formValToRoute = (action$,store) =>
   action$
     .ofType('@@redux-form/CHANGE')
     .filter(action => action.meta.form === 'concept_codes_form')
-    .do(action=>console.error({action,state:store.getState()}))
+    //.do(action=>console.error({action,state:store.getState()}))
     //.do(action=>api.examineAction({from:'formValToRoute epic',action$, action, store}))
     /*
     .do(action=>store.dispatch({
         type: LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN, 
         payload: { [action.meta.field]: action.payload },
     }))
-    */
+    * /
     .map(
-      action => ({  type: myrouter.QUERY_PARAMS, 
+      action => ({  type: myrouter.QUERY_ADD, 
                     payload: { [action.meta.field]: action.payload }}))
-/*
 const fetchConceptIdsForCodes = (action$, store) =>
   action$.ofType(CONCEPT_CODE_SEARCH_PATTERN)
     //.do(action=>api.examineAction({from:'fetchConceptIdsForCodes epic',action$, action, store}))
@@ -227,7 +188,7 @@ const fetchConceptIdsForCodes = (action$, store) =>
       let state = store.getState().vocab
       let params = _.pick(Object.assign({}, state, payload), 
                           ['vocabulary_id','concept_code_search_pattern'])
-      let ajax = new AppState.ApiStream({
+      let ajax = new AxxppState.ApiStream({
                       apiName: 'codeSearchToCids',
                       params,
                       wantRxAjax: true,
@@ -260,19 +221,19 @@ const fetchConceptIdsForCodes = (action$, store) =>
     })
   //browserHistory.push({vocabulary_id, concept_code_search_pattern})
 */
+    /*
 const fetchConceptInfo = (action$, store) =>
   action$
     .ofType("FIX LATER")
     //.do(action=>api.examineAction({from:'fetchConceptInfo',action$, action, store}))
     .map(action=>({type:"LOAD_CONCEPTS?", payload:{action}}))
-    /*
     .ofType(LOAD_CONCEPTS, LOAD_FROM_CONCEPT_CODE_SEARCH_PATTERN_FULFILLED)
     .switchMap(
-      action => {
+      actionk=> {
         let codes = action.payload
         if (!codes || codes.length === 0) return []
         return (
-          new AppState.ApiStream({
+          new AxxppState.ApiStream({
             apiName: 'conceptInfo',
             params: {concept_ids:`[${codes.map(d=>d.concept_id)}]`},
               //Object.assign({},params,{concept_ids:[codes.map(d=>d.concept_id)]}),
@@ -301,7 +262,7 @@ const fetchConceptInfo = (action$, store) =>
                       { type: LOAD_CONCEPTS_FULFILLED, 
                         payload: info})
                         /* this is the second level stuff:
-                new AppState.ApiStream({
+                new AxxppState.ApiStream({
                   apiName: 'conceptInfo',
                   params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
                   wantRxAjax: true,
@@ -338,7 +299,7 @@ const fetchConceptInfo = (action$, store) =>
 /*
                         ,
                   Rx.Observable.of(
-                      { type: myrouter.QUERY_PARAMS, 
+                      { type: myrouter.QUERY_ADD, 
                         payload: params})
 * /
               )
@@ -355,50 +316,3 @@ const fetchConceptInfo = (action$, store) =>
       )
     })
       */
-
-const XXloadVocabsEpic =
-  (action$) => (
-    action$.ofType(LOAD_VOCABS)
-      .mergeMap(action => {
-        let stream = new AppState.ApiStream({
-          apiName: 'vocabularies',
-          params: {},
-          wantRxAjax: true,
-        })
-        return (
-          stream.rxAjax
-            .map(response => loadedVocabsFulfilled(response))
-            .catch(error => {
-              return Rx.Observable.of({
-                        type: LOAD_VOCABS_REJECTED,
-                        payload: error.xhr.response,
-                        error: true
-                      })
-            }))
-      })
-  )
-
-export const apiActionCreators = {
-  loadVocabularies: (storeName) => ({
-      type:API_CALL, 
-      payload: { apiName: VOCABULARIES,
-                storeName: storeName || 'vocabularies' }
-    }),
-  loadConceptIds: (params, storeName) => ({
-      type:API_CALL,
-      payload: { apiName: CONCEPT_CODES, params,
-                storeName: storeName || 'concept_ids' }
-  }),
-  loadConceptInfo: (concept_ids=[], storeName) => ({
-      type:API_CALL,
-      payload: {apiName: CONCEPT_INFO, 
-                params: {
-                  concept_ids:
-                  `[${concept_ids.map(d=>d.concept_id)}]`},
-//params: {concept_ids:`[${_.flatten(info.map(i=>i.rels)).map(r=>r.concept_id)}]`},
-                storeName: storeName || 'concept_info' }
-  }),
-}
-export const epics = [
-  formValToRoute,
-]

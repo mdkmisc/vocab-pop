@@ -1,10 +1,13 @@
 /* eslint-disable */
 import _ from '../../supergroup'; // in global space anyway...
 import * as utils from '../../utils'
+import myrouter from '../../redux/myrouter'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
+import * as api from '../../redux/api'
+import * as apiGlobal from '../../redux/apiGlobal'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -26,18 +29,49 @@ import {
   TextField,
   Toggle
 } from 'redux-form-material-ui'
+import {AgTable, } from '../TableStuff'
 
 export class ConceptCodesLookupForm extends Component {
   constructor(props) {
     super(props)
     this.state = {};
   }
+
+
+
+  componentDidMount() {
+    const {loadVocabularies, loadConceptIds,
+          vocabulary_id, concept_code_search_pattern, } = this.props
+    loadVocabularies()
+    if (vocabulary_id && concept_code_search_pattern) {
+      loadConceptIds({params:{vocabulary_id,concept_code_search_pattern}})
+    }
+  }
+  componentDidUpdate(prevProps) {
+    const {loadConceptIds, vocabulary_id, concept_code_search_pattern, 
+            concept_ids, loadConceptInfo} = this.props
+    if (vocabulary_id !== prevProps.vocabulary_id ||
+        concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
+      loadConceptIds({params:{vocabulary_id,concept_code_search_pattern}})
+    }
+    if (concept_ids !== prevProps.concept_ids) {
+      if (Array.isArray(concept_ids) && concept_ids.length) {
+        loadConceptInfo({params:concept_ids})
+      }
+    }
+  }
+
+
+
+
+
   render() {
     let { 
             handleSubmit, load, pristine, reset, submitting,
               dispatch, // initialValues, 
               isPending, err, vocabularies,
-              concept_code_search_pattern, vocabulary_id, 
+              concept_code_search_pattern, vocabulary_id,
+              conceptInfo,
           } = this.props
     let errMsg = ''
     if (isPending) {
@@ -68,6 +102,7 @@ export class ConceptCodesLookupForm extends Component {
                           flexWrap: 'wrap',
                         },
     }
+    /*
     let patterns = concept_code_search_pattern.split(/[\s,]+/)
     if (_.uniq(patterns).length !== patterns.length) {
       console.error("didn't expect duplicate patterns")
@@ -80,6 +115,7 @@ export class ConceptCodesLookupForm extends Component {
                       {code}
                     </span>
                   </Chip>))
+    */
     return (
         <form >
           <div>
@@ -109,6 +145,11 @@ export class ConceptCodesLookupForm extends Component {
                       component={SelectField}
                       fullWidth={true}
                       floatingLabelText="vocabulary_id"
+                      onChange={
+                        (evt,newVal,oldVal) => 
+                          dispatch(
+                            {type: myrouter.QUERY_ADD, 
+                             payload:{vocabulary_id:newVal}})}
                 >
                   {
                     (vocabularies||[]).map(
@@ -134,16 +175,29 @@ export class ConceptCodesLookupForm extends Component {
                       fullWidth={true}
                       errorText={errMsg}
                       label="Concept Codes"
+                      onChange={
+                        (evt,newVal,oldVal) => 
+                          dispatch(
+                            {type: myrouter.QUERY_ADD, 
+                             payload:{concept_code_search_pattern:newVal}})}
                   />
 
 
 
+                  {/*
                           <div style={styles.wrapper}>
                             {chips}
                           </div>
+                  */}
 
 
 
+              </CardText>
+              <CardText expandable={true}>
+                  <AgTable data={conceptInfo||[]}
+                          //key={JSON.stringify(conceptInfo||[]) /* force remount on new data */}
+                          width={"100%"} height={250}
+                          id="src_target_recs" />
               </CardText>
             </Card>
           </div>
@@ -158,16 +212,47 @@ ConceptCodesLookupForm = reduxForm({
   //onChange: function(fields, dispatch, props) { },
 })(ConceptCodesLookupForm)
 
-const selector = formValueSelector('concept_codes_form')
+let {vocabularies, codeSearchToCids, conceptInfo}
+      = apiGlobal.Apis.apis
+let loaders = {
+  loadVocabularies: vocabularies.loader,
+  loadConceptIds: codeSearchToCids.loader,
+  loadConceptInfo: conceptInfo.loader,
+}
+const mapDispatchToProps = 
+  dispatch => bindActionCreators(loaders, dispatch)
+
 ConceptCodesLookupForm = connect(
-  (state, ownProps) => { // mapStateToProps
+  (state, props) => { // mapStateToProps
+    const { 
+      vocabulary_id, 
+      concept_code_search_pattern, 
+    } = myrouter.getQuery()
+    const apiSelectors =  _.mapValues(api.selectors, 
+                                      selector=>selector(state,props))
     let newState = {
+      ...loaders,
       initialValues: {
-        ...ownProps,
+        //...props,
+        vocabulary_id, concept_code_search_pattern,
       },
+      vocabulary_id, concept_code_search_pattern,
+      // ...apis, // why here?
+      vocabularies: apiSelectors.apiStore('vocabularies'),
+      concept_ids: apiSelectors.apiStore('codeSearchToCids'),
+      conceptInfo: conceptInfo.selectors.conceptInfoWithMatchStrs(state),
       formRef: state.form.concept_codes_form,
     }
     return newState
   }, 
-  { vocab }
+  mapDispatchToProps,
+  /*
+  (stateProps, dispatchProps, ownProps) => {
+    let urlProps = 
+    _.pick(myrouter.getQuery(),
+        ['vocabulary_id','concept_code_search_pattern'])
+    console.log({stateProps, dispatchProps, ownProps, urlProps})
+    return urlProps
+  }
+  */
 )(ConceptCodesLookupForm)

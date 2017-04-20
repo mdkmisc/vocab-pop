@@ -9,14 +9,6 @@ import apiReducer, * as api from './api'
 import * as rrRouter from 'react-router-redux'
 //console.log(rrRouter)
 
-import vocab, * as voc from './ducks/vocab'
-/*
-import vocab, {
-          formValToRoute, fetchConceptInfo,
-          fetchConceptIdsForCodes, loadVocabsEpic
-        } from './ducks/vocab'
-*/
-
 import React, { Component } from 'react'
 import { createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { combineEpics } from 'redux-observable';
@@ -27,7 +19,6 @@ export default function configureStore(initialState = {}) {
 
   const rootReducer = combineReducers({
     api: apiReducer,
-    vocab,
     form: formReducer,
     routeState: myrouter.routeState,
     //reduxRouterReducer: myrouter.reduxRouterReducer,
@@ -35,7 +26,6 @@ export default function configureStore(initialState = {}) {
 
   const rootEpic = combineEpics(
     ...api.epics,
-    ...voc.epics,
   );
   const epicMiddleware = createEpicMiddleware(rootEpic);
 
@@ -47,7 +37,7 @@ export default function configureStore(initialState = {}) {
   const composeEnhancers = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__ || compose;
   const store = createStore(
     rootReducer,
-    { vocab: myrouter.getQuery() },
+    // {initialState}
     composeEnhancers(
       applyMiddleware(...middleware)
     )

@@ -40,9 +40,6 @@ import {commify, updateReason,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from '../../utils'
-//import * as AppState from '../../AppState'
-
-
 
 class XXConceptViewForm extends Component {
   constructor(props) {

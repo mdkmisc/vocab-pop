@@ -411,8 +411,8 @@ export class ComponentWrapper extends Component {
     console.log('ComponentWrapper', this.props, this.state);
     const {w:width, h:height} = this.state
     /*
-    let {filters} = AppState.getState()
-    let domain_id = AppState.getState('domain_id')
+    let {filters} = AxxppState.getState()
+    let domain_id = AxxppState.getState('domain_id')
     let props = {
       filters, domain_id,
     }

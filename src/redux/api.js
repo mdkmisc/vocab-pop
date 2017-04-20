@@ -5,7 +5,7 @@ const DEBUG = true;
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
 
-import {actionTypes, apiStore} from './apiGlobal'
+import {apiActions, apiStore, Apis,} from './apiGlobal'
 import config from '../config'
 import * as util from '../utils';
 import React, { Component } from 'react';
@@ -21,50 +21,53 @@ var ALLOW_CACHING = [
 ];
 
 import * as vocab from './ducks/vocab'
+
+/* added themselves...not good, but don't fix now
+const _apis = {
+  ...vocab.apis,
+}
+*/
+export const apis = Apis
+
+export const loader = apiName => apis.get(apiName).loader
+
 // some of the structure came from
 // https://github.com/reactjs/redux/tree/master/examples/tree-view
-
-const { API_CALL,
-        API_CALL_NEW,
-        API_CALL_STARTED,
-        API_CALL_FULFILLED,
-        API_CALL_REJECTED,
-        CACHE_DIRTY,
-                      } = actionTypes
-
-export const actionCreators = {
-  ...vocab.apiActionCreators,
-}
-export const apiNames = {
-  ...vocab.apiNames,
-}
 
 // reducers
 const apiCall = (state={}, action) => {
   let {type, payload={}, meta={}, error } = action
+  const {apiName, paramValidation} = payload
   //const { expectedParamKeys, url, results, status, err } = meta.apiObj
-  if (typeof payload.apiName === 'undefined') return state
+  if (typeof apiName === 'undefined') return state
   let status = type
   payload = {...payload, status}
   //examineAction({from:'apiCall',action, state})
   switch (type) {
-    case API_CALL:
-      return {...payload, pending: false, status: API_CALL_NEW}
-    case API_CALL_STARTED:
+    case apiActions.API_CALL:
+      return {...payload, pending: false, status: apiActions.API_CALL_NEW}
+    case apiActions.API_CALL_STARTED:
       return {...payload, pending: true}
-    case API_CALL_FULFILLED: // payload should have results
+    case apiActions.API_CALL_FULFILLED: // payload should have results
       return {...payload, pending: false}
-    case API_CALL_REJECTED:
+    case apiActions.API_CALL_REJECTED:
       return {...payload, pending: false, error: true}
   }
   return state
 }
 const apiCalls = (state={}, action) => {
   let {type, payload={}, meta={}, error } = action
-  if (type.match('^'+API_CALL)) {
-    let {apiName, params, url} = payload
+  if (type.match('^'+apiActions.API_CALL)) {
+    let {apiName, params, url, paramValidation} = payload
+    let {apiObj={}} = meta
+    if (apiObj.paramTransform)
+      params = apiObj.paramTransform(params)
     let callState = state[url]
-    if (type === API_CALL) {
+    if (type === apiActions.API_CALL) {
+      if (paramValidation && !paramValidation(params)) {
+        console.error('invalid params', params)
+        return state
+      }
       url = apiGetUrl(apiName, params)
       payload = {...payload, url}
       action = {...action, payload}
@@ -79,7 +82,8 @@ const apiCalls = (state={}, action) => {
 }
 const currentResults = (state={}, action) => {
   let {type, payload={}, meta={}, error } = action
-  if (type === API_CALL_FULFILLED) {
+  if (type === apiActions.API_CALL_FULFILLED) {
+    console.log(action)
     let {apiName, storeName, url} = payload
     return {...state,
             [storeName]: url}
@@ -97,35 +101,41 @@ export const examineAction = o => {
 }
 
 const apiCallEpic = (action$, store) => (
-  action$.ofType(API_CALL)
+  action$.ofType(apiActions.API_CALL)
     //.do(action=>examineAction({from:'apiCallEpic start',action$, action, state:store.getState()}))
     .mergeMap(action=>{
       let {payload} = action
       let {apiName, params} = payload
+      let api = Apis.get(apiName)
+      if (api.paramTransform)
+        params = api.paramTransform(params)
       let url = apiGetUrl(apiName, params)
       payload = store.getState().api.apiCalls[url]
+      console.log(url.slice(0,90))
       action = {...action, payload}
+      //console.log({params, url,action})
       let ajax = 
         checkCacheDirty(store)
                 //.do(response=>examineAction({from:'apiCallEpic after start',action$, response, action, state:store.getState()}))
           .switchMap(dirty=>{
+            console.log(url.slice(0,90))
             return cachedAjax(url)
           })
           .switchMap(results=>{
             payload = {...payload, results}
             action = {...action, payload, 
-                        type:API_CALL_FULFILLED}
+                        type:apiActions.API_CALL_FULFILLED}
             return Rx.Observable.of(action)
           })
           .catch(err => {
             payload = {...payload, err}
             action = {...action, payload, 
-                        type:API_CALL_REJECTED}
+                        type:apiActions.API_CALL_REJECTED}
             return Rx.Observable.of(action)
           })
 
       //payload = {...payload, ajax}
-      action = {...action, payload, type:API_CALL_STARTED}
+      action = {...action, payload, type:apiActions.API_CALL_STARTED}
       //examineAction({from:'starting',action, state:store.getState()})
       store.dispatch(action)
       return ajax
@@ -137,6 +147,7 @@ export const epics = [
 ]
 
 export const cachedAjax = url => {
+  console.log(url.slice(0,90))
   if (isCached(url)) return Rx.Observable.of(util.storageGet(url))
   let rxAjax = Rx.Observable.ajax.getJSON(url)
   rxAjax.subscribe(results => {
@@ -171,7 +182,7 @@ const checkCacheDirty = (store) => { // make sure to use this
         }
       })
       .mergeMap(results => {
-        return Rx.Observable.of({type: CACHE_DIRTY, payload: {[Date()]:results}})
+        return Rx.Observable.of({type: apiActions.CACHE_DIRTY, payload: {[Date()]:results}})
       })
   )
 }
@@ -209,22 +220,18 @@ const apiGetUrl = (apiName, params) =>
   getUrl(`${baseUrl()}/${apiName}`, 
          {...params, cdmSchema, resultsSchema})
 
-const getUrl = (url, params={}) => {
+const getUrl = (path, params={}) => {
   //console.error('in getUrl', {url,params})
-  if (_.isEmpty(params)) return url
-  return encodeURI(
-    url + '?' + _.keys(params) 
-                  .sort()
-                  .map( key => `${key}=${params[key]}`)
-                  .join('&')
-  )
+  if (_.isEmpty(params)) return path
+
+  let qs = myrouter.toqs(params)
+  let url = `${path}?${qs}`
+  //console.log({url,params})
+  return url
 }
 
 export default combineReducers({ 
+  //apis: (state,props) => apis, // so apiGlobal can get to it without circular dependency
   apiCalls, 
   currentResults, 
-  vocab: vocab.apiReducer,
-  //...selectors,
-  // probably don't need exporting
-  //cdmSchema, resultsSchema, baseUrl, apiGetUrl, 
 })

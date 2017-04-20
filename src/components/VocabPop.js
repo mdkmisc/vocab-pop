@@ -52,7 +52,6 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from '../utils';
 
-import * as AppState from '../AppState';
 
 
 export default class VocabPop extends Component {
@@ -312,7 +311,7 @@ class InfoBitDisp extends Component {
     if (linkParams) {
       /*
                 <Nav>
-                  <NavItem //onClick={ ()=>AppState.saveStateN({ change:{ ...linkParams, conceptInfoUserChange:'user:concept_id' }, deepMerge: false, }) } >
+                  <NavItem //onClick={ ()=>AxxppState.saveStateN({ change:{ ...linkParams, conceptInfoUserChange:'user:concept_id' }, deepMerge: false, }) } >
                   </NavItem>
                 </Nav>
       */
@@ -348,7 +347,9 @@ class CDMRecs extends Component {
       return;
     let params = { tbl, col, concept_id: ci.get('concept_id','fail'), };
     if (_.isNumber(rowLimit)) params.rowLimit = rowLimit;
-    let stream = new AppState.ApiStream({
+    throw new Error("FIX")
+    /*
+    let stream = new AxxppState.ApiStream({
       apiCall: 'cdmRecs',
       params,
       //meta: { statePath },
@@ -358,6 +359,7 @@ class CDMRecs extends Component {
       this.setState({recs});
     });
     this.setState({stream, tbl, col});
+    */
   }
   render() {
     const {recs} = this.state;
