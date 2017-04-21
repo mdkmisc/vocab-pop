@@ -24,7 +24,7 @@ import React, { Component } from 'react'
 import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 
-import * as duck from '../../redux/ducks/vocab'
+import * as vocab from '../../redux/ducks/vocab'
 
 import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
@@ -91,12 +91,11 @@ export class STSReport extends Component {
   dataToState() {
   }
   render() {
+    console.error('window.stsprops', this.props)
+    window.stsprops = this.props
     let {vocabulary_id, concept_code_search_pattern, conceptInfo=[], 
-          sourceRelationshipsSG,
-          sourceConceptCodesSG,
           sortableRowHeight=50,
     } = this.props
-    //console.log({sourceConceptCodesSG, sourceRelationshipsSG})
     const cardStyle = {
       padding: '0px',
     };
@@ -107,91 +106,122 @@ export class STSReport extends Component {
                 showExpandableButton={true}
                 title="Source Target Source Report"
               />
-
-
               <CardText expandable={true} >
-                <List >
-                  <ListItem
-                    innerDivStyle={{
-                      paddingTop: 3,
-                      paddingBottom: 3,
-                      //padding: 0,
-                      //padding: '10px 10px 10px 78px',
-                    }}
-                    primaryText={
-                      <p style={{color:muiTheme.palette.primary1Color}}>
-                        {`${sourceConceptCodesSG.length} ${vocabulary_id} concepts 
-                            matching ${concept_code_search_pattern}`
-                        }
-                      </p>
-                    }
-                    secondaryText={ countText(conceptInfo) }
-                    secondaryTextLines={2}
-                    initiallyOpen	={false}
-                    nestedItems={
-                      sourceConceptCodesSG.map((d,i) => {
-                        return          <ListItem key={i} 
-                                          innerDivStyle={{
-                                            padding: '10px 10px 0px 78px',
-                                            marginBottom: 0,
-                                          }}
-                                          leftAvatar={
-                                            <Avatar
-                                              color={muiTheme.palette.alternateTextColor}
-                                              backgroundColor={muiTheme.palette.primary1Color}
-                                              size={30}
-                                              style={{width:'auto',
-                                                      textAlign: 'right',
-                                                      margin:'-4px 10px 10px -10px',
-                                                      padding:5,}}
-                                            >
-                                              {d.toString().split(/:/)[0]} 
-                                            </Avatar>
-                                          }
-                                          containerElement={
-                                            <span style={{
-                                              margin: 0,
-                                              padding:0,
-                                            }} />
-                                          }
-                                          primaryText={
-                                            <span style={{
-                                              margin: 0,
-                                              padding:0,
-                                            }}>
-                                              {d.toString().split(/: /)[1]}
-                                            </span>
-                                          }
-                                          secondaryText={ countText(d.records) }
-                                          secondaryTextLines={2}
-                                          initiallyOpen={true}
-                                        />
-                        })
-                      }
-                  />
-                  {/*
-                    sourceRelationshipsSG.map(
-                    (rel,i) => {
-                      //let rrels = duck.sourceRelationshipsSG({vocab:{conceptInfo:rel.records}})
-                      let rrels = duck.sourceRelationshipsSG({vocab:{conceptInfo:rel.records}})
-                      //debugger
-                      return (
-                        <div key={i} style={{marginLeft:15}} >
-                          <Relationship key={i} rel={rel} />
-                          <div style={{marginLeft:15}} >
-                            {rrels.map(
-                              (rrel,j) => <Relationship key={j} rel={rrel} />
-                            )}
-                          </div>
-                        </div>
-                      )
-                    }
-                  )
-                  */}
-                </List>
+                <ConceptList 
+                  concepts={conceptInfo}
+                  title={`${conceptInfo.length} ${vocabulary_id} concepts 
+                            matching ${concept_code_search_pattern}` }
+                />
               </CardText>
             </Card>
   }
+}
+const ConceptItem = props => {  // just for source concepts at moment
+  let { title, subtitle, avatarText, concept, } = props
+  title = title || concept.concept_name
+  subtitle = subtitle || countText([concept])
+  return (
+    <ListItem
+      innerDivStyle={{
+        padding: '10px 10px 0px 78px',
+        marginBottom: 0,
+      }}
+      leftAvatar={
+        avatarText ?  <Avatar
+                        color={muiTheme.palette.alternateTextColor}
+                        backgroundColor={muiTheme.palette.primary1Color}
+                        size={30}
+                        style={{width:'auto',
+                                textAlign: 'right',
+                                margin:'-4px 10px 10px -10px',
+                                padding:5,}}
+                      >
+                        {avatarText}
+                      </Avatar>
+                  : undefined
+      }
+      containerElement={
+        <span style={{
+          margin: 0,
+          padding:0,
+        }} />
+      }
+      primaryText={
+        <span style={{
+          margin: 0,
+          padding:0,
+        }}>
+          {title}
+        </span>
+      }
+      secondaryText={ subtitle }
+      secondaryTextLines={2}
+      initiallyOpen={true}
+    />
+  )
+}
+const ConceptList = props => {
+  let { title, concepts, } = props
+  let byRel = vocab.plainSelectors.groupByRelationshipType({concepts})
+  return (
+    <List >
+      <ListItem
+        innerDivStyle={{
+          paddingTop: 3,
+          paddingBottom: 3,
+          //padding: 0,
+          //padding: '10px 10px 10px 78px',
+        }}
+        primaryText={
+          <p style={{color:muiTheme.palette.primary1Color}}>
+            {title}
+          </p> }
+        secondaryText={ countText(concepts) }
+        secondaryTextLines={2}
+        initiallyOpen	={false}
+        nestedItems={ concepts.map((concept,i) => 
+                        <ConceptItem  key={i}
+                                      avatarText={concept.concept_code}
+                                      concept={concept} 
+                        />)}
+      />
+      {
+        byRel.map( (rel,i) => {
+          return <ListItem
+                    key={i}
+                    innerDivStyle={{
+                      paddingTop: 13,
+                      paddingBottom: 3,
+                    }}
+                    primaryText={
+                      <p style={{color:muiTheme.palette.primary1Color}}>
+                        {rel.toString()} {rel.records.length}
+                      </p> 
+                    }
+                    //secondaryText={ countText(concepts) }
+                    //secondaryTextLines={2}
+                    initiallyOpen	={true}
+                    nestedItems={ byRel.map((concept,i) => 
+                        <ConceptItem concept={concept} key={i} />)}
+                  />
+          /*
+          debugger
+          let rrels = vocab.sourceRelationshipsSG({vocab:{conceptInfo:rel.records}})
+          return (
+            <div key={i} style={{marginLeft:15}} >
+              <Relationship key={i} rel={rel} />
+              <div style={{marginLeft:15}} >
+                {rrels.map(
+                  (rrel,j) => <Relationship key={j} rel={rrel} />
+                )}
+              </div>
+            </div>
+          )
+          */
+        })
+      }
+    </List>
+  )
 }
 
 const Relationship = props => {
@@ -209,7 +239,7 @@ const Relationship = props => {
         </p>}
         initiallyOpen	={true}
         nestedItems={
-          rel.getChildren().map((vocab,i) => {
+          rel.getChildren().map((voc,i) => {
             return          <ListItem key={i} 
                               innerDivStyle={{
                                 //padding: '10px 10px 10px 78px',
@@ -223,14 +253,14 @@ const Relationship = props => {
                                   margin: 0,
                                   padding:0,
                                 }}>
-                                  {vocab.toString()}
+                                  {voc.toString()}
                                 </span>
                               }
-                              secondaryText={ countText(vocab.records) }
+                              secondaryText={ countText(voc.records) }
                               secondaryTextLines={2}
                               initiallyOpen={false}
                               nestedItems={
-                                vocab.getChildren(true)
+                                voc.getChildren(true)
                                   .sort((a,b)=>d3.ascending(a.concept_code,b.concept_code))
                                   .map(
                                     (concept,i) => <ListItem
@@ -265,18 +295,34 @@ const Relationship = props => {
     />
   )
 }
-const countText = conceptInfo => {
-  let recs = Array.isArray(conceptInfo) ? conceptInfo : []
-  let tblcols = _.supergroup( 
-                    _.flatten(recs.map(d=>d.rcs)),
-                    ['tbl','col'])
-  return (tblcols
-            .leafNodes()
-            .map((col,k) => <div key={k}>
-                              <span style={{fontWeight:'bold'}}>{col.namePath('-->')}</span>:{' '}
-                              {['rc','src','crc'].map(
-                                  c=>`${c}: ${col.aggregate(_.sum,c)}`
-                                ).join(', ')
+const countText = (concepts) => {
+  let colCnts = vocab.plainSelectors.getCounts({concepts})
+  return (
+    colCnts.map(
+      ({cnts,col,colName,tblName},i) => {
+        let msg = ''
+        if (_.keys(cnts).length > 1) {
+          msg = 'Only expect a single count type per concept!'
+        }
+        let cntTxt = _.map(cnts, (cnt,type) =>
+                          <span key={type} >
+                            <span style={{fontWeight:'bold'}}>
+                              {commify(cnt)} {' '}
+                              { // PUT PRETTY NAME CONVERSION SOMEWHERE BETTER
+                                ({rc:'Standard',
+                                  src:'Non-standard (source)',
+                                  crc:'Classification (should only appear in descendant counts)'
+                                })[type]
                               }
-                            </div>))
+                            </span>{' '}
+                            records
+                          </span>
+                      )
+        return (<div key={i}>
+                  {cntTxt} in {' '}
+                  <span style={{fontWeight:'bold'}}>{colName} </span>
+                  column of
+                  <span style={{fontWeight:'bold'}}> {tblName} </span>
+                </div>)
+      }))
 }

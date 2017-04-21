@@ -6,7 +6,6 @@ import { connect } from 'react-redux'
 import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
-import * as api from '../../redux/api'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
@@ -54,8 +53,6 @@ class SourceTargetSourceForm extends Component {
           history, dispatch,
           conceptInfo, err, vocabularies, isPending, vocabPending,
           vocabulary_id, concept_code_search_pattern, 
-          sourceConceptCodesSG,
-          sourceRelationshipsSG,
         } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
@@ -63,8 +60,6 @@ class SourceTargetSourceForm extends Component {
         <ConceptCodesLookupForm {...formParams} />
         <STSReport  vocabulary_id={vocabulary_id} 
                     concept_code_search_pattern={concept_code_search_pattern} 
-                    sourceConceptCodesSG={sourceConceptCodesSG}
-                    sourceRelationshipsSG={sourceRelationshipsSG}
                     conceptInfo={conceptInfo} 
                     />
       </div>
@@ -77,42 +72,13 @@ SourceTargetSourceForm = reduxForm({
   form: 'stsform',  // a unique identifier for this form
 })(SourceTargetSourceForm)
 
-// https://github.com/reactjs/reselect#sharing-selectors-with-props-across-multiple-components
-/* too complicated.... this is probably just to improve memoization, i might not care
-const makeMapStateToProps = () => {
-  console.log(api)
-  /*
-  const apiSelectors = 
-    _.mapValues(
-      api.selectors, 
-      () => {
-        console.log(arguments)
-        debugger
-      })
-  * /
-  let apiStore = api.selectors.apiStore()
-  const mapStateToProps = (state,props) => {
-    const { vocabulary_id, concept_code_search_pattern, } = state.vocab
-    let newProps = {  apiStore: apiStore(state,props),
-                      //vocabulary_id, concept_code_search_pattern,
-                      //formRef: state.form.stsform,
-                   }
-    console.log(newProps)
-    return newProps
-  }
-  return mapStateToProps
-}
-*/
-
-
 SourceTargetSourceForm = connect(
   //makeMapStateToProps,
   (state, props) => { // mapStateToProps
     const selector = formValueSelector('concept_codes_form')
     const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
     return {
-      sourceConceptCodesSG: vocab.sourceConceptCodesSG(state),
-      sourceRelationshipsSG: vocab.sourceRelationshipsSG(state),
+      conceptInfo: vocab.conceptInfo(state),
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
     }

@@ -230,8 +230,7 @@ ConceptCodesLookupForm = connect(
       vocabulary_id, 
       concept_code_search_pattern, 
     } = myrouter.getQuery()
-    const apiSelectors =  _.mapValues(api.selectors, 
-                                      selector=>selector(state,props))
+    const apiStore = apiGlobal.apiStore(state,props)
     let newState = {
       ...loaders,
       initialValues: {
@@ -240,8 +239,8 @@ ConceptCodesLookupForm = connect(
       },
       vocabulary_id, concept_code_search_pattern,
       // ...apis, // why here?
-      vocabularies: apiSelectors.apiStore('vocabularies'),
-      concept_ids: apiSelectors.apiStore('codeSearchToCids'),
+      vocabularies: apiStore('vocabularies'),
+      concept_ids: apiStore('codeSearchToCids'),
       conceptInfo: conceptInfo.selectors.conceptInfoWithMatchStrs(state),
       formRef: state.form.concept_codes_form,
     }

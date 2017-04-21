@@ -5,7 +5,7 @@ const DEBUG = true;
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
 
-import {apiActions, apiStore, Apis,} from './apiGlobal'
+import {apiActions, Apis,} from './apiGlobal'
 import config from '../config'
 import * as util from '../utils';
 import React, { Component } from 'react';
@@ -76,14 +76,15 @@ const apiCalls = (state={}, action) => {
     callState = apiCall(callState, action)
     //examineAction({from:'apiCalls',action, url, state})
     return { ...state, [url]: callState, 
-              currentResults:currentResults(callState,action) }
+              //currentResults:currentResults(callState,action) 
+           }
   }
   return state
 }
 const currentResults = (state={}, action) => {
   let {type, payload={}, meta={}, error } = action
   if (type === apiActions.API_CALL_FULFILLED) {
-    console.log(action)
+    //console.log(action)
     let {apiName, storeName, url} = payload
     return {...state,
             [storeName]: url}
@@ -111,14 +112,14 @@ const apiCallEpic = (action$, store) => (
         params = api.paramTransform(params)
       let url = apiGetUrl(apiName, params)
       payload = store.getState().api.apiCalls[url]
-      console.log(url.slice(0,90))
+      //console.log(url.slice(0,90))
       action = {...action, payload}
       //console.log({params, url,action})
       let ajax = 
         checkCacheDirty(store)
                 //.do(response=>examineAction({from:'apiCallEpic after start',action$, response, action, state:store.getState()}))
           .switchMap(dirty=>{
-            console.log(url.slice(0,90))
+            //console.log(url.slice(0,90))
             return cachedAjax(url)
           })
           .switchMap(results=>{
@@ -147,7 +148,7 @@ export const epics = [
 ]
 
 export const cachedAjax = url => {
-  console.log(url.slice(0,90))
+  //console.log(url.slice(0,90))
   if (isCached(url)) return Rx.Observable.of(util.storageGet(url))
   let rxAjax = Rx.Observable.ajax.getJSON(url)
   rxAjax.subscribe(results => {
@@ -203,12 +204,6 @@ const apiResults =
                 )
   )
 */
-export const selectors = {
-  apiStore,
-}
-
-
-
 
 
 // these are 'selectors' but they don't need to be
