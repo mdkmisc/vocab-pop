@@ -14,8 +14,8 @@ import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 //import yaml from 'js-yaml';
 
-var reduxStore = {};
-var reduxHistory = {};
+import myrouter from '../myrouter'
+
 var {cdmSchema,resultsSchema,apiRoot,apiModel} = {} // nothing till init
 var {apiCall, apiGetUrl, apiCallBaseUrl} = {} // nothing till init
 var ready = new Rx.Subject();
@@ -24,7 +24,6 @@ var readyPromise = ready.toPromise();
 const throwError = () => {
   console.error("not using anymore")
   throw new Error("stop")
-  console.log({reduxStore, reduxHistory, state: reduxStore.getState()})
   debugger
 }
 
@@ -42,52 +41,6 @@ var stateChange = throwError
 export function deleteState(key) {
   throwError()
   //saveState(key, null, true);
-}
-export function saveStateN({change, key, val, deleteProp, deepMerge=true}) {
-  throwError()
-  //if (!ready.isStopped) throw {err: "not ready!"}
-  //router.history.push(router.history.location.pathname, {[key]:val});
-  //return router.history.location; // just to return something...this is all broken
-
-  /*
-  // need a named param version but don't want to break the original
-  if (!change) {
-    if (typeof val === 'undefined') {
-      // no key/val, received entire change object
-      change = _.merge({}, key);
-    } else {
-      change = _.set({}, key, val);
-    }
-  }
-  let loc = OLD_GLOBAL_HISTORY.getCurrentLocation();
-  //let oldState = qs.parse(loc.search.substr(1),{ strictNullHandling: true });
-  let oldState = myqs.parse(loc.search.substr(1));
-  let newState = deepMerge
-                    ? _.merge({}, oldState, change)
-                    : Object.assign({}, oldState, change);
-
-  if (typeof stateChange.getValue() === 'undefined') {
-    stateChange.next(newState); // make sure there's an initial state change
-    return;
-  }
-
-  if (deleteProp) {
-    let tmp = _.cloneDeep(oldState);
-    _.unset(tmp, key);
-    newState = tmp;
-  }
-  if (_.isEqual(oldState, newState)) return;
-
-  //console.log('AppState.saveState', key, val, newState);
-  let newLoc = {  pathname: loc.pathname, 
-                  //search: '?' + qs.stringify(newState,{ strictNullHandling: true }),
-                  search: '?' + myqs.stringify(newState),
-                };
-  //console.log('new location', newLoc);
-  OLD_GLOBAL_HISTORY.push(newLoc);
-  //console.log('state change', change);
-  stateChange.next(change);
-  */
 }
 export function saveState(key, val, deleteProp) {
   throwError()
