@@ -19,7 +19,6 @@ Copyright 2016 Sigfried Gold
 
 import React, { Component, PropTypes } from 'react'
 import { connect, Provider, } from 'react-redux'
-//import { ConnectedRouter, } from 'react-router-redux'
 
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 //import { withRouter } from 'react-router'
@@ -92,6 +91,49 @@ import VocabPop from './components/VocabPop'
 import ConceptView from './components/ConceptView'
           /* Search, DrugContainer, Tables, */
 
+class App extends Component {
+  constructor(props) {
+    super(props)
+  }
+  render() {
+    const {store, myrouter, } = this.props
+    /*  was working fine...trying ConnectedRouter
+              <myrouter.MyRouter>
+                <Route path='/' component={Home} />
+              </myrouter.MyRouter>
+    */
+    return (
+          <Provider store={store}>
+            <MuiThemeProvider muiTheme={muiTheme}>
+              <myrouter.ConnectedRouter history={myrouter.history}>
+                <Route path='/' component={Home} />
+              </myrouter.ConnectedRouter>
+            </MuiThemeProvider>
+          </Provider>
+    )
+  }
+  static propTypes = {
+    store: PropTypes.object.isRequired,
+    myrouter: PropTypes.object.isRequired
+  }
+}
+function mapStateToProps(state) {
+  //console.log("could be mapping state to props", state);
+  return { 
+  }
+}
+function mapDispatchToProps(dispatch) {
+  //console.log("could be mapping dispatch to props", dispatch);
+  return { }
+}
+//const AppWithRouter = withRouter(Routes)
+//export default AppWithRouter
+export default connect(
+  mapStateToProps,
+  mapDispatchToProps
+)(App)
+
+
 const routes = [
   { path: '/',
     exact: true,
@@ -121,8 +163,16 @@ const routes = [
     */
   },
 ]
+    /*
+    let route = <Route path={router.history.location.path} exact={false} 
+                  component={ComponentWrapper} compName="SourceTargetSource" 
+                />
+    //let route = <RouteWithSubRoutes component={Home} {...routeDesc} />
+              //<ConnectedRouter history={history}>
+              //</ConnectedRouter>
+    */
 const defaultRoute = routes[0];
-class App extends Component {
+class Home extends Component {
   constructor(props: any) {
     // from https://github.com/callemall/material-ui/issues/5208
     injectTapEventPlugin();
@@ -282,56 +332,6 @@ const RouteWithSubRoutes = (route) => (
     <route.component {...route} {...props} routes={route.routes}/>
   )}/>
 )
-class Routes extends Component {
-  constructor(props) {
-    super(props)
-    //console.log(props)
-  }
-  render() {
-    const {store, myrouter, } = this.props
-    //const {main, sidebar} = this.props
-    //let NavBar = DefaultNavBar
-                      //<Nav > </Nav>
-    /*
-    let route = <Route path={router.history.location.path} exact={false} 
-                  component={ComponentWrapper} compName="SourceTargetSource" 
-                />
-    */
-    //let route = <RouteWithSubRoutes component={App} {...routeDesc} />
-              //<ConnectedRouter history={history}>
-              //</ConnectedRouter>
-    return (
-          <Provider store={store}>
-            <MuiThemeProvider muiTheme={muiTheme}>
-              <myrouter.MyRouter>
-                <Route path='/' component={App} />
-              </myrouter.MyRouter>
-            </MuiThemeProvider>
-          </Provider>
-    )
-  }
-  static propTypes = {
-    store: PropTypes.object.isRequired,
-    myrouter: PropTypes.object.isRequired
-  }
-}
-function mapStateToProps(state) {
-  //console.log("could be mapping state to props", state);
-  return { 
-  }
-}
-function mapDispatchToProps(dispatch) {
-  //console.log("could be mapping dispatch to props", dispatch);
-  return { }
-}
-//const AppWithRouter = withRouter(Routes)
-//export default AppWithRouter
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(Routes)
-
-
 
 class DraggableWrapper extends Component {
   constructor(props) {

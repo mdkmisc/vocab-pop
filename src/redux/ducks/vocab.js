@@ -178,7 +178,7 @@ const formValToRoute = (action$,store) =>
     }))
     * /
     .map(
-      action => ({  type: myrouter.QUERY_ADD, 
+      action => ({  type: myrouter.QxUERY_ADD, 
                     payload: { [action.meta.field]: action.payload }}))
 const fetchConceptIdsForCodes = (action$, store) =>
   action$.ofType(CONCEPT_CODE_SEARCH_PATTERN)
@@ -299,7 +299,7 @@ const fetchConceptInfo = (action$, store) =>
 /*
                         ,
                   Rx.Observable.of(
-                      { type: myrouter.QUERY_ADD, 
+                      { type: myrouter.QxUERY_ADD, 
                         payload: params})
 * /
               )

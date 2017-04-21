@@ -146,10 +146,11 @@ export class ConceptCodesLookupForm extends Component {
                       fullWidth={true}
                       floatingLabelText="vocabulary_id"
                       onChange={
-                        (evt,newVal,oldVal) => 
-                          dispatch(
-                            {type: myrouter.QUERY_ADD, 
-                             payload:{vocabulary_id:newVal}})}
+                        (evt,newVal,oldVal) => dispatch(
+                          myrouter
+                           .addParams({
+                             vocabulary_id:newVal})
+                        )}
                 >
                   {
                     (vocabularies||[]).map(
@@ -176,10 +177,11 @@ export class ConceptCodesLookupForm extends Component {
                       errorText={errMsg}
                       label="Concept Codes"
                       onChange={
-                        (evt,newVal,oldVal) => 
-                          dispatch(
-                            {type: myrouter.QUERY_ADD, 
-                             payload:{concept_code_search_pattern:newVal}})}
+                        (evt,newVal,oldVal) => dispatch(
+                          myrouter
+                           .addParams({
+                             concept_code_search_pattern:newVal})
+                        )}
                   />
 
 
