@@ -162,7 +162,7 @@ const ConceptItem = props => {  // just for source concepts at moment
 }
 const ConceptList = props => {
   let { title, concepts, } = props
-  let byRel = vocab.plainSelectors.groupByRelationshipType({concepts})
+  let rels = _.supergroup( _.flatten(concepts.map(d=>d.rels)), 'relationship')
   return (
     <List >
       <ListItem
@@ -186,7 +186,7 @@ const ConceptList = props => {
                         />)}
       />
       {
-        byRel.map( (rel,i) => {
+        rels.map( (rel,i) => {
           return <ListItem
                     key={i}
                     innerDivStyle={{
@@ -201,8 +201,12 @@ const ConceptList = props => {
                     //secondaryText={ countText(concepts) }
                     //secondaryTextLines={2}
                     initiallyOpen	={true}
-                    nestedItems={ byRel.map((concept,i) => 
-                        <ConceptItem concept={concept} key={i} />)}
+                    /*
+                    nestedItems={ 
+                      rels.getChildren()
+                        .map((group,j) => 
+                        <ConceptItem concept={concept} key={j} />)}
+                    */
                   />
           /*
           debugger
@@ -221,78 +225,6 @@ const ConceptList = props => {
         })
       }
     </List>
-  )
-}
-
-const Relationship = props => {
-  let {rel, } = props
-  return (
-    <ListItem
-      innerDivStyle={{
-        paddingTop: 3,
-        paddingBottom: 3,
-        //padding: '10px 10px 10px 78px',
-      }}
-      primaryText={
-        <p style={{color:muiTheme.palette.primary1Color}}>
-          {rel.toString()}
-        </p>}
-        initiallyOpen	={true}
-        nestedItems={
-          rel.getChildren().map((voc,i) => {
-            return          <ListItem key={i} 
-                              innerDivStyle={{
-                                //padding: '10px 10px 10px 78px',
-                              }}
-                              containerElement={
-                                <span style={{
-                                }} />
-                              }
-                              primaryText={
-                                <span style={{
-                                  margin: 0,
-                                  padding:0,
-                                }}>
-                                  {voc.toString()}
-                                </span>
-                              }
-                              secondaryText={ countText(voc.records) }
-                              secondaryTextLines={2}
-                              initiallyOpen={false}
-                              nestedItems={
-                                voc.getChildren(true)
-                                  .sort((a,b)=>d3.ascending(a.concept_code,b.concept_code))
-                                  .map(
-                                    (concept,i) => <ListItem
-                                                key={i}
-                                                primaryText={rel.toString()}
-                                                primaryText={
-                                                  <span style={{
-                                                  }}>
-                                                    {concept.concept_name}
-                                                  </span>
-                                                }
-                                                secondaryText={ countText(concept.records) }
-                                                secondaryTextLines={2}
-                                                leftAvatar={
-                                                  <Avatar
-                                                    color={muiTheme.palette.alternateTextColor}
-                                                    backgroundColor={muiTheme.palette.primary1Color}
-                                                    size={30}
-                                                    style={{width:'auto',
-                                                            textAlign: 'right',
-                                                            margin:'-4px 10px 10px -10px',
-                                                            padding:5,}}
-                                                  >
-                                                    {concept.concept_code}
-                                                  </Avatar>
-                                                }
-                                                initiallyOpen={true}
-                                              />)}
-                            />
-            })
-          }
-    />
   )
 }
 const countText = (concepts) => {

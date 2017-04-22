@@ -61,6 +61,7 @@ export const getCounts = ({concepts, ...opts}) => {
       }))
   return cnts
 }
+/*
 export const groupByRelationshipType = ({concepts=[], ...opts}) => {
   let sr = _.supergroup( 
                     _.flatten(concepts.map(d=>d.rels)),
@@ -82,9 +83,10 @@ export const groupByRelationshipType = ({concepts=[], ...opts}) => {
   })
   return sr
 }
+*/
 
 export const plainSelectors = {
-  getCounts, groupByRelationshipType,
+  getCounts, 
 }
 let conceptInfoApi = new Api({
   apiName: 'conceptInfo',

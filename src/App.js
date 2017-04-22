@@ -85,7 +85,7 @@ window.muiTheme = muiTheme
 import injectTapEventPlugin from 'react-tap-event-plugin';
 
 
-import {commify, updateReason, setToAncestorSize, getAncestorHeight, ComponentWrapper} from './utils'
+import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from './utils'
 import SourceTargetSource from './components/SourceTargetSource'
 import VocabPop from './components/VocabPop'
 import ConceptView from './components/ConceptView'
@@ -137,7 +137,7 @@ export default connect(
 const routes = [
   { path: '/',
     exact: true,
-    main: ()=><ComponentWrapper InnerComp={VocabPop} />,
+    main: ()=><VocabPop/>,
   },
   { path: '/conceptview',
     main: ()=><ConceptView/>,
@@ -149,23 +149,12 @@ const routes = [
     main: (a,b,c,d,e,f) => {
       //console.log("did i get anything in sts main?", {a,b,c,d,e,f});
       return <SourceTargetSource/>
-      return (<ComponentWrapper >
-                <SourceTargetSource />
-              </ComponentWrapper>)
     },
-    /*
-    main: ComponentWrapper,
-    main: props => {
-      console.error("sourcetargetsource ROUTE", props)
-      return <pre>{JSON.stringify(props,null,2)}</pre>
-    },
-    InnerComp: SourceTargetSource,
-    */
   },
 ]
     /*
     let route = <Route path={router.history.location.path} exact={false} 
-                  component={ComponentWrapper} compName="SourceTargetSource" 
+                  component={SourceTargetSource} 
                 />
     //let route = <RouteWithSubRoutes component={Home} {...routeDesc} />
               //<ConnectedRouter history={history}>

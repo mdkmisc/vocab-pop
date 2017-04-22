@@ -36,9 +36,6 @@ export class ConceptCodesLookupForm extends Component {
     super(props)
     this.state = {};
   }
-
-
-
   componentDidMount() {
     const {loadVocabularies, loadConceptIds,
           vocabulary_id, concept_code_search_pattern, } = this.props
@@ -60,11 +57,6 @@ export class ConceptCodesLookupForm extends Component {
       }
     }
   }
-
-
-
-
-
   render() {
     let { 
             handleSubmit, load, pristine, reset, submitting,
@@ -183,21 +175,10 @@ export class ConceptCodesLookupForm extends Component {
                              concept_code_search_pattern:newVal})
                         )}
                   />
-
-
-
-                  {/*
-                          <div style={styles.wrapper}>
-                            {chips}
-                          </div>
-                  */}
-
-
-
+                  {/* <div style={styles.wrapper}> {chips} </div> */}
               </CardText>
               <CardText expandable={true}>
                   <AgTable data={conceptInfo||[]}
-                          //key={JSON.stringify(conceptInfo||[]) /* force remount on new data */}
                           width={"100%"} height={250}
                           id="src_target_recs" />
               </CardText>
@@ -207,11 +188,9 @@ export class ConceptCodesLookupForm extends Component {
     )
   }
 }
-
 // Decorate with reduxForm(). It will read the initialValues prop provided by connect()
 ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
-  //onChange: function(fields, dispatch, props) { },
 })(ConceptCodesLookupForm)
 
 let {vocabularies, codeSearchToCids, conceptInfo}
@@ -226,19 +205,13 @@ const mapDispatchToProps =
 
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
-    const { 
-      vocabulary_id, 
-      concept_code_search_pattern, 
-    } = myrouter.getQuery()
+    const { vocabulary_id, concept_code_search_pattern, 
+          } = myrouter.getQuery()
     const apiStore = apiGlobal.apiStore(state,props)
     let newState = {
       ...loaders,
-      initialValues: {
-        //...props,
-        vocabulary_id, concept_code_search_pattern,
-      },
+      initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
-      // ...apis, // why here?
       vocabularies: apiStore('vocabularies'),
       concept_ids: apiStore('codeSearchToCids'),
       conceptInfo: conceptInfo.selectors.conceptInfoWithMatchStrs(state),

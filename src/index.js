@@ -1,6 +1,5 @@
 /* eslint-disable */
-// debugger not clearing from before reload
-console.clear()
+console.clear() // debugger not clearing from before reload
 const DEBUG=true
 import Rx from 'rxjs/Rx'
 var d3 = require('d3');
@@ -17,15 +16,11 @@ import { render } from 'react-dom'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap/dist/css/bootstrap-theme.css'
 import App from './App'
-
 import configureStore from './redux/configureStore'
 const {store, myrouter} = configureStore()
-
 render(
   <App store={store} myrouter={myrouter}  />,
   document.getElementById('root')
 )
-
 // was trying storybook
 //export default ( () => <App store={store} myrouter={myrouter}  />)
-

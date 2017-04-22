@@ -9,41 +9,6 @@ import {  ConnectedRouter,
 import createHistory from 'history/createBrowserHistory'
 const history = createHistory()
 const middleware = routerMiddleware(history)
-/*
-class MyRouter extends Component {
-  static history() {
-    return myhistory
-  }
-  render() {
-    let {children} = this.props
-
-//import { BrowserRouter as ReactBrowserRouter, } from 'react-router-dom'
-
-    return <ReactBrowserRouter history={this.constructor.history()}>
-              {children}
-           </ReactBrowserRouter>
-  }
-}
-*/
-
-/*
-const routeState  = (state, action) => {
-  //console.log('routeState REDUCER', {state, action})
-  switch (action.type) {
-    /* should be selector, not reducer
-    case 'get':
-      debugger
-      return _.get(state, action.path) // probably wrong
-    * /
-    case QUERY_ADD:
-      return addParams(action.payload)
-    case QUERY_DELETE:
-      return deleteParams(action.payload)
-    default:
-      return state
-  }
-}
-*/
 
 var stableStringify = require('json-stable-stringify');
 const qs = require('query-string');

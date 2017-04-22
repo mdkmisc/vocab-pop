@@ -75,9 +75,7 @@ const apiCalls = (state={}, action) => {
     }
     callState = apiCall(callState, action)
     //examineAction({from:'apiCalls',action, url, state})
-    return { ...state, [url]: callState, 
-              //currentResults:currentResults(callState,action) 
-           }
+    return { ...state, [url]: callState, }
   }
   return state
 }
