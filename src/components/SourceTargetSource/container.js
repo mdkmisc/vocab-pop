@@ -1,6 +1,7 @@
 /* eslint-disable */
 import _ from '../../supergroup'; // in global space anyway...
 import * as utils from '../../utils'
+import * as apiGlobal from '../../redux/apiGlobal'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import { browserHistory, } from 'react-router'
@@ -83,5 +84,10 @@ SourceTargetSourceForm = connect(
       formRef: state.form.stsform,
     }
   },
+  // mapDispatchToProps:
+  dispatch => bindActionCreators(
+    { 
+      conceptInfoLoader: apiGlobal.Apis.apis.conceptInfo.loader,
+    }, dispatch)
 )(SourceTargetSourceForm)
 export default SourceTargetSourceForm

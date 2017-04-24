@@ -73,12 +73,18 @@ export const deleteParams = (params) => {
   //myrouter.history.push({search: myqs.stringify(query)})
   return reduxPush({search: myqs.stringify(query)})
 }
+export const setPathname = pathname => {
+  if (pathname === myrouter.history.location.pathname)
+    return {type:'EMPTY'}
+  return reduxPush(myrouter.history.createHref({...myrouter.history.location,pathname}))
+}
 
 // toss out everything and see what sticks
 var myrouter = {
   getQuery,
   addParams,
   addParam,
+  setPathname,
   fromqs: myqs.parse,
   toqs: myqs.stringify,
   deleteParams,

@@ -18,7 +18,9 @@ Copyright 2016 Sigfried Gold
 
 
 import React, { Component, PropTypes } from 'react'
-import { connect, Provider, } from 'react-redux'
+import { connect } from 'react-redux'
+import { bindActionCreators } from 'redux'
+import myrouter from './redux/myrouter'
 
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 //import { withRouter } from 'react-router'
@@ -41,10 +43,12 @@ import Spinner from 'react-spinner'
 import './stylesheets/VocabPop.css'
 import _ from './supergroup'
 //import * as util from './ohdsi.util'
-import muiThemeable from 'material-ui/styles/muiThemeable';
-import getMuiTheme from 'material-ui/styles/getMuiTheme';
-//import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme';
-import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+// from: https://github.com/callemall/material-ui/issues/5208
+
+import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from './utils'
+import SourceTargetSource from './components/SourceTargetSource'
+import VocabPop from './components/VocabPop'
+
 
 import {
   teal500, teal700,
@@ -57,90 +61,12 @@ import {
 } from 'material-ui/styles/colors';
 import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator';
 import * as colorManipulator from 'material-ui/utils/colorManipulator';
-window.colorManipulator = colorManipulator
-const muiTheme = getMuiTheme({
-  palette: {
-    primary1Color: teal500,
-    primary2Color: teal700,
-    primary3Color: grey400,
-    accent1Color: greenA200,
-    accent2Color: grey100,
-    accent3Color: grey500,
-    textColor: darkBlack,
-    alternateTextColor: white,
-    canvasColor: white,
-    borderColor: grey300,
-    //disabledColor: fade(darkBlack, 0.3),
-    pickerHeaderColor: teal500,
-    //clockCircleColor: fade(darkBlack, 0.07),
-    shadowColor: fullBlack,
-  },
-  appBar: {
-    height: 50,
-  },
-});
-window.muiTheme = muiTheme
-
-// from: https://github.com/callemall/material-ui/issues/5208
-import injectTapEventPlugin from 'react-tap-event-plugin';
-
-
-import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from './utils'
-import SourceTargetSource from './components/SourceTargetSource'
-import VocabPop from './components/VocabPop'
-import ConceptView from './components/ConceptView'
-          /* Search, DrugContainer, Tables, */
-
-class App extends Component {
-  constructor(props) {
-    super(props)
-  }
-  render() {
-    const {store, myrouter, } = this.props
-    /*  was working fine...trying ConnectedRouter
-              <myrouter.MyRouter>
-                <Route path='/' component={Home} />
-              </myrouter.MyRouter>
-    */
-    return (
-          <Provider store={store}>
-            <MuiThemeProvider muiTheme={muiTheme}>
-              <myrouter.ConnectedRouter history={myrouter.history}>
-                <Route path='/' component={Home} />
-              </myrouter.ConnectedRouter>
-            </MuiThemeProvider>
-          </Provider>
-    )
-  }
-  static propTypes = {
-    store: PropTypes.object.isRequired,
-    myrouter: PropTypes.object.isRequired
-  }
-}
-function mapStateToProps(state) {
-  //console.log("could be mapping state to props", state);
-  return { 
-  }
-}
-function mapDispatchToProps(dispatch) {
-  //console.log("could be mapping dispatch to props", dispatch);
-  return { }
-}
-//const AppWithRouter = withRouter(Routes)
-//export default AppWithRouter
-export default connect(
-  mapStateToProps,
-  mapDispatchToProps
-)(App)
 
 
 const routes = [
   { path: '/',
     exact: true,
     main: ()=><VocabPop/>,
-  },
-  { path: '/conceptview',
-    main: ()=><ConceptView/>,
   },
   { path: '/concepts',
     main: ()=><VocabPop/>,
@@ -152,33 +78,98 @@ const routes = [
     },
   },
 ]
+
+// from MUI APPBAR EXAMPLE http://www.material-ui.com/#/components/app-bar
+import AppBar from 'material-ui/AppBar';
+import IconButton from 'material-ui/IconButton';
+import IconMenu from 'material-ui/IconMenu';
+import Menu from 'material-ui/Menu';
+
+import MenuItem from 'material-ui/MenuItem';
+import FlatButton from 'material-ui/FlatButton';
+import RaisedButton from 'material-ui/RaisedButton';
+import Toggle from 'material-ui/Toggle';
+import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
+import NavigationClose from 'material-ui/svg-icons/navigation/close';
+import NavigationMenu from 'material-ui/svg-icons/navigation/menu';
+import {Tabs, Tab} from 'material-ui/Tabs';
+
+const styles = {
+  headline: {
+    fontSize: 24,
+    paddingTop: 16,
+    marginBottom: 12,
+    fontWeight: 400,
+  },
+  appBarTitle: {
+    cursor: 'pointer',
+  },
+};
     /*
     let route = <Route path={router.history.location.path} exact={false} 
                   component={SourceTargetSource} 
                 />
-    //let route = <RouteWithSubRoutes component={Home} {...routeDesc} />
+    //let route = <RouteWithSubRoutes component={App} {...routeDesc} />
               //<ConnectedRouter history={history}>
               //</ConnectedRouter>
     */
 const defaultRoute = routes[0];
-class Home extends Component {
+//export default class App extends Component {
+export class App extends Component {
   constructor(props: any) {
-    // from https://github.com/callemall/material-ui/issues/5208
-    injectTapEventPlugin();
     super(props);
   }
-  
   render() {
-    const {match, store, location, pathname, } = this.props
+    const {match, store, location, pathname, nav, } = this.props
     let route = _.find(routes, r=>r.path===location.pathname)
                 || defaultRoute
     let sidebar = route.sidebar 
                     ? <Route {...route} component={route.sidebar} />
                     : null
     let main = <Route {...route} component={route.main} />;
-    /*
-                  <VVAppBar />
-    */
+    return (
+      <div>
+        <AppBar
+          //style={{ border: '3px solid purple', flexGrow:0}}
+          iconElementLeft={ <IconMenu
+                              //{...props}
+                              iconButtonElement={
+                                <IconButton><NavigationMenu /></IconButton>
+                              }
+                              targetOrigin={{horizontal: 'right', vertical: 'top'}}
+                              anchorOrigin={{horizontal: 'right', vertical: 'top'}}
+                            >
+                              <MenuItem primaryText="config?" />
+                              <MenuItem primaryText="stuff?" />
+                            </IconMenu>
+                          }
+          title={<span style={styles.appBarTitle}>Vocab-Viz</span>}
+          onTitleTouchTap={()=>nav('/')}
+          /*
+        
+          title={ <div>
+                    <FlatButton label="Vocab-Viz" secondary={true} />
+                    <FlatButton label="Primary" primary={true} style={{}} />
+                  </div>}
+                  */
+          //iconElementLeft={<IconButton><NavigationClose /></IconButton>}
+          //iconElementRight={this.state.logged ? <Logged /> : <Login />}
+        >
+          <div style={{ 
+                        //border: '3px solid pink', 
+                        flexGrow:2
+          }} >
+                    <Tabs>
+                      <Tab  label="STS Report"
+                          data-route="/sourcetargetsource"
+                          onActive={tab=>nav(tab.props['data-route'])} >
+                      </Tab>
+                    </Tabs>
+          </div>
+        </AppBar>
+        {main}
+      </div>
+    )
     return (
               <div className="vocab-app flex-box" style={{backgroundColor: brown50}}>
                 <div className="flex-content-height container" style={{width:'100%'}} >
@@ -192,6 +183,7 @@ class Home extends Component {
                       <Navbar.Toggle />
                     </Navbar.Header>
                     <Navbar.Collapse>
+                        {/*
                         <NavLink to={locPath(location, '/concepts',{params:{domain_id:'Drug'}})}>
                           <Button >Drug</Button>
                         </NavLink>
@@ -201,9 +193,7 @@ class Home extends Component {
                         <NavLink to={locPath(location, '/concepts',{clear:['domain_id']})}>
                           <Button >All Domains</Button>
                         </NavLink>
-                        <NavLink to={locPath(location, '/conceptview',{clear:['domain_id']})}>
-                          <Button >Concept View</Button>
-                        </NavLink>
+                        */}
                         <NavLink to='/sourcetargetsource'>
                           <Button >Source-&gt;Target-&gt;Source</Button>
                         </NavLink>
@@ -222,6 +212,7 @@ class Home extends Component {
                         </Col>
                       </Row>
                     : <Row>
+                        <h3>main stuff</h3>
                         <Col xs={12} md={12} className="should-be-12">
                           {main}
                         </Col>
@@ -232,76 +223,21 @@ class Home extends Component {
     )
   }
 }
-
-import AppBar from 'material-ui/AppBar';
-import IconButton from 'material-ui/IconButton';
-import IconMenu from 'material-ui/IconMenu';
-import MenuItem from 'material-ui/MenuItem';
-import FlatButton from 'material-ui/FlatButton';
-import Toggle from 'material-ui/Toggle';
-import MoreVertIcon from 'material-ui/svg-icons/navigation/more-vert';
-import NavigationClose from 'material-ui/svg-icons/navigation/close';
-
-class Login extends Component {
-  static muiName = 'FlatButton';
-
-  render() {
-    return (
-      <FlatButton {...this.props} label="Login" />
-    );
-  }
+function nav(pathname) {
+  return myrouter.setPathname(pathname)
 }
-
-const Logged = (props) => (
-  <IconMenu
-    {...props}
-    iconButtonElement={
-      <IconButton><MoreVertIcon /></IconButton>
+App = connect(
+  (state, props) => { // mapStateToProps
+    return {
     }
-    targetOrigin={{horizontal: 'right', vertical: 'top'}}
-    anchorOrigin={{horizontal: 'right', vertical: 'top'}}
-  >
-    <MenuItem primaryText="Refresh" />
-    <MenuItem primaryText="Help" />
-    <MenuItem primaryText="Sign out" />
-  </IconMenu>
-);
-
-Logged.muiName = 'IconMenu';
-
-/**
- * This example is taking advantage of the composability of the `AppBar`
- * to render different components depending on the application state.
- * http://www.material-ui.com/#/components/app-bar
- */
-class VVAppBar extends Component {
-  state = {
-    logged: true,
-  };
-
-  handleChange = (event, logged) => {
-    this.setState({logged: logged});
-  };
-
-  render() {
-    return (
-      <div>
-        <Toggle
-          label="Logged"
-          defaultToggled={true}
-          onToggle={this.handleChange}
-          labelPosition="right"
-          style={{margin: 20}}
-        />
-        <AppBar
-          title="Title"
-          iconElementLeft={<IconButton><NavigationClose /></IconButton>}
-          iconElementRight={this.state.logged ? <Logged /> : <Login />}
-        />
-      </div>
-    );
-  }
-}
+  },
+  // mapDispatchToProps:
+  dispatch => bindActionCreators(
+    { nav,
+      //conceptInfoLoader: apiGlobal.Apis.apis.conceptInfo.loader,
+    }, dispatch)
+)(App)
+export default App
 
 
 

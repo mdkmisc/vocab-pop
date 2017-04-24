@@ -35,7 +35,6 @@ var d3 = require('d3');
 var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
 import _ from '../supergroup'; // in global space anyway...
-import ConceptData, {DataWrapper} from './ConceptData';
 import {VocabMapByDomain, DomainMap} from './VocabMap';
 import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../ConceptInfo';
 import {AgTable} from './TableStuff';
@@ -64,15 +63,10 @@ export default class VocabPop extends Component {
         'standard_concept', 'concept_count', 'record_count', 
       ].map(c => _.find(coldefs, {colId: c}));
     */
-    // all the important data fetching should be happening in ConceptData now
     if (!this.props.domain_id) {
-      return  <ConceptData {...this.props}>
-                <DomainMap {...this.props}/>
-              </ConceptData>;
+      return  <DomainMap {...this.props}/>
     }
-    return  <ConceptData {...this.props}>
-              <VocabMapByDomain {...this.props}/>
-            </ConceptData>;
+    return  <VocabMapByDomain {...this.props}/>
   }
 }
 class ConceptDesc extends Component {
