@@ -25,6 +25,7 @@ import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 
 import * as vocab from '../../redux/ducks/vocab'
+import {ConceptCodesLookupForm} from '../Lookups'
 
 import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
@@ -101,10 +102,14 @@ export class STSReport extends Component {
     };
 
     return  <Card initiallyExpanded={true} containerStyle={cardStyle} style={cardStyle}>
-              <CardHeader style={{padding:'0px 8px 0px 8px'}}
+              <CardHeader style={{
+                  padding:'10px 8px 0px 8px'
+                }}
                 actAsExpander={true}
                 showExpandableButton={true}
-                title="Source Target Source Report"
+                title={<h4>Source Target Source Report</h4>}
+              />
+              <ConceptCodesLookupForm style={{ margin: 10, }}
               />
               <CardText expandable={true} >
                 <ConceptList 

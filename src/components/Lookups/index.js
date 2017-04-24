@@ -15,9 +15,11 @@ import Spinner from 'react-spinner'
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
+import RaisedButton from 'material-ui/RaisedButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
 import Chip from 'material-ui/Chip'
+import Dialog from 'material-ui/Dialog';
 import {
   AutoComplete,
   Checkbox,
@@ -31,10 +33,47 @@ import {
 } from 'redux-form-material-ui'
 import {AgTable, } from '../TableStuff'
 
+class VocabField extends Component {
+  render() {
+    const {vocabularies, vocabulary_id, dispatch} = this.props
+    return (
+      <Field name="vocabulary_id" 
+            //value={vocabulary_id}
+            style={{padding:'0px 8px 0px 8px'}}
+            component={SelectField}
+            fullWidth={true}
+            floatingLabelText="vocabulary_id"
+            onChange={
+              (evt,newVal,oldVal) => dispatch(
+                myrouter
+                  .addParams({
+                    vocabulary_id:newVal})
+              )}
+      >
+        {
+          (vocabularies||[]).map(
+            d=>{
+                return <MenuItem 
+                  className="vocab-item"
+                  key={d.vocabulary_id}
+                  checked={d.vocabulary_id === vocabulary_id}
+                  value={d.vocabulary_id}
+                  primaryText={d.vocabulary_id}
+                  secondaryText={d.vocabulary_name}
+                  />
+            })
+        }
+      </Field>
+    )
+  }
+}
 export class ConceptCodesLookupForm extends Component {
   constructor(props) {
     super(props)
-    this.state = {};
+    this.state = { 
+      open: false,
+      pending: true,
+    }
   }
   componentDidMount() {
     const {loadVocabularies, loadConceptIds,
@@ -44,14 +83,32 @@ export class ConceptCodesLookupForm extends Component {
       loadConceptIds({params:{vocabulary_id,concept_code_search_pattern}})
     }
   }
+  open() {
+    if (this.state.open || this.state.pending)
+      return
+    this.setState({open:true})
+  }
+  close() {
+    if (!this.state.open || this.state.pending)
+      return
+    this.setState({open:false})
+  }
   componentDidUpdate(prevProps) {
-    const {loadConceptIds, vocabulary_id, concept_code_search_pattern, 
-            concept_ids, loadConceptInfo} = this.props
+    const { loadConceptIds, 
+            vocabulary_id, 
+            concept_code_search_pattern, 
+            concept_ids=[],
+            loadConceptInfo
+    } = this.props
     if (vocabulary_id !== prevProps.vocabulary_id ||
         concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
       loadConceptIds({params:{vocabulary_id,concept_code_search_pattern}})
+      this.setState({pending:true})
     }
+    if (!concept_ids.length)
+      this.open()
     if (concept_ids !== prevProps.concept_ids) {
+      this.setState({pending:false})
       if (Array.isArray(concept_ids) && concept_ids.length) {
         loadConceptInfo({params:concept_ids})
       }
@@ -79,7 +136,8 @@ export class ConceptCodesLookupForm extends Component {
     let vocabulary = (vocabularies||[]).find(d=>d.vocabulary_id===this.props.vocabulary_id)
     const cardStyle = {
       padding: '0px',
-      margin: '14px 0px 20px 0px',
+      margin: '14px 10px 20px 0px',
+      //border: '3px solid purple'
     };
     let styles = {
                         chip: {
@@ -108,15 +166,41 @@ export class ConceptCodesLookupForm extends Component {
                     </span>
                   </Chip>))
     */
+    let open = this.open.bind(this)
+    let close = this.close.bind(this)
+    const actions = [
+          <FlatButton
+            label="Close"
+            primary={true}
+            keyboardFocused={!!conceptInfo}
+            disabled={!conceptInfo}
+            onTouchTap={close}
+          />,
+        ];
+      
     return (
-        <form >
-          <div>
-            <Card containerStyle={cardStyle} style={cardStyle}>
+        <form style={{marginLeft:20}}>
+          <RaisedButton
+              onTouchTap={open}
+              label={`${vocabulary_id} codes 
+                      ${concept_code_search_pattern}` }
+          />
+          <Dialog
+            title="Dialog With Actions"
+            actions={actions}
+            modal={false}
+            open={this.state.open}
+            onRequestClose={close}
+            contentStyle={{width:'100%',maxWidth:'none',}}
+            autoScrollBodyContent={true}
+          >
+            <Card initiallyExpanded={true} 
+                  containerStyle={cardStyle} 
+                  style={cardStyle}>
               <CardHeader style={{padding:'0px 8px 0px 8px'}}
                 actAsExpander={true}
                 showExpandableButton={true}
-                title='Vocabulary'
-                subtitle={
+                title={
                   vocabulary ?
                     <FlatButton
                       style={{padding:'0px', 
@@ -129,35 +213,13 @@ export class ConceptCodesLookupForm extends Component {
                       icon={<LinkIcon />}
                     /> : undefined
                 }
+                subtitle={conceptInfo.map(d=>d.concept_code).join(', ')}
               />
               <CardText expandable={true}>
-                <Field name="vocabulary_id" 
-                      //value={vocabulary_id}
-                      style={{padding:'0px 8px 0px 8px'}}
-                      component={SelectField}
-                      fullWidth={true}
-                      floatingLabelText="vocabulary_id"
-                      onChange={
-                        (evt,newVal,oldVal) => dispatch(
-                          myrouter
-                           .addParams({
-                             vocabulary_id:newVal})
-                        )}
-                >
-                  {
-                    (vocabularies||[]).map(
-                      d=>{
-                          return <MenuItem 
-                            className="vocab-item"
-                            key={d.vocabulary_id}
-                            checked={d.vocabulary_id === this.props.vocabulary_id}
-                            value={d.vocabulary_id}
-                            primaryText={d.vocabulary_id}
-                            secondaryText={d.vocabulary_name}
-                            />
-                      })
-                  }
-                </Field>
+                <VocabField vocabularies={vocabularies}
+                            vocabulary_id={vocabulary_id}
+                            dispatch={dispatch}
+                />
                 
                 <Field name="concept_code_search_pattern" 
                       hintText='401.1%,401.2,401.3%'
@@ -183,7 +245,7 @@ export class ConceptCodesLookupForm extends Component {
                           id="src_target_recs" />
               </CardText>
             </Card>
-          </div>
+          </Dialog>
         </form>
     )
   }

@@ -29,7 +29,6 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-import {ConceptCodesLookupForm} from '../Lookups'
 
 import {STSReport} from './STSReport'
 
@@ -58,7 +57,6 @@ class SourceTargetSourceForm extends Component {
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
-        <ConceptCodesLookupForm {...formParams} />
         <STSReport  vocabulary_id={vocabulary_id} 
                     concept_code_search_pattern={concept_code_search_pattern} 
                     conceptInfo={conceptInfo} 
