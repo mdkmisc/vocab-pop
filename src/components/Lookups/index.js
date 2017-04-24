@@ -186,7 +186,14 @@ export class ConceptCodesLookupForm extends Component {
                       ${concept_code_search_pattern}` }
           />
           <Dialog
-            title="Dialog With Actions"
+            title={
+              <div>
+                {conceptInfo.length} concept codes
+                <div style={{fontSize:12}}>
+                  { conceptInfo.map(d=>d.concept_code).join(', ') }
+                </div>
+              </div>
+            }
             actions={actions}
             modal={false}
             open={this.state.open}
@@ -194,13 +201,7 @@ export class ConceptCodesLookupForm extends Component {
             contentStyle={{width:'100%',maxWidth:'none',}}
             autoScrollBodyContent={true}
           >
-            <Card initiallyExpanded={true} 
-                  containerStyle={cardStyle} 
-                  style={cardStyle}>
-              <CardHeader style={{padding:'0px 8px 0px 8px'}}
-                actAsExpander={true}
-                showExpandableButton={true}
-                title={
+                {
                   vocabulary ?
                     <FlatButton
                       style={{padding:'0px', 
@@ -213,9 +214,7 @@ export class ConceptCodesLookupForm extends Component {
                       icon={<LinkIcon />}
                     /> : undefined
                 }
-                subtitle={conceptInfo.map(d=>d.concept_code).join(', ')}
-              />
-              <CardText expandable={true}>
+
                 <VocabField vocabularies={vocabularies}
                             vocabulary_id={vocabulary_id}
                             dispatch={dispatch}
@@ -238,13 +237,18 @@ export class ConceptCodesLookupForm extends Component {
                         )}
                   />
                   {/* <div style={styles.wrapper}> {chips} </div> */}
-              </CardText>
-              <CardText expandable={true}>
+              <Card>
+                <CardHeader
+                  title="Details"
+                  actAsExpander={true}
+                  showExpandableButton={true}
+                />
+                <CardText expandable={true}>
                   <AgTable data={conceptInfo||[]}
                           width={"100%"} height={250}
                           id="src_target_recs" />
-              </CardText>
-            </Card>
+                </CardText>
+              </Card>
           </Dialog>
         </form>
     )
