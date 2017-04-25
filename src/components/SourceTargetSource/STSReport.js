@@ -23,7 +23,9 @@ import React, { Component } from 'react'
 
 import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
+import { bindActionCreators } from 'redux'
 
+import * as apiGlobal from '../../redux/apiGlobal'
 import * as vocab from '../../redux/ducks/vocab'
 import {ConceptCodesLookupForm} from '../Lookups'
 
@@ -111,18 +113,18 @@ export class STSReport extends Component {
               />
               <ConceptCodesLookupForm style={{ margin: 10, }}
               />
-              <CardText expandable={true} >
-                <ConceptList 
+              <CardText style={{leftMargin:15}}
+                        expandable={true} >
+                <ConceptListConnected 
                   concepts={conceptInfo}
-                  title={`${conceptInfo.length} ${vocabulary_id} concepts 
-                            matching ${concept_code_search_pattern}` }
+                  title={`${conceptInfo.length} concepts `}
                 />
               </CardText>
             </Card>
   }
 }
 const ConceptItem = props => {  // just for source concepts at moment
-  let { title, subtitle, avatarText, concept, } = props
+  let { title, subtitle, avatarText, concept, styles} = props
   title = title || concept.concept_name
   subtitle = subtitle || countText([concept])
   return (
@@ -130,6 +132,8 @@ const ConceptItem = props => {  // just for source concepts at moment
       innerDivStyle={{
         padding: '10px 10px 0px 78px',
         marginBottom: 0,
+        ...styles.item,
+        ...styles.font,
       }}
       leftAvatar={
         avatarText ?  <Avatar
@@ -139,7 +143,9 @@ const ConceptItem = props => {  // just for source concepts at moment
                         style={{width:'auto',
                                 textAlign: 'right',
                                 margin:'-4px 10px 10px -10px',
-                                padding:5,}}
+                                padding:5,
+                                ...styles.font,
+                        }}
                       >
                         {avatarText}
                       </Avatar>
@@ -149,89 +155,156 @@ const ConceptItem = props => {  // just for source concepts at moment
         <span style={{
           margin: 0,
           padding:0,
+          ...styles.font,
         }} />
       }
       primaryText={
         <span style={{
           margin: 0,
           padding:0,
+          ...styles.font,
         }}>
           {title}
         </span>
       }
-      secondaryText={ subtitle }
+      secondaryText={ 
+        <span style={{
+          margin: 0,
+          padding:0,
+          ...styles.font,
+        }}>
+          {subtitle}
+        </span>
+      }
       secondaryTextLines={2}
       initiallyOpen={true}
     />
   )
 }
-const ConceptList = props => {
-  let { title, concepts, } = props
-  let rels = _.supergroup( _.flatten(concepts.map(d=>d.rels)), 'relationship')
-  return (
-    <List >
-      <ListItem
-        innerDivStyle={{
-          paddingTop: 3,
-          paddingBottom: 3,
-          //padding: 0,
-          //padding: '10px 10px 10px 78px',
-        }}
-        primaryText={
-          <p style={{color:muiTheme.palette.primary1Color}}>
-            {title}
-          </p> }
-        secondaryText={ countText(concepts) }
-        secondaryTextLines={2}
-        initiallyOpen	={false}
-        nestedItems={ concepts.map((concept,i) => 
-                        <ConceptItem  key={i}
-                                      avatarText={concept.concept_code}
-                                      concept={concept} 
-                        />)}
-      />
-      {
-        rels.map( (rel,i) => {
-          return <ListItem
-                    key={i}
-                    innerDivStyle={{
-                      paddingTop: 13,
-                      paddingBottom: 3,
-                    }}
-                    primaryText={
-                      <p style={{color:muiTheme.palette.primary1Color}}>
-                        {rel.toString()} {rel.records.length}
-                      </p> 
-                    }
-                    //secondaryText={ countText(concepts) }
-                    //secondaryTextLines={2}
-                    initiallyOpen	={true}
-                    /*
-                    nestedItems={ 
-                      rels.getChildren()
-                        .map((group,j) => 
-                        <ConceptItem concept={concept} key={j} />)}
-                    */
-                  />
-          /*
-          debugger
-          let rrels = vocab.sourceRelationshipsSG({vocab:{conceptInfo:rel.records}})
-          return (
-            <div key={i} style={{marginLeft:15}} >
-              <Relationship key={i} rel={rel} />
-              <div style={{marginLeft:15}} >
-                {rrels.map(
-                  (rrel,j) => <Relationship key={j} rel={rrel} />
-                )}
-              </div>
-            </div>
-          )
-          */
-        })
-      }
-    </List>
-  )
+class ConceptList extends Component {
+  componentDidMount() {
+    const {concept_ids, loadConceptInfo, storeName} = this.props
+    if (concept_ids && concept_ids.length) {
+      loadConceptInfo({params:{concept_ids}, storeName})
+    }
+  }
+  render() {
+    let { title, concepts=[], } = this.props
+    let rels = _.supergroup( _.flatten(concepts.map(d=>d.rels)), 'relationship')
+    return (
+      <List >
+        <ListItem
+          innerDivStyle={{
+            paddingTop: 3,
+            paddingBottom: 3,
+            //padding: 0,
+            //padding: '10px 10px 10px 78px',
+          }}
+          primaryText={
+            <p style={{color:muiTheme.palette.primary1Color}}>
+              {title}
+            </p> }
+          secondaryText={ countText(concepts) }
+          secondaryTextLines={2}
+          initiallyOpen	={false}
+          nestedListStyle={{marginLeft:30, fontSize:5}}
+          nestedItems={ concepts.map((concept,i) => 
+                          <ConceptItem  key={i}
+                                        styles={{
+                                          font: {
+                                            fontSize: 12,
+                                          }
+                                        }}
+                                        avatarText={concept.concept_code}
+                                        concept={concept} 
+                          />)}
+        />
+        <Card>
+          <CardHeader
+            title="Related to"
+            actAsExpander={true}
+            showExpandableButton={true}
+          />
+          <CardText expandable={true}>
+            {
+              rels.map( (rel,i) => {
+                let title = `${rel.records.length} ${rel.toString()} (sub) concepts`
+                console.log({rel, title})
+                return <ListItem
+                          key={i}
+                          innerDivStyle={{
+                            paddingTop: 13,
+                            paddingBottom: 3,
+                          }}
+                          /*
+                          primaryText={
+                            <p style={{color:muiTheme.palette.primary1Color}}>
+                              {rel.records.length}
+                              {rel.toString()} 
+                            </p> 
+                          }
+                          */
+                          //secondaryText={ countText(concepts) }
+                          //secondaryTextLines={2}
+                          initiallyOpen	={true}
+                          nestedItems={ 
+                            /*
+                            rels.getChildren()
+                              .map((group,j) => 
+                              <ConceptItem concept={concept} key={j} />)
+                            */
+                            [<ConceptListConnected 
+                              title={title}
+                              storeName={title}
+                              concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
+                            />]
+                          }
+                      >
+                      </ListItem>
+                        
+                /*
+                debugger
+                let rrels = vocab.sourceRelationshipsSG({vocab:{conceptInfo:rel.records}})
+                return (
+                  <div key={i} style={{marginLeft:15}} >
+                    <Relationship key={i} rel={rel} />
+                    <div style={{marginLeft:15}} >
+                      {rrels.map(
+                        (rrel,j) => <Relationship key={j} rel={rrel} />
+                      )}
+                    </div>
+                  </div>
+                )
+                */
+              })
+            }
+          </CardText>
+        </Card>
+      </List>
+    )
+  }
 }
+let conceptInfoApi = apiGlobal.Apis.apis.conceptInfo
+
+const ConceptListConnected = connect(
+  (state, props) => { // mapStateToProps
+    let {storeName} = props
+    let apiCalls = state.api.apiCalls || {}
+    if (storeName) {
+      let storeObj = apiCalls[apiGlobal.Apis.storeId(
+                                conceptInfoApi.apiName, storeName)]
+      return {concepts: (storeObj && storeObj.meta && storeObj.meta.results)}
+    }
+    return {concepts: conceptInfoApi.selectors.conceptInfoWithMatchStrs(state)}
+  },
+  // mapDispatchToProps:
+  dispatch => bindActionCreators(
+    { 
+      loadConceptInfo: conceptInfoApi.loader,
+    }, dispatch)
+)(ConceptList)
+
+
 const countText = (concepts) => {
   let colCnts = vocab.plainSelectors.getCounts({concepts})
   return (

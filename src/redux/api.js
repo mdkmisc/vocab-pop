@@ -5,7 +5,8 @@ const DEBUG = true;
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
 
-import {apiActions, Apis,} from './apiGlobal'
+import {apiActions, Apis, parseAction, makeAction} 
+      from './apiGlobal'
 import config from '../config'
 import * as util from '../utils';
 import React, { Component } from 'react';
@@ -36,58 +37,53 @@ export const loader = apiName => apis.get(apiName).loader
 
 // reducers
 const apiCall = (state={}, action) => {
-  let {type, payload={}, meta={}, error } = action
-  const {apiName, paramValidation} = payload
-  //const { expectedParamKeys, url, results, status, err } = meta.apiObj
+  let {type, payload, apiName, params, url,
+        results, error, err, apiObj} = parseAction(action)
   if (typeof apiName === 'undefined') return state
-  let status = type
-  payload = {...payload, status}
-  //examineAction({from:'apiCall',action, state})
+  let pending 
   switch (type) {
     case apiActions.API_CALL:
-      return {...payload, pending: false, status: apiActions.API_CALL_NEW}
-    case apiActions.API_CALL_STARTED:
-      return {...payload, pending: true}
-    case apiActions.API_CALL_FULFILLED: // payload should have results
-      return {...payload, pending: false}
-    case apiActions.API_CALL_REJECTED:
-      return {...payload, pending: false, error: true}
-  }
-  return state
-}
-const apiCalls = (state={}, action) => {
-  let {type, payload={}, meta={}, error } = action
-  if (type.match('^'+apiActions.API_CALL)) {
-    let {apiName, params, url, paramValidation} = payload
-    let {apiObj={}} = meta
-    if (apiObj.paramTransform)
-      params = apiObj.paramTransform(params)
-    let callState = state[url]
-    if (type === apiActions.API_CALL) {
-      if (paramValidation && !paramValidation(params)) {
+      pending = false
+      params = payload
+      if (apiObj.paramValidation && !apiObj.paramValidation(payload)) {
         console.error('invalid params', params)
         return state
       }
-      url = apiGetUrl(apiName, params)
-      payload = {...payload, url}
-      action = {...action, payload}
-      callState = undefined
-    }
-    callState = apiCall(callState, action)
-    //examineAction({from:'apiCalls',action, url, state})
-    return { ...state, [url]: callState, }
+      url = apiGetUrl(apiName, payload)
+      break
+    case apiActions.API_CALL_STARTED:
+      pending = true
+      break
+    case apiActions.API_CALL_FULFILLED: // payload should have results
+      pending = false
+      results = payload
+      break
+    case apiActions.API_CALL_REJECTED:
+      pending = false
+      err = payload
+      error = true
+    default:
+      return state
   }
-  return state
+  action = makeAction({
+    action, meta:{url, pending, error, params, results}
+  })
+  delete action.payload // payload should be in meta in correct field now
+  //examineAction({from:'apiCall',action, state})
+  return action
 }
-const currentResults = (state={}, action) => {
-  let {type, payload={}, meta={}, error } = action
-  if (type === apiActions.API_CALL_FULFILLED) {
-    //console.log(action)
-    let {apiName, storeName, url} = payload
-    return {...state,
-            [storeName]: url}
+const apiCalls = (state={}, action) => {
+  let {type, payload, apiName, url, apiObj={}} = parseAction(action)
+  console.log(action)
+  if (type === apiActions.API_CALL) {
+    action = apiCall(null, action)
+  } else if (type.match('^'+apiActions.API_CALL)) {
+    action = apiCall(action, action)
+    //examineAction({from:'apiCalls',action, url, state})
+  } else {
+    return state
   }
-  return state
+  return { ...state, [action.meta.storeId]: action, }
 }
 export const examineAction = o => {
   let {from, action, response, state} = o
@@ -103,39 +99,33 @@ const apiCallEpic = (action$, store) => (
   action$.ofType(apiActions.API_CALL)
     //.do(action=>examineAction({from:'apiCallEpic start',action$, action, state:store.getState()}))
     .mergeMap(action=>{
-      let {payload} = action
-      let {apiName, params} = payload
-      let api = Apis.get(apiName)
-      if (api.paramTransform)
-        params = api.paramTransform(params)
-      let url = apiGetUrl(apiName, params)
-      payload = store.getState().api.apiCalls[url]
-      //console.log(url.slice(0,90))
-      action = {...action, payload}
-      //console.log({params, url,action})
+      let {apiName, storeName, } = parseAction(action)
+      let storeId = Apis.storeId(apiName,storeName)
+      action = store.getState().api.apiCalls[storeId]
+      let {type, payload, url, apiObj,} = parseAction(action)
       let ajax = 
         checkCacheDirty(store)
                 //.do(response=>examineAction({from:'apiCallEpic after start',action$, response, action, state:store.getState()}))
           .switchMap(dirty=>{
-            //console.log(url.slice(0,90))
             return cachedAjax(url)
           })
           .switchMap(results=>{
-            payload = {...payload, results}
-            action = {...action, payload, 
-                        type:apiActions.API_CALL_FULFILLED}
+            action = makeAction(
+              {action, payload:results,
+                type:apiActions.API_CALL_FULFILLED})
             return Rx.Observable.of(action)
           })
           .catch(err => {
-            payload = {...payload, err}
-            action = {...action, payload, 
-                        type:apiActions.API_CALL_REJECTED}
+            action = makeAction(
+              {action, payload:err,
+                type:apiActions.API_CALL_REJECTED})
             return Rx.Observable.of(action)
           })
 
-      //payload = {...payload, ajax}
-      action = {...action, payload, type:apiActions.API_CALL_STARTED}
+      action = makeAction({
+        action, type:apiActions.API_CALL_STARTED})
       //examineAction({from:'starting',action, state:store.getState()})
+      console.error(action)
       store.dispatch(action)
       return ajax
     })
@@ -226,5 +216,4 @@ const getUrl = (path, params={}) => {
 export default combineReducers({ 
   //apis: (state,props) => apis, // so apiGlobal can get to it without circular dependency
   apiCalls, 
-  currentResults, 
 })

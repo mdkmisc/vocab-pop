@@ -12,6 +12,9 @@ let vocabularies = new Api({
 })
 let codeSearchToCids = new Api({
   apiName: 'codeSearchToCids',
+  selectors: {
+    concept_ids: (results=[]) => results.map(d=>d.concept_id),
+  },
   defaultResults: [],
 })
 // selector stuff
@@ -91,11 +94,19 @@ export const plainSelectors = {
 let conceptInfoApi = new Api({
   apiName: 'conceptInfo',
   defaultResults: [],
-  paramValidation: ({concept_ids}) => ( 
-      Array.isArray(concept_ids) && concept_ids.length),
+  paramValidation: ({concept_ids}) => {
+    console.log('validating', concept_ids)
+    return (
+      Array.isArray(concept_ids) && 
+        concept_ids.length  &&
+        _.every(concept_ids, _.isNumber)
+    )
+  },
+  /*
   paramTransform: (concept_ids) => {
     return ({concept_ids: concept_ids.map(d=>d.concept_id)})
   },
+  */
   selectors: {
     conceptInfo,
     conceptInfoWithMatchStrs,

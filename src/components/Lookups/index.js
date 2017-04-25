@@ -107,10 +107,10 @@ export class ConceptCodesLookupForm extends Component {
     }
     if (!concept_ids.length)
       this.open()
-    if (concept_ids !== prevProps.concept_ids) {
+    if (!_.isEqual(concept_ids, prevProps.concept_ids)) {
       this.setState({pending:false})
       if (Array.isArray(concept_ids) && concept_ids.length) {
-        loadConceptInfo({params:concept_ids})
+        loadConceptInfo({params:{concept_ids}})
       }
     }
   }
@@ -182,7 +182,9 @@ export class ConceptCodesLookupForm extends Component {
         <form style={{marginLeft:20}}>
           <RaisedButton
               onTouchTap={open}
-              label={`${vocabulary_id} codes 
+              label={`${conceptInfo.length}
+                      ${vocabulary_id}
+                      codes matching
                       ${concept_code_search_pattern}` }
           />
           <Dialog
@@ -201,6 +203,11 @@ export class ConceptCodesLookupForm extends Component {
             contentStyle={{width:'100%',maxWidth:'none',}}
             autoScrollBodyContent={true}
           >
+
+                <VocabField vocabularies={vocabularies}
+                            vocabulary_id={vocabulary_id}
+                            dispatch={dispatch}
+                />
                 {
                   vocabulary ?
                     <FlatButton
@@ -214,11 +221,6 @@ export class ConceptCodesLookupForm extends Component {
                       icon={<LinkIcon />}
                     /> : undefined
                 }
-
-                <VocabField vocabularies={vocabularies}
-                            vocabulary_id={vocabulary_id}
-                            dispatch={dispatch}
-                />
                 
                 <Field name="concept_code_search_pattern" 
                       hintText='401.1%,401.2,401.3%'
@@ -279,7 +281,9 @@ ConceptCodesLookupForm = connect(
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
       vocabularies: apiStore('vocabularies'),
-      concept_ids: apiStore('codeSearchToCids'),
+      concept_ids: 
+        codeSearchToCids.selectors.concept_ids(
+          apiStore('codeSearchToCids')),
       conceptInfo: conceptInfo.selectors.conceptInfoWithMatchStrs(state),
       formRef: state.form.concept_codes_form,
     }

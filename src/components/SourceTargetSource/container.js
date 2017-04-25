@@ -34,20 +34,6 @@ import {STSReport} from './STSReport'
 
 
 class SourceTargetSourceForm extends Component {
-  /*
-  componentDidMount() {
-    const {concept_ids, loadConceptInfo} = this.props
-    if (concept_ids && concept_ids.length) {
-      loadConceptInfo(concept_ids)
-    }
-  }
-  componentDidUpdate(prevProps) {
-    const {concept_ids, loadConceptInfo} = this.props
-    if (concept_ids !== prevProps.concept_ids) {
-      loadConceptInfo(concept_ids)
-    }
-  }
-  */
   render() {
     let {
           history, dispatch,
@@ -85,7 +71,7 @@ SourceTargetSourceForm = connect(
   // mapDispatchToProps:
   dispatch => bindActionCreators(
     { 
-      conceptInfoLoader: apiGlobal.Apis.apis.conceptInfo.loader,
+      //loadConceptInfo: apiGlobal.Apis.apis.conceptInfo.loader,
     }, dispatch)
 )(SourceTargetSourceForm)
 export default SourceTargetSourceForm
