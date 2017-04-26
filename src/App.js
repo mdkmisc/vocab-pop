@@ -234,7 +234,6 @@ App = connect(
   // mapDispatchToProps:
   dispatch => bindActionCreators(
     { nav,
-      //conceptInfoLoader: apiGlobal.Apis.apis.conceptInfo.loader,
     }, dispatch)
 )(App)
 export default App

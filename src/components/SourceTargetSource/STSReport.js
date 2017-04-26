@@ -284,7 +284,7 @@ class ConceptList extends Component {
     )
   }
 }
-let conceptInfoApi = apiGlobal.Apis.apis.conceptInfo
+let conceptInfoApi = apiGlobal.Apis.apis.conceptInfoApi
 
 const ConceptListConnected = connect(
   (state, props) => { // mapStateToProps

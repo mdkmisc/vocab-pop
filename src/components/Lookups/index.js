@@ -84,6 +84,7 @@ export class ConceptCodesLookupForm extends Component {
     }
   }
   open() {
+    debugger
     if (this.state.open || this.state.pending)
       return
     this.setState({open:true})
@@ -261,12 +262,12 @@ ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
 })(ConceptCodesLookupForm)
 
-let {vocabularies, codeSearchToCids, conceptInfo}
+let {vocabulariesApi, codesToCidsApi, conceptInfoApi}
       = apiGlobal.Apis.apis
 let loaders = {
-  loadVocabularies: vocabularies.loader,
-  loadConceptIds: codeSearchToCids.loader,
-  loadConceptInfo: conceptInfo.loader,
+  loadVocabularies: vocabulariesApi.loader,
+  loadConceptIds: codesToCidsApi.loader,
+  loadConceptInfo: conceptInfoApi.loader,
 }
 const mapDispatchToProps = 
   dispatch => bindActionCreators(loaders, dispatch)
@@ -280,11 +281,12 @@ ConceptCodesLookupForm = connect(
       ...loaders,
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
-      vocabularies: apiStore('vocabularies'),
+      vocabularies: apiStore('vocabulariesApi'),
+      conceptInfoApi,
       concept_ids: 
-        codeSearchToCids.selectors.concept_ids(
-          apiStore('codeSearchToCids')),
-      conceptInfo: conceptInfo.selectors.conceptInfoWithMatchStrs(state),
+        codesToCidsApi.selectors.concept_ids(
+          apiStore('codesToCidsApi')),
+      conceptInfo: conceptInfoApi.selectors.conceptInfoWithMatchStrs(state),
       formRef: state.form.concept_codes_form,
     }
     return newState

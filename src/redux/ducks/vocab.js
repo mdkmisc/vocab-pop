@@ -7,30 +7,20 @@ import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
 import {apiActions, apiStore, Api} from '../apiGlobal'
 
-let vocabularies = new Api({
-  apiName: 'vocabularies',
-})
-let codeSearchToCids = new Api({
-  apiName: 'codeSearchToCids',
-  selectors: {
-    concept_ids: (results=[]) => results.map(d=>d.concept_id),
-  },
-  defaultResults: [],
-})
 // selector stuff
 export const conceptInfo = createSelector(
   apiStore,
   apiStore => {
-    return apiStore('conceptInfo')
+    return apiStore('conceptInfoApi')
   }
 )
 export const conceptInfoWithMatchStrs = createSelector(
   apiStore,
   apiStore => {
-    let concepts = apiStore('conceptInfo')
+    let concepts = apiStore('conceptInfoApi')
     if (!concepts)
       return []
-    let matchedIds = apiStore('codeSearchToCids')
+    let matchedIds = apiStore('codesToCidsApi')
     //console.log({concepts,matchedIds})
     return concepts.map(
       concept => {
@@ -64,35 +54,25 @@ export const getCounts = ({concepts, ...opts}) => {
       }))
   return cnts
 }
-/*
-export const groupByRelationshipType = ({concepts=[], ...opts}) => {
-  let sr = _.supergroup( 
-                    _.flatten(concepts.map(d=>d.rels)),
-                    ['relationship',])
-
-  sr.addLevel(d=>`${d.vocabulary_id} / ${d.domain_id} / ${d.concept_class_id}`,{dimName:'vocab/domain/class'})
-  sr.leafNodes().forEach(d => {
-    d.vocabulary_id = _.uniq(d.records.map(r=>r.vocabulary_id)).join(',')
-    d.domain_id = _.uniq(d.records.map(r=>r.domain_id)).join(',')
-    d.concept_class_id = _.uniq(d.records.map(r=>r.concept_class_id)).join(',')
-    //d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
-  })
-
-  sr.addLevel('concept_id')
-  sr.leafNodes().forEach(d => {
-    d.concept_name = _.uniq(d.records.map(r=>r.concept_name)).join(',')
-    d.concept_code = _.uniq(d.records.map(r=>r.concept_code)).join(',')
-    //d.counts = _.supergroup(_.flatten(d.records.map(d=>d.rcs)),['tbl','col'])
-  })
-  return sr
-}
-*/
-
 export const plainSelectors = {
   getCounts, 
 }
+
+let vocabulariesApi = new Api({
+  apiName: 'vocabulariesApi',
+  apiPathname: 'vocabularies',
+})
+let codesToCidsApi = new Api({
+  apiName: 'codesToCidsApi',
+  apiPathname: 'codesToCids',
+  selectors: {
+    concept_ids: (results=[]) => results.map(d=>d.concept_id),
+  },
+  defaultResults: [],
+})
 let conceptInfoApi = new Api({
-  apiName: 'conceptInfo',
+  apiName: 'conceptInfoApi',
+  apiPathname: 'conceptInfo',
   defaultResults: [],
   paramValidation: ({concept_ids}) => {
     console.log('validating', concept_ids)
@@ -128,11 +108,6 @@ let conceptInfoApi = new Api({
                 })
   */
 })
-export const apis = {
-  vocabularies,
-  codeSearchToCids,
-  conceptInfo: conceptInfoApi,
-}
 
 export const VOCABULARY_ID = 'VOCABULARY_ID'
 export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'

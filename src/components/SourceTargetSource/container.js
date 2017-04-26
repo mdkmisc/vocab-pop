@@ -4,7 +4,6 @@ import * as utils from '../../utils'
 import * as apiGlobal from '../../redux/apiGlobal'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
-import { browserHistory, } from 'react-router'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
@@ -35,11 +34,7 @@ import {STSReport} from './STSReport'
 
 class SourceTargetSourceForm extends Component {
   render() {
-    let {
-          history, dispatch,
-          conceptInfo, err, vocabularies, isPending, vocabPending,
-          vocabulary_id, concept_code_search_pattern, 
-        } = this.props
+    let { conceptInfo, vocabulary_id, concept_code_search_pattern, } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
@@ -58,7 +53,6 @@ SourceTargetSourceForm = reduxForm({
 })(SourceTargetSourceForm)
 
 SourceTargetSourceForm = connect(
-  //makeMapStateToProps,
   (state, props) => { // mapStateToProps
     const selector = formValueSelector('concept_codes_form')
     const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
@@ -67,11 +61,6 @@ SourceTargetSourceForm = connect(
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
     }
-  },
-  // mapDispatchToProps:
-  dispatch => bindActionCreators(
-    { 
-      //loadConceptInfo: apiGlobal.Apis.apis.conceptInfo.loader,
-    }, dispatch)
+  }
 )(SourceTargetSourceForm)
 export default SourceTargetSourceForm

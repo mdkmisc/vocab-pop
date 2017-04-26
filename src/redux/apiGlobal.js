@@ -57,6 +57,7 @@ export class Api {
   constructor(props) {
     let { 
           apiName,
+          apiPathname,
           reducers={},
           loader,
           defaultResults,
@@ -69,6 +70,7 @@ export class Api {
 
     this.props = {  
                     apiName,
+                    apiPathname,
                     reducers, 
                     loader, 
                     defaultResults,
@@ -78,6 +80,7 @@ export class Api {
     Apis.add(this)
   }
   get apiName() { return this.props.apiName }
+  get apiPathname() { return this.props.apiPathname }
   get paramValidation() { return this.props.paramValidation }
   get selectors() { return this.props.selectors }
   get loader() {
@@ -110,8 +113,8 @@ export const parseAction = action => {
   let {type, payload, meta={}} = action
   let {apiObj={}, storeName, url, params, results, 
         error, err, storeId} = meta
-  let {apiName, } = apiObj
-  return {storeId, type, payload, apiName, storeName, url, 
+  let {apiName, apiPathname } = apiObj
+  return {storeId, type, payload, apiName, apiPathname, storeName, url, 
           apiObj, params, results, error, err}
 }
 export const makeAction = ({action={},type,payload,meta={}}) => {

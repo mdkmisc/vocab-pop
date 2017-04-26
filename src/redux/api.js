@@ -23,11 +23,6 @@ var ALLOW_CACHING = [
 
 import * as vocab from './ducks/vocab'
 
-/* added themselves...not good, but don't fix now
-const _apis = {
-  ...vocab.apis,
-}
-*/
 export const apis = Apis
 
 export const loader = apiName => apis.get(apiName).loader
@@ -37,7 +32,7 @@ export const loader = apiName => apis.get(apiName).loader
 
 // reducers
 const apiCall = (state={}, action) => {
-  let {type, payload, apiName, params, url,
+  let {type, payload, apiName, apiPathname, params, url,
         results, error, err, apiObj} = parseAction(action)
   if (typeof apiName === 'undefined') return state
   let pending 
@@ -49,7 +44,7 @@ const apiCall = (state={}, action) => {
         console.error('invalid params', params)
         return state
       }
-      url = apiGetUrl(apiName, payload)
+      url = apiGetUrl(apiPathname, payload)
       break
     case apiActions.API_CALL_STARTED:
       pending = true
@@ -176,31 +171,13 @@ const checkCacheDirty = (store) => { // make sure to use this
   )
 }
 
-/* instructions on connecting selectors with access to props (as well as state)
- * from: https://github.com/reactjs/reselect#connecting-a-selector-to-the-redux-store
- * currently wired up in SourceTargetSource/container.js
- */
-
-/*
-const apiResults = 
-  _.mapValues(apiNames, apiName =>
-        createSelector(
-                  apiStore,
-                  apiStore => {  // assume storeName === apiName
-                    return apiStore(apiName)
-                  }
-                )
-  )
-*/
-
-
 // these are 'selectors' but they don't need to be
 // connected to anything beyond config, which is
 // imported here. also they might only be used here
 const {cdmSchema, resultsSchema} = config
 const baseUrl = () => `${config.apiRoot}/${config.apiModel}`
-const apiGetUrl = (apiName, params) => 
-  getUrl(`${baseUrl()}/${apiName}`, 
+const apiGetUrl = (apiPathname, params) => 
+  getUrl(`${baseUrl()}/${apiPathname}`, 
          {...params, cdmSchema, resultsSchema})
 
 const getUrl = (path, params={}) => {
@@ -214,6 +191,5 @@ const getUrl = (path, params={}) => {
 }
 
 export default combineReducers({ 
-  //apis: (state,props) => apis, // so apiGlobal can get to it without circular dependency
   apiCalls, 
 })
