@@ -2,12 +2,9 @@
 import _ from '../../supergroup'; // in global space anyway...
 import * as utils from '../../utils'
 import myrouter from '../../redux/myrouter'
-import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
-import * as api from '../../redux/api'
-import * as apiGlobal from '../../redux/apiGlobal'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -67,7 +64,7 @@ class VocabField extends Component {
     )
   }
 }
-export class ConceptCodesLookupForm extends Component {
+class ConceptCodesLookupForm extends Component {
   constructor(props) {
     super(props)
     this.state = { 
@@ -75,17 +72,8 @@ export class ConceptCodesLookupForm extends Component {
       pending: true,
     }
   }
-  componentDidMount() {
-    const {loadVocabularies, loadConceptIds,
-          vocabulary_id, concept_code_search_pattern, } = this.props
-    loadVocabularies()
-    if (vocabulary_id && concept_code_search_pattern) {
-      loadConceptIds({params:{vocabulary_id,concept_code_search_pattern}})
-    }
-  }
-  open() {
-    debugger
-    if (this.state.open || this.state.pending)
+  open(do_it=false) {
+    if (this.state.open)
       return
     this.setState({open:true})
   }
@@ -94,34 +82,63 @@ export class ConceptCodesLookupForm extends Component {
       return
     this.setState({open:false})
   }
+  openOrClose() {
+    const {actions, vocabulary_id, concept_code_search_pattern, } = this.props
+    if (!vocabulary_id || !concept_code_search_pattern) {
+      this.open()
+    }
+  }
+  componentDidMount() {
+    const {actions, vocabulary_id, concept_code_search_pattern, } = this.props
+    this.openOrClose()
+    //actions.newLookupParams({params:{vocabulary_id,concept_code_search_pattern}})
+    /*
+    actions.vocabulariesApi.setup()
+    if (vocabulary_id && concept_code_search_pattern) {
+      actions.codesToCidsApi.setup({params:{vocabulary_id,concept_code_search_pattern}})
+    }
+    */
+  }
   componentDidUpdate(prevProps) {
-    const { loadConceptIds, 
-            vocabulary_id, 
-            concept_code_search_pattern, 
-            concept_ids=[],
-            loadConceptInfo
+    this.openOrClose()
+    /*
+    const { actions, calls, selectors,
+            vocabulary_id, concept_code_search_pattern, concept_ids=[],
     } = this.props
     if (vocabulary_id !== prevProps.vocabulary_id ||
         concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
-      loadConceptIds({params:{vocabulary_id,concept_code_search_pattern}})
+      actions.newLookupParams({params:{vocabulary_id,concept_code_search_pattern}})
       this.setState({pending:true})
     }
     if (!concept_ids.length)
       this.open()
+    if (selectors.vocabularies.isSetup() && !selectors.vocabularies.isStarted()) {
+      actions.vocabulariesApi.load({call:calls.vocabularies})
+    }
+    if (selectors.conceptIds.isSetup() && !selectors.conceptIds.isStarted()) {
+      actions.vocabulariesApi.load({call:calls.vocabularies})
+    }
+    if (vocabulary_id !== prevProps.vocabulary_id ||
+        concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
+      actions.codesToCidsApi.setup({params:{vocabulary_id,concept_code_search_pattern}})
+      actions.newLookupParams({params:{vocabulary_id,concept_code_search_pattern}})
+      this.setState({pending:true})
+    }
     if (!_.isEqual(concept_ids, prevProps.concept_ids)) {
       this.setState({pending:false})
       if (Array.isArray(concept_ids) && concept_ids.length) {
-        loadConceptInfo({params:{concept_ids}})
+        actions.conceptInfoApi.setup({params:{concept_ids}})
       }
     }
+  */
   }
   render() {
     let { 
-            handleSubmit, load, pristine, reset, submitting,
+            handleSubmit, pristine, reset, submitting,
               dispatch, // initialValues, 
               isPending, err, vocabularies,
               concept_code_search_pattern, vocabulary_id,
-              conceptInfo,
+              conceptInfo=[],
           } = this.props
     let errMsg = ''
     if (isPending) {
@@ -179,6 +196,7 @@ export class ConceptCodesLookupForm extends Component {
           />,
         ];
       
+    //console.log(this.state)
     return (
         <form style={{marginLeft:20}}>
           <RaisedButton
@@ -204,7 +222,8 @@ export class ConceptCodesLookupForm extends Component {
             contentStyle={{width:'100%',maxWidth:'none',}}
             autoScrollBodyContent={true}
           >
-
+            <Card>
+              <CardText>
                 <VocabField vocabularies={vocabularies}
                             vocabulary_id={vocabulary_id}
                             dispatch={dispatch}
@@ -222,7 +241,10 @@ export class ConceptCodesLookupForm extends Component {
                       icon={<LinkIcon />}
                     /> : undefined
                 }
-                
+              </CardText>
+            </Card>
+            <Card>
+              <CardText>
                 <Field name="concept_code_search_pattern" 
                       hintText='401.1%,401.2,401.3%'
                       floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
@@ -235,23 +257,25 @@ export class ConceptCodesLookupForm extends Component {
                       onChange={
                         (evt,newVal,oldVal) => dispatch(
                           myrouter
-                           .addParams({
-                             concept_code_search_pattern:newVal})
+                            .addParams({
+                              concept_code_search_pattern:newVal})
                         )}
                   />
+              </CardText>
+            </Card>
                   {/* <div style={styles.wrapper}> {chips} </div> */}
-              <Card>
-                <CardHeader
-                  title="Details"
-                  actAsExpander={true}
-                  showExpandableButton={true}
-                />
-                <CardText expandable={true}>
-                  <AgTable data={conceptInfo||[]}
-                          width={"100%"} height={250}
-                          id="src_target_recs" />
-                </CardText>
-              </Card>
+            <Card>
+              <CardHeader
+                title="Details"
+                actAsExpander={true}
+                showExpandableButton={true}
+              />
+              <CardText expandable={true}>
+                <AgTable data={conceptInfo||[]}
+                        width={"100%"} height={250}
+                        id="src_target_recs" />
+              </CardText>
+            </Card>
           </Dialog>
         </form>
     )
@@ -262,36 +286,39 @@ ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
 })(ConceptCodesLookupForm)
 
-let {vocabulariesApi, codesToCidsApi, conceptInfoApi}
-      = apiGlobal.Apis.apis
-let loaders = {
-  loadVocabularies: vocabulariesApi.loader,
-  loadConceptIds: codesToCidsApi.loader,
-  loadConceptInfo: conceptInfoApi.loader,
-}
-const mapDispatchToProps = 
-  dispatch => bindActionCreators(loaders, dispatch)
-
+let {vocabulariesApi, codesToCidsApi, conceptInfoApi} = vocab.apis
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
-    const { vocabulary_id, concept_code_search_pattern, 
-          } = myrouter.getQuery()
-    const apiStore = apiGlobal.apiStore(state,props)
+    const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
+    //const apiStore = apiGlobal.apiStore(state.vocab,props)
+    let calls = {
+      vocabularies: _.get(state.calls, 'vocabulariesApi.primary'),
+    }
+    let selectors = {
+      vocabularies: _.mapValues(vocabulariesApi.selectors, s=>s(state)),
+      conceptIds: _.mapValues(codesToCidsApi.selectors, s=>s(state)),
+      conceptInfo: _.mapValues(conceptInfoApi.selectors, s=>s(state)),
+    }
     let newState = {
-      ...loaders,
+      //junk: state.junk,
+      //...state,
+      calls,
+      selectors,
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
-      vocabularies: apiStore('vocabulariesApi'),
-      conceptInfoApi,
-      concept_ids: 
-        codesToCidsApi.selectors.concept_ids(
-          apiStore('codesToCidsApi')),
-      conceptInfo: conceptInfoApi.selectors.conceptInfoWithMatchStrs(state),
+      vocabularies: selectors.vocabularies.results(),
+      concept_ids: _.get(state, 'calls.codesToCidsApi.calls.primary.call.results')||[],
+      //vocabularies: vocabulariesApi.selectorFuncs(state,props).results(state,props)(state,{},vocabulariesApi.props),
+      /*
+      concept_ids: codesToCidsApi.selectors.concept_ids,
+      conceptInfo: conceptInfoApi.selectors(state.vocab,props).conceptInfoWithMatchStrs(state.vocab,props),
+      */
       formRef: state.form.concept_codes_form,
     }
+    //console.log('state.junk',state.junk)
     return newState
   }, 
-  mapDispatchToProps,
+  vocab.mapDispatchToProps,
   /*
   (stateProps, dispatchProps, ownProps) => {
     let urlProps = 
@@ -302,3 +329,7 @@ ConceptCodesLookupForm = connect(
   }
   */
 )(ConceptCodesLookupForm)
+
+export {
+  ConceptCodesLookupForm
+}

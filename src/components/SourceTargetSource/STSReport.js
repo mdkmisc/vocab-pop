@@ -25,7 +25,6 @@ import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
-import * as apiGlobal from '../../redux/apiGlobal'
 import * as vocab from '../../redux/ducks/vocab'
 import {ConceptCodesLookupForm} from '../Lookups'
 
@@ -284,24 +283,27 @@ class ConceptList extends Component {
     )
   }
 }
-let conceptInfoApi = apiGlobal.Apis.apis.conceptInfoApi
 
 const ConceptListConnected = connect(
   (state, props) => { // mapStateToProps
     let {storeName} = props
-    let apiCalls = state.api.apiCalls || {}
+    //let apiCalls = state.vocab.apiCalls || {}
     if (storeName) {
-      let storeObj = apiCalls[apiGlobal.Apis.storeId(
-                                conceptInfoApi.apiName, storeName)]
+      throw new Error('fix')
+      /*
+      let storeObj = apiCalls[apiGlobal.Apis.s toreId(
+                                state.vocab.apis.conceptInfoApi.apiName, storeName)]
       return {concepts: (storeObj && storeObj.meta && storeObj.meta.results)}
+      */
     }
-    return {concepts: conceptInfoApi.selectors.conceptInfoWithMatchStrs(state)}
+    console.error('fix this weirdness')
+    return {
+      //concepts: vocab.apis.conceptInfoApi.selectors(state,props).results(state,props)(state,{},vocab.apis.conceptInfoApi.props),
+    }
+      //vocabulariesApi.selectorFuncs(state,props).results(state,props)(state,{},vocabulariesApi.props),
+    //return {concepts: state.vocab.apis.conceptInfoApi.selectors.conceptInfoWithMatchStrs(state.vocab)}
   },
-  // mapDispatchToProps:
-  dispatch => bindActionCreators(
-    { 
-      loadConceptInfo: conceptInfoApi.loader,
-    }, dispatch)
+  vocab.mapDispatchToProps,
 )(ConceptList)
 
 

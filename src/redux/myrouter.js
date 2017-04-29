@@ -1,3 +1,4 @@
+/* eslint-disable */
 import _ from '../supergroup'
 import React, { Component, PropTypes } from 'react'
 import {  ConnectedRouter, 
@@ -12,7 +13,7 @@ const middleware = routerMiddleware(history)
 
 var stableStringify = require('json-stable-stringify');
 const qs = require('query-string');
-export var myqs = {
+const myqs = {
   stringify: (obj,jsonChildren=true) => {
     if (!jsonChildren)
       throw new Error("not sure what to do")
@@ -25,6 +26,8 @@ export var myqs = {
       throw new Error("not sure what to do")
     let o = qs.parse(str)
     let obj = _.mapValues(o, v => {
+      if (typeof v !== 'object')
+        return v
       let parsed = v
       try {
         parsed = JSON.parse(v)
@@ -36,12 +39,7 @@ export var myqs = {
   }
 }
 
-
-const QUERY_ADD = 'QUERY_ADD';
-const QUERY_DELETE = 'QUERY_DELETE';
-
-
-export const getQuery = (path) => {
+const getQuery = (path) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   if (path) 
     return _.get(query, path)
@@ -52,31 +50,40 @@ export const getQuery = (path) => {
   //console.log({query, test})
   //debugger
 }
-export const addParams = (params) => {
+const routeAction = o => {
+  console.log('routeAction!', o, reduxPush(o))
+  return reduxPush(o)
+}
+const addParams = (params) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   query = _.merge(query, params)
   //myrouter.history.push({search: myqs.stringify(query)})
-  return reduxPush({search: myqs.stringify(query)})
+  return routeAction({search: myqs.stringify(query), state:{addParams:params}})
 }
-export const addParam = (path, val) => {
+const addParam = (path, val) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   _.set(query, path, val)
   //myrouter.history.push({search: myqs.stringify(query)})
-  return reduxPush({search: myqs.stringify(query)})
+  return routeAction({search: myqs.stringify(query), state:{addParam:{path,val}}})
 }
-export const deleteParams = (params) => {
+const deleteParams = (params) => {
   if (typeof params === 'string') {
     params = [params]
   }
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   params.forEach(p => _.unset(query, p))
   //myrouter.history.push({search: myqs.stringify(query)})
-  return reduxPush({search: myqs.stringify(query)})
+  return routeAction({search: myqs.stringify(query), state:{deleteParams:params}})
 }
-export const setPathname = pathname => {
+const setPathname = pathname => {
   if (pathname === myrouter.history.location.pathname)
     return {type:'EMPTY'}
-  return reduxPush(myrouter.history.createHref({...myrouter.history.location,pathname}))
+  return routeAction(myrouter.history.createHref({...myrouter.history.location,pathname}))
+}
+const queryListener = (params=[], cb) => {
+
+  let query = getQuery()
+
 }
 
 // toss out everything and see what sticks
@@ -92,10 +99,8 @@ var myrouter = {
   routerReducer,  // redux
   middleware,     // redux
   ConnectedRouter,// redux
-  reduxPush,
+  routeAction,
   history,        // history/createBrowserHistory
-  QUERY_ADD,
-  QUERY_DELETE,
 }
 export default myrouter
 

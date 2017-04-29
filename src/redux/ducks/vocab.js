@@ -1,37 +1,12 @@
+/* eslint-disable */
+import { combineEpics } from 'redux-observable'
 import { createSelector } from 'reselect'
-import { browserHistory, } from 'react-router'
-import Rx from 'rxjs/Rx'
-import myrouter from '../myrouter'
-
+import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
-import {apiActions, apiStore, Api} from '../apiGlobal'
+import * as api from '../api'
+import myrouter from '../myrouter'
 
-// selector stuff
-export const conceptInfo = createSelector(
-  apiStore,
-  apiStore => {
-    return apiStore('conceptInfoApi')
-  }
-)
-export const conceptInfoWithMatchStrs = createSelector(
-  apiStore,
-  apiStore => {
-    let concepts = apiStore('conceptInfoApi')
-    if (!concepts)
-      return []
-    let matchedIds = apiStore('codesToCidsApi')
-    //console.log({concepts,matchedIds})
-    return concepts.map(
-      concept => {
-        let match = matchedIds.find(m=>m.concept_id===concept.concept_id) || {}
-        let {match_strs=[]} = match
-        return { ...concept,
-                match_strs:match_strs.join(', ')}
-      }
-    )
-  }
-)
 export const getCounts = ({concepts, ...opts}) => {
   if (!_.isEmpty(opts))
     debugger //throw new Error("opt to handle?")
@@ -58,19 +33,26 @@ export const plainSelectors = {
   getCounts, 
 }
 
-let vocabulariesApi = new Api({
+let vocabulariesApi = new api.Api({
   apiName: 'vocabulariesApi',
   apiPathname: 'vocabularies',
 })
-let codesToCidsApi = new Api({
+let codesToCidsApi = new api.Api({
   apiName: 'codesToCidsApi',
   apiPathname: 'codesToCids',
+  /*
   selectors: {
-    concept_ids: (results=[]) => results.map(d=>d.concept_id),
+    concept_ids: createSelector(
+      api.selectors.results,
+      (results=[]) => {
+                    return state=>results(state)
+                  }
+    )
   },
+    */
   defaultResults: [],
 })
-let conceptInfoApi = new Api({
+let conceptInfoApi = new api.Api({
   apiName: 'conceptInfoApi',
   apiPathname: 'conceptInfo',
   defaultResults: [],
@@ -87,14 +69,39 @@ let conceptInfoApi = new Api({
     return ({concept_ids: concept_ids.map(d=>d.concept_id)})
   },
   */
+// selector stuff
+  /*
   selectors: {
-    conceptInfo,
-    conceptInfoWithMatchStrs,
+    conceptInfo: (state,action,props) => {
+      let calls = _.get(state,['apis',props.apiName,'calls'])
+      return calls && calls(state,props)
+    },
+    conceptInfoWithMatchStrs: (state,action,props) => {
+      let calls = _.get(state,['apis',props.apiName,'calls'])
+      return calls && calls(state,props)
+      //return conceptInfo(state,action,props)
+    }
+  },
+  */
+  plainSelectors: {},
+  apiSelectorMakers: {
+    conceptInfo: (api) => {
+      return (state,action) => {
+        let calls = _.get(state,['apis',api.apiName,'calls'])
+        return calls && calls(state,action)
+      }
+    },
+    /*
+    conceptInfoWithMatchStrs: (state,props={}) => {
+      let calls = _.get(state,['apis',props.apiName,'calls'])
+      return calls && calls(state,props)
+      //return conceptInfo(state,action,props)
+    }
+    */
   }
   /*  from old loader: (need again?)
                 .map(relInfo=> {
                   // MUTATING!
-                  //debugger
                   return info.map(inf=> {
                     inf.rels = inf.rels.map(
                       rel=>{
@@ -109,11 +116,114 @@ let conceptInfoApi = new Api({
   */
 })
 
-export const VOCABULARY_ID = 'VOCABULARY_ID'
-export const CONCEPT_CODE_SEARCH_PATTERN = 'CONCEPT_CODE_SEARCH_PATTERN'
+export const apis = {
+  vocabulariesApi,
+  codesToCidsApi,
+  conceptInfoApi,
+}
 
+export const callReducers = combineReducers(
+  _.mapValues(apis, api=>api.callsReducer.bind(api)))
+
+export default (state={}, action) => {
+  //console.warn("vocabReducer does nothing",{state,action})
+  return state
+}
+
+const newLookupParams = params => {
+}
+export const mapDispatchToProps = 
+  dispatch => {
+    let actionsByApi = _.mapValues(
+      apis, 
+      api=>{
+        return bindActionCreators(api.actionCreators, dispatch)
+      })
+    return {actions: actionsByApi}
+  }
+
+const conceptsFromCodeLookupEpic = (action$, store) => (
+  action$.ofType('@@router/LOCATION_CHANGE')
+    .switchMap(action=>{
+      let {path,search,hash,state,key} = action
+      let query = myrouter.getQuery()
+      let go = false
+      if (_.has(state, 'vocabulary_id') || _.has(state, 'concept_code_search_pattern')) {
+        go = true
+      }
+      if (typeof state === 'undefined') { // initializing?
+        go = true
+      }
+      if (go && query.vocabulary_id && query.concept_code_search_pattern) {
+        //return Rx.Observable.of(codesToCidsApi.actionCreators.setup())
+      }
+      return Rx.Observable.empty()
+    })
+)
+const loadVocabularies = (action$, store) => (
+  action$.ofType('@@router/LOCATION_CHANGE') // happens on init
+    .filter(() => _.isEmpty(store.getState().vocabularies))
+    .take(1)
+    .mergeMap(()=>{
+      //console.log('launching setup',action)
+      debugger
+      let setupAction = vocabulariesApi.actionCreators.setup()
+      let fakeState = vocabulariesApi.callsReducer({},setupAction)
+      let fakeCall = fakeState.primary
+      //let loadAction = vocabulariesApi.actionCreators.load({action:fakeCall})
+      return Rx.Observable.of(fakeCall)
+    })
+)
+/*
+    .mergeMap(action=>{
+      let call = store.getState().calls.vocabulariesApi.primary
+      console.log('got action, return call', action, call)
+      return call
+    })
+*/
+export const epic = combineEpics(
+  //testEpic,
+  //testEpic2,
+  loadVocabularies,
+  conceptsFromCodeLookupEpic,
+  combineEpics(...api.epics)
+)
+/*
+const testEpic = (action$,store) => {
+  return action$.mapTo(()=>Rx.Observable.of({type:'BLAH',payload:{foo:'bleep'}}))
+}
+let filt = action=>{
+                let ret = action.type === '@@router/LOCATION_CHANGE'
+                console.log('in filt',{action,ret})
+                return ret
+              }
+let sub = action=>{
+                console.log('in sub LOC',action)
+                return action
+              }
+let sub2 = action=>{
+                console.log('in sub everything',action)
+                return action
+              }
+const testEpic2 = (action$,store) => {
+  //action$.filter(filt).subscribe(sub2)
+  let ret = action$.filter(filt)
+                    .map(()=>{
+                      return Rx.Observable.of({type:LOAD_VOCABS, payload:{hatethis:true}})
+                    })
+  ret.subscribe(sub)
+  return ret
+}
+*/
+/*
 export const epics = [
+  testEpic,
+  testEpic2,
+  //conceptsFromCodeLookupEpic,
+  loadVocabularies,
+  ...api.epics,
 ]
+*/
 /*
 export const relcounts = createSelector(
   conceptInfo,

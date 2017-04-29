@@ -1,7 +1,6 @@
 /* eslint-disable */
 import _ from '../../supergroup'; // in global space anyway...
 import * as utils from '../../utils'
-import * as apiGlobal from '../../redux/apiGlobal'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
@@ -34,13 +33,12 @@ import {STSReport} from './STSReport'
 
 class SourceTargetSourceForm extends Component {
   render() {
-    let { conceptInfo, vocabulary_id, concept_code_search_pattern, } = this.props
+    let { vocabulary_id, concept_code_search_pattern, } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <STSReport  vocabulary_id={vocabulary_id} 
                     concept_code_search_pattern={concept_code_search_pattern} 
-                    conceptInfo={conceptInfo} 
                     />
       </div>
     )
@@ -57,7 +55,6 @@ SourceTargetSourceForm = connect(
     const selector = formValueSelector('concept_codes_form')
     const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
     return {
-      conceptInfo: vocab.conceptInfo(state),
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
     }
