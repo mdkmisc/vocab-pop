@@ -33,12 +33,13 @@ import {STSReport} from './STSReport'
 
 class SourceTargetSourceForm extends Component {
   render() {
-    let { vocabulary_id, concept_code_search_pattern, } = this.props
+    let { vocabulary_id, concept_code_search_pattern, concepts } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <STSReport  vocabulary_id={vocabulary_id} 
                     concept_code_search_pattern={concept_code_search_pattern} 
+                    concepts={concepts}
                     />
       </div>
     )
@@ -57,6 +58,8 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
+      concepts: vocab.apis.conceptInfoApi.selectors('conceptInfoApi')
+                  .results(state)(),
     }
   }
 )(SourceTargetSourceForm)

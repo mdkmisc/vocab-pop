@@ -24,7 +24,7 @@ export const apiActions = {
   API_CALL_NEW: 'vocab-pop/api/API_CALL_NEW',
   API_CALL_LOAD: 'vocab-pop/api/API_CALL_LOAD',
   API_CALL_FULFILLED: 'vocab-pop/api/API_CALL_FULFILLED',
-  API_CALL_REJECTED: 'API_CALL_REJECTED',
+  API_CALL_REJECTED: 'vocab-pop/api/API_CALL_REJECTED',
   CACHE_DIRTY: 'vocab-pop/api/CACHE_DIRTY'
 }
 
@@ -45,26 +45,23 @@ const apiCallEpic = (action$, store) => (
     .ofType(apiActions.API_CALL_LOAD)
     //.do(action=>examineAction({from:'apiCallEpic load',action$, action, state:store.getState()}))
     .mergeMap(action=>{
-      debugger
       let {apiName, storeName, } = flattenAction(action)
       let {type, payload, url, } = flattenAction(action)
       return (
         cachedAjax(url)
         .map(results=>{
-          console.log('results', results)
-          debugger
+          //console.log('results', results)
           action = makeAction(
             {action, payload:results,
               type:apiActions.API_CALL_FULFILLED})
           return action
           //return Rx.Observable.of(action)
         })
-        .catch(error => {
-          console.log('error', error)
-          debugger
-          return Observable.of({
+        .catch(err => {
+          //console.log('error', error)
+          return Rx.Observable.of({
             ...action,
-            type: API_CALL_REJECTED,
+            type: apiActions.API_CALL_REJECTED,
             payload: err.xhr.response,
             error: true
           })
@@ -152,36 +149,21 @@ const getUrl = (path, params={}) => {
   return url
 }
 
+export const newDataActionFilter = (action, apiNameWanted, storeNameWanted='primary') => {
+  let {type, payload, apiName, storeName, apiPathname, params, url,
+        results, error, err, api, } = flattenAction(action)
+  return (
+    type === apiActions.API_CALL_FULFILLED &&
+    apiName === apiNameWanted &&
+    storeName === storeNameWanted
+  )
+}
 //selectors
 const plainSelectors = {
 }
-const apiSelectorMakers = api => {
-  /*
-  const apiStore = createSelector(
-    apis,
-    apis => {
-      return state => {
-        debugger
-        api = apis[api.apiName]
-        console.log({api, state})
-        return api.calls
-      }
-    }
-  )
-  const results = createSelector(
-    apiStore,
-    apiStore => {
-      return (state,action) => {
-        debugger
-        console.log({api, state, action})
-        let calls = api.calls(state,action)
-        return calls.results
-      }
-    }
-  )
-  */
+export const apiSelectorMakers = apiName => {
   const calls = state => {
-    return _.get(state, `calls.${api.apiName}`)||{}
+    return _.get(state, `calls.${apiName}`)||{}
   }
   const primaryCall = createSelector(calls, calls.primary)
   const otherCall = createSelector(calls, storeName => calls[storeName])
@@ -192,14 +174,15 @@ const apiSelectorMakers = api => {
   const callPhase = createSelector(call, call => storeName=>call(storeName).type)
   const isSetup = createSelector(callPhase, callPhase => storeName=>!!callPhase(storeName))
   const isStarted = createSelector(callPhase, callPhase => storeName=>callPhase(storeName)!==apiActions.API_CALL)
-  const callMeta = createSelector(call, call => storeName=>call(storeName).meta)
-  const callStuff = createSelector(callMeta, callMeta => storeName=>callMeta(storeName).call)
+  const callMeta = createSelector(call, call => storeName=>call(storeName).meta||{})
+  const callStuff = createSelector(callMeta, callMeta => storeName=>callMeta(storeName).call||{})
   const isPending = createSelector(callStuff, callStuff => storeName=>callStuff(storeName).pending)
-  const results = createSelector(call, call => storeName=>call(storeName).results)
+  const results = createSelector(callStuff, callStuff => storeName=>callStuff(storeName).results)
 
   return {
     calls,
     call,
+    callStuff,
     callPhase,
     isSetup,
     isStarted,
@@ -225,7 +208,6 @@ export class Api {
       if (typeof apiName === 'undefined') 
         return state
       let pending 
-      debugger
       switch (type) {
         case apiActions.API_CALL:
           pending = true
@@ -276,7 +258,7 @@ export class Api {
         return state
       }
     this.actionCreators = {
-      setup: (opts={}) => {
+      load: (opts={}) => {
               let {params, storeName='primary'} = opts
               return ({ type: apiActions.API_CALL,
                         payload: params,
@@ -285,12 +267,12 @@ export class Api {
             },
     }
 
-    this.selectors = {
+    this.selectors = apiName => ({
       ...plainSelectors,
       ...props.plainSelectors,
-      ...apiSelectorMakers(this),
-      ..._.mapValues(props.apiSelectorMakers, s=>s(this)),
-    }
+      ...apiSelectorMakers(apiName),
+      ..._.mapValues(props.apiSelectorMakers, s=>s(apiName)),
+    })
   }
 }
 

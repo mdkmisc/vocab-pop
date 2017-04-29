@@ -138,7 +138,7 @@ class ConceptCodesLookupForm extends Component {
               dispatch, // initialValues, 
               isPending, err, vocabularies,
               concept_code_search_pattern, vocabulary_id,
-              conceptInfo=[],
+              concepts=[],
           } = this.props
     let errMsg = ''
     if (isPending) {
@@ -190,8 +190,8 @@ class ConceptCodesLookupForm extends Component {
           <FlatButton
             label="Close"
             primary={true}
-            keyboardFocused={!!conceptInfo}
-            disabled={!conceptInfo}
+            keyboardFocused={!!concepts}
+            disabled={!concepts}
             onTouchTap={close}
           />,
         ];
@@ -201,7 +201,7 @@ class ConceptCodesLookupForm extends Component {
         <form style={{marginLeft:20}}>
           <RaisedButton
               onTouchTap={open}
-              label={`${conceptInfo.length}
+              label={`${concepts.length}
                       ${vocabulary_id}
                       codes matching
                       ${concept_code_search_pattern}` }
@@ -209,9 +209,9 @@ class ConceptCodesLookupForm extends Component {
           <Dialog
             title={
               <div>
-                {conceptInfo.length} concept codes
+                {concepts.length} concept codes
                 <div style={{fontSize:12}}>
-                  { conceptInfo.map(d=>d.concept_code).join(', ') }
+                  { concepts.map(d=>d.concept_code).join(', ') }
                 </div>
               </div>
             }
@@ -271,7 +271,7 @@ class ConceptCodesLookupForm extends Component {
                 showExpandableButton={true}
               />
               <CardText expandable={true}>
-                <AgTable data={conceptInfo||[]}
+                <AgTable data={concepts||[]}
                         width={"100%"} height={250}
                         id="src_target_recs" />
               </CardText>
@@ -295,27 +295,20 @@ ConceptCodesLookupForm = connect(
       vocabularies: _.get(state.calls, 'vocabulariesApi.primary'),
     }
     let selectors = {
-      vocabularies: _.mapValues(vocabulariesApi.selectors, s=>s(state)),
-      conceptIds: _.mapValues(codesToCidsApi.selectors, s=>s(state)),
-      conceptInfo: _.mapValues(conceptInfoApi.selectors, s=>s(state)),
+      vocabularies: _.mapValues(vocabulariesApi.selectors('vocabulariesApi'), s=>s(state)),
+      conceptIds: _.mapValues(codesToCidsApi.selectors('codesToCidsApi'), s=>s(state)),
+      conceptInfo: _.mapValues(conceptInfoApi.selectors('conceptInfoApi'), s=>s(state)),
     }
     let newState = {
-      //junk: state.junk,
-      //...state,
       calls,
       selectors,
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
       vocabularies: selectors.vocabularies.results(),
-      concept_ids: _.get(state, 'calls.codesToCidsApi.calls.primary.call.results')||[],
-      //vocabularies: vocabulariesApi.selectorFuncs(state,props).results(state,props)(state,{},vocabulariesApi.props),
-      /*
-      concept_ids: codesToCidsApi.selectors.concept_ids,
-      conceptInfo: conceptInfoApi.selectors(state.vocab,props).conceptInfoWithMatchStrs(state.vocab,props),
-      */
+      //concept_ids: selectors.codesToCidsApi.results(),   // don't need it
+      concepts: selectors.conceptInfo.results(),
       formRef: state.form.concept_codes_form,
     }
-    //console.log('state.junk',state.junk)
     return newState
   }, 
   vocab.mapDispatchToProps,

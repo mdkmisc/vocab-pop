@@ -95,7 +95,7 @@ export class STSReport extends Component {
   render() {
     console.error('window.stsprops', this.props)
     window.stsprops = this.props
-    let {vocabulary_id, concept_code_search_pattern, conceptInfo=[], 
+    let {vocabulary_id, concept_code_search_pattern, concepts=[], 
           sortableRowHeight=50,
     } = this.props
     const cardStyle = {
@@ -115,8 +115,8 @@ export class STSReport extends Component {
               <CardText style={{leftMargin:15}}
                         expandable={true} >
                 <ConceptListConnected 
-                  concepts={conceptInfo}
-                  title={`${conceptInfo.length} concepts `}
+                  concepts={concepts}
+                  title={`${concepts.length} concepts `}
                 />
               </CardText>
             </Card>
@@ -230,7 +230,7 @@ class ConceptList extends Component {
                 let title = `${rel.records.length} ${rel.toString()} (sub) concepts`
                 console.log({rel, title})
                 return <ListItem
-                          key={i}
+                          key={`${i}:${title}`}
                           innerDivStyle={{
                             paddingTop: 13,
                             paddingBottom: 3,
@@ -263,7 +263,7 @@ class ConceptList extends Component {
                         
                 /*
                 debugger
-                let rrels = vocab.sourceRelationshipsSG({vocab:{conceptInfo:rel.records}})
+                let rrels = vocab.sourceRelationshipsSG({vocab:{concepts:rel.records}})
                 return (
                   <div key={i} style={{marginLeft:15}} >
                     <Relationship key={i} rel={rel} />
@@ -286,26 +286,30 @@ class ConceptList extends Component {
 
 const ConceptListConnected = connect(
   (state, props) => { // mapStateToProps
+    return {}
+    /*
     let {storeName} = props
-    //let apiCalls = state.vocab.apiCalls || {}
     if (storeName) {
-      throw new Error('fix')
-      /*
-      let storeObj = apiCalls[apiGlobal.Apis.s toreId(
-                                state.vocab.apis.conceptInfoApi.apiName, storeName)]
-      return {concepts: (storeObj && storeObj.meta && storeObj.meta.results)}
-      */
     }
-    console.error('fix this weirdness')
     return {
-      //concepts: vocab.apis.conceptInfoApi.selectors(state,props).results(state,props)(state,{},vocab.apis.conceptInfoApi.props),
+      concepts: props.concepts ||
+                vocab.apis.conceptInfoApi.selectors('conceptInfoApi')
+                      .results(state)(storeName),
     }
-      //vocabulariesApi.selectorFuncs(state,props).results(state,props)(state,{},vocabulariesApi.props),
-    //return {concepts: state.vocab.apis.conceptInfoApi.selectors.conceptInfoWithMatchStrs(state.vocab)}
+    */
   },
-  vocab.mapDispatchToProps,
+  (dispatch, ownProps) => {
+    return {
+      loadConceptInfo: ({params,storeName}) => {
+        let loadAction = vocab.apis.conceptInfoApi.actionCreators
+                            .load({params,storeName})
+        let fakeState = vocab.apis.conceptInfoApi.callsReducer({},loadAction)
+        let fakeCall = fakeState[storeName]
+        dispatch(fakeCall)
+      }
+    }
+  }
 )(ConceptList)
-
 
 const countText = (concepts) => {
   let colCnts = vocab.plainSelectors.getCounts({concepts})

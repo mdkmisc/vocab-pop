@@ -39,7 +39,7 @@ let vocabulariesApi = new api.Api({
 })
 let codesToCidsApi = new api.Api({
   apiName: 'codesToCidsApi',
-  apiPathname: 'codesToCids',
+  apiPathname: 'codeSearchToCids',
   /*
   selectors: {
     concept_ids: createSelector(
@@ -85,9 +85,9 @@ let conceptInfoApi = new api.Api({
   */
   plainSelectors: {},
   apiSelectorMakers: {
-    conceptInfo: (api) => {
-      return (state,action) => {
-        let calls = _.get(state,['apis',api.apiName,'calls'])
+    concept_ids: (apiName) => {
+      return (state) => {
+        let calls = _.get(state,['apis',apiName,'calls'])
         return calls && calls(state,action)
       }
     },
@@ -142,7 +142,18 @@ export const mapDispatchToProps =
     return {actions: actionsByApi}
   }
 
-const conceptsFromCodeLookupEpic = (action$, store) => (
+const loadVocabularies = (action$, store) => (
+  action$.ofType('@@router/LOCATION_CHANGE') // happens on init
+    .filter(() => _.isEmpty(store.getState().vocabularies))
+    .take(1)
+    .mergeMap(()=>{
+      let loadAction = vocabulariesApi.actionCreators.load()
+      let fakeState = vocabulariesApi.callsReducer({},loadAction)
+      let fakeCall = fakeState.primary
+      return Rx.Observable.of(fakeCall)
+    })
+)
+const loadConceptIds = (action$, store) => (
   action$.ofType('@@router/LOCATION_CHANGE')
     .switchMap(action=>{
       let {path,search,hash,state,key} = action
@@ -154,24 +165,32 @@ const conceptsFromCodeLookupEpic = (action$, store) => (
       if (typeof state === 'undefined') { // initializing?
         go = true
       }
-      if (go && query.vocabulary_id && query.concept_code_search_pattern) {
-        //return Rx.Observable.of(codesToCidsApi.actionCreators.setup())
+      let {vocabulary_id, concept_code_search_pattern} = query
+      if (go && vocabulary_id && concept_code_search_pattern) {
+        let params = {vocabulary_id, concept_code_search_pattern}
+        let loadAction = codesToCidsApi.actionCreators.load({params})
+        let fakeState = codesToCidsApi.callsReducer({},loadAction)
+        let fakeCall = fakeState.primary
+        return Rx.Observable.of(fakeCall)
       }
       return Rx.Observable.empty()
     })
 )
-const loadVocabularies = (action$, store) => (
-  action$.ofType('@@router/LOCATION_CHANGE') // happens on init
-    .filter(() => _.isEmpty(store.getState().vocabularies))
-    .take(1)
-    .mergeMap(()=>{
-      //console.log('launching setup',action)
-      debugger
-      let setupAction = vocabulariesApi.actionCreators.setup()
-      let fakeState = vocabulariesApi.callsReducer({},setupAction)
-      let fakeCall = fakeState.primary
-      //let loadAction = vocabulariesApi.actionCreators.load({action:fakeCall})
-      return Rx.Observable.of(fakeCall)
+const loadConcepts = (action$, store) => (
+  action$
+    .filter(action=>api.newDataActionFilter(action,'codesToCidsApi','primary'))
+    .switchMap(action=>{
+      let concept_ids = api.apiSelectorMakers('codesToCidsApi')
+                          .results(store.getState())()
+        //codesToCidsApi.selectors.results(store.getState())('primary')||[]
+      if (concept_ids.length) {
+        let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
+        let loadAction = conceptInfoApi.actionCreators.load({params})
+        let fakeState = conceptInfoApi.callsReducer({},loadAction)
+        let fakeCall = fakeState.primary
+        return Rx.Observable.of(fakeCall)
+      }
+      return Rx.Observable.empty()
     })
 )
 /*
@@ -185,7 +204,8 @@ export const epic = combineEpics(
   //testEpic,
   //testEpic2,
   loadVocabularies,
-  conceptsFromCodeLookupEpic,
+  loadConceptIds,
+  loadConcepts,
   combineEpics(...api.epics)
 )
 /*
@@ -219,7 +239,7 @@ const testEpic2 = (action$,store) => {
 export const epics = [
   testEpic,
   testEpic2,
-  //conceptsFromCodeLookupEpic,
+  //loadConceptIds,
   loadVocabularies,
   ...api.epics,
 ]
