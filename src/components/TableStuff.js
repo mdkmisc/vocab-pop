@@ -9,7 +9,6 @@ import {VocabMapByDomain, DomainMap} from './VocabMap';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph from './SigmaReactGraph';
-import ConceptInfo from '../ConceptInfo';
 import Spinner from 'react-spinner';
 import myrouter from '../redux/myrouter'
 //require('react-spinner/react-spinner.css');

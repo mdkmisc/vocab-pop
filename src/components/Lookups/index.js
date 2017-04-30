@@ -69,7 +69,6 @@ class ConceptCodesLookupForm extends Component {
     super(props)
     this.state = { 
       open: false,
-      pending: true,
     }
   }
   open(do_it=false) {
@@ -78,7 +77,7 @@ class ConceptCodesLookupForm extends Component {
     this.setState({open:true})
   }
   close() {
-    if (!this.state.open || this.state.pending)
+    if (!this.state.open)
       return
     this.setState({open:false})
   }
@@ -91,46 +90,9 @@ class ConceptCodesLookupForm extends Component {
   componentDidMount() {
     const {actions, vocabulary_id, concept_code_search_pattern, } = this.props
     this.openOrClose()
-    //actions.newLookupParams({params:{vocabulary_id,concept_code_search_pattern}})
-    /*
-    actions.vocabulariesApi.setup()
-    if (vocabulary_id && concept_code_search_pattern) {
-      actions.codesToCidsApi.setup({params:{vocabulary_id,concept_code_search_pattern}})
-    }
-    */
   }
   componentDidUpdate(prevProps) {
     this.openOrClose()
-    /*
-    const { actions, calls, selectors,
-            vocabulary_id, concept_code_search_pattern, concept_ids=[],
-    } = this.props
-    if (vocabulary_id !== prevProps.vocabulary_id ||
-        concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
-      actions.newLookupParams({params:{vocabulary_id,concept_code_search_pattern}})
-      this.setState({pending:true})
-    }
-    if (!concept_ids.length)
-      this.open()
-    if (selectors.vocabularies.isSetup() && !selectors.vocabularies.isStarted()) {
-      actions.vocabulariesApi.load({call:calls.vocabularies})
-    }
-    if (selectors.conceptIds.isSetup() && !selectors.conceptIds.isStarted()) {
-      actions.vocabulariesApi.load({call:calls.vocabularies})
-    }
-    if (vocabulary_id !== prevProps.vocabulary_id ||
-        concept_code_search_pattern !== prevProps.concept_code_search_pattern) {
-      actions.codesToCidsApi.setup({params:{vocabulary_id,concept_code_search_pattern}})
-      actions.newLookupParams({params:{vocabulary_id,concept_code_search_pattern}})
-      this.setState({pending:true})
-    }
-    if (!_.isEqual(concept_ids, prevProps.concept_ids)) {
-      this.setState({pending:false})
-      if (Array.isArray(concept_ids) && concept_ids.length) {
-        actions.conceptInfoApi.setup({params:{concept_ids}})
-      }
-    }
-  */
   }
   render() {
     let { 

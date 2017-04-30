@@ -26,7 +26,6 @@ import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
 import * as vocab from '../../redux/ducks/vocab'
-import {ConceptCodesLookupForm} from '../Lookups'
 
 import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
@@ -35,7 +34,6 @@ import {Glyphicon, Row, Col,
           Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap'
 //if (DEBUG) window.d3 = d3
-//import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../ConceptInfo'
 import {AgTable, ConceptTree, } from '../TableStuff'
 import SortableTree from 'react-sortable-tree';
 require('../sass/Vocab.css')
@@ -78,109 +76,7 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-export class STSReport extends Component {
-  constructor(props) {
-    super(props)
-    this.state = {
-    }
-  }
-  componentDidMount() {
-    this.dataToState();
-  }
-  componentDidUpdate() {
-    this.dataToState();
-  }
-  dataToState() {
-  }
-  render() {
-    console.error('window.stsprops', this.props)
-    window.stsprops = this.props
-    let {vocabulary_id, concept_code_search_pattern, concepts=[], 
-          sortableRowHeight=50,
-    } = this.props
-    const cardStyle = {
-      padding: '0px',
-    };
-
-    return  <Card initiallyExpanded={true} containerStyle={cardStyle} style={cardStyle}>
-              <CardHeader style={{
-                  padding:'10px 8px 0px 8px'
-                }}
-                actAsExpander={true}
-                showExpandableButton={true}
-                title={<h4>Source Target Source Report</h4>}
-              />
-              <ConceptCodesLookupForm style={{ margin: 10, }}
-              />
-              <CardText style={{leftMargin:15}}
-                        expandable={true} >
-                <ConceptListConnected 
-                  concepts={concepts}
-                  title={`${concepts.length} concepts `}
-                />
-              </CardText>
-            </Card>
-  }
-}
-const ConceptItem = props => {  // just for source concepts at moment
-  let { title, subtitle, avatarText, concept, styles} = props
-  title = title || concept.concept_name
-  subtitle = subtitle || countText([concept])
-  return (
-    <ListItem
-      innerDivStyle={{
-        padding: '10px 10px 0px 78px',
-        marginBottom: 0,
-        ...styles.item,
-        ...styles.font,
-      }}
-      leftAvatar={
-        avatarText ?  <Avatar
-                        color={muiTheme.palette.alternateTextColor}
-                        backgroundColor={muiTheme.palette.primary1Color}
-                        size={30}
-                        style={{width:'auto',
-                                textAlign: 'right',
-                                margin:'-4px 10px 10px -10px',
-                                padding:5,
-                                ...styles.font,
-                        }}
-                      >
-                        {avatarText}
-                      </Avatar>
-                  : undefined
-      }
-      containerElement={
-        <span style={{
-          margin: 0,
-          padding:0,
-          ...styles.font,
-        }} />
-      }
-      primaryText={
-        <span style={{
-          margin: 0,
-          padding:0,
-          ...styles.font,
-        }}>
-          {title}
-        </span>
-      }
-      secondaryText={ 
-        <span style={{
-          margin: 0,
-          padding:0,
-          ...styles.font,
-        }}>
-          {subtitle}
-        </span>
-      }
-      secondaryTextLines={2}
-      initiallyOpen={true}
-    />
-  )
-}
-class ConceptList extends Component {
+class ConceptSet extends Component {
   componentDidMount() {
     const {concept_ids, loadConceptInfo, storeName} = this.props
     if (concept_ids && concept_ids.length) {
@@ -252,7 +148,7 @@ class ConceptList extends Component {
                               .map((group,j) => 
                               <ConceptItem concept={concept} key={j} />)
                             */
-                            [<ConceptListConnected 
+                            [<ConceptSetConnected 
                               title={title}
                               storeName={title}
                               concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
@@ -283,8 +179,7 @@ class ConceptList extends Component {
     )
   }
 }
-
-const ConceptListConnected = connect(
+export const ConceptSetConnected = connect(
   (state, props) => { // mapStateToProps
     return {}
     /*
@@ -309,7 +204,65 @@ const ConceptListConnected = connect(
       }
     }
   }
-)(ConceptList)
+)(ConceptSet)
+const ConceptItem = props => {  // just for source concepts at moment
+  let { title, subtitle, avatarText, concept, styles} = props
+  title = title || concept.concept_name
+  subtitle = subtitle || countText([concept])
+  return (
+    <ListItem
+      innerDivStyle={{
+        padding: '10px 10px 0px 78px',
+        marginBottom: 0,
+        ...styles.item,
+        ...styles.font,
+      }}
+      leftAvatar={
+        avatarText ?  <Avatar
+                        color={muiTheme.palette.alternateTextColor}
+                        backgroundColor={muiTheme.palette.primary1Color}
+                        size={30}
+                        style={{width:'auto',
+                                textAlign: 'right',
+                                margin:'-4px 10px 10px -10px',
+                                padding:5,
+                                ...styles.font,
+                        }}
+                      >
+                        {avatarText}
+                      </Avatar>
+                  : undefined
+      }
+      containerElement={
+        <span style={{
+          margin: 0,
+          padding:0,
+          ...styles.font,
+        }} />
+      }
+      primaryText={
+        <span style={{
+          margin: 0,
+          padding:0,
+          ...styles.font,
+        }}>
+          {title}
+        </span>
+      }
+      secondaryText={ 
+        <span style={{
+          margin: 0,
+          padding:0,
+          ...styles.font,
+        }}>
+          {subtitle}
+        </span>
+      }
+      secondaryTextLines={2}
+      initiallyOpen={true}
+    />
+  )
+}
 
 const countText = (concepts) => {
   let colCnts = vocab.plainSelectors.getCounts({concepts})

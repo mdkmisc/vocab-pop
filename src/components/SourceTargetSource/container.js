@@ -5,6 +5,7 @@ import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
+import {ConceptCodesLookupForm} from '../Lookups'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
@@ -28,19 +29,39 @@ import {
 } from 'redux-form-material-ui'
 
 
-import {STSReport} from './STSReport'
+import * as sts from './STSReport'
 
 
 class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, concept_code_search_pattern, concepts } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
-    return (
-      <div ref={d=>this.divRef=d} id="sts-div" >
+        /*
         <STSReport  vocabulary_id={vocabulary_id} 
                     concept_code_search_pattern={concept_code_search_pattern} 
                     concepts={concepts}
                     />
+        */
+    return (
+      <div ref={d=>this.divRef=d} id="sts-div" >
+        <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
+          <CardHeader style={{
+              padding:'10px 8px 0px 8px'
+            }}
+            actAsExpander={true}
+            showExpandableButton={true}
+            title={<h4>Source Target Source Report</h4>}
+          />
+          <ConceptCodesLookupForm style={{ margin: 10, }}
+          />
+          <CardText style={{leftMargin:15}}
+                    expandable={true} >
+            <sts.ConceptSetConnected 
+              concepts={concepts}
+              title={`${concepts.length} concepts `}
+            />
+          </CardText>
+        </Card>
       </div>
     )
   }

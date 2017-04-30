@@ -417,3 +417,351 @@ class ConceptRecord extends Component {
   }
 }
 */
+export class ConceptView extends Component {
+  constructor(props) {
+    super(props);
+    this.state = {};
+  }
+  componentDidMount() {
+    this.forceUpdate();
+  }
+  componentDidUpdate(prevProps, prevState) {
+    const parentClass = this.props.parentClass || "flex-remaining-height";
+    //updateReason(prevProps, prevState, this.props, this.state);
+    //console.log("resizing ConceptView to ", parentClass);
+    setToAncestorSize(this, this.divRef, '.'+parentClass, 'VocabPop:ConceptView');
+  }
+  render() {
+    const {concept_id, conceptInfo, } = this.props;
+    const {width, height} = this.state;
+    //const {height} = this.state;
+    //let cr = conceptInfo && conceptInfo.conceptInfo ? <ConceptRecord conceptInfo={conceptInfo.conceptInfo} /> : '';
+    let node = {id:concept_id, x:200, y:100, size: 5, label: 'no concept...'};
+                  //LabelClass: ConceptRecord, 
+    if (conceptInfo && conceptInfo.concept_id === concept_id) {
+      node.conceptInfo = conceptInfo;
+      node.label = conceptInfo.concept_name;
+    }
+    //console.log('ConceptView', node, width, height);
+    let graphProps = {
+      width, height,
+      nodes: [node],
+      //getHeight: (() => getAncestorHeight(this, this.divRef, ".main-content")).bind(this),
+      //refFunc: (ref=>{ this.srgRef=ref; console.log('got a ref from SRG'); }).bind(this),
+    };
+    return  <div 
+              ref={d=>this.divRef=d} className={"concept-view-graph-div"}
+            ><SigmaReactGraph {...graphProps} /></div>;
+    /*
+    return  <div ref={d=>this.divRef=d}>
+              {cr}
+              <SigmaReactGraph {...graphProps} />
+              <pre>
+                concept_id: {concept_id} {'\n'}
+                props: {_.keys(this.props).join(',')}
+              </pre>
+              <Inspector search={false} 
+                data={ conceptInfo||{} } />
+            </div>
+    */
+  }
+}
+export class ConceptViewPage extends Component {
+  constructor(props) {
+    super(props);
+    console.error(props);
+    //this.transformResults = d=>new ConceptInfo(d);
+    let concept_id = AppState.getState('concept_id') || '';
+    let concept_code = AppState.getState('concept_code') || '';
+    let concept_text = AppState.getState('concept_text') || '';
+    this.state = {concept_id, concept_code, concept_text,};
+    //this.handleChange = this.handleChange.bind(this);
+    this.conceptInfoUpdate = this.conceptInfoUpdate.bind(this);
+    this.conceptSetUpdate = this.conceptSetUpdate.bind(this);
+    this.conceptIdFetch = this.conceptIdFetch.bind(this);
+    this.conceptCodeFetch = this.conceptCodeFetch.bind(this);
+    this.eventHandler = this._eventHandler.bind(this);
+    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
+    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
+    //this.wrapperUpdate = this._wrapperUpdate.bind(this);
+  }
+  _eventHandler({e, target, targetEl, listenerWrapper}) {
+    if (e.type === 'click') {
+      let concept_id = _.get(target, 'props.infobit.data.concept_id');
+      if (typeof concept_id !== 'undefined') {
+        this.conceptIdFetch(concept_id);
+        return;
+      }
+    }
+  }
+  componentDidMount() {
+    let {concept_id, concept_code, concept_text} = this.state;
+    AppState.subscribeState(null,
+                            c=>{
+                              /*
+                              //console.log('appChange', c);
+                              if (c.conceptInfoUserChange) {
+                                AppState.deleteState('conceptInfoUserChange');
+                                if (c.conceptInfoUserChange.match(/concept_id/)) {
+                                  AppState.deleteState('conceptInfoParams.concept_code');
+                                  AppState.deleteState('conceptInfoParams.concept_text');
+                                  this.conceptIdFetch(c.conceptInfoParams, 'user', 'concept_id');
+                                } else if (c.conceptInfoUserChange.match(/concept_code/)) {
+                                  AppState.deleteState('conceptInfoParams.concept_id');
+                                  AppState.deleteState('conceptInfoParams.concept_text');
+                                  this.conceptCodeFetch(c.conceptInfoParams, 'user', 'concept_code');
+                                } else if (c.conceptInfoUserChange.match(/concept_text/)) {
+                                  AppState.deleteState('conceptInfoParams.concept_id');
+                                  AppState.deleteState('conceptInfoParams.concept_code');
+                                  this.conceptTextFetch(c.conceptInfoParams, 'user', 'concept_code');
+                                }
+                              }
+                              //this.setState({change:'appState',appStateChange:c}));
+                              */
+                            });
+    if (concept_id !== '') {
+      this.conceptIdFetch(concept_id);
+    } else if (concept_code !== '') {
+      this.conceptCodeFetch(concept_code);
+    } else if (concept_text !== '') {
+      this.conceptTextFetch(concept_text);
+    }
+  }
+  conceptInfoUpdate(ci) {
+    console.log(this);
+    //if (this.state.conceptInfo === ci) return;
+    //this.forceUpdate();
+    this.setState({conceptInfo:ci});
+  }
+  conceptSetUpdate(cs) {
+    console.log(this);
+    //if (this.state.conceptSet === cs) return;
+    //this.forceUpdate();
+    this.setState({conceptSet:cs},
+                 function(){
+                   console.log("setting conceptSet from conceptSetUpdate", this.state);
+                 });
+  }
+  unsub() {
+    const {conceptInfo} = this.state;
+    conceptInfo && conceptInfo.done();
+  }
+  conceptIdFetch(concept_id) {
+    let {conceptInfo} = this.state;
+    let newState = {  //conceptInfoUserChange:'user:concept_id', 
+                      concept_id, concept_code:'', conceptSet:undefined,}
+    if (!conceptInfo || conceptInfo.concept_id !== concept_id) {
+      conceptInfo && conceptInfo.done();
+      conceptInfo = new ConceptInfo({concept_id});
+      conceptInfo.subscribe(this.conceptInfoUpdate);
+    }
+    let appState = AppState.getState();
+    let newAppState = _.merge({}, appState, newState);
+    if (!_.isEqual(appState, newAppState)) {
+      AppState.saveState(newState);
+    }
+    newState.conceptInfo = conceptInfo;
+    this.setState(newState);
+  }
+  conceptCodeFetch(concept_code) {
+    let {conceptSet} = this.state;
+    let newState = {  //conceptSetUserChange:'user:concept_code', 
+                      concept_code, concept_id:'', conceptInfo:undefined,}
+    if (!conceptSet || conceptSet.concept_code !== concept_code) {
+      conceptSet && conceptSet.done();
+      conceptSet = new ConceptSetFromCode({concept_code});
+      conceptSet.subscribe(this.conceptSetUpdate);
+    }
+    let appState = AppState.getState();
+    let newAppState = _.merge({}, appState, newState);
+    if (!_.isEqual(appState, newAppState)) {
+      AppState.saveState(newState);
+    }
+    newState.conceptSet = conceptSet;
+    this.setState(newState);
+  }
+  conceptTextFetch(concept_text) {
+    console.error("not handling text input yet");
+    let conceptSet = new ConceptSetFromText({concept_text});
+    conceptSet.subscribe(this.conceptSetUpdate);
+    this.setState({concept_text, conceptSet});
+  }
+  componentWillUnmount() {
+    this.unsub();
+    //console.log('ConceptViewPage unmounting');
+  }
+  componentDidUpdate(prevProps, prevState) {
+    updateReason(prevProps, prevState, this.props, this.state, this);
+  }
+  getValidationState(field) {
+    const {concept_id, concept_code, conceptInfo, } = this.state;
+    if (field === 'concept_id') {
+      if (!isFinite(parseInt(concept_id,10))) {
+        return null;
+      } else if (!conceptInfo || conceptInfo.failed()) {
+        return 'error';
+      } else if (conceptInfo.concept_id !== concept_id) {
+        throw new Error("not sure what's up");
+      } else if (conceptInfo.validConceptId()) {
+        return 'success';
+      }
+    } else if (field === 'concept_code') {
+      if (!concept_code) {
+        return null;
+      } else if (!conceptInfo || conceptInfo.failed()) {
+        return 'error';
+      } else if (conceptInfo.validConceptId()) {
+        return 'success';
+      } else if (conceptInfo.isConceptSet()) {
+        return 'warning';
+      }
+    }
+    //else if (concept_id === '') return 'warning';
+    return 'error';
+  }
+  /*
+  handleChange(e) {
+    e.preventDefault();
+    let conceptInfoParams = {};
+    let change;
+    if (e.target.id === 'concept_id_input') {
+      let concept_id = e.target.value;
+      concept_id = parseInt(concept_id,10);
+      if (!_.isNumber(concept_id)) {
+        AppState.deleteState('conceptInfoParams');
+        return;
+      }
+      conceptInfoParams.concept_id = concept_id;
+      change = 'user:concept_id';
+    } else if (e.target.id === 'concept_code_input') {
+      let concept_code = e.target.value;
+      if (!concept_code.length) {
+        AppState.deleteState('conceptInfoParams');
+        return;
+      }
+      conceptInfoParams.concept_code = concept_code;
+      change = 'user:concept_code';
+    } else {
+      throw new Error('huh?');
+    }
+    if (!_.isEqual(AppState.getState('conceptInfoParams'), conceptInfoParams))
+      AppState.saveState({conceptInfoParams, conceptInfoUserChange:change});
+  }
+  */
+  render() {
+    const {w,h} = this.props; // from ComponentWrapper
+    let {concept_id, concept_code, concept_text, conceptInfo, conceptSet, change} = this.state;
+    //concept_id = conceptInfo && conceptInfo.get('concept_id', '') || '';
+    //concept_code = conceptInfo && conceptInfo.get('concept_code') || '';
+    //if (typeof concept_id !== "string" && typeof concept_id !== "number") debugger;
+    //if (typeof concept_code !== "string" && typeof concept_code !== "number") debugger;
+    let cv = 'No concept chosen';
+    // do I really need a wrapper?  ... switching to state to pass data down
+    if (conceptSet) {
+      cv =  <div className="concept-set-container" >
+              <ConceptList conceptList={conceptSet} />
+            </div>
+    } else if (conceptInfo) {
+      cv =  <div className="concept-view-container" >
+              <ConceptDesc conceptInfo={conceptInfo} />
+            </div>
+    }
+    const conceptIdValidation = 
+      () => (this.state.valid_concept_id === true && 'success') ||
+            (this.state.valid_concept_id === 'loading' && 'warning') ||
+            (this.state.valid_concept_id === 'false' ? 'error' : null );
+    /*
+    const conceptCodeValidation = 
+      () => (this.state.conceptSet && this.state.conceptSet.length && 'success') ||
+            (this.state.valid_concept_id === 'loading' && 'warning') ||
+            'error';
+    */
+    return  <ListenerWrapper wrapperTag="div" className="flex=box"
+                  eventsToHandle={['onClick']}
+                  eventHandlers={[this.eventHandler]} >
+              <Form horizontal className="flex-fixed-height-40">
+                <FormGroup controlId="concept_id_input"
+                        validationState={conceptIdValidation()} >
+                  <Col componentClass={ControlLabel}>Concept Id</Col>
+                  <Col xs={4}>
+                    <FormControl type="number" step="1" value={concept_id} placeholder="Concept Id"
+                      onChange={ e => {
+                                e.preventDefault();
+                                let concept_id = e.target.value;
+                                concept_id = parseInt(concept_id,10);
+                                if (!_.isNumber(concept_id)) {
+                                  concept_id = null;
+                                  //this.setState({concept_id, valid_concept_id: 'error', conceptInfo: undefined, });
+                                  //return;
+                                }
+                                this.conceptIdFetch(concept_id);
+                        }}
+                    />
+                    <FormControl.Feedback />
+                    <HelpBlock>{(this.state.valid_concept_id === 'loading' && 'Loading...') ||
+                                (this.state.valid_concept_id === false 
+                                    && 'Invalid concept id') || ''}</HelpBlock>
+                  </Col>
+                </FormGroup>
+
+                <FormGroup controlId="concept_code_input"
+                        //validationState={conceptCodeValidation()} 
+                  >
+                  <Col componentClass={ControlLabel}>Concept Code</Col>
+                  <Col xs={4}>
+                    <FormControl type="string" value={concept_code} placeholder="Concept Code"
+                      onChange={
+                        e => {
+                                e.preventDefault();
+                                let concept_code = e.target.value;
+                                this.conceptCodeFetch(concept_code);
+                        }}
+                    />
+                    <FormControl.Feedback />
+                    {/*<HelpBlock>{(this.state.valid_concept_code === 'loading' && 'Loading...') ||
+                                (this.state.valid_concept_code === false 
+                                    && 'Invalid concept id') || ''}</HelpBlock> */}
+                  </Col>
+                </FormGroup>
+
+                <FormGroup controlId="concept_text_input"
+                        //validationState={conceptTextValidation()} 
+                  >
+                  <Col componentClass={ControlLabel}>Concept Text</Col>
+                  <Col xs={4}>
+                    <FormControl type="string" value={concept_text} placeholder="Concept Text"
+                      onChange={
+                        e => {
+                          throw new Error("not handling this yet");
+                          /*
+                                e.preventDefault();
+                                let concept_text = e.target.value;
+                                if (conceptInfo && conceptInfo.concept_text === concept_text) return;
+                                AppState.saveState({conceptInfoUserChange:'user:concept_text', concept_text, });
+                                this.setState({concept_text,
+                                              valid_concept_text: 'loading',
+                                              conceptSet: this.conceptTextFetch(concept_text)});
+                          */
+                        }}
+                    />
+                    <FormControl.Feedback />
+                    {/*<HelpBlock>{(this.state.valid_concept_text === 'loading' && 'Loading...') ||
+                                (this.state.valid_concept_text === false 
+                                    && 'Invalid concept id') || ''}</HelpBlock> */}
+                  </Col>
+                </FormGroup>
+
+
+              </Form>
+              <Row className="flex-remaining-height">
+                <Col xs={10} xsOffset={0} >
+                  {cv}
+                </Col>
+              </Row>
+
+            </ListenerWrapper>;
+    return <div className="flex-box"> 
+
+          </div>
+  }
+}
