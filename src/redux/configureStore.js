@@ -132,3 +132,12 @@ export default function configureStore(initialState = {}) {
   //utils.initialize(store, myrouter)
   return {store, myrouter}
 }
+
+
+window.junk = ({a, b, ...c}) => {
+  console.log({a, b, c})
+  debugger
+}
+window.junk({a:1, b:2, d:'foo', e:'bar'})
+
+

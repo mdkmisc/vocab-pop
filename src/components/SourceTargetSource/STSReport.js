@@ -1,3 +1,4 @@
+// rename to ConceptComponents? (or something)
 /*
 Copyright 2016 Sigfried Gold
 
