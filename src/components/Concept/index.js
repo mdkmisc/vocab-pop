@@ -199,6 +199,7 @@ const OneSc = muiThemeable()(props => {
                         labelStyle={{textTransform:'none'}}
                         label={`${title ? title + ' ' : ''}${commify(cnt.cnt)}`}
                         labelPosition="before"
+                        data-tip="hello world"
                         icon={
                           <CdmRecsAvatar
                               contents={ cncpt.conceptTableAbbr(cnt.tbl) }

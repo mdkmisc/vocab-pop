@@ -36,6 +36,7 @@
     "react-sortable-tree": "^0.1.15",
     "react-spinner": "^0.2.6",
     "react-tap-event-plugin": "^2.0.1",
+    "react-tooltip": "^3.3.0",
     "redux": "^3.6.0",
     "redux-form": "^6.6.0",
     "redux-form-material-ui": "^4.1.3",
