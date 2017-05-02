@@ -1,4 +1,24 @@
+/*
 @import url('https://fonts.googleapis.com/css?family=Roboto:300,400,500');
+body {
+  font-family: 'Roboto', sans-serif;
+}
+*/
+
+// from OHDSI style guide, http://www.ohdsi.org/web/wiki/doku.php?id=development:style_guide
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+}
+.heading {
+	font-size: 14px;
+	color: #000;
+	margin: 7px 0px 3px 0px;
+	padding: 0px 5px 0px 5px;
+	border-bottom: solid 1px #ccc;
+}
+
+
+// other stuff...needs pruning
 
 //colors
 $gray: grey;
@@ -45,6 +65,38 @@ $steel_blue:  steelblue;
 $mute_opacity: 0.3;
 $color_green_30: rgba(20,255,50,.3);
 
+
+
+.sc-standard-concept, .rc, .sc-S { // don't use all of these
+  //background-color: $color_lochmara_30_approx;
+	background-color: $sc_green_reg;
+  .strong & {
+    background-color: $sc_green_strong;
+  }
+}
+.sc-classification-concept, .drc, .sc-C {
+	//background-color: $color_regent_st_blue_approx;
+  background-color: $color_lightish_purple;
+}
+.sc-non-standard-concept, .src, .sc-X {
+  background-color: $nsc_red;
+  .strong & {
+    border: 2px solid red;
+  }
+}
+.invalid-concept {
+  background-color: $crimson_30;
+}
+
+.dsrc {
+  background-color: $color_claret_30_approx;
+}
+.norecs {
+  background-color: $black_10;
+}
+
+
+
 .is-pending {
   background-color: yellow;
 }
@@ -57,9 +109,9 @@ $color_green_30: rgba(20,255,50,.3);
     max-width: 250px;
   }
 }
-body {
-  font-family: 'Roboto', sans-serif;
-}
+
+
+
 html, body, .height-100 {
   height: 100%;
 }
@@ -288,34 +340,6 @@ div.vocab-map, div.domain-map, div.concept-view-container {
     font-size: small;
     font-style: small-caps;
   }
-}
-
-.sc-standard-concept, .rc, .sc-S { // don't use all of these
-  //background-color: $color_lochmara_30_approx;
-	background-color: $sc_green_reg;
-  .strong & {
-    background-color: $sc_green_strong;
-  }
-}
-.sc-classification-concept, .drc, .sc-C {
-	//background-color: $color_regent_st_blue_approx;
-  background-color: $color_lightish_purple;
-}
-.sc-non-standard-concept, .src, .sc-X {
-  background-color: $nsc_red;
-  .strong & {
-    border: 2px solid red;
-  }
-}
-.invalid-concept {
-  background-color: $crimson_30;
-}
-
-.dsrc {
-  background-color: $color_claret_30_approx;
-}
-.norecs {
-  background-color: $black_10;
 }
 
 .click-link {

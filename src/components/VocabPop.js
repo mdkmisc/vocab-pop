@@ -36,7 +36,7 @@ var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
 import _ from '../supergroup'; // in global space anyway...
 import {VocabMapByDomain, DomainMap} from './VocabMap';
-import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../ConceptInfo';
+import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../redux/ducks/concept';
 import {AgTable} from './TableStuff';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');

@@ -134,9 +134,19 @@ export default function configureStore(initialState = {}) {
 }
 
 
+import { createSelector } from 'reselect'
 window.junk = ({a, b, ...c}) => {
   console.log({a, b, c})
-  debugger
+
+  const number = state=>state
+  const N = createSelector(number, number=>new Number(number))
+  N(5) // Number {[[PrimitiveValue]]: 5}
+  new Number(5) === new Number(5) // false -- different objects
+  N(5)===N(5) // true -- memoized!  :)
+  N(N(5))===N(N(5)) // false -- not memoized :(
+  _.isEqual(N(N(5)),N(N(5))) // true -- maybe I don't care that they're not ===
+
+
 }
 window.junk({a:1, b:2, d:'foo', e:'bar'})
 

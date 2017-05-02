@@ -1,37 +1,14 @@
 /* eslint-disable */
 import { combineEpics } from 'redux-observable'
 import { createSelector } from 'reselect'
+//DEBUG:
+window.createSelector = createSelector
+
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import _ from '../../supergroup'; // in global space anyway...
 var d3 = require('d3')
 import * as api from '../api'
 import myrouter from '../myrouter'
-
-export const getCounts = ({concepts, ...opts}) => {
-  if (!_.isEmpty(opts))
-    debugger //throw new Error("opt to handle?")
-  
-  let tblcols = _.supergroup( 
-                    _.flatten(concepts.map(d=>d.rcs)),
-                    ['tbl','col'])
-  let cnts = 
-    tblcols
-      .leafNodes()
-      .map((col,k) => ({
-        colName: col.toString(),
-        tblName: col.parent.toString(),
-        col,
-        cnts: _.chain(['rc','src','crc'])
-                .map(cntType=>[cntType, col.aggregate(_.sum,cntType)])
-                .filter(c => c[1]>0)
-                .fromPairs()
-                .value(),
-      }))
-  return cnts
-}
-export const plainSelectors = {
-  getCounts, 
-}
 
 let vocabulariesApi = new api.Api({
   apiName: 'vocabulariesApi',
@@ -185,6 +162,11 @@ const loadConcepts = (action$, store) => (
         //codesToCidsApi.selectors.results(store.getState())('primary')||[]
       if (concept_ids.length) {
         let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
+/*
+console.error("testing w/ some random hardcoded cids")
+concept_ids = [38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170]
+params = {concept_ids}
+*/
         let loadAction = conceptInfoApi.actionCreators.load({params})
         let fakeState = conceptInfoApi.callsReducer({},loadAction)
         let fakeCall = fakeState.primary

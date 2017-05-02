@@ -27,6 +27,7 @@ import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
 import * as vocab from '../../redux/ducks/vocab'
+import * as cncpt from '../../redux/ducks/concept'
 
 import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
@@ -45,6 +46,7 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from '../../utils'
 
+import muiTheme, * as muit from '../../muitheme'
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
@@ -266,7 +268,8 @@ const ConceptItem = props => {  // just for source concepts at moment
 }
 
 const countText = (concepts) => {
-  let colCnts = vocab.plainSelectors.getCounts({concepts})
+  throw new Error("fix")
+  let colCnts = cncpt.getCounts({concepts})
   return (
     colCnts.map(
       ({cnts,col,colName,tblName},i) => {

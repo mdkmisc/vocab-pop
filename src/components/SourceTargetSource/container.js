@@ -5,6 +5,7 @@ import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
 import * as vocab from '../../redux/ducks/vocab'
+import * as cncpt from '../../redux/ducks/concept'
 import {ConceptCodesLookupForm} from '../Lookups'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -28,20 +29,14 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-
-import * as sts from './STSReport'
+import * as C from '../Concept'
+//import * as sts from './STSReport'
 
 
 class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, concept_code_search_pattern, concepts } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
-        /*
-        <STSReport  vocabulary_id={vocabulary_id} 
-                    concept_code_search_pattern={concept_code_search_pattern} 
-                    concepts={concepts}
-                    />
-        */
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
@@ -56,9 +51,9 @@ class SourceTargetSourceForm extends Component {
           />
           <CardText style={{leftMargin:15}}
                     expandable={true} >
-            <sts.ConceptSetConnected 
+            <C.ConceptSetAsCard 
               concepts={concepts}
-              title={`${concepts.length} concepts `}
+              //title={`${concepts.length} concepts `}
             />
           </CardText>
         </Card>
@@ -79,8 +74,8 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
-      concepts: vocab.apis.conceptInfoApi.selectors('conceptInfoApi')
-                  .results(state)(),
+      concepts: cncpt.concepts(state),
+      // should simplify?  vocab.apis.conceptInfoApi .selectors('conceptInfoApi') .results(state)()),
     }
   }
 )(SourceTargetSourceForm)
