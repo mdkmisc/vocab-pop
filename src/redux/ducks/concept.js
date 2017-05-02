@@ -154,6 +154,38 @@ export const plural = (str, cnt) => {
   return cnt === 1 ? str : `${str}s`
 }
 
+export const conceptTableAbbr = tbl => (
+  ({
+    //attribute_definition,
+    //care_site,
+    //cohort_attribute,
+    //cohort_definition,
+    condition_era: 'Dx',
+    condition_occurrence: 'Dx',
+    //death,
+    //device_cost,
+    //device_exposure,
+    //domain,
+    //dose_era,
+    //drug_cost,
+    drug_era: 'Rx',
+    drug_exposure: 'Rx',
+    //drug_strength,
+    measurement: 'Sx',
+    //note,
+    observation: 'Sx',
+    //observation_period,
+    //person,
+    //procedure_cost,
+    procedure_occurrence: 'Tx',
+    //provider,
+    //relationship,
+    //specimen,
+    //visit_cost,
+    visit_occurrence: 'V',
+    //vocabulary
+  })[tbl] || '?'
+)
 
 
 

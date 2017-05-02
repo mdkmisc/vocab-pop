@@ -122,9 +122,9 @@ class SetAsCard extends Component {
         <Card initiallyExpanded={expanded} >
           <CardHeader
             title={title}
-            titleColor={muit.scThemes.X.palette.primary1Color}
+            //titleColor={muit.scThemes.X.palette.primary1Color}
             subtitle={subtitle}
-            subtitleColor={muit.scThemes.X.palette.primary1Color}
+            //subtitleColor={muit.scThemes.X.palette.primary1Color}
             actAsExpander={true}
             showExpandableButton={true}
           />
@@ -155,13 +155,12 @@ let styles = {
                     },
 }
 */
-const CdmRecsAvatar = props => {
-  let {contents, val, ...rest} = props
-  //debugger
+const CdmRecsAvatar = muiThemeable()(props => {
+  let {contents, val, muiTheme, ...rest} = props
   return  <Avatar
-            color={muit.scThemes.X.palette.alternateTextColor}
-            backgroundColor={muit.scThemes.X.palette.accent1Color}
-            //size={30}
+            color='white'
+            backgroundColor={muiTheme.palette.regular}
+            size={30}
             {...rest}
             /*
             style={{width:'auto',
@@ -174,42 +173,42 @@ const CdmRecsAvatar = props => {
           >
             { contents }
           </Avatar>
-}
-const OneSc = props => {
-  let {concepts, title} = props
+})
+const OneSc = muiThemeable()(props => {
+  let {concepts, title, style={}, muiTheme} = props
+  let pal = muiTheme.palette
   let colCnts = cncpt.colCntsFromConcepts(concepts)
-  return  <FlatButton 
-              style={{
-                //width:400, 
-                //height:colCnts.length * 70,
-                //top:85,
-                //border: '3px dotted orange',
-              }}
-              primary={true} 
-              labelStyle={{textTransform:'none'}}
-              label={title}
-              labelPosition="before"
-              /*
-              icon={
-                //<CdmRecsAvatar val={sc} contents={'hi'} key={i}/>
-              }
-              */
-          >
+  return  <div style={style} >
               {
                 colCnts.map(
-                      //let abbr = cncpt.conceptTableAbbr()
                   (cnt,i)=>(
-                    <div>
-                      <pre>{JSON.stringify(cnt)}</pre>
-                      <CdmRecsAvatar key={i} 
-                          val={cnt}
-                          contents="something"
-                      />
-                    </div>
+                    <RaisedButton 
+                        //fullWidth={true}
+                        key={i}
+                        style={{
+                          width: '90%',
+                          margin: '5%',
+                          //padding: 5,
+                          //backgroundColor: pal.light,
+                          //width:400, 
+                          //height:colCnts.length * 180 + 200,
+                          //top:85,
+                          //border: '3px dotted orange',
+                        }}
+                        primary={true} 
+                        labelStyle={{textTransform:'none'}}
+                        label={`${title ? title + ' ' : ''}${commify(cnt.cnt)}`}
+                        labelPosition="before"
+                        icon={
+                          <CdmRecsAvatar
+                              contents={ cncpt.conceptTableAbbr(cnt.tbl) }
+                          />
+                        }
+                    />
                   ))
               }
-          </FlatButton>
-}
+          </div>
+})
 const scDescForSet = concepts => {
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
@@ -219,33 +218,29 @@ const scDescForSet = concepts => {
       display: 'flex',
       flexWrap: 'wrap',
       justifyContent: 'space-around',
-      //border: '1px solid blue',
     },
     gridList: {
       display: 'flex',
       flexWrap: 'nowrap',
       overflowX: 'auto',
     },
-    titleStyle: {
-      height: 80,
+    title: {
+      //minHeight: 40,
+      //height: 40,
       //color: scTheme.palette.primary1Color,
       //color: 'rgb(0, 188, 212)',
     },
-    tile: {
-      //border: '4px solid gray',
-      //width: 400,
-      //height:'auto',
-      //height: 400,
-    },
     child: {
-      height:'auto', width:300, border:'3px solid red',
-      marginTop: 47,
+      width: '100%',
+      //height: '100%',
+      marginTop: 50,
       //position: 'relative',
     }
   }
   return  <div style={styles.root}>
             <GridList
               cellHeight={'auto'}
+              //cellHeight={150}
               style={styles.gridList}
               //cols={bySc.length}
               cols={1.3}
@@ -253,31 +248,31 @@ const scDescForSet = concepts => {
               {
                 bySc.map((sc,i) => {
                   let scTheme = muit.scThemes[sc]
-                  /*
-                  let titleStyle = {
-                        backgroundColor: scTheme.palette.primary1Color,
-                      }
-                      */
-
                   let pal = scTheme.palette
-                  let gradient = `linear-gradient(to top, ${pal.darker} 0%,${pal.regular} 70%,${pal.light} 100%)`
+                  let gradient = `linear-gradient(to top, ${pal.light} 0%,${pal.regular} 70%,${pal.dark} 100%)`
+                  let tileStyle = {
+                      //backgroundColor: pal.regular,
+                      minHeight: 100,
+                      minWidth: 250,
+                      background: gradient,
+                  }
                   return  <WrapForSc sc={sc.toString()} key={i}>
                             <GridTile
                               cols={1}
-                              style={styles.tile}
-                              //titleStyle={titleStyle}
+                              rows={0.5}
+                              style={tileStyle}
+                              titleStyle={styles.title}
                               title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
                               //subtitle={<span>by <b>{tile.author}</b></span>}
                               //actionIcon={<IconButton><StarBorder color="white" /></IconButton>}
                               titlePosition='top'
-                              titleBackground={gradient}
+                              //titleBackground={gradient}
                             >
-                              <div style={styles.child} >
-                                <OneSc concepts={sc.records} 
-                                  title={sc.toString()}
-                                  //title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
-                                />
-                              </div>
+                              <OneSc concepts={sc.records} 
+                                      //title={sc.toString()}
+                                      style={styles.child}
+                                //title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
+                              />
                             </GridTile>
                           </WrapForSc>
                 })
@@ -301,7 +296,6 @@ class ConceptSetAsCard extends Component {
 
     // show rels for each concept?
     return (
-      <MuiThemeProvider muiTheme={muit.scThemes.X}>
       <SetAsCard {...{...this.props, title, subtitle}}
       /*              PUT BACK...just removed for testing
         contents={[
@@ -370,7 +364,6 @@ class ConceptSetAsCard extends Component {
         */
 
       />
-      </MuiThemeProvider>
     )
   }
 }
