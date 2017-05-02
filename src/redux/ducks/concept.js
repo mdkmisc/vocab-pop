@@ -21,6 +21,28 @@ export const concepts = createSelector( // just primary, because no way to send 
   conceptsByStoreName,
   conceptsByStoreName => conceptsByStoreName()
 )
+export const rcsFromConcepts = concepts => (
+  _.flatten(
+    concepts.map(c=>c.rcs)
+  )
+  .map(rcs=>{let {rc,src,crc} = rcs
+      if (!!rc + !!src + !!crc > 1) { 
+        throw new Error("this should not happen")
+      } 
+      if (rc) {
+        rcs.cntType = 'rc'
+        rcs.cnt = rc
+      } else if (src) {
+        rcs.cntType = 'src'
+        rcs.cnt = src
+      } else if (crc) {
+        rcs.cntType = 'crc'
+        rcs.cnt = crc
+      }
+      return rcs
+  })
+  .filter(rcs=>rcs.cnt)
+)
 export const repairRcs = concepts => {
   return concepts.map(
     concept => {
@@ -63,63 +85,26 @@ export const repairRcs = concepts => {
       return concept
     })
 }
-
 export const sc = concept => concept.standard_concept  // S, C, or X
 
 // can use plain selectors with supergroup, but not createSelector
 // because supergroup not immutable
 
 
-export const bySc = (concepts=[]) => _.supergroup(concepts, 'standard_concept')
-/*
-export const byScType = concepts => 
-  bySc(concepts).addLevel(c=>c.rcs.map(r=>r.coltype),
-                          {multiValuedGroup:true,dimName:'coltype'})
-export const byScTypeTbl = concepts => 
-  byScType(concepts).addLevel(c=>c.rcs.map(r=>r.tbl),
+export const conceptsBySc = (concepts=[]) => _.supergroup(concepts, 'standard_concept')
+export const conceptsByScTbl = concepts => 
+  conceptsBySc(concepts).addLevel(c=>c.rcs.map(r=>r.tbl),
                           {multiValuedGroup:true,dimName:'tbl'})
-*/
-export const byScTbl = concepts => 
-  bySc(concepts).addLevel(c=>c.rcs.map(r=>r.tbl),
-                          {multiValuedGroup:true,dimName:'tbl'})
-export const byScTblColtype = concepts => {
-  let bycoltype = byScTbl(concepts).addLevel(c=>c.rcs.map(r=>r.coltype),
-                          {multiValuedGroup:true,dimName:'coltype'})
-  return bycoltype
-}
-export const rcsFromConcepts = concepts => (
-  _.flatten(
-    concepts.map(c=>c.rcs)
-  )
-  .map(rcs=>{let {rc,src,crc} = rcs
-      if (!!rc + !!src + !!crc > 1) { 
-        throw new Error("this should not happen")
-      } 
-      if (rc) {
-        rcs.cntType = 'rc'
-        rcs.cnt = rc
-      } else if (src) {
-        rcs.cntType = 'src'
-        rcs.cnt = src
-      } else if (crc) {
-        rcs.cntType = 'crc'
-        rcs.cnt = crc
-      }
-      return rcs
-  })
-  .filter(rcs=>rcs.cnt)
-)
-export const byScTblColtypeCol = concepts => {
-  let bycol = byScTblColtype(concepts).addLevel(c=>c.rcs.map(r=>r.col),
+export const conceptsByScTblCol = concepts => {
+  let bycol = conceptsByScTbl(concepts).addLevel(c=>c.rcs.map(r=>r.col),
                           {multiValuedGroup:true,dimName:'col'})
   bycol.leafNodes()
     .filter(l=>l.depth===3)
     .forEach(
       leaf => {
         leaf.col = leaf.toString()
-        leaf.coltype = leaf.parent.toString()
-        leaf.tbl = leaf.parent.parent.toString()
-        leaf.sc = leaf.parent.parent.parent.toString()
+        leaf.tbl = leaf.parent.toString()
+        leaf.sc = leaf.parent.parent.toString()
         leaf.allRcs =  rcsFromConcepts(leaf.records)
 
         let cntTypes = _.uniq(leaf.allRcs.map(d=>d.cntType))
@@ -130,64 +115,41 @@ export const byScTblColtypeCol = concepts => {
           throw new Error("shouldn't happen")
         }
         if (cntTypes.length === 0) {
+          debugger
+          throw new Error("not sure")
           return
         }
         leaf.cntType = cntTypes[0]
-        //leaf.cnt = 
-
-        if (leaf.sc === 'S' && leaf.coltype === 'source') {
-          // if a source col has a standard concept, then it's probably
-          // identical to the target col for the same records and doesn't
-          // need to be counted twice
-          throw new Error("do something")
-        }
-        leaf.rcsSg = _.supergroup(leaf.allRcs, 'cntType')
-
-        if (leaf.rcsSg.length === 0) {
-          return
-        } else if (leaf.rcsSg.length > 1) {
-          debugger
-          throw new Error("check if something's wrong")
-          //leaf.problem = `multiple count types could be an issue: ${JSON.stringify(cnts)}`
-        } else {
-          let rcsVal = leaf.rcsSg[0]
-          let cntType = rcsVal.toString()
-          let cnt = rcsVal.aggregate(_.sum,'cnt')
-          // none of this should happen now:
-          if (leaf.sc === 'S' && cntType !== 'rc') {
-            debugger
-            leaf.problem = `Possible issue: 
-                              ${cnt} standard concept records
-                              appearing in
-                              ${leaf.tbl}.${leaf.col} which expects ${leaf.coltype}.`
-          } else if (leaf.sc === 'C') {
-            debugger
-            leaf.problem = `Possible issue: 
-                              ${cnt} classification concept records
-                              appearing in
-                              ${leaf.tbl}.${leaf.col}.
-                              Classification concepts not expected in in CDM tables.`
-          } else if (leaf.sc === 'X' && cntType !== 'src') {
-            debugger
-            leaf.problem = `Possible issue: 
-                              ${cnt} non-standard concept records
-                              appearing in
-                              ${leaf.tbl}.${leaf.col} which expects ${leaf.coltype}.`
-          } else {
-            leaf.cnt = `${cnt} records in ${leaf.tbl}.${leaf.col}`
-          }
-        }
+        leaf.cnt = _.sum(leaf.allRcs.map(d=>d.cnt))
+            //leaf.cnt = `${cnt} records in ${leaf.tbl}.${leaf.col}`
       }
-  )
+    )
   return bycol
 }
+export const colCnts = rcs => {
+  let byTblCol = _.supergroup(rcs,['tbl','col'])
+  return (byTblCol.leafNodes()
+            .map(
+              col => {
+                let cnt = {
+                  col: col.toString(),
+                  tbl: col.parent.toString(),
+                  cnt: col.aggregate(_.sum,'cnt'),
+                }
+                return cnt
+              }
+            )
+         )
+}
+export const colCntsFromConcepts = concepts => colCnts(rcsFromConcepts(concepts))
 
 
 export const scClass = concept => `sc-${sc(concept)}`
-export const scName = (concept,cnt) => (
-  plural(({S:'Standard Concept',C:'Classification Concept',X:'Non-standard Concept'
-  })[sc(concept)], cnt)
+export const scName = (concept) => (
+  ({S:'Standard',C:'Classification',X:'Non-standard'}
+   )[sc(concept)]
 )
+export const scLongName = (concept,cnt) => plural(`${scName(concept)} Concept`, cnt)
 export const plural = (str, cnt) => {
   return cnt === 1 ? str : `${str}s`
 }

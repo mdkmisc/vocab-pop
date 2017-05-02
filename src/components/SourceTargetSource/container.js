@@ -53,7 +53,9 @@ class SourceTargetSourceForm extends Component {
                     expandable={true} >
             <C.ConceptSetAsCard 
               concepts={concepts}
-              //title={`${concepts.length} concepts `}
+              title={`${concepts.length}
+                      ${vocabulary_id}
+                      concepts`}
             />
           </CardText>
         </Card>

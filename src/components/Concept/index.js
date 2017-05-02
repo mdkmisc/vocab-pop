@@ -45,6 +45,10 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from '../../utils'
 
+import {GridList, GridTile} from 'material-ui/GridList';
+import IconButton from 'material-ui/IconButton';
+import Subheader from 'material-ui/Subheader';
+import StarBorder from 'material-ui/svg-icons/toggle/star-border';
 import Chip from 'material-ui/Chip'
 import muiThemeable from 'material-ui/styles/muiThemeable';
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
@@ -130,7 +134,9 @@ class SetAsCard extends Component {
   }
 }
 const WrapForSc = ({sc, ...props}) => {
-  return  <MuiThemeProvider muiTheme={muit.scThemes[sc]}>
+  let scTheme = muit.scThemes[sc]
+  //props = {...props, scTheme}
+  return  <MuiThemeProvider muiTheme={scTheme}>
             {props.children}
           </MuiThemeProvider>
 }
@@ -149,41 +155,138 @@ let styles = {
                     },
 }
 */
-const scDescForSet = concepts => {
-  let bySc = cncpt.bySc(concepts) // just supergroups by 'standard_concept'
-  let byScTblCol = cncpt.byScTblColtypeCol(concepts)
-  return  <div>
-            {
-              byScTblCol.map(
-                (sc,i)=> {
-                  return <WrapForSc sc={sc.toString()} key={i}>
-                            <RaisedButton primary={true} 
-                                label={`${sc.records.length} ${cncpt.scName(sc.records[0],sc.records.length)}`}
-                            >
-                              {
-                                sc.leafNodes().map(
-                                  (cnt,i)=>(
-                                      <Chip key={i} 
-                                          //style={styles.chip}
-                                          onRequestDelete={() => alert('not working yet')}
-                                      >
-                                        <span 
-                                            //style={styles.items}
-                                        >
-                                          {cnt.problem || cnt.cnt}
-                                        </span>
-                                      </Chip>
-                                  ))
-                              }
-                            </RaisedButton>
-                         </WrapForSc>
-                }
-
-              )
-            }
-          </div>
-
+const CdmRecsAvatar = props => {
+  let {contents, val, ...rest} = props
+  //debugger
+  return  <Avatar
+            color={muit.scThemes.X.palette.alternateTextColor}
+            backgroundColor={muit.scThemes.X.palette.accent1Color}
+            //size={30}
+            {...rest}
+            /*
+            style={{width:'auto',
+                    textAlign: 'right',
+                    margin:'-4px 10px 10px -10px',
+                    padding:5,
+                    //...styles.font,
+            }}
+            */
+          >
+            { contents }
+          </Avatar>
 }
+const OneSc = props => {
+  let {concepts, title} = props
+  let colCnts = cncpt.colCntsFromConcepts(concepts)
+  return  <FlatButton 
+              style={{
+                //width:400, 
+                //height:colCnts.length * 70,
+                //top:85,
+                //border: '3px dotted orange',
+              }}
+              primary={true} 
+              labelStyle={{textTransform:'none'}}
+              label={title}
+              labelPosition="before"
+              /*
+              icon={
+                //<CdmRecsAvatar val={sc} contents={'hi'} key={i}/>
+              }
+              */
+          >
+              {
+                colCnts.map(
+                      //let abbr = cncpt.conceptTableAbbr()
+                  (cnt,i)=>(
+                    <div>
+                      <pre>{JSON.stringify(cnt)}</pre>
+                      <CdmRecsAvatar key={i} 
+                          val={cnt}
+                          contents="something"
+                      />
+                    </div>
+                  ))
+              }
+          </FlatButton>
+}
+const scDescForSet = concepts => {
+  let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
+                .filter(sc=>cncpt.rcsFromConcepts(sc.records))
+
+  const styles = {
+    root: {
+      display: 'flex',
+      flexWrap: 'wrap',
+      justifyContent: 'space-around',
+      //border: '1px solid blue',
+    },
+    gridList: {
+      display: 'flex',
+      flexWrap: 'nowrap',
+      overflowX: 'auto',
+    },
+    titleStyle: {
+      height: 80,
+      //color: scTheme.palette.primary1Color,
+      //color: 'rgb(0, 188, 212)',
+    },
+    tile: {
+      //border: '4px solid gray',
+      //width: 400,
+      //height:'auto',
+      //height: 400,
+    },
+    child: {
+      height:'auto', width:300, border:'3px solid red',
+      marginTop: 47,
+      //position: 'relative',
+    }
+  }
+  return  <div style={styles.root}>
+            <GridList
+              cellHeight={'auto'}
+              style={styles.gridList}
+              //cols={bySc.length}
+              cols={1.3}
+            >
+              {
+                bySc.map((sc,i) => {
+                  let scTheme = muit.scThemes[sc]
+                  /*
+                  let titleStyle = {
+                        backgroundColor: scTheme.palette.primary1Color,
+                      }
+                      */
+
+                  let pal = scTheme.palette
+                  let gradient = `linear-gradient(to top, ${pal.darker} 0%,${pal.regular} 70%,${pal.light} 100%)`
+                  return  <WrapForSc sc={sc.toString()} key={i}>
+                            <GridTile
+                              cols={1}
+                              style={styles.tile}
+                              //titleStyle={titleStyle}
+                              title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
+                              //subtitle={<span>by <b>{tile.author}</b></span>}
+                              //actionIcon={<IconButton><StarBorder color="white" /></IconButton>}
+                              titlePosition='top'
+                              titleBackground={gradient}
+                            >
+                              <div style={styles.child} >
+                                <OneSc concepts={sc.records} 
+                                  title={sc.toString()}
+                                  //title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
+                                />
+                              </div>
+                            </GridTile>
+                          </WrapForSc>
+                })
+              }
+            </GridList>
+          </div>
+}
+/*
+                               */
 SetAsCard = muiThemeable()(SetAsCard)
 class ConceptSetAsCard extends Component {
   render() {
@@ -191,10 +294,8 @@ class ConceptSetAsCard extends Component {
           subtitle,
           concepts=[], expanded=false} = this.props
 
-    title = typeof title === 'undefined' 
-                ? scDescForSet(concepts) : title
-
-    //subtitle = typeof subtitle === 'undefined' ? countText(concepts) : subtitle
+    subtitle = typeof subtitle === 'undefined' 
+                ? scDescForSet(concepts) : subtitle
 
     // show each rel as whole ConceptSet?
 
@@ -202,6 +303,7 @@ class ConceptSetAsCard extends Component {
     return (
       <MuiThemeProvider muiTheme={muit.scThemes.X}>
       <SetAsCard {...{...this.props, title, subtitle}}
+      /*              PUT BACK...just removed for testing
         contents={[
           // concepts:
           <List >
@@ -256,7 +358,7 @@ class ConceptSetAsCard extends Component {
                       nestedListStyle={{marginLeft:30, fontSize:5}}
                       nestedItems={ nestedItems }
                       {...otherProps}
-                      */
+                      * /
                     >
                     </ListItem>
                   )
@@ -265,6 +367,7 @@ class ConceptSetAsCard extends Component {
             }
           </List>,
         ]}
+        */
 
       />
       </MuiThemeProvider>

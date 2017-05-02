@@ -46,6 +46,10 @@ export const baseSc = {
 
 export const scColors = {
   S: {
+    light: lighten(baseSc.S, 0.8),
+    regular: lighten(baseSc.S, 0.4),
+    dark: baseSc.S,
+    darker: darken(baseSc.S, 0.4),
     primary1Color: lighten(baseSc.S, 0.2),
     //primary2Color: baseSc.S,
     //primary3Color: darken(baseSc.S, 0.2),
@@ -57,11 +61,19 @@ export const scColors = {
     //shadowColor: fullBlack,
   },
   C: {
+    light: lighten(baseSc.C, 0.8),
+    regular: lighten(baseSc.C, 0.4),
+    dark: baseSc.S,
+    darker: darken(baseSc.C, 0.4),
     primary1Color: lighten(baseSc.C, 0.2),
     //primary2Color: baseSc.C,
     //primary3Color: darken(baseSc.C, 0.2),
   },
   X: {
+    light: lighten(baseSc.S, 0.8),
+    regular: lighten(baseSc.S, 0.4),
+    dark: baseSc.S,
+    darker: darken(baseSc.S, 0.4),
     primary1Color: lighten(baseSc.X, 0.5),
     accent1Color: baseSc.X,
     //primary2Color: baseSc.X,
