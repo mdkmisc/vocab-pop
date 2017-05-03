@@ -271,6 +271,61 @@ const scDescForSet = concepts => {
             </GridList>
           </div>
 }
+const relsDescForSet = concepts => {
+    let rels = _.supergroup( _.flatten(concepts.map(d=>d.rels)), 'relationship')
+            {
+              rels.map( (rel,i) => {
+                let title = `${rel.records.length} ${rel.toString()} (sub) concepts`
+                console.log({rel, title})
+                return <ListItem
+                          key={`${i}:${title}`}
+                          innerDivStyle={{
+                            paddingTop: 13,
+                            paddingBottom: 3,
+                          }}
+                          /*
+                          primaryText={
+                            <p style={{color:muiTheme.palette.primary1Color}}>
+                              {rel.records.length}
+                              {rel.toString()} 
+                            </p> 
+                          }
+                          */
+                          //secondaryText={ countText(concepts) }
+                          //secondaryTextLines={2}
+                          initiallyOpen	={true}
+                          nestedItems={ 
+                            /*
+                            rels.getChildren()
+                              .map((group,j) => 
+                              <ConceptItem concept={concept} key={j} />)
+                            */
+                            [<ConceptSetConnected 
+                              title={title}
+                              storeName={title}
+                              concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
+                            />]
+                          }
+                      >
+                      </ListItem>
+                        
+                /*
+                debugger
+                let rrels = vocab.sourceRelationshipsSG({vocab:{concepts:rel.records}})
+                return (
+                  <div key={i} style={{marginLeft:15}} >
+                    <Relationship key={i} rel={rel} />
+                    <div style={{marginLeft:15}} >
+                      {rrels.map(
+                        (rrel,j) => <Relationship key={j} rel={rrel} />
+                      )}
+                    </div>
+                  </div>
+                )
+                */
+              })
+            }
+}
 class ConceptSetAsCard extends Component {
   componentDidMount() {
     //this.csTtId = _.uniqueId('csTtId-')
@@ -284,6 +339,9 @@ class ConceptSetAsCard extends Component {
           subtitle,
           concepts=[], } = this.props
 
+    if (concepts.length < 1)
+      throw new Error("shouldn't be here")
+    const singleConcept = concepts.length === 1
     const cardStyles = {
       root: {
         margin: '3%',
@@ -354,7 +412,7 @@ class ConceptSetAsCard extends Component {
                   style={cardStyles.text} >
           <div style={gridStyles.parent}>
             <GridList cellHeight={'auto'} 
-                      cols={concepts.length > 1 ? 2 : 1}
+                      cols={singleConcept ? 1 : 2}
                       style={gridStyles.gridList} >
               <GridTile 
                         titleBackground='rgba(0,0,0,0)'
@@ -365,9 +423,10 @@ class ConceptSetAsCard extends Component {
               >
                 <div style={gridStyles.child} >
                   {scDescForSet(concepts)}
+                  {relsDescForSet(concepts)}
                 </div>
               </GridTile>
-              { concepts.length <= 1 ? [] :
+              { singleConcept ? [] :
                 <GridTile 
                           titleBackground='rgba(0,0,0,0)'
                           titlePosition='top'
@@ -376,58 +435,11 @@ class ConceptSetAsCard extends Component {
                           style={gridStyles.tile}
                 >
                   <div style={gridStyles.child} >
-                    {
-                      concepts.map(
-                        (concept,i) => {
-                          return  <ConceptSetAsCard key={i}
-                                    concepts={[concept]}
-                                    title={concept.concept_name}
-                                  />
-                          /*
-                          let rsg = _.supergroup(concept.rels, 'relationship')
-                          return (
-                            <ListItem
-                              key={i}
-                              primaryText={
-                                <div style={{color: muit.scThemes.X.palette.primary1Color}} >
-                                  {scDescForSet([concept])}
-                                </div>
-                              }
-                              secondaryText = {
-                                rsg.map(r=><RaisedButton 
-                                              primary={true}
-                                              style={{
-                                                margin:'0px 5px 0px 5px', 
-                                                color: muit.scThemes.X.palette.secondary1Color,
-                                              }}
-                                              key={r.toString()}
-                                              label={`${r.records.length} ${r}`} />
-                                      )
-                              }
-                              secondaryTextLines={2}
-                              leftAvatar={
-                                <Avatar
-                                  color={muit.scThemes.X.palette.alternateTextColor}
-                                  backgroundColor={muit.scThemes.X.palette.accent1Color}
-                                  size={30}
-                                  style={{width:'auto',
-                                          textAlign: 'right',
-                                          margin:'-4px 10px 10px -10px',
-                                          padding:5,
-                                          //...styles.font,
-                                  }}
-                                >
-                                  {concept.concept_code}
-                                </Avatar>
-                              }
-                            >
-                            </ListItem>
-                          )
-                          */
-
-                        }
-                      )
-                    }
+                    { concepts.map( (concept,i) => 
+                        <ConceptSetAsCard key={i}
+                          concepts={[concept]}
+                          title={concept.concept_name} />
+                    )}
                   </div>
                 </GridTile>
               }

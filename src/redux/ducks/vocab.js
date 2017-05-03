@@ -163,6 +163,7 @@ const loadConcepts = (action$, store) => (
       if (concept_ids.length) {
         let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
 /*
+*/
 console.error("testing w/ some random hardcoded cids")
 concept_ids = [
   38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170,
@@ -171,7 +172,6 @@ concept_ids = [
   2211748, 2211754, 2211751, 2211771, 2211770, 2211773, 2211753,
               ]
 params = {concept_ids}
-*/
         let loadAction = conceptInfoApi.actionCreators.load({params})
         let fakeState = conceptInfoApi.callsReducer({},loadAction)
         let fakeCall = fakeState.primary
