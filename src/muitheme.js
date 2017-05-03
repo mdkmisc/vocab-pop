@@ -30,6 +30,7 @@ export const baseColors = {
 export const subThemeColors = _.mapValues(
   baseColors,
   baseColor => ({
+          light: lighten(baseColor, 0.95),
           light: lighten(baseColor, 0.8),
           regular: lighten(baseColor, 0.4),
           dark: baseColor,
@@ -54,9 +55,19 @@ export const subThemeStyles = _.fromPairs(_.map(
         fontSize: '1.8em',
         color: 'white',
         backgroundColor: colors.darker,
-        margin: '7px 0px 3px 0px',
-        padding: '0px 5px 0px 5px',
-        borderBottom: 'solid 1px #ccc',
+        //margin: '7px 0px 3px 0px',
+        //padding: '0px 5px 0px 5px',
+        padding: 15,
+        //borderBottom: 'solid 1px #ccc',
+      },
+      headerLight: {
+        fontSize: '1.6em',
+        color: colors.darker,
+        backgroundColor: colors.light,
+        //margin: '7px 0px 3px 0px',
+        //padding: '0px 5px 0px 5px',
+        borderBottom: `solid 1px ${colors.darker}`,
+        padding: 10,
       },
     }])
 ))

@@ -197,8 +197,9 @@ const scDescForSet = concepts => {
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
-  const styles = {
-    root: {
+  const gridStyles = {  // GridList styles based on One line example
+                        // http://www.material-ui.com/#/components/grid-list
+    parent: {
       width: '100%',
       display: 'flex',
       flexWrap: 'wrap',
@@ -217,6 +218,17 @@ const scDescForSet = concepts => {
       //color: scTheme.palette.primary1Color,
       //color: 'rgb(0, 188, 212)',
     },
+    tile: sc => ({
+      zoom: 0.8, 
+      backgroundColor: muit.getColors(sc).light,
+      background: `linear-gradient(to top, 
+                                    ${muit.getColors(sc).light} 0%,
+                                    ${muit.getColors(sc).regular} 70%,
+                                    ${muit.getColors(sc).dark} 100%)`,
+      width: '100%',
+      //minWidth: '100%',
+      minHeight: 100,
+    }),
     child: {
       //border: '5px solid purple',
       width: '100%',
@@ -225,32 +237,22 @@ const scDescForSet = concepts => {
       //position: 'relative',
     }
   }
-  return  <div style={styles.root}>
+  return  <div style={gridStyles.parent}>
             <GridList
               cellHeight={'auto'}
               //cellHeight={150}
-              style={styles.gridList}
+              style={gridStyles.gridList}
               //cols={bySc.length}
-              cols={1.3}
+              cols={.3}
             >
               {
                 bySc.map((sc,i) => {
-                  let scTheme = muit.scThemes[sc]
-                  let pal = scTheme.palette
-                  let gradient = `linear-gradient(to top, ${pal.light} 0%,${pal.regular} 70%,${pal.dark} 100%)`
-                  let tileStyle = {
-                      minWidth: '100%',
-                      //backgroundColor: pal.regular,
-                      minHeight: 100,
-                      //minWidth: 250,
-                      background: gradient,
-                  }
                   return  <WrapForSc sc={sc.toString()} key={i}>
                             <GridTile
-                              cols={1}
-                              rows={0.5}
-                              style={tileStyle}
-                              titleStyle={styles.title}
+                              cols={16}
+                              rows={21}
+                              style={gridStyles.tile(sc)}
+                              titleStyle={gridStyles.title}
                               title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
                               //subtitle={<span>by <b>{tile.author}</b></span>}
                               //actionIcon={<IconButton><StarBorder color="white" /></IconButton>}
@@ -259,7 +261,7 @@ const scDescForSet = concepts => {
                             >
                               <OneSc concepts={sc.records} 
                                       //title={sc.toString()}
-                                      style={styles.child}
+                                      style={gridStyles.child}
                                 //title={`${sc.records.length} ${cncpt.scName(sc.records[0])}`}
                               />
                             </GridTile>
@@ -284,18 +286,30 @@ class ConceptSetAsCard extends Component {
 
     const cardStyles = {
       root: {
+        margin: '3%',
         zoom: 0.8, 
-        width: '100%',
-        backgroundColor: muit.getColors().light,
+        width: '94%',
+        //borderRadius: '100%',
+        borderRadius: '.8em',
+        backgroundColor: muit.getColors().lighter,
+        padding: 10,
+        boxShadow: `inset 0 0 .9em .5em ${muit.getColors().darker}, 0 0 .9em .5em ${muit.getColors().darker}`,
+        //boxShadow: `inset 0 0 2em 2em ${muit.getColors().darker}`,
+//inset 0 0 0.5em 0.5em indigo, 0 0 0.5em 0.5em indigo;  /* padding:1em */
+        
       },
       title: {
-        ...muit.getStyles().headerDark,
+        ...muit.getStyles().headerLight,
+        boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
         //backgroundColor: muiTheme.palette.atlasDarkBg,
         //color: muiTheme.palette.alternateTextColor,
+      },
+      text: {
       }
     }
-    const gridStyles = {
-      root: {
+    const gridStyles = { // GridList styles based on Simple example
+                         // http://www.material-ui.com/#/components/grid-list
+      parent: {
         display: 'flex',
         flexWrap: 'wrap',
         justifyContent: 'space-around',
@@ -307,9 +321,19 @@ class ConceptSetAsCard extends Component {
         overflowY: 'auto',
       },
       tile: {
+        zoom: 0.8, 
+        backgroundColor: muit.getColors().light,
         width: '100%',
         //border: '5px solid green',
       },
+      title: {
+        fontSize: '1.6em',
+        color: muit.getColors().darker,
+      },
+      child: {
+        paddingTop:60,
+        width: '100%',
+      }
     }
     return (
       <Card
@@ -317,8 +341,6 @@ class ConceptSetAsCard extends Component {
           expandable={true} 
             initiallyExpanded={true} 
       >
-
-
         <CardTitle
           titleStyle={cardStyles.title}
           title={title}
@@ -328,27 +350,40 @@ class ConceptSetAsCard extends Component {
           showExpandableButton={true}
           actAsExpander={true}
         />
-        <CardText expandable={true}>
-          <div style={gridStyles.root}>
-            <GridList cellHeight={'auto'} style={gridStyles.gridList} >
+        <CardText expandable={true}
+                  style={cardStyles.text} >
+          <div style={gridStyles.parent}>
+            <GridList cellHeight={'auto'} 
+                      cols={concepts.length > 1 ? 2 : 1}
+                      style={gridStyles.gridList} >
               <GridTile 
+                        titleBackground='rgba(0,0,0,0)'
+                        titlePosition='top'
+                        titleStyle={gridStyles.title}
                         title='CDM Records' 
                         style={gridStyles.tile}
               >
-                {scDescForSet(concepts)}
+                <div style={gridStyles.child} >
+                  {scDescForSet(concepts)}
+                </div>
               </GridTile>
-              <GridTile 
-                        title='Individual Concepts' 
-                        style={gridStyles.tile}
-              >
-                <List >
-                  <ListItem
-                    primaryText="individual concepts"
-                    insetChildren={true}
-                    initiallyOpen	={true}
-                    nestedItems={
+              { concepts.length <= 1 ? [] :
+                <GridTile 
+                          titleBackground='rgba(0,0,0,0)'
+                          titlePosition='top'
+                          titleStyle={gridStyles.title}
+                          title='Individual Concepts' 
+                          style={gridStyles.tile}
+                >
+                  <div style={gridStyles.child} >
+                    {
                       concepts.map(
                         (concept,i) => {
+                          return  <ConceptSetAsCard key={i}
+                                    concepts={[concept]}
+                                    title={concept.concept_name}
+                                  />
+                          /*
                           let rsg = _.supergroup(concept.rels, 'relationship')
                           return (
                             <ListItem
@@ -385,28 +420,17 @@ class ConceptSetAsCard extends Component {
                                   {concept.concept_code}
                                 </Avatar>
                               }
-
-                              /*
-                              insetChildren={true}
-
-                              innerDivStyle={{
-                                paddingTop: 3,
-                                paddingBottom: 3, }}
-
-                              initiallyOpen	={false}
-                              nestedListStyle={{marginLeft:30, fontSize:5}}
-                              nestedItems={ nestedItems }
-                              {...otherProps}
-                              */
                             >
                             </ListItem>
                           )
+                          */
+
                         }
                       )
                     }
-                  />
-                </List>
-              </GridTile>
+                  </div>
+                </GridTile>
+              }
             </GridList>
           </div>
         </CardText >
