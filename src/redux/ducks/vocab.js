@@ -164,7 +164,12 @@ const loadConcepts = (action$, store) => (
         let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
 /*
 console.error("testing w/ some random hardcoded cids")
-concept_ids = [38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170]
+concept_ids = [
+  38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170,
+  2211763, 2211767, 2211757, 45889987, 2211759, 2211764, 2211761, 40756968, 2211749,
+  2722250, 2211755, 2211762, 2211750, 2211768, 40757038, 2211752, 2211758, 2211746,
+  2211748, 2211754, 2211751, 2211771, 2211770, 2211773, 2211753,
+              ]
 params = {concept_ids}
 */
         let loadAction = conceptInfoApi.actionCreators.load({params})

@@ -94,7 +94,6 @@ import NavigationClose from 'material-ui/svg-icons/navigation/close';
 import NavigationMenu from 'material-ui/svg-icons/navigation/menu';
 import {Tabs, Tab} from 'material-ui/Tabs';
 
-import ReactTooltip from 'react-tooltip'
 
 const styles = {
   headline: {
@@ -131,7 +130,6 @@ export class App extends Component {
     let main = <Route {...route} component={route.main} />;
     return (
       <div>
-        <ReactTooltip />
         <AppBar
           //style={{ border: '3px solid purple', flexGrow:0}}
           iconElementLeft={ <IconMenu

@@ -45,6 +45,9 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from '../../utils'
 
+import ReactTooltip from 'react-tooltip'
+window.ReactTooltip = ReactTooltip
+
 import {GridList, GridTile} from 'material-ui/GridList';
 import IconButton from 'material-ui/IconButton';
 import Subheader from 'material-ui/Subheader';
@@ -98,41 +101,6 @@ export const getConceptSetAsCard = ({getWith, getArg, props={}}) => {
   }
   return <ConceptSetAsCard concepts={concepts} {...props} />
 }
-class SetAsCard extends Component {
-  render() {
-    let { title="Did you forget a title for the SetAsCard?", 
-          subtitle='',
-          contents=[], // array of components (or single)
-          dontPutContentsInCardTexts=false,
-          dataIfCurious, // maybe don't need it
-          expanded=false
-        } = this.props
-
-    if (dontPutContentsInCardTexts)
-      throw new Error("not implemented")
-
-    contents = Array.isArray(contents) ? contents : [contents]
-    let cardTexts = contents.map(
-      (c,i) =>  <CardText expandable={true} key={i}>
-                  {c}
-                </CardText>
-    )
-
-    return (
-        <Card initiallyExpanded={expanded} >
-          <CardHeader
-            title={title}
-            //titleColor={muit.scThemes.X.palette.primary1Color}
-            subtitle={subtitle}
-            //subtitleColor={muit.scThemes.X.palette.primary1Color}
-            actAsExpander={true}
-            showExpandableButton={true}
-          />
-          {cardTexts}
-        </Card>
-    )
-  }
-}
 const WrapForSc = ({sc, ...props}) => {
   let scTheme = muit.scThemes[sc]
   //props = {...props, scTheme}
@@ -181,46 +149,64 @@ const OneSc = muiThemeable()(props => {
   return  <div style={style} >
               {
                 colCnts.map(
-                  (cnt,i)=>(
-                    <RaisedButton 
-                        //fullWidth={true}
-                        key={i}
-                        style={{
-                          width: '90%',
-                          margin: '5%',
-                          //padding: 5,
-                          //backgroundColor: pal.light,
-                          //width:400, 
-                          //height:colCnts.length * 180 + 200,
-                          //top:85,
-                          //border: '3px dotted orange',
-                        }}
-                        primary={true} 
-                        labelStyle={{textTransform:'none'}}
-                        label={`${title ? title + ' ' : ''}${commify(cnt.cnt)}`}
-                        labelPosition="before"
-                        data-tip="hello world"
-                        icon={
-                          <CdmRecsAvatar
-                              contents={ cncpt.conceptTableAbbr(cnt.tbl) }
-                          />
-                        }
-                    />
-                  ))
+                  (cnt,i)=>{
+                    let ttId = _.uniqueId('oneScTtId-')
+                    return (
+                      <div
+                          key={i}
+                          //data-tip={"rdiv" + colname(cnt)}
+                      >
+                      <ReactTooltip id={ttId} place="bottom" effect="solid"/>
+                      <RaisedButton 
+                          //fullWidth={true}
+                          key={i}
+                          style={{
+                            //width: '90%',
+                            //margin: '5%',
+                            //padding: 5,
+                            //backgroundColor: pal.light,
+                            //width:400, 
+                            //height:colCnts.length * 180 + 200,
+                            //top:85,
+                            //border: '3px dotted orange',
+                          }}
+                          primary={true} 
+                          labelStyle={{textTransform:'none'}}
+                          label={`${title ? title + ' ' : ''}${commify(cnt.cnt)}`}
+                          labelPosition="before"
+                          data-tip={colname(cnt)}
+                          data-for={ttId}
+                          icon={
+                            <CdmRecsAvatar
+                                contents={ cncpt.conceptTableAbbr(cnt.tbl) }
+                            />
+                          }
+                      />
+                      </div>
+                    )
+                  })
               }
           </div>
 })
+const colname = cnt => {
+  let cn = `${cnt.tbl}.${cnt.col}`
+  console.log(cn)
+  return cn
+}
 const scDescForSet = concepts => {
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
   const styles = {
     root: {
+      width: '100%',
       display: 'flex',
       flexWrap: 'wrap',
       justifyContent: 'space-around',
+      //border: '5px solid red',
     },
     gridList: {
+      width: '100%',
       display: 'flex',
       flexWrap: 'nowrap',
       overflowX: 'auto',
@@ -232,6 +218,7 @@ const scDescForSet = concepts => {
       //color: 'rgb(0, 188, 212)',
     },
     child: {
+      //border: '5px solid purple',
       width: '100%',
       //height: '100%',
       marginTop: 50,
@@ -252,9 +239,10 @@ const scDescForSet = concepts => {
                   let pal = scTheme.palette
                   let gradient = `linear-gradient(to top, ${pal.light} 0%,${pal.regular} 70%,${pal.dark} 100%)`
                   let tileStyle = {
+                      minWidth: '100%',
                       //backgroundColor: pal.regular,
                       minHeight: 100,
-                      minWidth: 250,
+                      //minWidth: 250,
                       background: gradient,
                   }
                   return  <WrapForSc sc={sc.toString()} key={i}>
@@ -281,90 +269,140 @@ const scDescForSet = concepts => {
             </GridList>
           </div>
 }
-/*
-                               */
-SetAsCard = muiThemeable()(SetAsCard)
 class ConceptSetAsCard extends Component {
+  componentDidMount() {
+    //this.csTtId = _.uniqueId('csTtId-')
+  }
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
+  }
   render() {
     let { title,
           subtitle,
-          concepts=[], expanded=false} = this.props
+          concepts=[], } = this.props
 
-    subtitle = typeof subtitle === 'undefined' 
-                ? scDescForSet(concepts) : subtitle
-
-    // show each rel as whole ConceptSet?
-
-    // show rels for each concept?
+    const cardStyles = {
+      root: {
+        zoom: 0.8, 
+        width: '100%',
+      },
+    }
+    const gridStyles = {
+      root: {
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-around',
+      },
+      gridList: {
+        //border: '5px solid pink',
+        width: '100%',
+        //height: 450,
+        overflowY: 'auto',
+      },
+      tile: {
+        width: '100%',
+        //border: '5px solid green',
+      },
+    }
     return (
-      <SetAsCard {...{...this.props, title, subtitle}}
-      /*              PUT BACK...just removed for testing
-        contents={[
-          // concepts:
-          <List >
-            {
-              concepts.map(
-                (concept,i) => {
-                  let rsg = _.supergroup(concept.rels, 'relationship')
-                  return (
-                    <ListItem
-                      key={i}
-                      primaryText={
-                        <div style={{color: muit.scThemes.X.palette.primary1Color}} >
-                          {scDescForSet([concepts])}
-                        </div>
-                      }
-                      secondaryText = {
-                        rsg.map(r=><RaisedButton 
-                                      primary={true}
-                                      style={{
-                                        margin:'0px 5px 0px 5px', 
-                                        color: muit.scThemes.X.palette.secondary1Color,
-                                      }}
-                                      key={r.toString()}
-                                      label={`${r.records.length} ${r}`} />
-                               )
-                      }
-                      secondaryTextLines={2}
-                      leftAvatar={
-                        <Avatar
-                          color={muit.scThemes.X.palette.alternateTextColor}
-                          backgroundColor={muit.scThemes.X.palette.accent1Color}
-                          size={30}
-                          style={{width:'auto',
-                                  textAlign: 'right',
-                                  margin:'-4px 10px 10px -10px',
-                                  padding:5,
-                                  //...styles.font,
-                          }}
-                        >
-                          {concept.concept_code}
-                        </Avatar>
-                      }
+      <Card
+          style={cardStyles.root}
+          expandable={true} 
+            initiallyExpanded={true} 
+      >
 
-                      /*
-                      insetChildren={true}
 
-                      innerDivStyle={{
-                        paddingTop: 3,
-                        paddingBottom: 3, }}
+        <CardTitle
+          title={"eek" + title}
+          //titleColor={muit.scThemes.X.palette.primary1Color}
+          subtitle={subtitle}
+          //subtitleColor={muit.scThemes.X.palette.primary1Color}
+          showExpandableButton={true}
+          actAsExpander={true}
+        />
+        <CardText expandable={true}>
+          <div style={gridStyles.root}>
+            <GridList cellHeight={'auto'} style={gridStyles.gridList} >
+              <GridTile 
+                        title='CDM Records' 
+                        style={gridStyles.tile}
+              >
+                {scDescForSet(concepts)}
+              </GridTile>
+              <GridTile 
+                        title='Individual Concepts' 
+                        style={gridStyles.tile}
+              >
+                <List >
+                  <ListItem
+                    primaryText="individual concepts"
+                    insetChildren={true}
+                    initiallyOpen	={true}
+                    nestedItems={
+                      concepts.map(
+                        (concept,i) => {
+                          let rsg = _.supergroup(concept.rels, 'relationship')
+                          return (
+                            <ListItem
+                              key={i}
+                              primaryText={
+                                <div style={{color: muit.scThemes.X.palette.primary1Color}} >
+                                  {scDescForSet([concept])}
+                                </div>
+                              }
+                              secondaryText = {
+                                rsg.map(r=><RaisedButton 
+                                              primary={true}
+                                              style={{
+                                                margin:'0px 5px 0px 5px', 
+                                                color: muit.scThemes.X.palette.secondary1Color,
+                                              }}
+                                              key={r.toString()}
+                                              label={`${r.records.length} ${r}`} />
+                                      )
+                              }
+                              secondaryTextLines={2}
+                              leftAvatar={
+                                <Avatar
+                                  color={muit.scThemes.X.palette.alternateTextColor}
+                                  backgroundColor={muit.scThemes.X.palette.accent1Color}
+                                  size={30}
+                                  style={{width:'auto',
+                                          textAlign: 'right',
+                                          margin:'-4px 10px 10px -10px',
+                                          padding:5,
+                                          //...styles.font,
+                                  }}
+                                >
+                                  {concept.concept_code}
+                                </Avatar>
+                              }
 
-                      initiallyOpen	={false}
-                      nestedListStyle={{marginLeft:30, fontSize:5}}
-                      nestedItems={ nestedItems }
-                      {...otherProps}
-                      * /
-                    >
-                    </ListItem>
-                  )
-                }
-              )
-            }
-          </List>,
-        ]}
-        */
+                              /*
+                              insetChildren={true}
 
-      />
+                              innerDivStyle={{
+                                paddingTop: 3,
+                                paddingBottom: 3, }}
+
+                              initiallyOpen	={false}
+                              nestedListStyle={{marginLeft:30, fontSize:5}}
+                              nestedItems={ nestedItems }
+                              {...otherProps}
+                              */
+                            >
+                            </ListItem>
+                          )
+                        }
+                      )
+                    }
+                  />
+                </List>
+              </GridTile>
+            </GridList>
+          </div>
+        </CardText >
+      </Card>
     )
   }
 }

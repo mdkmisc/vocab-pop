@@ -74,14 +74,14 @@ export const repairRcs = concepts => {
               }
               newRcs.push(cts.records.find(d=>d.coltype==='target'))
             }
+            concept._origRcs = concept.rcs
+            concept.rcs = newRcs
           } else {
-            debugger
-            throw new Error("better see what's going on")
+            concept._origRcs = concept.rcs
+            concept.rcs = rcss
           }
         }
       )
-      concept._origRcs = concept.rcs
-      concept.rcs = newRcs
       return concept
     })
 }
