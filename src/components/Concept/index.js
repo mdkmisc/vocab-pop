@@ -277,7 +277,8 @@ class ConceptSetAsCard extends Component {
     ReactTooltip.rebuild()
   }
   render() {
-    let { title,
+    let { muiTheme,
+          title,
           subtitle,
           concepts=[], } = this.props
 
@@ -285,7 +286,13 @@ class ConceptSetAsCard extends Component {
       root: {
         zoom: 0.8, 
         width: '100%',
+        backgroundColor: muit.getColors().light,
       },
+      title: {
+        ...muit.getStyles().headerDark,
+        //backgroundColor: muiTheme.palette.atlasDarkBg,
+        //color: muiTheme.palette.alternateTextColor,
+      }
     }
     const gridStyles = {
       root: {
@@ -313,7 +320,8 @@ class ConceptSetAsCard extends Component {
 
 
         <CardTitle
-          title={"eek" + title}
+          titleStyle={cardStyles.title}
+          title={title}
           //titleColor={muit.scThemes.X.palette.primary1Color}
           subtitle={subtitle}
           //subtitleColor={muit.scThemes.X.palette.primary1Color}

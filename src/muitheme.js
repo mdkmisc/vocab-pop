@@ -1,9 +1,10 @@
 import _ from './supergroup' // in global space anyway...
-import muiThemeable from 'material-ui/styles/muiThemeable';
-import getMuiTheme from 'material-ui/styles/getMuiTheme';
-//import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme';
+import muiThemeable from 'material-ui/styles/muiThemeable'
+import getMuiTheme from 'material-ui/styles/getMuiTheme'
+//import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme'
 
 import {
+  blue200,
   teal500, teal700,
   greenA200,
   teal50,
@@ -11,11 +12,90 @@ import {
   teal100,
   grey100, grey300, grey400, grey500,
   white, darkBlack, fullBlack,
-} from 'material-ui/styles/colors';
-import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator';
-import * as colorManipulator from 'material-ui/utils/colorManipulator';
+} from 'material-ui/styles/colors'
+import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator'
+import * as colorManipulator from 'material-ui/utils/colorManipulator'
 window.colorManipulator = colorManipulator
 
+export const baseColors = {
+  S: '#0070dd',
+  C: '#a335ee',
+  X: '#a71a19',
+  neutral: grey400,
+  //main: teal500,
+  //main: 'steelblue',
+  main: blue200,
+}
+
+export const subThemeColors = _.mapValues(
+  baseColors,
+  baseColor => ({
+          light: lighten(baseColor, 0.8),
+          regular: lighten(baseColor, 0.4),
+          dark: baseColor,
+          darker: darken(baseColor, 0.4),
+          primary1Color: lighten(baseColor, 0.2),
+          //textColor: darkBlack,
+          //alternateTextColor: white,
+          //canvasColor: white,
+          //borderColor: grey300,
+          //pickerHeaderColor: teal500,
+          //shadowColor: fullBlack,
+    }))
+
+export const getColors = (subTheme='main') => subThemeColors[subTheme]
+
+export const subThemeStyles = _.fromPairs(_.map(
+  subThemeColors,
+  (colors, sub) => ([
+    sub, 
+    {
+      headerDark: {
+        fontSize: '1.8em',
+        color: 'white',
+        backgroundColor: colors.darker,
+        margin: '7px 0px 3px 0px',
+        padding: '0px 5px 0px 5px',
+        borderBottom: 'solid 1px #ccc',
+      },
+    }])
+))
+
+export const getStyles = (subTheme='main') => subThemeStyles[subTheme]
+
+export const atlasColors = {
+  // from OHDSI style guide, http://www.ohdsi.org/web/wiki/doku.php?id=development:style_guide
+  atlasDarkBg: '#003142',
+  atlasAltDarkBg: '#333333',
+  atlasLightBg: '#cccccc',
+  atlasDisabledBg: '#cccccc',
+
+  atlasActive: '#f19119',
+  atlasHighlight: '#f19119',
+
+  atlasAltActive: '#337ab7',
+  atlasAltHighlight: '#337ab7',
+
+  atlasAlt2Active: '#b7cbdc',
+  atlasAlt2Highlight: '#b7cbdc',
+}
+export const atlasStyles = {
+    headerLight: {
+      fontSize: '14px',
+      color: '#000',
+      margin: '7px 0px 3px 0px',
+      padding: '0px 5px 0px 5px',
+      borderBottom: 'solid 1px #ccc',
+    },
+    headerDark: { // sort of atlas, not really
+      fontSize: '14px',
+      color: 'white',
+      backgroundColor: atlasColors.atlasDarkBg,
+      margin: '7px 0px 3px 0px',
+      padding: '0px 5px 0px 5px',
+      borderBottom: 'solid 1px #ccc',
+    },
+  }
 export default getMuiTheme({
   palette: {
     primary1Color: teal500,
@@ -32,54 +112,14 @@ export default getMuiTheme({
     pickerHeaderColor: teal500,
     //clockCircleColor: fade(darkBlack, 0.07),
     shadowColor: fullBlack,
+    ...atlasColors,
+    ...subThemeColors.neutral,
   },
   appBar: {
     height: 50,
   },
-});
+})
 
-export const baseSc = {
-  S: '#0070dd',
-  C: '#a335ee',
-  X: '#a71a19',
-}
+export const scThemes = _.mapValues(subThemeColors, c=>getMuiTheme({palette:c}))
 
-export const scColors = {
-  S: {
-    light: lighten(baseSc.S, 0.8),
-    regular: lighten(baseSc.S, 0.4),
-    dark: baseSc.S,
-    darker: darken(baseSc.S, 0.4),
-    primary1Color: lighten(baseSc.S, 0.2),
-    //primary2Color: baseSc.S,
-    //primary3Color: darken(baseSc.S, 0.2),
-    textColor: darkBlack,
-    alternateTextColor: white,
-    canvasColor: white,
-    borderColor: grey300,
-    //pickerHeaderColor: teal500,
-    //shadowColor: fullBlack,
-  },
-  C: {
-    light: lighten(baseSc.C, 0.8),
-    regular: lighten(baseSc.C, 0.4),
-    dark: baseSc.C,
-    darker: darken(baseSc.C, 0.4),
-    primary1Color: lighten(baseSc.C, 0.2),
-    //primary2Color: baseSc.C,
-    //primary3Color: darken(baseSc.C, 0.2),
-  },
-  X: {
-    light: lighten(baseSc.X, 0.8),
-    regular: lighten(baseSc.X, 0.4),
-    dark: baseSc.X,
-    darker: darken(baseSc.X, 0.4),
-    primary1Color: lighten(baseSc.X, 0.5),
-    accent1Color: baseSc.X,
-    //primary2Color: baseSc.X,
-    //primary3Color: darken(baseSc.X, 0.2),
-  }
-}
-
-export const scThemes = _.mapValues(scColors, c=>getMuiTheme({palette:c}))
-
+console.log({default:getMuiTheme(), scThemes, subThemeColors, subThemeStyles})
