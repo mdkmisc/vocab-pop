@@ -37,7 +37,6 @@ import {Glyphicon, Row, Col,
 //if (DEBUG) window.d3 = d3
 import {AgTable, ConceptTree, } from '../TableStuff'
 import SortableTree from 'react-sortable-tree'
-require('../sass/Vocab.css')
 
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
@@ -273,6 +272,12 @@ const scDescForSet = concepts => {
 }
 class ConceptSetAsCard extends Component {
   componentDidMount() {
+    const {concept_ids, loadConceptInfo, storeName} = this.props
+    if (concept_ids && concept_ids.length) {
+      loadConceptInfo({params:{concept_ids}, storeName})
+    }
+  }
+  componentDidMount() {
     //this.csTtId = _.uniqueId('csTtId-')
   }
   componentDidUpdate() {
@@ -382,10 +387,9 @@ class ConceptSetAsCard extends Component {
                                       storeName={title}
                                       concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
                                     />]
-                                  }
                     )
                     */
-                    }
+                  }
 
 
 
@@ -416,6 +420,29 @@ class ConceptSetAsCard extends Component {
   }
 }
 ConceptSetAsCard = muiThemeable()(ConceptSetAsCard)
+/*
+ConceptSetAsCard = connect(
+  (state, props) => {
+    let {storeName} = props
+    return {
+      concepts: props.concepts ||
+                vocab.apis.conceptInfoApi.selectors('conceptInfoApi')
+                      .results(state)(storeName),
+    }
+  },
+  (dispatch, ownProps) => {
+    return {
+      loadConceptInfo: ({params,storeName}) => {
+        let loadAction = vocab.apis.conceptInfoApi.actionCreators
+                            .load({params,storeName})
+        let fakeState = vocab.apis.conceptInfoApi.callsReducer({},loadAction)
+        let fakeCall = fakeState[storeName]
+        dispatch(fakeCall)
+      }
+    }
+  }
+)(ConceptSet)
+*/
 export {ConceptSetAsCard}
 
 /*

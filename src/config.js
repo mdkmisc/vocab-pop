@@ -1,4 +1,4 @@
-//var dotenv = require('dotenv');
+//var dotenv = require('dotenv'); // create-react-app loads from .env
 //console.log(dotenv);
 var config = {
   "cdmSchema": process.env.REACT_APP_CDM_SCHEMA,

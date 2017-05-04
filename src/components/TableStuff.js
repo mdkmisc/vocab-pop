@@ -16,11 +16,6 @@ import myrouter from '../redux/myrouter'
 //import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
-//import 'tipsy/src/stylesheets/tipsy.css';
-//require('./stylesheets/Vocab.css');
-require('./sass/Vocab.css');
-//require('tipsy/src/javascripts/jquery.tipsy');
-//require('./VocabPop.css');
 import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
           //Button, ButtonToolbar, ButtonGroup,
           Accordion, Label, Panel, Modal, Checkbox, OverlayTrigger, 

@@ -2,14 +2,14 @@
   "name": "vocab-pop",
   "version": "0.1.0",
   "private": true,
+  "repository" : { "type" : "git" , "url" : "https://github.com/Sigfried/vocab-pop.git" },
   "devDependencies": {
     "node-sass": "^4.5.0",
     "npm-run-all": "^4.0.2",
     "react-scripts": "0.9.5",
     "redux-devtools": "^3.3.2",
     "redux-devtools-dock-monitor": "^1.1.1",
-    "redux-devtools-log-monitor": "^1.2.0",
-    "@kadira/storybook": "^2.21.0"
+    "redux-devtools-log-monitor": "^1.2.0"
   },
   "dependencies": {
     "ag-grid": "^8.2.0",
@@ -47,15 +47,22 @@
     "rxjs": "^5.2.0",
     "sigma": "^1.2.0"
   },
+  "config": {
+    "port": "port from package.json config"
+  },
   "scripts": {
     "build-css": "node-sass src/ -o src/",
     "watch-css": "npm run build-css && node-sass src/ -o src/ --watch --recursive",
     "start-js": "PORT=3006 react-scripts start",
-    "start": "npm-run-all -p watch-css start-js",
     "build": "npm run build-css && react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-    "storybook": "start-storybook -p 9009 -s public",
-    "build-storybook": "build-storybook -s public"
+
+    "prestart": "./npm-set-config.js",
+    "msg": "./msg.sh",
+    "env": "export $(./npm-set-config.sh|grep -v '^#'|xargs) && env",
+    "start": "env",
+    "startHOLD": "npm-run-all -p watch-css start-js",
+    "junk": "npm-run-all -s set-config env"
   }
 }

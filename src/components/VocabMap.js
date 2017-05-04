@@ -27,8 +27,6 @@ var $ = require('jquery'); window.$ = $;
 
 import { commify, getRefsFunc, sendRefsToParent} from '../utils';
 import makeElements from './ThreeLayerVocGraphElements';
-//require('./stylesheets/Vocab.css');
-require('./sass/Vocab.css');
 //import from './sigma-react/sigma.renderers.react';
 import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
 //import {setToAncestorSize, getAncestorSize} from '../utils';
