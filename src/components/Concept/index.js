@@ -271,61 +271,6 @@ const scDescForSet = concepts => {
             </GridList>
           </div>
 }
-const relsDescForSet = concepts => {
-    let rels = _.supergroup( _.flatten(concepts.map(d=>d.rels)), 'relationship')
-            {
-              rels.map( (rel,i) => {
-                let title = `${rel.records.length} ${rel.toString()} (sub) concepts`
-                console.log({rel, title})
-                return <ListItem
-                          key={`${i}:${title}`}
-                          innerDivStyle={{
-                            paddingTop: 13,
-                            paddingBottom: 3,
-                          }}
-                          /*
-                          primaryText={
-                            <p style={{color:muiTheme.palette.primary1Color}}>
-                              {rel.records.length}
-                              {rel.toString()} 
-                            </p> 
-                          }
-                          */
-                          //secondaryText={ countText(concepts) }
-                          //secondaryTextLines={2}
-                          initiallyOpen	={true}
-                          nestedItems={ 
-                            /*
-                            rels.getChildren()
-                              .map((group,j) => 
-                              <ConceptItem concept={concept} key={j} />)
-                            */
-                            [<ConceptSetConnected 
-                              title={title}
-                              storeName={title}
-                              concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
-                            />]
-                          }
-                      >
-                      </ListItem>
-                        
-                /*
-                debugger
-                let rrels = vocab.sourceRelationshipsSG({vocab:{concepts:rel.records}})
-                return (
-                  <div key={i} style={{marginLeft:15}} >
-                    <Relationship key={i} rel={rel} />
-                    <div style={{marginLeft:15}} >
-                      {rrels.map(
-                        (rrel,j) => <Relationship key={j} rel={rrel} />
-                      )}
-                    </div>
-                  </div>
-                )
-                */
-              })
-            }
-}
 class ConceptSetAsCard extends Component {
   componentDidMount() {
     //this.csTtId = _.uniqueId('csTtId-')
@@ -423,7 +368,27 @@ class ConceptSetAsCard extends Component {
               >
                 <div style={gridStyles.child} >
                   {scDescForSet(concepts)}
-                  {relsDescForSet(concepts)}
+                  {
+                  /*
+                    _.supergroup(_.flatten(concepts.map(d=>d.rels)), 'relationship')
+                      .map( (rel,i) =>
+                        <ConceptSetAsCard key={i}
+                          concepts={[concept]}
+                          concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
+                          title={concept.concept_name} />
+                        let title = `${rel.records.length} ${rel.toString()} concepts`
+                                    [<ConceptSetConnected 
+                                      title={title}
+                                      storeName={title}
+                                      concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
+                                    />]
+                                  }
+                    )
+                    */
+                    }
+
+
+
                 </div>
               </GridTile>
               { singleConcept ? [] :

@@ -7,8 +7,6 @@ import * as vocab from './vocab'
 
 // FROM ConceptInfo.js -- might want to keep a little bit of it
 import _ from '../../supergroup'; // in global space anyway...
-import Rx from 'rxjs/Rx';
-import React, { Component } from 'react';
 
 export const conceptsByStoreName = createSelector(
   vocab.apis.conceptInfoApi.selectors('conceptInfoApi').results,
@@ -190,6 +188,8 @@ export const conceptTableAbbr = tbl => (
 
 
 // FROM ConceptInfo.js -- might want to keep a little bit of it
+/*
+import Rx from 'rxjs/Rx';
 class ConceptAbstract {
   constructor({ inRelTo, depth, cb, title, infoBitCollection,
                 relatedToFetch=[
@@ -304,7 +304,7 @@ export class ConceptSetFromCode extends ConceptSet {
         //return conceptSet;  //   ??? maybe not a good idea, or doesn't do anything...confused
       }
     });
-    */
+    * /
   }
 }
 export class ConceptSetFromText extends ConceptSet {
@@ -356,7 +356,7 @@ export class ConceptInfo extends ConceptAbstract {
       this.sendUpdate();
     });
     this.sendUpdate();
-    */
+    * /
   }
   fetchRelated() {
     if (!this._relatedToFetch.length) {
@@ -381,7 +381,7 @@ export class ConceptInfo extends ConceptAbstract {
       this.sendUpdate();
     });
     return this._status;
-    */
+    * /
   }
   //processRelated() { }
   getRelatedRecs(rel, dflt) { // as ConceptInfo -- right?
@@ -430,7 +430,7 @@ export class ConceptInfo extends ConceptAbstract {
         {title:'Concept Id', value: ci.concept_id},
       ];
     }
-    */
+    * /
     this._bitIdx = 0;
     if (this.failed()) {
       this._bits.add({ci:this, title:'Status', className:'ci-status', 
@@ -500,7 +500,7 @@ export class ConceptInfo extends ConceptAbstract {
             data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},
           }))
       .forEach(d => this._bits.add(d));
-    */
+    * /
     /*
     let cgs = this.get('relgrps',[])
                   .filter(
@@ -533,14 +533,14 @@ export class ConceptInfo extends ConceptAbstract {
                                   `,
                         data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},})));
     }
-    */
+    * /
     /*
     let rcc = this.get('relatedConceptCount');
     if (rcc) bits = bits.concat({
                       //className:this.scClassName('X'),
                       wholeRow: `${rcc} related concepts`,
                       data: {drill:{ci:this, }, drillType:'relatedConcepts'},});
-    */
+    * /
     /*
     switch (this.role()) {
       case 'mapsto':
@@ -553,7 +553,7 @@ export class ConceptInfo extends ConceptAbstract {
           {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
         ];
     }
-    */
+    * /
   }
   scClassName(sc) {
     let scVal = this.scMap('className', sc);
@@ -663,7 +663,7 @@ export class InfoBitCollection {
     name = name || `${context}-${this._bitIdx++}`;
     let cobj = this._bits[context] = this._bits[context] || {};
     cobj[name] = o
-    */
+    * /
   }
   findById(id) {
     return this._collection[id];
@@ -689,3 +689,4 @@ export class InfoBitCollection {
     return ret;
   }
 }
+*/

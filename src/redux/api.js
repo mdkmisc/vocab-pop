@@ -85,7 +85,7 @@ export const epics = [
 export const cachedAjax = url => {
   //console.log(url.slice(0,90))
   if (isCached(url)) return Rx.Observable.of(util.storageGet(url))
-  let rxAjax = Rx.Observable.ajax.getJSON(url)
+  let rxAjax = Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
   rxAjax.subscribe(results => {
     util.storagePut(url, results)
   })
@@ -108,7 +108,7 @@ function handleErrors(p) {
 
 const checkCacheDirty = (store) => { // make sure to use this
   let ajax =
-    Rx.Observable.ajax.getJSON(apiGetUrl('cacheDirty'))
+    Rx.Observable.ajax.getJSON(apiGetUrl('cacheDirty'),{mode: 'no-cors'})
       .map(results => {
         if (results) {
           DEBUG && console.warn(`cache dirty. removing ${_.keys(util.storage()).length} items in util.storage()`);
