@@ -290,7 +290,7 @@ class ConceptSetAsCard extends Component {
           concepts=[], } = this.props
 
     if (concepts.length < 1)
-      throw new Error("shouldn't be here")
+      return null
     const singleConcept = concepts.length === 1
     const cardStyles = {
       root: {

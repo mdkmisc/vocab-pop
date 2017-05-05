@@ -53,16 +53,11 @@
   "scripts": {
     "build-css": "node-sass src/ -o src/",
     "watch-css": "npm run build-css && node-sass src/ -o src/ --watch --recursive",
-    "start-js": "PORT=3006 react-scripts start",
+    "start-js": "react-scripts start",
+    "start": "npm-run-all -p watch-css start-js",
     "build": "npm run build-css && react-scripts build",
     "test": "react-scripts test --env=jsdom",
     "eject": "react-scripts eject",
-
-    "prestart": "./npm-set-config.js",
-    "msg": "./msg.sh",
-    "env": "export $(./npm-set-config.sh|grep -v '^#'|xargs) && env",
-    "start": "env",
-    "startHOLD": "npm-run-all -p watch-css start-js",
-    "junk": "npm-run-all -s set-config env"
+    "start": "npm-run-all -p watch-css start-js"
   }
 }
