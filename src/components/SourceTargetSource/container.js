@@ -4,7 +4,6 @@ import * as utils from '../../utils'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
-import * as vocab from '../../redux/ducks/vocab'
 import * as cncpt from '../../redux/ducks/concept'
 import {ConceptCodesLookupForm} from '../Lookups'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
@@ -77,7 +76,6 @@ SourceTargetSourceForm = connect(
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
       concepts: cncpt.concepts(state),
-      // should simplify?  vocab.apis.conceptInfoApi .selectors('conceptInfoApi') .results(state)()),
     }
   }
 )(SourceTargetSourceForm)

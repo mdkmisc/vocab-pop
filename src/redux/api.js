@@ -51,14 +51,15 @@ const apiCallEpic = (action$, store) => (
         cachedAjax(url)
         .map(results=>{
           //console.log('results', results)
-          action = makeAction(
+          action = util.makeAction(
             {action, payload:results,
               type:apiActions.API_CALL_FULFILLED})
           return action
           //return Rx.Observable.of(action)
         })
         .catch(err => {
-          //console.log('error', error)
+          debugger
+          console.log('error inside merge', error)
           return Rx.Observable.of({
             ...action,
             type: apiActions.API_CALL_REJECTED,
@@ -67,6 +68,16 @@ const apiCallEpic = (action$, store) => (
           })
         })
       )
+    })
+    .catch(err => {
+      debugger
+      console.log('error after merge', error)
+      return Rx.Observable.of({
+        ...action,
+        type: apiActions.API_CALL_REJECTED,
+        payload: err.xhr.response,
+        error: true
+      })
     })
 )
 const checkCache = (action$, store) => (
@@ -119,7 +130,7 @@ const checkCacheDirty = (store) => { // make sure to use this
         return results
       })
       .catch((err, obs) => {
-        let action = makeAction({payload:err,
+        let action = util.makeAction({payload:err,
                              type:apiActions.API_CALL_REJECTED})
         return Rx.Observable.of(action)
       })
@@ -158,9 +169,7 @@ export const newDataActionFilter = (action, apiNameWanted, storeNameWanted='prim
     storeName === storeNameWanted
   )
 }
-//selectors
-const plainSelectors = {
-}
+
 export const apiSelectorMakers = apiName => {
   const calls = state => {
     return _.get(state, `calls.${apiName}`)||{}
@@ -223,7 +232,14 @@ export class Api {
           return action
         case apiActions.API_CALL_FULFILLED: // payload should have results
           pending = false
-          results = payload
+          if (this.resultsReducer) {
+            console.error("make sure resultsReducer runs")
+            //err = payload
+            //error = true
+            //type = apiActions.API_CALL_REJECTED
+          } else {
+            results = payload
+          }
           break
         case apiActions.API_CALL_REJECTED:
           pending = false
@@ -232,8 +248,8 @@ export class Api {
         default:
           return state
       }
-      action = makeAction({
-        type, action, meta:{call:{url, pending, error, params, results}, api}
+      action = util.makeAction({
+        type, action, meta:{call:{url, pending, error, err, params, results}, api}
       })
       delete action.payload // payload should be in meta in correct field now
       //examineAction({from:'apiCall',action, state})
@@ -267,11 +283,13 @@ export class Api {
             },
     }
 
+    // get rid of all this stuff and move to ducks when possible
     this.selectors = apiName => ({
-      ...plainSelectors,
-      ...props.plainSelectors,
+      //...plainSelectors,  // already wasn't using
+      //...props.plainSelectors,
       ...apiSelectorMakers(apiName),
-      ..._.mapValues(props.apiSelectorMakers, s=>s(apiName)),
+      ..._.mapValues(
+            props.apiSelectorMakers, s=>s(apiName)),
     })
   }
 }
@@ -287,11 +305,4 @@ export const flattenAction = action => {
   }
   return {type, payload, apiName, apiPathname, storeName, url, 
           api, call, params, results, error, err}
-}
-export const makeAction = ({action={},type,payload,meta={}}) => {
-  action = {...action}
-  action.type = type || action.type
-  action.payload = payload || action.payload
-  action.meta = _.merge({}, action.meta||{}, meta)
-  return action
 }

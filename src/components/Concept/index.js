@@ -25,7 +25,6 @@ import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
-import * as vocab from '../../redux/ducks/vocab'
 import * as cncpt from '../../redux/ducks/concept'
 
 import Spinner from 'react-spinner'

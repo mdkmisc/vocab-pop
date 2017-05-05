@@ -4,7 +4,8 @@ import * as utils from '../../utils'
 import myrouter from '../../redux/myrouter'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
-import * as vocab from '../../redux/ducks/vocab'
+import * as lookups from '../../redux/ducks/lookups'
+import * as concept from '../../redux/ducks/concept'
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
@@ -249,13 +250,14 @@ ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
 })(ConceptCodesLookupForm)
 
-let {vocabulariesApi, codesToCidsApi, conceptInfoApi} = vocab.apis
+let {vocabulariesApi, codesToCidsApi, } = lookups.apis
+let {conceptInfoApi} = concept.apis
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
     //const apiStore = apiGlobal.apiStore(state.vocab,props)
-    let calls = {
-      vocabularies: _.get(state.calls, 'vocabulariesApi.primary'),
+    let vocabCalls = {
+      vocabularies: _.get(state.lookups, 'vocabulariesApi.primary'),
     }
     let selectors = {
       vocabularies: _.mapValues(vocabulariesApi.selectors('vocabulariesApi'), s=>s(state)),
@@ -263,7 +265,7 @@ ConceptCodesLookupForm = connect(
       conceptInfo: _.mapValues(conceptInfoApi.selectors('conceptInfoApi'), s=>s(state)),
     }
     let newState = {
-      calls,
+      vocabCalls,
       selectors,
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
@@ -274,7 +276,7 @@ ConceptCodesLookupForm = connect(
     }
     return newState
   }, 
-  vocab.mapDispatchToProps,
+  lookups.mapDispatchToProps,
   /*
   (stateProps, dispatchProps, ownProps) => {
     let urlProps = 

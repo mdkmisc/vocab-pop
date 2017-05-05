@@ -382,3 +382,14 @@ export class LoadingButton extends Component {
     }, 2000);
   }
 }
+
+
+// convenience function to transform an existing redux action
+export const makeAction = ({action={},type,payload,meta={}}, error) => {
+  action = {...action}
+  action.type = type || action.type
+  action.payload = payload || action.payload
+  action.error = error || action.error
+  action.meta = _.merge({}, action.meta||{}, meta)
+  return action
+}
