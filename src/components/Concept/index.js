@@ -17,15 +17,21 @@ Copyright 2016 Sigfried Gold
 
 var d3 = require('d3')
 var $ = require('jquery')
-import _ from '../../supergroup' // in global space anyway...
+import _ from 'src/supergroup' // in global space anyway...
+import * as cncpt from 'src/ducks/concept'
+import {AgTable, ConceptTree, } from 'src/components/TableStuff'
+import {commify, updateReason, 
+        setToAncestorHeight, setToAncestorSize, getAncestorSize,
+        getRefsFunc, sendRefsToParent,
+        ListenerWrapper, ListenerTargetWrapper,
+        LoadingButton} from 'src/utils'
+
 import React, { Component } from 'react'
 
 
 import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
-
-import * as cncpt from '../../redux/ducks/concept'
 
 import Spinner from 'react-spinner'
 import {Glyphicon, Row, Col, 
@@ -34,14 +40,7 @@ import {Glyphicon, Row, Col,
           Button, ButtonToolbar, ButtonGroup,
           } from 'react-bootstrap'
 //if (DEBUG) window.d3 = d3
-import {AgTable, ConceptTree, } from '../TableStuff'
 import SortableTree from 'react-sortable-tree'
-
-import {commify, updateReason, 
-        setToAncestorHeight, setToAncestorSize, getAncestorSize,
-        getRefsFunc, sendRefsToParent,
-        ListenerWrapper, ListenerTargetWrapper,
-        LoadingButton} from '../../utils'
 
 import ReactTooltip from 'react-tooltip'
 window.ReactTooltip = ReactTooltip
@@ -53,7 +52,7 @@ import StarBorder from 'material-ui/svg-icons/toggle/star-border';
 import Chip from 'material-ui/Chip'
 import muiThemeable from 'material-ui/styles/muiThemeable';
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
-import * as muit from '../../muitheme'
+import * as muit from 'src/muitheme'
 import MenuItem from 'material-ui/MenuItem'
 import Paper from 'material-ui/Paper'
 import RaisedButton from 'material-ui/RaisedButton'
@@ -373,21 +372,12 @@ class ConceptSetAsCard extends Component {
                 <div style={gridStyles.child} >
                   {scDescForSet(concepts)}
                   {
-                  /*
-                    _.supergroup(_.flatten(concepts.map(d=>d.rels)), 'relationship')
-                      .map( (rel,i) =>
-                        <ConceptSetAsCard key={i}
-                          concepts={[concept]}
-                          concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
-                          title={concept.concept_name} />
-                        let title = `${rel.records.length} ${rel.toString()} concepts`
-                                    [<ConceptSetConnected 
-                                      title={title}
-                                      storeName={title}
-                                      concept_ids={_.flatten(rel.records.map(d=>d.relcids))}
-                                    />]
-                    )
-                    */
+                    _.map(cncpt.concepts2relsMap(concepts),
+                          (relcids,relName) =>
+                            <ConceptSetAsCard key={relName}
+                              concept_ids={relcids}
+                              title={`${relcids.length} ${relName} concepts`}
+                            />)
                   }
 
 
@@ -419,14 +409,21 @@ class ConceptSetAsCard extends Component {
   }
 }
 ConceptSetAsCard = muiThemeable()(ConceptSetAsCard)
-/*
 ConceptSetAsCard = connect(
   (state, props) => {
-    let {storeName} = props
+    let {storeName, concepts, concept_ids} = props
+    if (!concepts) {
+      if (concept_ids) {
+        concepts = cncpt.conceptsFromCids(state)(concept_ids)
+      } else {
+        concepts = cncpt.storedConceptList(state)
+      }
+    }
     return {
-      concepts: props.concepts ||
-                vocab.apis.conceptInfoApi.selectors('conceptInfoApi')
-                      .results(state)(storeName),
+      concepts,
+      storedConceptMap: cncpt.storedConceptMap(state),
+      storedConceptList: cncpt.storedConceptList(state),
+      conceptsFromCids: cncpt.conceptsFromCids(state),
     }
   },
   (dispatch, ownProps) => {
@@ -440,8 +437,7 @@ ConceptSetAsCard = connect(
       }
     }
   }
-)(ConceptSet)
-*/
+)(ConceptSetAsCard)
 export {ConceptSetAsCard}
 
 /*

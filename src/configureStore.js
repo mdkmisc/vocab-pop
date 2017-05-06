@@ -1,14 +1,13 @@
 /* eslint-disable */
 const DEBUG = true
 
-import * as utils from '../utils'
-import _ from '../supergroup'
+import * as utils from 'src/utils'
+import _ from 'src/supergroup'
 
-//import apiReducer, * as api from './api'
-import apiReducer, * as api from './api'
-import lookupsReducer, * as lookups from './ducks/lookups'
-import conceptReducer, * as concept from './ducks/concept'
-import myrouter from './myrouter'
+import apiReducer, * as api from 'src/api'
+import lookupsReducer, * as lookups from 'src/ducks/lookups'
+import conceptReducer, * as concept from 'src/ducks/concept'
+import myrouter from 'src/myrouter'
 
 import React, { Component } from 'react'
 import { createStore, compose, combineReducers, applyMiddleware } from 'redux'

@@ -21,15 +21,15 @@ import { Glyphicon, //Row, Col,
           //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label
        } from 'react-bootstrap';
 var d3 = require('d3');
-import _ from '../supergroup'; // in global space anyway
+import _ from 'src/supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
 //import Rx from 'rxjs/Rx';
 
-import { commify, getRefsFunc, sendRefsToParent} from '../utils';
-import makeElements from './ThreeLayerVocGraphElements';
-//import from './sigma-react/sigma.renderers.react';
-import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from './SigmaReactGraph';
-//import {setToAncestorSize, getAncestorSize} from '../utils';
+import { commify, getRefsFunc, sendRefsToParent} from 'src/utils';
+import makeElements from 'src/components/ThreeLayerVocGraphElements';
+//import from 'src/sigma-react/sigma.renderers.react';
+import SigmaReactGraph, { ListenerTarget, ForeignObject, ListenerNode } from 'src/components/SigmaReactGraph';
+//import {setToAncestorSize, getAncestorSize} from 'src/utils';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
 

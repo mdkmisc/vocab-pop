@@ -1,16 +1,19 @@
 /* eslint-disable */
-import _ from '../../supergroup'; // in global space anyway...
-import * as utils from '../../utils'
-import myrouter from '../../redux/myrouter'
+import _ from 'src/supergroup'; // in global space anyway...
+import {AgTable, } from 'src/components/TableStuff'
+import * as utils from 'src/utils'
+import myrouter from 'src/myrouter'
+
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
-import * as lookups from '../../redux/ducks/lookups'
-import * as concept from '../../redux/ducks/concept'
+import * as lookups from 'src/ducks/lookups'
+import * as concept from 'src/ducks/concept'
+
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
-import muiTheme, * as muit from '../../muitheme'
+import muiTheme, * as muit from 'src/muitheme'
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
@@ -30,7 +33,6 @@ import {
   TextField,
   Toggle
 } from 'redux-form-material-ui'
-import {AgTable, } from '../TableStuff'
 
 class VocabField extends Component {
   render() {

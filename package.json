@@ -52,7 +52,8 @@
     "sigma": "^1.2.0"
   },
   "config": {
-    "port": "port from package.json config"
+    "port": "port from package.json config",
+    "FOOBIE": "barbie"
   },
   "scripts": {
     "build-css": "node-sass src/ -o src/",

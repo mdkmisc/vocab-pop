@@ -5,13 +5,13 @@ import { createSelector } from 'reselect'
 window.createSelector = createSelector
 
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
-import _ from '../../supergroup'; // in global space anyway...
+import _ from 'src/supergroup'; // in global space anyway...
 var d3 = require('d3')
-import * as api from '../api'
-import myrouter from '../myrouter'
+import * as api from 'src/api'
+import myrouter from 'src/myrouter'
 
 // circular dependency, might be a problem:
-import conceptReducer from './concept'
+import conceptReducer from 'src/ducks/concept'
 
 let vocabulariesApi = new api.Api({
   apiName: 'vocabulariesApi',

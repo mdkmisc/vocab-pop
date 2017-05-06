@@ -2,17 +2,17 @@
 /* eslint-disable */
 const DEBUG = true;
 
-import myrouter from './myrouter'
+import myrouter from 'src/myrouter'
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
 
-import config from '../config'
-import * as util from '../utils';
+import config from 'src/config'
+import * as util from 'src/utils';
 import React, { Component } from 'react';
 //import { Route, RouteHandler, Link, Router, browserHistory } from 'react-router';
 import Rx from 'rxjs/Rx';
 //import { ajax } from 'rxjs/observable/dom/ajax';
-import _ from '../supergroup'; // lodash would be fine here
+import _ from 'src/supergroup'; // lodash would be fine here
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
 var ALLOW_CACHING = [

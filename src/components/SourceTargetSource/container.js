@@ -1,11 +1,13 @@
 /* eslint-disable */
-import _ from '../../supergroup'; // in global space anyway...
-import * as utils from '../../utils'
+import _ from 'src/supergroup'; // in global space anyway...
+import * as utils from 'src/utils'
+import * as C from 'src/components/Concept'
+import * as cncpt from 'src/ducks/concept'
+import {ConceptCodesLookupForm} from 'src/components/Lookups'
+//import * as sts from 'src/STSReport'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
-import * as cncpt from '../../redux/ducks/concept'
-import {ConceptCodesLookupForm} from '../Lookups'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
@@ -28,8 +30,6 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-import * as C from '../Concept'
-//import * as sts from './STSReport'
 
 
 class SourceTargetSourceForm extends Component {
@@ -75,7 +75,7 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
-      concepts: cncpt.concepts(state),
+      concepts: cncpt.storedConceptList(state),
     }
   }
 )(SourceTargetSourceForm)

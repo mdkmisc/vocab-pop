@@ -1,5 +1,5 @@
 /* eslint-disable */
-import _ from '../../supergroup'; // just for lodash
+import _ from 'src/supergroup'; // just for lodash
 export function getRenderer(renderers, el, settings, et='node') {
   return renderers[elType(el, settings, et)] || renderers.def;
 }

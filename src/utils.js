@@ -393,3 +393,9 @@ export const makeAction = ({action={},type,payload,meta={}}, error) => {
   action.meta = _.merge({}, action.meta||{}, meta)
   return action
 }
+
+export const arr2map = (arr, kfunc, vfunc=(d=>d)) =>
+  _.chain(arr).map(v => [kfunc(v), vfunc(v)]).fromPairs().value()
+
+export const gulp = f => (ac,v,i,arr) => f(arr)
+// usage: [1,2,3,4,5].reduce(gulp(_.sum)) // 15

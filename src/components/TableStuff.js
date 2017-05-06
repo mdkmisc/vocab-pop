@@ -4,16 +4,21 @@ import React, { Component } from 'react';
 var d3 = require('d3');
 var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
-import _ from '../supergroup'; // in global space anyway...
-import {VocabMapByDomain, DomainMap} from './VocabMap';
+import _ from 'src/supergroup'; // in global space anyway...
+import {VocabMapByDomain, DomainMap} from 'src/components/VocabMap';
+import SigmaReactGraph from 'src/components/SigmaReactGraph';
+import myrouter from 'src/myrouter'
+//import sigma from 'src/sigmaSvgReactRenderer';
+import {commify, updateReason, 
+        setToAncestorHeight, setToAncestorSize, getAncestorSize,
+        getRefsFunc, sendRefsToParent,
+        ListenerWrapper, ListenerTargetWrapper} from 'src/utils';
+
+import Spinner from 'react-spinner';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-import SigmaReactGraph from './SigmaReactGraph';
-import Spinner from 'react-spinner';
-import myrouter from '../redux/myrouter'
 //require('react-spinner/react-spinner.css');
 
-//import sigma from './sigmaSvgReactRenderer';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
@@ -21,11 +26,6 @@ import {Glyphicon, Row, Col, FormGroup, FormControl, ControlLabel, HelpBlock,
           Accordion, Label, Panel, Modal, Checkbox, OverlayTrigger, 
           Tooltip, 
           } from 'react-bootstrap';
-import {commify, updateReason, 
-        setToAncestorHeight, setToAncestorSize, getAncestorSize,
-        getRefsFunc, sendRefsToParent,
-        ListenerWrapper, ListenerTargetWrapper} from '../utils';
-
 //import {Grid} from 'ag-grid/main';
 import {AgGridReact} from 'ag-grid-react';
 import 'ag-grid/dist/styles/ag-grid.css';

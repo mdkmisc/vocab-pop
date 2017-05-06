@@ -20,10 +20,10 @@ const DEBUG = true;
 import React, { Component } from 'react';
 import Inspector from 'react-json-inspector';
 import 'react-json-inspector/json-inspector.css';
-import SigmaReactGraph from './SigmaReactGraph';
+import SigmaReactGraph from 'src/components/SigmaReactGraph';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
-//import sigma from './sigmaSvgReactRenderer';
+//import sigma from 'src/sigmaSvgReactRenderer';
 //import { Panel, Accordion, Label, Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, }
 import {Glyphicon, Row, Col, 
           Nav, Navbar, NavItem, Label,
@@ -34,10 +34,10 @@ import { LinkContainer } from 'react-router-bootstrap';
 var d3 = require('d3');
 var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
-import _ from '../supergroup'; // in global space anyway...
-import {VocabMapByDomain, DomainMap} from './VocabMap';
-import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from '../redux/ducks/concept';
-import {AgTable} from './TableStuff';
+import _ from 'src/supergroup'; // in global space anyway...
+import {VocabMapByDomain, DomainMap} from 'src/components/VocabMap';
+import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from 'src/ducks/concept';
+import {AgTable} from 'src/components/TableStuff';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
 //import 'tipsy/src/stylesheets/tipsy.css';
@@ -45,7 +45,7 @@ import {commify, updateReason,
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper,
-        LoadingButton} from '../utils';
+        LoadingButton} from 'src/utils';
 
 
 

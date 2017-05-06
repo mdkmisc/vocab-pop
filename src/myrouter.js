@@ -1,5 +1,5 @@
 /* eslint-disable */
-import _ from '../supergroup'
+import _ from 'src/supergroup'
 import React, { Component, PropTypes } from 'react'
 import {  ConnectedRouter, 
           push as reduxPush,

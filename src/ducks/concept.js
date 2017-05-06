@@ -2,12 +2,13 @@
 
 // probably not a duck...just selectors?
 
-import _ from '../../supergroup'; // in global space anyway...
+import _ from 'src/supergroup'; // in global space anyway...
+import * as api from 'src/api'
+import * as util from 'src/utils';
+
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
-import * as api from '../api'
-import * as util from '../../utils';
 
 export const conceptActions = {
   NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',
@@ -16,216 +17,108 @@ export const conceptActions = {
   REL_CONCEPTS_FETCHED: 'vocab-pop/concept/REL_CONCEPTS_FETCHED',
 }
 
-//action creators
+/**** start action creators *********************************************************/
 const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
 
-const concept = c => conceptReducer(c) // guarantees at least a blank concept
-const csels = _.chain([
-                  'concept_id',
-                  'concept_code',
-                  'concept_name',
-                  'domain_id',
-                  'standard_concept',
-                  'vocabulary_id',
-                  'concept_class_id',
-                  'rcs',
-                  'rels',   // 
-                  // will be filled in later:
-                  'relConcepts',
-                ])
-                .map(fld => [fld, createSelector(concept, c=>c[fld])])
-                .fromPairs()
-                .value()
+/**** end action creators *********************************************************/
 
-csels.relCids = createSelector(
-  concept, 
-  c => (relName) => {
-    return ( relName 
-              ? csels.relCids(c)()[relName] 
-              : _.chain(csels.rels(c))
-                  .map(({relationship,relcids})=>[relationship,relcids])
-                  .fromPairs()
-                  .value()
-    )
+
+/**** start reducers *********************************************************/
+
+export default function reducer(state={}, action) {
+  let {type=null, payload, meta, error} = action
+  switch (type) {
+    case conceptActions.NEW_CONCEPTS:
+      if (!Array.isArray(payload)) {
+        return state
+      }
+      //let conceptList = payload.map(c=>conceptReducer(c,action))
+      return { ...state, ...util.arr2map(payload, c=>c.concept_id)}
   }
-)
+  return state
+}
 
 
-const concept_id = (c={}) => c.concept_id
 const blankConcept = {
   loadInfo: {
-    phase: 'brand new',
     gotBasicInfo: false,
     relConceptsWanted: false,
     relConceptsFetched: false,
   }
 }
-const conceptReducer = (state, action) => {
-  if (!action && typeof state === 'undefined')
-    return _.cloneDeep(blankConcept)
-  if (_.isNumber(state)) {
-    if (action) {
-      console.error("assuming if you send id as state, nothing useful in action")
-    }
-    return {..._.cloneDeep(blankConcept), concept_id: payload}
-  }
-  let concept = state || _.cloneDeep(blankConcept)
-  if (!_.has(concept, 'loadInfo'))
-    concept.loadInfo = {...blankConcept.loadInfo}
+/**** end reducers *********************************************************/
 
-  if (!action) {
-    return concept
-  }
-  if (typeof csels.concept_id(concept) === 'undefined') {
-    throw new Error("shouldn't happen")
-  }
-  let {type, payload={}, meta, error} = action
-  switch (type) {
-    case conceptActions.GOT_BASIC_INFO:
-      return {...concept, loadInfo: {...concept.loadInfo, gotBasicInfo: true}}
-    case conceptActions.REL_CONCEPTS_WANTED:
-      return {...concept, loadInfo: {...concept.loadInfo, relConceptsWanted: true}}
-    case conceptActions.REL_CONCEPTS_FETCHED:
-      return {...concept, loadInfo: {...concept.loadInfo, relConceptsFetched: true}}
-  }
-  return concept
+
+/**** start selectors *****************************************************************/
+
+export const storedConceptMap = state => state.concepts
+export const storedConceptList = createSelector(storedConceptMap, m=>_.values(m))
+export const conceptsFromCids = createSelector(
+  storedConceptMap, m=>cids=>_.values(_.pick(m, cids)))
+
+// not using, but might want:
+// export const concepts = state => state.concepts ? storedConceptList(state) : concepts
+// just to make sure:
+export const concepts = state => {throw new Error("hook this back up")}
+
+export const rels2map = rels =>
+  rels.reduce(
+    (acc,{relationship,relcids}) => (
+      { ...acc, 
+        [relationship]: _.uniq((acc[relationship]||[]).concat(relcids))
+      }),
+      {})
+export const concepts2relsMap = 
+  cs => cs.reduce((rels,c)=>rels.concat(c.rels),[])
+          .reduce(util.gulp(rels2map))
+
+export const sc = concept => concept.standard_concept  
+const scClass = createSelector(sc, sc=>`sc-${sc}`)
+//export const scClass = concept => `sc-${sc(concept)}`
+//
+export const scName = (concept) => (
+  ({S:'Standard',C:'Classification',X:'Non-standard'}
+   )[sc(concept)]
+)
+export const scLongName = (concept,cnt) => plural(`${scName(concept)} Concept`, cnt)
+export const plural = (str, cnt) => {
+  return cnt === 1 ? str : `${str}s`
 }
-const conceptsReducer = (state={}, action) => {
-  let {type, payload={}, meta, error} = action
-  let concepts = 
-    !Array.isArray(payload) // if not an array of concepts, map of id->concepts
-        ?  _.mapValues(c => conceptReducer(c))
-        : _.chain(payload) // if array, turn into map
-            .map(c => conceptReducer(c)) 
-            .map(c => [csels.concept_id(c), c])
-            .fromPairs()
-            .value()
 
-  switch (type) {
-    case conceptActions.NEW_CONCEPTS:
-      return {
-        ...state, 
-        ..._.mapValues(concepts, c => conceptReducer(c,{type:conceptActions.GOT_BASIC_INFO}))
-      }
-  }
-  return state
-}
-export {conceptsReducer as default}
-
-
-let conceptInfoApi = new api.Api({
-  apiName: 'conceptInfoApi',
-  apiPathname: 'conceptInfo',
-  defaultResults: [],
-  resultsReducer: conceptsReducer,
-  myACs: { newConcepts, },
-  paramValidation: ({concept_ids}) => {
-    console.log('validating', concept_ids)
-    return (
-      Array.isArray(concept_ids) && 
-        concept_ids.length  &&
-        _.every(concept_ids, _.isNumber)
-    )
-  },
-  apiSelectorMakers: {
-    concept_ids: (apiName) => {
-      return (state) => {
-        let calls = _.get(state,['apis',apiName,'calls'])
-        return calls && calls(state,action)
-      }
-    },
-    /*
-    conceptInfoWithMatchStrs: (state,props={}) => {
-      let calls = _.get(state,['apis',props.apiName,'calls'])
-      return calls && calls(state,props)
-      //return conceptInfo(state,action,props)
-    }
-    */
-  }
-})
-
-export const apis = {
-  conceptInfoApi,
-}
-const loadConcepts = (action$, store) => (
-  action$
-    .filter(action=>api.newDataActionFilter(action,'codesToCidsApi','primary'))
-    .switchMap(action=>{
-      let concept_ids = api.apiSelectorMakers('codesToCidsApi')
-                          .results(store.getState())()
-      if (concept_ids.length) {
-        let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
-/*
-console.error("testing w/ some random hardcoded cids")
-concept_ids = [
-  38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170,
-  2211763, 2211767, 2211757, 45889987, 2211759, 2211764, 2211761, 40756968, 2211749,
-  2722250, 2211755, 2211762, 2211750, 2211768, 40757038, 2211752, 2211758, 2211746,
-  2211748, 2211754, 2211751, 2211771, 2211770, 2211773, 2211753,
-              ]
-params = {concept_ids}
-*/
-        let loadAction = conceptInfoApi.actionCreators.load({params})
-        let fakeState = conceptInfoApi.callsReducer({},loadAction)
-        let fakeCall = fakeState.primary
-        return Rx.Observable.of(fakeCall)
-      }
-      return Rx.Observable.empty()
-    })
-    .catch(err => {
-      debugger
-      console.log('error in loadConcepts', error)
-      return Rx.Observable.of({
-        ...action,
-        type: apiActions.API_CALL_REJECTED,
-        payload: err.xhr.response,
-        error: true
-      })
-    })
+export const conceptTableAbbr = tbl => (
+  ({
+    //attribute_definition,
+    //care_site,
+    //cohort_attribute,
+    //cohort_definition,
+    condition_era: 'Dx',
+    condition_occurrence: 'Dx',
+    //death,
+    //device_cost,
+    //device_exposure,
+    //domain,
+    //dose_era,
+    //drug_cost,
+    drug_era: 'Rx',
+    drug_exposure: 'Rx',
+    //drug_strength,
+    measurement: 'Sx',
+    //note,
+    observation: 'Sx',
+    //observation_period,
+    //person,
+    //procedure_cost,
+    procedure_occurrence: 'Tx',
+    //provider,
+    //relationship,
+    //specimen,
+    //visit_cost,
+    visit_occurrence: 'V',
+    //vocabulary
+  })[tbl] || '?'
 )
-const gotConcepts = (action$, store) => (
-  action$
-    .filter(action=>api.newDataActionFilter(action,'conceptInfoApi','primary'))
-    .mergeMap(action=>{
-      console.log(util)
-      let {type, payload, apiName, apiPathname, params, url,
-            results, error, err, } = api.flattenAction(action)
-      let newConcepts = conceptInfoApi.myACs.newConcepts(payload,store)
-      return Rx.Observable.of(newConcepts)
-      return Rx.Observable.empty()
-    })
-    .catch(err => {
-      debugger
-      console.log('error in gotConcepts', error)
-      return Rx.Observable.of({
-        ...action,
-        type: 'SOME PROBLEM!!!',
-        payload: err.xhr.response,
-        error: true
-      })
-    })
-)
-export const epics = [ loadConcepts, gotConcepts, ]
 
 
-
-
-
-
-
-
-
-export const conceptsByStoreName = createSelector(
-  conceptInfoApi.selectors('conceptInfoApi').results,
-  results => storeName => {
-                let raw = results(storeName) || []
-                return repairRcs(raw)
-              }
-)
-export const concepts = createSelector( // just primary, because no way to send storeName
-  conceptsByStoreName,
-  conceptsByStoreName => conceptsByStoreName()
-)
 export const rcsFromConcepts = concepts => (
   _.flatten(
     concepts.map(c=>c.rcs)
@@ -290,7 +183,6 @@ export const repairRcs = concepts => {
       return concept
     })
 }
-export const sc = concept => concept.standard_concept  // S, C, or X
 
 // can use plain selectors with supergroup, but not 
 // createSelector because supergroup not immutable
@@ -349,49 +241,117 @@ export const colCnts = rcs => {
 export const colCntsFromConcepts = concepts => colCnts(rcsFromConcepts(concepts))
 
 
-export const scClass = concept => `sc-${sc(concept)}`
-export const scName = (concept) => (
-  ({S:'Standard',C:'Classification',X:'Non-standard'}
-   )[sc(concept)]
-)
-export const scLongName = (concept,cnt) => plural(`${scName(concept)} Concept`, cnt)
-export const plural = (str, cnt) => {
-  return cnt === 1 ? str : `${str}s`
+
+
+/**** end selectors *****************************************************************/
+
+
+
+
+
+
+/**** Api thing -- get rid of eventually ******************************************/
+
+let conceptInfoApi = new api.Api({
+  apiName: 'conceptInfoApi',
+  apiPathname: 'conceptInfo',
+  defaultResults: [],
+  resultsReducer: reducer,
+  myACs: { newConcepts, },
+  paramValidation: ({concept_ids}) => {
+    console.log('validating', concept_ids)
+    return (
+      Array.isArray(concept_ids) && 
+        concept_ids.length  &&
+        _.every(concept_ids, _.isNumber)
+    )
+  },
+  apiSelectorMakers: {
+    concept_ids: (apiName) => {
+      return (state) => {
+        let calls = _.get(state,['apis',apiName,'calls'])
+        return calls && calls(state,action)
+      }
+    },
+    /*
+    conceptInfoWithMatchStrs: (state,props={}) => {
+      let calls = _.get(state,['apis',props.apiName,'calls'])
+      return calls && calls(state,props)
+      //return conceptInfo(state,action,props)
+    }
+    */
+  }
+})
+
+export const apis = {
+  conceptInfoApi,
 }
+/**** Api thing -- get rid of eventually ******************************************/
 
-export const conceptTableAbbr = tbl => (
-  ({
-    //attribute_definition,
-    //care_site,
-    //cohort_attribute,
-    //cohort_definition,
-    condition_era: 'Dx',
-    condition_occurrence: 'Dx',
-    //death,
-    //device_cost,
-    //device_exposure,
-    //domain,
-    //dose_era,
-    //drug_cost,
-    drug_era: 'Rx',
-    drug_exposure: 'Rx',
-    //drug_strength,
-    measurement: 'Sx',
-    //note,
-    observation: 'Sx',
-    //observation_period,
-    //person,
-    //procedure_cost,
-    procedure_occurrence: 'Tx',
-    //provider,
-    //relationship,
-    //specimen,
-    //visit_cost,
-    visit_occurrence: 'V',
-    //vocabulary
-  })[tbl] || '?'
+
+
+/**** start epics ******************************************/
+
+const loadConcepts = (action$, store) => (
+  action$
+    .filter(action=>api.newDataActionFilter(action,'codesToCidsApi','primary'))
+    .switchMap(action=>{
+      let concept_ids = api.apiSelectorMakers('codesToCidsApi')
+                          .results(store.getState())()
+      if (concept_ids.length) {
+        let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
+/*
+console.error("testing w/ some random hardcoded cids")
+concept_ids = [
+  38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170,
+  2211763, 2211767, 2211757, 45889987, 2211759, 2211764, 2211761, 40756968, 2211749,
+  2722250, 2211755, 2211762, 2211750, 2211768, 40757038, 2211752, 2211758, 2211746,
+  2211748, 2211754, 2211751, 2211771, 2211770, 2211773, 2211753,
+              ]
+params = {concept_ids}
+*/
+        let loadAction = conceptInfoApi.actionCreators.load({params})
+        let fakeState = conceptInfoApi.callsReducer({},loadAction)
+        let fakeCall = fakeState.primary
+        return Rx.Observable.of(fakeCall)
+      }
+      return Rx.Observable.empty()
+    })
+    .catch(err => {
+      console.log('error in loadConcepts', error)
+      return Rx.Observable.of({
+        ...action,
+        type: apiActions.API_CALL_REJECTED,
+        payload: err.xhr.response,
+        error: true
+      })
+    })
 )
+const gotConcepts = (action$, store) => (
+  action$
+    .filter(action=>api.newDataActionFilter(action,'conceptInfoApi','primary'))
+    .mergeMap(action=>{
+      console.log(util)
+      let {type, payload, apiName, apiPathname, params, url,
+            results, error, err, } = api.flattenAction(action)
+      let newConcepts = conceptInfoApi.myACs.newConcepts(payload,store)
+      return Rx.Observable.of(newConcepts)
+      return Rx.Observable.empty()
+    })
+    .catch(err => {
+      debugger
+      console.log('error in gotConcepts', error)
+      return Rx.Observable.of({
+        ...action,
+        type: 'SOME PROBLEM!!!',
+        payload: err.xhr.response,
+        error: true
+      })
+    })
+)
+export const epics = [ loadConcepts, gotConcepts, ]
 
+/**** end epics ******************************************/
 
 
 // FROM ConceptInfo.js -- might want to keep a little bit of it

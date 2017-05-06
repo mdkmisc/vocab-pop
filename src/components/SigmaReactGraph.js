@@ -3,15 +3,15 @@
 
 const DEBUG = true;
 import React, { Component } from 'react';
-//import {VocNode, VocEdge} from './VocabMap';
+//import {VocNode, VocEdge} from 'src/VocabMap';
 var d3 = require('d3');
 var $ = require('jquery'); window.$ = $;
-import _ from '../supergroup'; // just for lodash
+import _ from 'src/supergroup'; // just for lodash
 import Rx from 'rxjs/Rx';
-import {sigmaReactRenderer, elType, neighborhoodPlugin} from './sigma-react/sigma.renderers.react';
+import {sigmaReactRenderer, elType, neighborhoodPlugin} from 'src/components/sigma-react/sigma.renderers.react';
 import { getRefsFunc, sendRefsToParent, updateReason,
-            ListenerWrapper, ListenerTargetWrapper} from '../utils';
-//export {default} from './sigma-react/sigma.renderers.react';
+            ListenerWrapper, ListenerTargetWrapper} from 'src/utils';
+//export {default} from 'src/sigma-react/sigma.renderers.react';
 
 export default class SigmaReactGraph extends Component {
   constructor(props) {

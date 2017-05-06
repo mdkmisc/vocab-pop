@@ -20,7 +20,7 @@ Copyright 2016 Sigfried Gold
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
 import { bindActionCreators } from 'redux'
-import myrouter from './redux/myrouter'
+import myrouter from 'src/myrouter'
 
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 //import { withRouter } from 'react-router'
@@ -32,22 +32,22 @@ import { Nav, Navbar, //Modal,
 //import { LinkContainer } from 'react-router-bootstrap'
 import Inspector from 'react-json-inspector'
 import 'react-json-inspector/json-inspector.css'
-import {FilterForm} from './components/Filters'
+import {FilterForm} from 'src/components/Filters'
 import Draggable from 'react-draggable'; // The default
-import config from './config'
+import config from 'src/config'
 var $ = require('jquery')
 import Spinner from 'react-spinner'
 //require('react-spinner/react-spinner.css')
-//import logo from './logo.svg'
-//import './App.css'
-import './stylesheets/VocabPop.css'
-import _ from './supergroup'
-//import * as util from './ohdsi.util'
+//import logo from 'src/logo.svg'
+//import 'src/App.css'
+import 'src/stylesheets/VocabPop.css'
+import _ from 'src/supergroup'
+//import * as util from 'src/ohdsi.util'
 // from: https://github.com/callemall/material-ui/issues/5208
 
-import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from './utils'
-import SourceTargetSource from './components/SourceTargetSource'
-import VocabPop from './components/VocabPop'
+import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'
+import SourceTargetSource from 'src/components/SourceTargetSource'
+import VocabPop from 'src/components/VocabPop'
 
 
 import {

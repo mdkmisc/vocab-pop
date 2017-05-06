@@ -4,7 +4,7 @@ const DEBUG=true
 import Rx from 'rxjs/Rx'
 var d3 = require('d3');
 var $ = require('jquery');
-import _ from './supergroup'
+import _ from 'src/supergroup'
 if (DEBUG) {
   window.Rx = Rx
   window.d3 = d3
@@ -16,11 +16,11 @@ import { render } from 'react-dom'
 import { connect, Provider, } from 'react-redux'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap/dist/css/bootstrap-theme.css'
-import App from './App'
-import configureStore from './redux/configureStore'
+import App from 'src/App'
+import configureStore from 'src/configureStore'
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
-import muiTheme, * as muit from './muitheme'
+import muiTheme, * as muit from 'src/muitheme'
 
 import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
