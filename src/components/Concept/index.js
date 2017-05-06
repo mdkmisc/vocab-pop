@@ -268,24 +268,24 @@ const scDescForSet = concepts => {
             </GridList>
           </div>
 }
-class ConceptSetAsCard extends Component {
+class _ConceptSetAsCard extends Component {
   componentDidMount() {
-    const {concept_ids, loadConceptInfo, storeName} = this.props
+    const {concept_ids, wantConcepts, storeName} = this.props
     if (concept_ids && concept_ids.length) {
-      loadConceptInfo({params:{concept_ids}, storeName})
+      wantConcepts(concept_ids)
     }
-  }
-  componentDidMount() {
-    //this.csTtId = _.uniqueId('csTtId-')
   }
   componentDidUpdate() {
     ReactTooltip.rebuild()
   }
+  static count = 0
   render() {
     let { muiTheme,
           title,
           subtitle,
-          concepts=[], } = this.props
+          concepts=[], 
+          depth,
+        } = this.props
 
     if (concepts.length < 1)
       return null
@@ -371,17 +371,25 @@ class ConceptSetAsCard extends Component {
               >
                 <div style={gridStyles.child} >
                   {scDescForSet(concepts)}
-                  {
+                </div>
+                <div style={gridStyles.child} >
+                  Rels:
+                  { 
+                    _ConceptSetAsCard.count++ < 5 &&
+                    depth < 1 &&
                     _.map(cncpt.concepts2relsMap(concepts),
-                          (relcids,relName) =>
+                          (relcids,relName) => {
+                          return (
+                            <div key={relName}>
+                              <div>{relcids.length} {relName} concepts</div>
                             <ConceptSetAsCard key={relName}
+                              depth={depth + 1}
                               concept_ids={relcids}
                               title={`${relcids.length} ${relName} concepts`}
-                            />)
+                            />
+                            </div>
+                         )})
                   }
-
-
-
                 </div>
               </GridTile>
               { singleConcept ? [] :
@@ -408,10 +416,10 @@ class ConceptSetAsCard extends Component {
     )
   }
 }
-ConceptSetAsCard = muiThemeable()(ConceptSetAsCard)
-ConceptSetAsCard = connect(
+_ConceptSetAsCard = muiThemeable()(_ConceptSetAsCard)
+const ConceptSetAsCard = connect(
   (state, props) => {
-    let {storeName, concepts, concept_ids} = props
+    let {storeName, concepts, concept_ids, depth=0} = props
     if (!concepts) {
       if (concept_ids) {
         concepts = cncpt.conceptsFromCids(state)(concept_ids)
@@ -420,6 +428,7 @@ ConceptSetAsCard = connect(
       }
     }
     return {
+      depth,
       concepts,
       storedConceptMap: cncpt.storedConceptMap(state),
       storedConceptList: cncpt.storedConceptList(state),
@@ -428,16 +437,19 @@ ConceptSetAsCard = connect(
   },
   (dispatch, ownProps) => {
     return {
+      wantConcepts: cids=>dispatch(cncpt.wantConcepts(cids)),
+      /*
       loadConceptInfo: ({params,storeName}) => {
-        let loadAction = vocab.apis.conceptInfoApi.actionCreators
+        let loadAction = cncpt.apis.conceptInfoApi.actionCreators
                             .load({params,storeName})
-        let fakeState = vocab.apis.conceptInfoApi.callsReducer({},loadAction)
+        let fakeState = cncpt.apis.conceptInfoApi.callsReducer({},loadAction)
         let fakeCall = fakeState[storeName]
         dispatch(fakeCall)
       }
+      */
     }
   }
-)(ConceptSetAsCard)
+)(_ConceptSetAsCard)
 export {ConceptSetAsCard}
 
 /*

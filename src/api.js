@@ -233,7 +233,7 @@ export class Api {
         case apiActions.API_CALL_FULFILLED: // payload should have results
           pending = false
           if (this.resultsReducer) {
-            console.error("make sure resultsReducer runs")
+            console.error("ignoring results, make sure resultsReducer runs")
             //err = payload
             //error = true
             //type = apiActions.API_CALL_REJECTED

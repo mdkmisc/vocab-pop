@@ -12,46 +12,79 @@ import { combineEpics } from 'redux-observable'
 
 export const conceptActions = {
   NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',
-  GOT_BASIC_INFO: 'vocab-pop/concept/GOT_BASIC_INFO',
-  REL_CONCEPTS_WANTED: 'vocab-pop/concept/REL_CONCEPTS_WANTED',
-  REL_CONCEPTS_FETCHED: 'vocab-pop/concept/REL_CONCEPTS_FETCHED',
+  WANT_CONCEPTS: 'vocab-pop/concept/WANT_CONCEPTS',
+  //GOT_BASIC_INFO: 'vocab-pop/concept/GOT_BASIC_INFO',
+  //REL_CONCEPTS_WANTED: 'vocab-pop/concept/REL_CONCEPTS_WANTED',
+  //REL_CONCEPTS_FETCHED: 'vocab-pop/concept/REL_CONCEPTS_FETCHED',
 }
 
 /**** start action creators *********************************************************/
 const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
+export const wantConcepts = concept_ids => ({type: conceptActions.WANT_CONCEPTS, payload:concept_ids})
 
 /**** end action creators *********************************************************/
 
 
 /**** start reducers *********************************************************/
 
-export default function reducer(state={}, action) {
-  let {type=null, payload, meta, error} = action
+const loadedReducer = (state={}, action) => {
+  let {type, payload, meta, error} = action
   switch (type) {
     case conceptActions.NEW_CONCEPTS:
-      if (!Array.isArray(payload)) {
-        return state
-      }
-      //let conceptList = payload.map(c=>conceptReducer(c,action))
+      //if (!Array.isArray(payload)) { return state } // just assume, don't check
       return { ...state, ...util.arr2map(payload, c=>c.concept_id)}
+    case conceptActions.WANT_CONCEPTS:
   }
   return state
 }
-
-
-const blankConcept = {
-  loadInfo: {
-    gotBasicInfo: false,
-    relConceptsWanted: false,
-    relConceptsFetched: false,
+const requestReducer = (state={}, action) => {
+  let {type, payload, meta, error} = action
+  switch (type) {
+    case conceptActions.WANT_CONCEPTS:
+    case conceptActions.NEW_CONCEPTS:
   }
 }
+const requestsReducer = (state={wanted:[],got:[]}, action) => {
+  /*
+   * state = {
+   *            wanted: [1234, 4567, ...],
+   *            got: [4321, 7654, ...],
+   * }
+   */
+  let {type, payload, meta, error} = action
+  if (_.isEmpty(payload))
+    return state
+  let newState
+  switch (type) {
+    case conceptActions.NEW_CONCEPTS:
+      newState = {
+        got: _.union(state.got, payload.map(c=>c.concept_id)),
+        wanted: _.difference(state.wanted, payload),
+      }
+      break
+    case conceptActions.WANT_CONCEPTS:
+      newState = {
+        ...state,
+        wanted: _.difference( _.union(state.wanted, payload), state.got),
+      }
+      break
+    default:
+      return state
+  }
+  return _.isEqual(state, newState) ? state : newState
+}
+
+export default combineReducers({
+  loaded: loadedReducer,
+  requests: requestsReducer,
+})
+
 /**** end reducers *********************************************************/
 
 
 /**** start selectors *****************************************************************/
 
-export const storedConceptMap = state => state.concepts
+export const storedConceptMap = state => state.concepts.loaded
 export const storedConceptList = createSelector(storedConceptMap, m=>_.values(m))
 export const conceptsFromCids = createSelector(
   storedConceptMap, m=>cids=>_.values(_.pick(m, cids)))
@@ -256,7 +289,7 @@ let conceptInfoApi = new api.Api({
   apiName: 'conceptInfoApi',
   apiPathname: 'conceptInfo',
   defaultResults: [],
-  resultsReducer: reducer,
+  resultsReducer: true,
   myACs: { newConcepts, },
   paramValidation: ({concept_ids}) => {
     console.log('validating', concept_ids)

@@ -1,4 +1,5 @@
 /* eslint-disable */
+import myrouter from 'src/myrouter'
 import _ from 'src/supergroup'; // in global space anyway...
 import * as utils from 'src/utils'
 import * as C from 'src/components/Concept'
@@ -71,7 +72,9 @@ SourceTargetSourceForm = reduxForm({
 SourceTargetSourceForm = connect(
   (state, props) => { // mapStateToProps
     const selector = formValueSelector('concept_codes_form')
-    const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
+    //const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
+    const {vocabulary_id, concept_code_search_pattern, } 
+          = myrouter.getQuery()
     return {
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
