@@ -141,6 +141,6 @@ console.log({default:getMuiTheme(), scThemes, subThemeColors, subThemeStyles})
 
 let DT = getMuiTheme(darkBaseTheme)
 let LT = getMuiTheme(lightBaseTheme)
-//export default getMuiTheme({palette: {...LT.palette, ...subThemeColors.main}})
+export default getMuiTheme({palette: {...LT.palette, ...subThemeColors.main}})
 //export default getMuiTheme({palette: {...DT.palette, ...subThemeColors.neutral}})
-export default LT
+//export default LT
