@@ -155,19 +155,7 @@ let  App = muiThemeable()(class App extends Component {
           }} >
           </div>
         </AppBar>
-                    <Tabs>
-                      <Tab label="nothing">
-                        <CircularProgress />
-                        <CircularProgress color={muiTheme.palette.accent1Color} size={60} thickness={7} />
-                        <CircularProgress size={80} thickness={5} />
-                      </Tab>
-                      <Tab  label="STS Report"
-                          data-route="/sourcetargetsource"
-                          onActive={tab=>nav(tab.props['data-route'])} 
-                      >
-                        {main}
-                      </Tab>
-                    </Tabs>
+        <AppTabs {...{route, sidebar, main, muiTheme}}/>
       </div>
     )
     /*
@@ -225,6 +213,63 @@ let  App = muiThemeable()(class App extends Component {
     */
   }
 })
+class AppTabs extends React.Component {
+  constructor(props) {
+    super(props);
+    this.state = {
+      value: myrouter.getQuery('appTab'),
+    };
+  }
+
+  handleChange = (value) => {
+    myrouter.addParam('appTab', value)
+    this.setState({
+      value: value,
+    });
+  };
+
+  render() {
+    const {route, sidebar, main, muiTheme} = this.props
+    return (
+      <Tabs
+        value={this.state.value}
+        onChange={this.handleChange}
+      >
+        <Tab label="nothing" value="nothing">
+          <CircularProgress />
+          <CircularProgress color={muiTheme.palette.accent1Color} size={60} thickness={7} />
+          <CircularProgress size={80} thickness={5} />
+        </Tab>
+        <Tab  label="STS Report" value="ststreport"
+            data-route="/sourcetargetsource"
+            onActive={tab=>nav(tab.props['data-route'])} 
+        >
+          {main}
+        </Tab>
+        <Tab label="Tab A" value="a">
+          <div>
+            <h2 style={styles.headline}>Controllable Tab A</h2>
+            <p>
+              Tabs are also controllable if you want to programmatically pass them their values.
+              This allows for more functionality in Tabs such as not
+              having any Tab selected or assigning them different values.
+            </p>
+          </div>
+        </Tab>
+        <Tab label="Tab B" value="b">
+          <div>
+            <h2 style={styles.headline}>Controllable Tab B</h2>
+            <p>
+              This is another example of a controllable tab. Remember, if you
+              use controllable Tabs, you need to give all of your tabs values or else
+              you wont be able to select them.
+            </p>
+          </div>
+        </Tab>
+      </Tabs>
+    );
+  }
+}
 function nav(pathname) {
   return myrouter.setPathname(pathname)
 }

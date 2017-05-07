@@ -20,7 +20,13 @@ export const conceptActions = {
 
 /**** start action creators *********************************************************/
 const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
-export const wantConcepts = concept_ids => ({type: conceptActions.WANT_CONCEPTS, payload:concept_ids})
+export const wantConcepts = 
+  (concept_ids, storeName) => ({
+    type: conceptActions.WANT_CONCEPTS, 
+    //payload:{params:{concept_ids}},
+    payload:concept_ids,
+    meta: {storeName}
+  })
 
 /**** end action creators *********************************************************/
 
@@ -36,13 +42,6 @@ const loadedReducer = (state={}, action) => {
     case conceptActions.WANT_CONCEPTS:
   }
   return state
-}
-const requestReducer = (state={}, action) => {
-  let {type, payload, meta, error} = action
-  switch (type) {
-    case conceptActions.WANT_CONCEPTS:
-    case conceptActions.NEW_CONCEPTS:
-  }
 }
 const requestsReducer = (state={wanted:[],got:[]}, action) => {
   /*
@@ -290,7 +289,7 @@ let conceptInfoApi = new api.Api({
   apiPathname: 'conceptInfo',
   defaultResults: [],
   resultsReducer: true,
-  myACs: { newConcepts, },
+  //myACs: { newConcepts, },
   paramValidation: ({concept_ids}) => {
     console.log('validating', concept_ids)
     return (
@@ -362,14 +361,13 @@ params = {concept_ids}
 )
 const gotConcepts = (action$, store) => (
   action$
-    .filter(action=>api.newDataActionFilter(action,'conceptInfoApi','primary'))
+    .filter(action=>api.newDataActionFilter(action,'conceptInfoApi'))
     .mergeMap(action=>{
       console.log(util)
       let {type, payload, apiName, apiPathname, params, url,
             results, error, err, } = api.flattenAction(action)
-      let newConcepts = conceptInfoApi.myACs.newConcepts(payload,store)
-      return Rx.Observable.of(newConcepts)
-      return Rx.Observable.empty()
+      let newcs = newConcepts(payload,store)
+      return Rx.Observable.of(newcs)
     })
     .catch(err => {
       debugger
@@ -382,7 +380,27 @@ const gotConcepts = (action$, store) => (
       })
     })
 )
-export const epics = [ loadConcepts, gotConcepts, ]
+const wantConceptsEpic = (action$, store) => (
+  action$
+    .ofType(conceptActions.WANT_CONCEPTS)
+    .mergeMap(action=>{
+      let {type, payload: concept_ids, meta:{storeName}, error} = action
+      let loadAction = conceptInfoApi.actionCreators.load({params:{concept_ids},storeName})
+      let fakeState = conceptInfoApi.callsReducer({},loadAction)
+      return Rx.Observable.of(fakeState[storeName])
+    })
+    .catch(err => {
+      debugger
+      console.log('error in gotConcepts', error)
+      return Rx.Observable.of({
+        ...action,
+        type: 'SOME PROBLEM!!!',
+        payload: err.xhr.response,
+        error: true
+      })
+    })
+)
+export const epics = [ loadConcepts, gotConcepts, wantConceptsEpic, ]
 
 /**** end epics ******************************************/
 

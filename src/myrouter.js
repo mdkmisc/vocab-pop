@@ -51,20 +51,20 @@ const getQuery = (path) => {
   //debugger
 }
 const routeAction = o => {
-  console.log('routeAction!', o, reduxPush(o))
+  //console.log('routeAction', reduxPush(o), 'only works if you dispatch it!')
   return reduxPush(o)
 }
 const addParams = (params) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   query = _.merge(query, params)
   //myrouter.history.push({search: myqs.stringify(query)})
-  return routeAction({search: myqs.stringify(query), state:{addParams:params}})
+  return myrouter.changeRoute({search: myqs.stringify(query), state:{addParams:params}})
 }
 const addParam = (path, val) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   _.set(query, path, val)
   //myrouter.history.push({search: myqs.stringify(query)})
-  return routeAction({search: myqs.stringify(query), state:{addParam:{path,val}}})
+  return myrouter.changeRoute({search: myqs.stringify(query), state:{addParam:{path,val}}})
 }
 const deleteParams = (params) => {
   if (typeof params === 'string') {
@@ -73,12 +73,12 @@ const deleteParams = (params) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   params.forEach(p => _.unset(query, p))
   //myrouter.history.push({search: myqs.stringify(query)})
-  return routeAction({search: myqs.stringify(query), state:{deleteParams:params}})
+  return myrouter.changeRoute({search: myqs.stringify(query), state:{deleteParams:params}})
 }
 const setPathname = pathname => {
   if (pathname === myrouter.history.location.pathname)
     return {type:'EMPTY'}
-  return routeAction(myrouter.history.createHref({...myrouter.history.location,pathname}))
+  return myrouter.changeRoute(myrouter.history.createHref({...myrouter.history.location,pathname}))
 }
 const queryListener = (params=[], cb) => {
 
@@ -100,7 +100,9 @@ var myrouter = {
   middleware,     // redux
   ConnectedRouter,// redux
   routeAction,
-  history,        // history/createBrowserHistory
+  changeRoute: ()=>{throw new Error("CONNECT THIS!")}, // NEEDS TO BE CONNECTED to routeAction and dispatcher
+                      // which is happening in configureStore
+  history,// history/createBrowserHistory
 }
 export default myrouter
 

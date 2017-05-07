@@ -10,7 +10,7 @@ import conceptReducer, * as concept from 'src/ducks/concept'
 import myrouter from 'src/myrouter'
 
 import React, { Component } from 'react'
-import { createStore, compose, combineReducers, applyMiddleware } from 'redux'
+import { createStore, compose, combineReducers, applyMiddleware, bindActionCreators } from 'redux'
 //import reduceReducers from 'reduce-reducers'
 import { combineEpics } from 'redux-observable'
 import { createEpicMiddleware } from 'redux-observable'
@@ -47,6 +47,7 @@ const calls = combineReducers(
       applyMiddleware(...middleware)
     )
   )
+  myrouter.changeRoute = bindActionCreators(myrouter.routeAction, store.dispatch)
 
   if (DEBUG) {
     window.store = store

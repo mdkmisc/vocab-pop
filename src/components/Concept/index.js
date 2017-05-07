@@ -48,6 +48,7 @@ window.ReactTooltip = ReactTooltip
 import {GridList, GridTile} from 'material-ui/GridList';
 import IconButton from 'material-ui/IconButton';
 import Subheader from 'material-ui/Subheader';
+import CircularProgress from 'material-ui/CircularProgress';
 import StarBorder from 'material-ui/svg-icons/toggle/star-border';
 import Chip from 'material-ui/Chip'
 import muiThemeable from 'material-ui/styles/muiThemeable';
@@ -268,11 +269,107 @@ const scDescForSet = concepts => {
             </GridList>
           </div>
 }
+const gridStyles = { // GridList styles based on Simple example
+                      // http://www.material-ui.com/#/components/grid-list
+  parent: {
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+  },
+  gridList: {
+    //border: '5px solid pink',
+    width: '100%',
+    //height: 450,
+    overflowY: 'auto',
+  },
+  tile: {
+    zoom: 0.8, 
+    backgroundColor: muit.getColors().light,
+    width: '100%',
+    //border: '5px solid green',
+  },
+  title: {
+    fontSize: '1.6em',
+    color: muit.getColors().darker,
+  },
+  child: {
+    paddingTop:60,
+    width: '100%',
+  }
+}
+class ConceptInfoGridList extends Component {
+  render() {
+    const {concepts} = this.props
+    const singleConcept = concepts.length === 1
+
+    return (
+      <div style={gridStyles.parent}>
+        <GridList cellHeight={'auto'} 
+                  cols={singleConcept ? 1 : 2}
+                  style={gridStyles.gridList} >
+          <Subheader>CDMRecords</Subheader>
+          <GridTile 
+                    //titleBackground='rgba(0,0,0,0)'
+                    //titlePosition='top'
+                    //titleStyle={gridStyles.title}
+                    //title='CDM Records' 
+                    style={gridStyles.tile}
+          >
+            <div style={gridStyles.child} >
+              {scDescForSet(concepts)}
+            </div>
+            <div style={gridStyles.child} >
+              Rels:
+              { 
+                _ConceptSetAsCard.count < 15 &&
+                depth < 1 &&
+                _.map(cncpt.concepts2relsMap(concepts),
+                      (relcids,relName) => {
+                      if (!relName.match(/map/i))
+                        return null
+                      _ConceptSetAsCard.count++
+                      return (
+                        <div key={relName}>
+                          <div>{relcids.length} {relName} concepts: {relcids.toString()}</div>
+                        <ConceptSetAsCard key={relName}
+                          depth={depth + 1}
+                          concept_ids={relcids}
+                          title={`${relcids.length} ${relName} concepts`}
+                        />
+                        </div>
+                      )})
+              }
+            </div>
+          </GridTile>
+          { singleConcept ? [] :
+            <GridTile 
+                      //titleBackground='rgba(0,0,0,0)'
+                      //titlePosition='top'
+                      //titleStyle={gridStyles.title}
+                      //title='Individual Concepts' 
+                      style={gridStyles.tile}
+            >
+              <div style={gridStyles.child} >
+                <Subheader style={gridStyles.subheader} >Individual Concepts</Subheader>
+                { concepts.map( (concept,i) => 
+                    <ConceptSetAsCard key={i}
+                      concepts={[concept]}
+                      title={concept.concept_name} />
+                )}
+              </div>
+            </GridTile>
+          }
+        </GridList>
+      </div>
+    )
+  }
+}
 class _ConceptSetAsCard extends Component {
   componentDidMount() {
-    const {concept_ids, wantConcepts, storeName} = this.props
+    let {concept_ids, depth, title, storeName, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
-      wantConcepts(concept_ids)
+      storeName = `${depth}:${storeName}->${title}`
+      wantConcepts(concept_ids, storeName)
     }
   }
   componentDidUpdate() {
@@ -282,9 +379,11 @@ class _ConceptSetAsCard extends Component {
   render() {
     let { muiTheme,
           title,
+          depth,
+          parentTitle,
+          storeName,
           subtitle,
           concepts=[], 
-          depth,
         } = this.props
 
     if (concepts.length < 1)
@@ -313,34 +412,6 @@ class _ConceptSetAsCard extends Component {
       text: {
       }
     }
-    const gridStyles = { // GridList styles based on Simple example
-                         // http://www.material-ui.com/#/components/grid-list
-      parent: {
-        display: 'flex',
-        flexWrap: 'wrap',
-        justifyContent: 'space-around',
-      },
-      gridList: {
-        //border: '5px solid pink',
-        width: '100%',
-        //height: 450,
-        overflowY: 'auto',
-      },
-      tile: {
-        zoom: 0.8, 
-        backgroundColor: muit.getColors().light,
-        width: '100%',
-        //border: '5px solid green',
-      },
-      title: {
-        fontSize: '1.6em',
-        color: muit.getColors().darker,
-      },
-      child: {
-        paddingTop:60,
-        width: '100%',
-      }
-    }
     return (
       <Card
           style={cardStyles.root}
@@ -350,67 +421,19 @@ class _ConceptSetAsCard extends Component {
         <CardTitle
           titleStyle={cardStyles.title}
           title={title}
-          //titleColor={muit.scThemes.X.palette.primary1Color}
           subtitle={subtitle}
-          //subtitleColor={muit.scThemes.X.palette.primary1Color}
           showExpandableButton={true}
           actAsExpander={true}
         />
         <CardText expandable={true}
-                  style={cardStyles.text} >
-          <div style={gridStyles.parent}>
-            <GridList cellHeight={'auto'} 
-                      cols={singleConcept ? 1 : 2}
-                      style={gridStyles.gridList} >
-              <GridTile 
-                        titleBackground='rgba(0,0,0,0)'
-                        titlePosition='top'
-                        titleStyle={gridStyles.title}
-                        title='CDM Records' 
-                        style={gridStyles.tile}
-              >
-                <div style={gridStyles.child} >
-                  {scDescForSet(concepts)}
-                </div>
-                <div style={gridStyles.child} >
-                  Rels:
-                  { 
-                    _ConceptSetAsCard.count++ < 5 &&
-                    depth < 1 &&
-                    _.map(cncpt.concepts2relsMap(concepts),
-                          (relcids,relName) => {
-                          return (
-                            <div key={relName}>
-                              <div>{relcids.length} {relName} concepts</div>
-                            <ConceptSetAsCard key={relName}
-                              depth={depth + 1}
-                              concept_ids={relcids}
-                              title={`${relcids.length} ${relName} concepts`}
-                            />
-                            </div>
-                         )})
-                  }
-                </div>
-              </GridTile>
-              { singleConcept ? [] :
-                <GridTile 
-                          titleBackground='rgba(0,0,0,0)'
-                          titlePosition='top'
-                          titleStyle={gridStyles.title}
-                          title='Individual Concepts' 
-                          style={gridStyles.tile}
-                >
-                  <div style={gridStyles.child} >
-                    { concepts.map( (concept,i) => 
-                        <ConceptSetAsCard key={i}
-                          concepts={[concept]}
-                          title={concept.concept_name} />
-                    )}
-                  </div>
-                </GridTile>
-              }
-            </GridList>
-          </div>
+                  style={cardStyles.text} 
+        >
+
+            <CircularProgress />
+            <CircularProgress size={60} thickness={7} />
+            <CircularProgress size={80} thickness={5} />
+          <ConceptInfoGridList concepts={concepts}
+          />
         </CardText >
       </Card>
     )
@@ -419,7 +442,8 @@ class _ConceptSetAsCard extends Component {
 _ConceptSetAsCard = muiThemeable()(_ConceptSetAsCard)
 const ConceptSetAsCard = connect(
   (state, props) => {
-    let {storeName, concepts, concept_ids, depth=0} = props
+    let {storeName='primary', concepts, concept_ids, 
+          depth=0, title, } = props
     if (!concepts) {
       if (concept_ids) {
         concepts = cncpt.conceptsFromCids(state)(concept_ids)
@@ -429,26 +453,15 @@ const ConceptSetAsCard = connect(
     }
     return {
       depth,
+      storeName,
+      title,
       concepts,
       storedConceptMap: cncpt.storedConceptMap(state),
       storedConceptList: cncpt.storedConceptList(state),
       conceptsFromCids: cncpt.conceptsFromCids(state),
     }
   },
-  (dispatch, ownProps) => {
-    return {
-      wantConcepts: cids=>dispatch(cncpt.wantConcepts(cids)),
-      /*
-      loadConceptInfo: ({params,storeName}) => {
-        let loadAction = cncpt.apis.conceptInfoApi.actionCreators
-                            .load({params,storeName})
-        let fakeState = cncpt.apis.conceptInfoApi.callsReducer({},loadAction)
-        let fakeCall = fakeState[storeName]
-        dispatch(fakeCall)
-      }
-      */
-    }
-  }
+  dispatch=>bindActionCreators(_.pick(cncpt,['wantConcepts']), dispatch)
 )(_ConceptSetAsCard)
 export {ConceptSetAsCard}
 

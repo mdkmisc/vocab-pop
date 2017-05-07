@@ -160,13 +160,13 @@ const getUrl = (path, params={}) => {
   return url
 }
 
-export const newDataActionFilter = (action, apiNameWanted, storeNameWanted='primary') => {
+export const newDataActionFilter = (action, apiNameWanted, storeNameWanted) => {
   let {type, payload, apiName, storeName, apiPathname, params, url,
         results, error, err, api, } = flattenAction(action)
   return (
     type === apiActions.API_CALL_FULFILLED &&
     apiName === apiNameWanted &&
-    storeName === storeNameWanted
+    (!storeNameWanted || storeName === storeNameWanted)
   )
 }
 
