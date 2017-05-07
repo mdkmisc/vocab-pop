@@ -61,6 +61,7 @@ import {
 } from 'material-ui/styles/colors';
 import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator';
 import * as colorManipulator from 'material-ui/utils/colorManipulator';
+import CircularProgress from 'material-ui/CircularProgress';
 
 
 const routes = [
@@ -85,6 +86,7 @@ import IconButton from 'material-ui/IconButton';
 import IconMenu from 'material-ui/IconMenu';
 import Menu from 'material-ui/Menu';
 
+import muiThemeable from 'material-ui/styles/muiThemeable';
 import MenuItem from 'material-ui/MenuItem';
 import FlatButton from 'material-ui/FlatButton';
 import RaisedButton from 'material-ui/RaisedButton';
@@ -116,12 +118,12 @@ const styles = {
     */
 const defaultRoute = routes[0];
 //export default class App extends Component {
-export class App extends Component {
+let  App = muiThemeable()(class App extends Component {
   constructor(props: any) {
     super(props);
   }
   render() {
-    const {match, store, location, pathname, nav, } = this.props
+    const {match, store, location, pathname, nav, muiTheme} = this.props
     let route = _.find(routes, r=>r.path===location.pathname)
                 || defaultRoute
     let sidebar = route.sidebar 
@@ -131,53 +133,51 @@ export class App extends Component {
     return (
       <div>
         <AppBar
-          //style={{ border: '3px solid purple', flexGrow:0}}
-          iconElementLeft={ <IconMenu
-                              //{...props}
-                              iconButtonElement={
-                                <IconButton><NavigationMenu /></IconButton>
-                              }
-                              targetOrigin={{horizontal: 'right', vertical: 'top'}}
-                              anchorOrigin={{horizontal: 'right', vertical: 'top'}}
-                            >
-                              <MenuItem primaryText="config?" />
-                              <MenuItem primaryText="stuff?" />
-                            </IconMenu>
-                          }
+          iconElementLeft={ 
+            <IconMenu
+              //{...props}
+              iconButtonElement={
+                <IconButton><NavigationMenu /></IconButton>
+              }
+              targetOrigin={{horizontal: 'right', vertical: 'top'}}
+              anchorOrigin={{horizontal: 'right', vertical: 'bottom'}}
+            >
+              <MenuItem primaryText="config?" />
+              <MenuItem primaryText="stuff?" />
+            </IconMenu>
+          }
           title={<span style={styles.appBarTitle}>Vocab-Viz</span>}
           onTitleTouchTap={()=>nav('/')}
-          /*
-        
-          title={ <div>
-                    <FlatButton label="Vocab-Viz" secondary={true} />
-                    <FlatButton label="Primary" primary={true} style={{}} />
-                  </div>}
-                  */
-          //iconElementLeft={<IconButton><NavigationClose /></IconButton>}
-          //iconElementRight={this.state.logged ? <Logged /> : <Login />}
         >
           <div style={{ 
                         //border: '3px solid pink', 
                         flexGrow:2
           }} >
-                    <Tabs>
-                      <Tab  label="STS Report"
-                          data-route="/sourcetargetsource"
-                          onActive={tab=>nav(tab.props['data-route'])} >
-                      </Tab>
-                    </Tabs>
           </div>
         </AppBar>
-        {main}
+                    <Tabs>
+                      <Tab label="nothing">
+                        <CircularProgress />
+                        <CircularProgress color={muiTheme.palette.accent1Color} size={60} thickness={7} />
+                        <CircularProgress size={80} thickness={5} />
+                      </Tab>
+                      <Tab  label="STS Report"
+                          data-route="/sourcetargetsource"
+                          onActive={tab=>nav(tab.props['data-route'])} 
+                      >
+                        {main}
+                      </Tab>
+                    </Tabs>
       </div>
     )
+    /*
     return (
               <div className="vocab-app flex-box" style={{backgroundColor: brown50}}>
                 <div className="flex-content-height container" style={{width:'100%'}} >
                   <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
                     <Navbar.Header>
                       <Navbar.Brand>
-                        <NavLink to={locPath(location, '/',{clear:['domain_id']})} /*onlyActiveOnIndex*/ >
+                        <NavLink to={locPath(location, '/',{clear:['domain_id']})} /*onlyActiveOnIndex* / >
                           Vocab Viz
                         </NavLink>
                       </Navbar.Brand>
@@ -194,7 +194,7 @@ export class App extends Component {
                         <NavLink to={locPath(location, '/concepts',{clear:['domain_id']})}>
                           <Button >All Domains</Button>
                         </NavLink>
-                        */}
+                        * /}
                         <NavLink to='/sourcetargetsource'>
                           <Button >Source-&gt;Target-&gt;Source</Button>
                         </NavLink>
@@ -222,8 +222,9 @@ export class App extends Component {
                 </div>
               </div>
     )
+    */
   }
-}
+})
 function nav(pathname) {
   return myrouter.setPathname(pathname)
 }

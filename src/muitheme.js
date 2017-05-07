@@ -1,7 +1,8 @@
 import _ from 'src/supergroup' // in global space anyway...
 import muiThemeable from 'material-ui/styles/muiThemeable'
 import getMuiTheme from 'material-ui/styles/getMuiTheme'
-//import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme'
+import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme'
+import lightBaseTheme from 'material-ui/styles/baseThemes/lightBaseTheme'
 
 import {
   blue200,
@@ -36,6 +37,7 @@ export const subThemeColors = _.mapValues(
           dark: baseColor,
           darker: darken(baseColor, 0.4),
           primary1Color: lighten(baseColor, 0.2),
+          accent1Color: teal500,
           //textColor: darkBlack,
           //alternateTextColor: white,
           //canvasColor: white,
@@ -107,7 +109,7 @@ export const atlasStyles = {
       borderBottom: 'solid 1px #ccc',
     },
   }
-export default getMuiTheme({
+const tealTheme = {
   palette: {
     primary1Color: teal500,
     primary2Color: teal700,
@@ -125,12 +127,20 @@ export default getMuiTheme({
     shadowColor: fullBlack,
     ...atlasColors,
     ...subThemeColors.neutral,
+    /*
+    */
   },
   appBar: {
     height: 50,
   },
-})
+}
 
 export const scThemes = _.mapValues(subThemeColors, c=>getMuiTheme({palette:c}))
 
 console.log({default:getMuiTheme(), scThemes, subThemeColors, subThemeStyles})
+
+let DT = getMuiTheme(darkBaseTheme)
+let LT = getMuiTheme(lightBaseTheme)
+//export default getMuiTheme({palette: {...LT.palette, ...subThemeColors.main}})
+//export default getMuiTheme({palette: {...DT.palette, ...subThemeColors.neutral}})
+export default LT
