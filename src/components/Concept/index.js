@@ -155,15 +155,13 @@ const ScView = muiThemeable()(props => {
                     (cnt,i)=>{
                       let ttId = _.uniqueId('scViewTtId-')
                       return (
-                        <div
-                            key={i}
-                        >
+                        <div key={i} >
                           <ReactTooltip id={ttId} place="bottom" effect="solid"/>
                           <RaisedButton 
+                              style={{margin:5, }}
                               //fullWidth={true}
                               primary={true} 
-                              labelStyle={{textTransform:'none'}}
-                              label={`${title ? title + ' ' : ''}${commify(cnt.cnt)}`}
+                              label={commify(cnt.cnt)}
                               labelPosition="before"
                               data-tip={colname(cnt)}
                               data-for={ttId}
@@ -180,15 +178,12 @@ const ScView = muiThemeable()(props => {
               </Subheader>
               Rels:
               { 
-                viewCount < 15 &&
-                depth < 1 &&
                 _.map(cncpt.concepts2relsMap(concepts),
                       (relcids,relName) => {
                         if (!relName.match(/map/i)) return null
                         return <RelView key={relName} 
                                   {...{relName, relcids, depth, storeName}}
                         />
-                        viewCount++
                       })
               }
             </div>
@@ -243,7 +238,6 @@ const RelView = ({relName,relcids,depth,storeName}) => {
   let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
   if (depth > 1) {
     return <RaisedButton  fullWidth={true}
-                          key={i}
                           primary={true} 
                           labelStyle={{textTransform:'none'}}
                           label={title}
@@ -325,7 +319,6 @@ const gridStyles = { // GridList styles based on Simple example
     //marginTop: 50,  // WAS ONLY ON SC
   }
 }
-let viewCount = 0 // to prevent stack overflow
 class ConceptInfoGridList extends Component {
   render() {
     let { muiTheme,
@@ -373,6 +366,10 @@ class ConceptViewContainer extends Component {
   componentDidMount() {
     let {concept_ids, depth, title, storeName, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
+      if (concept_ids.length > 20) {
+        debugger
+        return
+      }
       storeName = `${depth}:${storeName}->${title}`
       wantConcepts(concept_ids, storeName)
     }
@@ -380,7 +377,10 @@ class ConceptViewContainer extends Component {
   componentDidUpdate() {
     ReactTooltip.rebuild()
   }
+  static viewCount = 0 // to prevent stack overflow
   render() {
+    if ( ConceptViewContainer.viewCount++ > 35 || depth > 1 )
+      return null
     let {concept_ids, depth, title, subtitle, storeName, wantConcepts, 
             initiallyExpanded=true} = this.props
     return  <Card

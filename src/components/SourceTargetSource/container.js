@@ -78,7 +78,8 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
-      concepts: cncpt.storedConceptList(state),
+      //concepts: cncpt.storedConceptList(state),
+      concepts: cncpt.apis.conceptInfoApi.selectors('conceptInfoApi').results(state)(),
     }
   }
 )(SourceTargetSourceForm)

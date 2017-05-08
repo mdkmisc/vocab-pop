@@ -232,14 +232,17 @@ export class Api {
           return action
         case apiActions.API_CALL_FULFILLED: // payload should have results
           pending = false
+          results = payload
+          /*
           if (this.resultsReducer) {
             console.error("ignoring results, make sure resultsReducer runs")
-            //err = payload
-            //error = true
-            //type = apiActions.API_CALL_REJECTED
+            err = payload
+            error = true
+            type = apiActions.API_CALL_REJECTED
           } else {
             results = payload
           }
+          */
           break
         case apiActions.API_CALL_REJECTED:
           pending = false
