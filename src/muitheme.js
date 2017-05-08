@@ -144,3 +144,10 @@ let LT = getMuiTheme(lightBaseTheme)
 export default getMuiTheme({palette: {...LT.palette, ...subThemeColors.main}})
 //export default getMuiTheme({palette: {...DT.palette, ...subThemeColors.neutral}})
 //export default LT
+
+export const get = props => {
+  let {base='light', sc, sub='main'} = props
+  let bTheme = base === 'dark' ? DT : LT
+  let subTheme = sc || sub
+  return getMuiTheme({palette: {...bTheme.palette, ...subThemeColors[subTheme]}})
+}

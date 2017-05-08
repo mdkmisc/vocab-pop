@@ -45,6 +45,7 @@ import SortableTree from 'react-sortable-tree'
 import ReactTooltip from 'react-tooltip'
 window.ReactTooltip = ReactTooltip
 
+import Badge from 'material-ui/Badge'
 import {GridList, GridTile} from 'material-ui/GridList';
 import IconButton from 'material-ui/IconButton';
 import Subheader from 'material-ui/Subheader';
@@ -101,13 +102,6 @@ export const getConceptSetAsCard = ({getWith, getArg, props={}}) => {
   return <ConceptSetAsCard concepts={concepts} {...props} />
 }
 */
-const WrapForSc = ({sc, ...props}) => {
-  let scTheme = muit.scThemes[sc]
-  //props = {...props, scTheme}
-  return  <MuiThemeProvider muiTheme={scTheme}>
-            {props.children}
-          </MuiThemeProvider>
-}
 /*
 let styles = {
                     chip: {
@@ -123,6 +117,26 @@ let styles = {
                     },
 }
 */
+export const ConceptLink = muiThemeable()(props => {
+  let {contents, tooltip, ttId, href='#', style, muiTheme, showCounts=false} = props
+  style = style || 
+    {
+      //padding: 2,
+      padding: '1px 3px 1px 3px',
+      margin: '5px 2px 1px 2px',
+      //margin: 2,
+      //border:'1px solid pink', 
+      backgroundColor: muiTheme.palette.regular,
+      color: 'white',
+      lineHeight:'auto',
+      height:'auto',
+      minHeight:'auto',
+      width:'auto',
+      minWidth:'auto',
+    }
+  return <FlatButton style={style} href={href} data-tip={tooltip} data-for={ttId}>{contents}</FlatButton>
+})
+/*
 const CdmRecsAvatar = muiThemeable()(props => {
   let {contents, val, muiTheme, ...rest} = props
   return  <Avatar
@@ -130,51 +144,89 @@ const CdmRecsAvatar = muiThemeable()(props => {
             backgroundColor={muiTheme.palette.regular}
             size={30}
             {...rest}
-            /*
             style={{width:'auto',
                     textAlign: 'right',
                     margin:'-4px 10px 10px -10px',
                     padding:5,
                     //...styles.font,
             }}
-            */
           >
             { contents }
           </Avatar>
 })
+*/
+export const CdmCountView = muiThemeable()(props => {
+  let {cnt, badgeStyle, rootStyle, ...rest} = props
+  return  <Badge 
+            style={rootStyle}
+            badgeStyle={badgeStyle}
+            badgeContent={cncpt.conceptTableAbbr(cnt.tbl)}
+            {...rest}
+          >
+            <span>{commify(cnt.cnt)}</span>
+            {/*
+            <CdmRecsAvatar contents={commify(cnt.cnt)} />
+            */}
+          </Badge>
+})
+export const CdmCountsView = muiThemeable()(props => {
+  let {concepts, styles, muiTheme} = props
+  styles = styles || 
+    {
+      div: {
+        //padding: '1px 3px 1px 3px',
+        //margin: '5px 2px 1px 2px',
+        margin: 0,
+        padding: 0,
+        backgroundColor: muiTheme.palette.darker,
+        color: 'white',
+        border: '1px solid white',
+      },
+      badge: {
+        top: 14,
+        margin: 0,
+        padding: 0,
+        border: '1px solid orange',
+      },
+      badgeRoot: {
+        margin: 0,
+        padding: 0,
+        border: '1px solid red',
+      },
+      rtt: {
+        //marginTop: 20,
+      }
+    }
+  let colCnts = cncpt.colCntsFromConcepts(concepts)
+  let ttId = _.uniqueId('scViewTtId-')
+  return  <div style={styles.div} >
+            <ReactTooltip id={ttId} style={styles.rtt}/>
+            {
+              colCnts.map(
+                (cnt,i)=>{
+                  return (
+                      <CdmCountView key={i}
+                          badgeStyle={styles.badge}
+                          rootStyle={styles.root}
+                          cnt={cnt}
+                          //style={{margin:5, }}
+                          primary={true} 
+                          data-tip={colname(cnt)}
+                          data-for={ttId}
+                      />
+                  )
+                })
+            }
+          </div>
+})
 const ScView = muiThemeable()(props => {
   let {concepts, sc, title, style={}, muiTheme, depth, storeName, } = props
   let pal = muiTheme.palette
-  let colCnts = cncpt.colCntsFromConcepts(concepts)
   return  <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
               <Subheader style={gridStyles.tileTitle} >
                 {title}
-                {
-                  colCnts.map(
-                    (cnt,i)=>{
-                      let ttId = _.uniqueId('scViewTtId-')
-                      return (
-                        <div key={i} >
-                          <ReactTooltip id={ttId} place="bottom" effect="solid"/>
-                          <RaisedButton 
-                              style={{margin:5, }}
-                              //fullWidth={true}
-                              primary={true} 
-                              label={commify(cnt.cnt)}
-                              labelPosition="before"
-                              data-tip={colname(cnt)}
-                              data-for={ttId}
-                              icon={
-                                <CdmRecsAvatar
-                                    contents={ cncpt.conceptTableAbbr(cnt.tbl) }
-                                />
-                              }
-                          />
-                        </div>
-                      )
-                    })
-                }
+                <CdmCountsView concepts={concepts} />
               </Subheader>
               Rels:
               { 
@@ -207,10 +259,10 @@ const scsView = props => {
           >
             {
               bySc.map((sc,i) => {
-                let title=`${sc.records.length} ${cncpt.scName(sc.records[0])}`
-                return  <WrapForSc sc={sc.toString()} key={i}>
+                let title=`SC: ${sc.records.length} ${cncpt.scName(sc.records[0])}`
+                return  <MuiThemeProvider muiTheme={muit.get({sc:sc.toString()})} key={i}>
                             <ScView {...{...props, sc, title, concepts: sc.records }} />
-                        </WrapForSc>
+                        </MuiThemeProvider>
               })
             }
           </GridList>
@@ -320,6 +372,9 @@ const gridStyles = { // GridList styles based on Simple example
   }
 }
 class ConceptInfoGridList extends Component {
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
+  }
   render() {
     let { muiTheme,
           title,
@@ -341,7 +396,7 @@ class ConceptInfoGridList extends Component {
                   style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}} >
           <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
-              <Subheader style={gridStyles.tileTitle} >{title}</Subheader>
+              <Subheader style={gridStyles.tileTitle} >CIGL: {title}</Subheader>
               <Subheader style={gridStyles.tileTitle} >{subtitle}</Subheader>
               {scsView(this.props)}
             </div>
@@ -367,7 +422,6 @@ class ConceptViewContainer extends Component {
     let {concept_ids, depth, title, storeName, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
       if (concept_ids.length > 20) {
-        debugger
         return
       }
       storeName = `${depth}:${storeName}->${title}`

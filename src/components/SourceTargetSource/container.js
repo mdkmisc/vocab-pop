@@ -4,6 +4,7 @@ import _ from 'src/supergroup'; // in global space anyway...
 import * as utils from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
+import * as muit from 'src/muitheme'
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 //import * as sts from 'src/STSReport'
 import { bindActionCreators } from 'redux'
@@ -12,6 +13,9 @@ import React, { Component } from 'react'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
+import ReactTooltip from 'react-tooltip'
+
+window.ReactTooltip = ReactTooltip
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
@@ -39,6 +43,9 @@ class SourceTargetSourceForm extends Component {
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
+        <ReactTooltip //place="bottom" 
+                      //effect="solid"
+                      />
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
           <CardHeader style={{
               padding:'10px 8px 0px 8px'
@@ -53,9 +60,16 @@ class SourceTargetSourceForm extends Component {
                     expandable={true} >
             <C.ConceptViewContainer 
               concepts={concepts}
-              title={`${concepts.length}
-                      ${vocabulary_id}
-                      concepts`}
+              title={`${concepts.length} ${vocabulary_id} concepts`}
+              subtitle={
+                concepts.map(
+                  (c,i) =>
+                    <C.ConceptLink key={i}
+                          muiTheme={muit.get({sc:c.standard_concept})}
+                          concept={c}
+                          showCounts={true}
+                          tooltip={c.concept_name}
+                          contents={c.concept_code} />)}
             />
           </CardText>
         </Card>
