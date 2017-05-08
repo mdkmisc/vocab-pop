@@ -1,7 +1,7 @@
 /* eslint-disable */
 import myrouter from 'src/myrouter'
 import _ from 'src/supergroup'; // in global space anyway...
-import * as utils from 'src/utils'
+import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
 import * as muit from 'src/muitheme'
@@ -63,13 +63,17 @@ class SourceTargetSourceForm extends Component {
               title={`${concepts.length} ${vocabulary_id} concepts`}
               subtitle={
                 concepts.map(
-                  (c,i) =>
-                    <C.ConceptLink key={i}
-                          muiTheme={muit.get({sc:c.standard_concept})}
-                          concept={c}
-                          showCounts={true}
-                          tooltip={c.concept_name}
-                          contents={c.concept_code} />)}
+                  (c,i) => {
+                    return <C.ConceptLink key={i}
+                              muiTheme={muit.get({sc:c.standard_concept})}
+                              concept={c}
+                              descFunc={c=>c.concept_code}
+                              showCounts={true}
+                              tooltipFunc={c=>c.concept_name}
+                              //tooltip={tooltip}
+                              //contents={contents} 
+                            />
+                  })}
             />
           </CardText>
         </Card>

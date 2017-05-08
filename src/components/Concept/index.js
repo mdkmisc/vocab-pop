@@ -117,8 +117,32 @@ let styles = {
                     },
 }
 */
+export const fmtCdmCnt = (fmt='short') => {
+  switch(fmt) {
+    case 'short':
+      return cnt=>`${commify(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`
+    case 'long':
+      return cnt=>`${commify(cnt.cnt)} records in ${cnt.tbl}.${cnt.col}`
+  }
+  throw new Error("confused")
+}
+export const cdmCnts = concepts => {
+  let ret = {
+    short: '',
+    long: '',
+  }
+  let cnts = cncpt.colCntsFromConcepts(concepts)
+  if (cnts.length) {
+    ret.short = cnts.map(fmtCdmCnt('short')).join(', ')
+    ret.long = cnts.map(fmtCdmCnt('long')).join(', ')
+  }
+  return ret
+}
 export const ConceptLink = muiThemeable()(props => {
-  let {contents, tooltip, ttId, href='#', style, muiTheme, showCounts=false} = props
+  let {concept, contents, tooltip, ttId, href='#', 
+        style, muiTheme, showCounts=false,
+        descFunc, tooltipFunc,
+      } = props
   style = style || 
     {
       //padding: 2,
@@ -134,7 +158,24 @@ export const ConceptLink = muiThemeable()(props => {
       width:'auto',
       minWidth:'auto',
     }
-  return <FlatButton style={style} href={href} data-tip={tooltip} data-for={ttId}>{contents}</FlatButton>
+  contents = contents ||
+             (descFunc && descFunc(concept)) ||
+             concept.concept_name
+  tooltip = tooltip ||
+             (tooltipFunc && tooltipFunc(concept)) ||
+             ''
+  if (showCounts) {
+    let cnts = cdmCnts([concept])
+    contents += ` (${cnts.short})`
+    tooltip += ` (${cnts.long})`
+  }
+  return  <FlatButton  style={style} 
+                      href={href} 
+                      data-tip={tooltip} 
+                      data-for={ttId}
+          >
+            {contents}
+          </FlatButton>
 })
 /*
 const CdmRecsAvatar = muiThemeable()(props => {
@@ -156,7 +197,7 @@ const CdmRecsAvatar = muiThemeable()(props => {
 })
 */
 export const CdmCountView = muiThemeable()(props => {
-  let {cnt, badgeStyle, rootStyle, ...rest} = props
+  let {cnt, badgeStyle, rootStyle, muiTheme, ...rest} = props
   return  <Badge 
             style={rootStyle}
             badgeStyle={badgeStyle}
@@ -170,7 +211,7 @@ export const CdmCountView = muiThemeable()(props => {
           </Badge>
 })
 export const CdmCountsView = muiThemeable()(props => {
-  let {concepts, styles, muiTheme} = props
+  let {concepts, styles, muiTheme, moreContents=''} = props
   styles = styles || 
     {
       div: {
@@ -201,6 +242,7 @@ export const CdmCountsView = muiThemeable()(props => {
   let ttId = _.uniqueId('scViewTtId-')
   return  <div style={styles.div} >
             <ReactTooltip id={ttId} style={styles.rtt}/>
+            {moreContents}
             {
               colCnts.map(
                 (cnt,i)=>{
