@@ -126,17 +126,12 @@ export const fmtCdmCnt = (fmt='short') => {
   }
   throw new Error("confused")
 }
-export const cdmCnts = concepts => {
-  let ret = {
-    short: '',
-    long: '',
-  }
+export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
   let cnts = cncpt.colCntsFromConcepts(concepts)
-  if (cnts.length) {
-    ret.short = cnts.map(fmtCdmCnt('short')).join(', ')
-    ret.long = cnts.map(fmtCdmCnt('long')).join(', ')
+  return {
+    short: join(cnts.map(fmtCdmCnt('short'))),
+    long: join(cnts.map(fmtCdmCnt('long'))),
   }
-  return ret
 }
 export const ConceptLink = muiThemeable()(props => {
   let {concept, contents, tooltip, ttId, href='#', 
