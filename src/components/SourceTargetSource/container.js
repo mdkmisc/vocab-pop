@@ -36,14 +36,14 @@ import ReactTooltip from 'react-tooltip'
 
 class SourceTargetSourceForm extends Component {
   componentDidMount() {
-    this.ttid = _.uniqueId('stsTtId-')
+    //this.ttid = _.uniqueId('stsTtId-')
     ReactTooltip.rebuild()
   }
   componentDidUpdate() {
     ReactTooltip.rebuild()
   }
   render() {
-    let { vocabulary_id, concept_code_search_pattern, concepts } = this.props
+    let { vocabulary_id, concept_code_search_pattern, concepts=[] } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
@@ -75,7 +75,7 @@ class SourceTargetSourceForm extends Component {
                               concepts={[c]}
                               title={c.concept_code}
                               tip={c.concept_name}
-                              ttId={`${this.ttid}:${i}`}
+                              //ttId={`${this.ttid}:${i}`}
                               muiTheme={muit.get({sc:c.standard_concept})}
                           />
                   })}

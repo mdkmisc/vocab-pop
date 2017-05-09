@@ -137,7 +137,7 @@ const tealTheme = {
 
 export const scThemes = _.mapValues(subThemeColors, c=>getMuiTheme({palette:c}))
 
-console.log({default:getMuiTheme(), scThemes, subThemeColors, subThemeStyles})
+//console.log({default:getMuiTheme(), scThemes, subThemeColors, subThemeStyles})
 
 let DT = getMuiTheme(darkBaseTheme)
 let LT = getMuiTheme(lightBaseTheme)

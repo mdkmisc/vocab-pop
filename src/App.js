@@ -19,7 +19,7 @@ Copyright 2016 Sigfried Gold
 import config from 'src/config'
 import 'src/stylesheets/VocabPop.css'
 import _ from 'src/supergroup'
-import {Tooltips, } from 'src/ducks/tooltip'
+import {Tooltips, } from 'src/tooltip'
 import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'
 import SourceTargetSource from 'src/components/SourceTargetSource'
 import VocabPop from 'src/components/VocabPop'

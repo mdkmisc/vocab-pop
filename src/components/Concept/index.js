@@ -19,7 +19,7 @@ var d3 = require('d3')
 var $ = require('jquery')
 import _ from 'src/supergroup' // in global space anyway...
 import * as cncpt from 'src/ducks/concept'
-import * as tooltip from 'src/ducks/tooltip'
+import * as tooltip from 'src/tooltip'
 import {AgTable, ConceptTree, } from 'src/components/TableStuff'
 import {commify, updateReason, 
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
@@ -154,14 +154,14 @@ export const LinkWithCounts = muiThemeable()(props => {
       minWidth:'auto',
     },
   }
+  let contents = title
+  if (cnts.short.length) {
+    contents += ` (${cnts.short.join(', ')})`
+    tip = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
+  }
+  let ttcid = tooltip.setTooltipContent('cvc', tip)
   return  (
     <span>
-      {/*
-      <ReactTooltip id={ttid} >
-        {tip}
-        { cnts.long.map((c,i)=><div key={i}>{c}</div>) }
-      </ReactTooltip>
-      */}
       <FlatButton  
         style={
           { 
@@ -170,11 +170,11 @@ export const LinkWithCounts = muiThemeable()(props => {
           }
         } 
         href={href} 
-        //data-tip
-        //data-for={ttid}
+        data-tip
+        data-for="cvc"
+        data-ttcid={ttcid}
       >
-        {title}
-        ({cnts.short.join(', ')})
+        {contents}
       </FlatButton>
     </span>
   )
@@ -414,9 +414,12 @@ class ConceptInfoGridList extends Component {
   }
 }
 class ConceptViewContainer extends Component {
+  constructor(props) {
+    super(props)
+    this.tt = tooltip.registerTooltip('cvc')
+  }
   componentDidMount() {
-    let {concept_ids, depth, title, storeName, wantConcepts, 
-          registerTooltip} = this.props
+    let {concept_ids, depth, title, storeName, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
       if (concept_ids.length > 20) {
         return
@@ -425,12 +428,11 @@ class ConceptViewContainer extends Component {
       wantConcepts(concept_ids, storeName)
     }
 
-    registerTooltip('cvc')
     //this.ttId = _.uniqueId('ciglTtId-')
     ReactTooltip.rebuild()
   }
   componentWillUnmount() {
-    unregisterTooltip('cvc')
+    tooltip.unregisterTooltip('cvc')
   }
   componentDidUpdate() {
     ReactTooltip.rebuild()
@@ -440,10 +442,9 @@ class ConceptViewContainer extends Component {
     if ( ConceptViewContainer.viewCount++ > 35 || depth > 1 )
       return null
     let {concept_ids, depth, title, subtitle, storeName, wantConcepts, 
-            setTooltipContent,
             initiallyExpanded=true} = this.props
     let cnts = cdmCnts( this.props.concepts, d=>d)
-    setTooltipContent('cvc', cnts.long.map((c,i)=><div key={i}>{c}</div>))
+    let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
     return  <div>
               <Card
                   style={cardStyles.root}
@@ -459,7 +460,8 @@ class ConceptViewContainer extends Component {
                       <span >
                         <span style={{fontSize: '.6em',}}
                           data-tip
-                          data-for="cdmcnt"
+                          data-for="cvc"
+                          data-ttcid={ttcid}
                         >
                           ({cnts.short.join(', ')})
                         </span>
@@ -508,8 +510,8 @@ ConceptViewContainer = connect(
     }
   },
   dispatch=>bindActionCreators(
-    ..._.pick(cncpt,['wantConcepts']), 
-    ..._.pick(tooltip,['showTooltip','hideTooltip']), 
+    _.pick(cncpt,['wantConcepts']), 
+    //..._.pick(tooltip,['showTooltip','hideTooltip']), 
   dispatch)
 )(muiThemeable()(ConceptViewContainer))
 

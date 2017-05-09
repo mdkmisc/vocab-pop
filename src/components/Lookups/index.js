@@ -45,11 +45,12 @@ class VocabField extends Component {
             fullWidth={true}
             floatingLabelText="vocabulary_id"
             onChange={
-              (evt,newVal,oldVal) => dispatch(
-                myrouter
-                  .addParams({
-                    vocabulary_id:newVal})
-              )}
+              (evt,newVal,oldVal) => {
+                debugger
+                dispatch(myrouter.addParams({
+                          vocabulary_id:newVal}))
+              }
+            }
       >
         {
           (vocabularies||[]).map(

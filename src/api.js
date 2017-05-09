@@ -59,7 +59,7 @@ const apiCallEpic = (action$, store) => (
         })
         .catch(err => {
           debugger
-          console.log('error inside merge', error)
+          console.log('error inside merge', err)
           return Rx.Observable.of({
             ...action,
             type: apiActions.API_CALL_REJECTED,
@@ -71,7 +71,7 @@ const apiCallEpic = (action$, store) => (
     })
     .catch(err => {
       debugger
-      console.log('error after merge', error)
+      console.log('error after merge', err)
       return Rx.Observable.of({
         ...action,
         type: apiActions.API_CALL_REJECTED,
@@ -145,6 +145,7 @@ const checkCacheDirty = (store) => { // make sure to use this
 // connected to anything beyond config, which is
 // imported here. also they might only be used here
 const {cdmSchema, resultsSchema} = config
+//console.log(config)
 const baseUrl = () => `${config.apiRoot}/${config.apiModel}`
 const apiGetUrl = (apiPathname, params) => 
   getUrl(`${baseUrl()}/${apiPathname}`, 
