@@ -277,33 +277,11 @@ const scsView = props => {
             </GridList>
   }
 }
-const RelsView = ({relName,relcids,depth,storeName}) => {
-  let title = `Relssss View: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
-  if (depth > 1) {
-    return <RaisedButton  fullWidth={true}
-                          key={i}
-                          primary={true} 
-                          labelStyle={{textTransform:'none'}}
-                          label={title}
-                      />
-  }
-  return (
-    <ConceptViewContainer key={relName}
-      depth={depth + 1}
-      storeName={storeName}
-      concept_ids={relcids}
-      title={`From RelView: ${relcids.length} ${relName} concepts`}
-    />
-  )
-}
 const RelView = ({relName,relcids,depth,storeName}) => {
   let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
-  if (depth > 1) {
-    return <RaisedButton  fullWidth={true}
-                          primary={true} 
-                          labelStyle={{textTransform:'none'}}
-                          label={title}
-                      />
+  if (depth > 2) {
+    console.error('bailing from RelView to avoid max stack')
+    return <h5>too deep to display ({depth}) {title}</h5>
   }
   return (
     <ConceptViewContainer key={relName}
@@ -311,6 +289,18 @@ const RelView = ({relName,relcids,depth,storeName}) => {
       storeName={storeName}
       concept_ids={relcids}
       title={`From RelView: ${relcids.length} ${relName} concepts`}
+      subtitle={
+        ({concepts}) => concepts.map(
+          (c,i) => {
+            return <LinkWithCounts key={i}
+                      concepts={[c]}
+                      title={c.concept_code}
+                      tip={c.concept_name}
+                      //ttId={`${this.ttid}:${i}`}
+                      muiTheme={muit.get({sc:c.standard_concept})}
+                  />
+          })
+      }
     />
   )
 }
@@ -407,17 +397,20 @@ class ConceptInfoGridList extends Component {
               {scsView({concepts,depth,muiTheme})}
             </div>
           </GridTile>
-          { showIndividualConcepts && concepts.length > 1 ?
+          { /*  DON'T DELETE, PUT BACK WHEN READY
+            showIndividualConcepts && concepts.length > 1 ?
             <GridTile style={gridStyles.tile()} >
               <div style={gridStyles.child} >
                 <h2>individual concepts</h2>
-                <ConceptViewContainer 
+                <Con
+                
+                ceptViewContainer 
                   {...{...this.props, title: 'Individual Concepts', 
                     showIndividualConcepts: true}} />
               </div>
             </GridTile>
             : []
-          }
+          */}
         </GridList>
       </div>
     )
@@ -433,7 +426,8 @@ class ConceptViewContainer extends Component {
   componentDidMount() {
     let {concept_ids, depth, title, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
-      if (concept_ids.length > 20) {
+      if (concept_ids.length > 200) {
+        console.error(`not fetching ${concept_ids.length} concepts`, title)
         return
       }
       wantConcepts(concept_ids, this.storeName)
@@ -450,11 +444,20 @@ class ConceptViewContainer extends Component {
   }
   static viewCount = 0 // to prevent stack overflow
   render() {
-    if ( ConceptViewContainer.viewCount++ > 35 || depth > 1 )
-      return null
-    let {concept_ids, depth, title, subtitle, wantConcepts, 
-            initiallyExpanded=true} = this.props
-    let cnts = cdmCnts( this.props.concepts, d=>d)
+    let {concepts, concept_ids, depth, title, subtitle, 
+            wantConcepts, waitingForConcepts, initiallyExpanded=true} = this.props
+    if ( waitingForConcepts ) {
+      return <h4>Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}</h4>
+    }
+    if ( ConceptViewContainer.viewCount++ > 200 ) {
+      console.error('bailing to avoid max stack (count)',depth, ConceptViewContainer.viewCount )
+      return <h5>too many to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
+    }
+    if ( depth > 2 ) {
+      console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
+      return <h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
+    }
+    let cnts = cdmCnts( concepts, d=>d)
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
     return  <div>
               <Card
@@ -479,7 +482,11 @@ class ConceptViewContainer extends Component {
                       </span>
                     </span>
                   }
-                  subtitle={subtitle}
+                  subtitle={
+                    typeof subtitle === 'function'
+                      ? subtitle(this.props)
+                      : subtitle
+                  }
                   showExpandableButton={true}
                   actAsExpander={true}
                 />
@@ -501,16 +508,21 @@ class ConceptViewContainer extends Component {
 }
 ConceptViewContainer = connect(
   (state, props) => {
-    let {storeName='primary', concepts, concept_ids, 
+    let {storeName='primary', concepts=[], concept_ids=[],
           depth=0, title, } = props
-    if (!concepts) {
-      if (concept_ids) {
+    let waitingForConcepts = false
+    if (!concepts.length) {
+      if (concept_ids.length) {
         concepts = cncpt.conceptsFromCids(state)(concept_ids)
       } else {
         concepts = cncpt.storedConceptList(state)
       }
+      if (concept_ids.length > concepts.length) {
+        waitingForConcepts = true
+      }
     }
     return {
+      waitingForConcepts,
       depth,
       storeName,
       title,

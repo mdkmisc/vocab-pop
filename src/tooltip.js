@@ -6,7 +6,6 @@ import * as util from 'src/utils';
 import React, { Component } from 'react'
 import muiThemeable from 'material-ui/styles/muiThemeable';
 
-let state = {}
 
 class Tooltip {
   constructor(ttid) {
@@ -14,6 +13,7 @@ class Tooltip {
     this.getId =  ()=>_.uniqueId(`${ttid}-`)
     this.contents = {}
   }
+  static nodes = {}
   component() {
     return <ReactTooltip 
                 key={this.ttid}
@@ -36,20 +36,20 @@ class Tooltip {
 
 }
 export const registerTooltip = (ttid) => {
-  return state[ttid] = state[ttid] || new Tooltip(ttid)
+  return Tooltip.nodes[ttid] = Tooltip.nodes[ttid] || new Tooltip(ttid)
 }
 export const unregisterTooltip = (ttid) => {
-  delete state[ttid]
+  delete Tooltip.nodes[ttid]
 }
 export const setTooltipContent = (ttid, content, ) => {
-  return state[ttid].setContent(content)
+  return Tooltip.nodes[ttid].setContent(content)
 }
 
 class Tooltips extends Component {
   render() {
     return  <div className="ttdiv" >
               {
-                _.map(state, (tt,ttid) => {
+                _.map(Tooltip.nodes, (tt,ttid) => {
                   console.log('making tt', {ttid,tt})
                   return tt.component()
                 })

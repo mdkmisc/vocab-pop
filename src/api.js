@@ -222,8 +222,7 @@ export class Api {
         case apiActions.API_CALL:
           pending = true
           params = payload
-          if (api.paramValidation && !api.paramValidation(payload)) {
-            console.error('invalid params', params)
+          if (api.paramsValidation && !api.paramsValidation(payload)) {
             return state
           }
           url = apiGetUrl(apiPathname, payload)
@@ -267,8 +266,17 @@ export class Api {
           return state
         let call
         if (action.type === apiActions.API_CALL) {
+          /* not using
+          if (api.paramsFilter) { // gotta make this cleaner!!!!
+            let filtered = api.paramsFilter(payload, state, action)
+            if (!_.isEqual(filtered, payload)) {
+              payload = filtered
+              action = util.makeAction({...action, payload})
+            }
+          }
+          */
           call = this.callReducer({},action)
-        } 
+        }
         if (action.type.match('^'+apiActions.API_CALL)) {
           let {storeName} = (action.meta||{})
           call = call || this.callReducer(state[storeName], action)

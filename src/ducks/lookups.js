@@ -60,8 +60,14 @@ const loadVocabularies = (action$, store) => (
       let loadAction = vocabulariesApi.actionCreators.load()
       let fakeState = vocabulariesApi.callsReducer({},loadAction)
       let fakeCall = fakeState.primary
-      return Rx.Observable.of(fakeCall)
+      return Rx.Observable.of(loadAction)
     })
+    /*
+    .mergeMap((action)=>{
+      let loadAction = vocabulariesApi.actionCreators.load(action)
+      return Rx.Observable.of(loadAction)
+    })
+    */
 )
 const loadConceptIds = (action$, store) => (
   action$.ofType('@@router/LOCATION_CHANGE')
