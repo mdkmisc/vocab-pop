@@ -13,11 +13,6 @@ import myrouter from 'src/myrouter'
 // circular dependency, might be a problem:
 import conceptReducer from 'src/ducks/concept'
 
-let vocabulariesApi = new api.Api({
-  apiName: 'vocabulariesApi',
-  apiPathname: 'vocabularies',
-})
-
 let codesToCidsApi = new api.Api({
   apiName: 'codesToCidsApi',
   apiPathname: 'codeSearchToCids',
@@ -25,7 +20,6 @@ let codesToCidsApi = new api.Api({
 })
 
 export const apis = {
-  vocabulariesApi,
   codesToCidsApi,
 }
 
@@ -46,29 +40,6 @@ export const mapDispatchToProps =
     return {actions: actionsByApi}
   }
 
-const loadVocabularies = (action$, store) => (
-  action$.ofType('@@router/LOCATION_CHANGE') // happens on init
-  /*
-    .do(action=>{
-      console.log({action, state: store.getState()})
-      debugger
-    })
-  */
-    .filter(() => _.isEmpty(store.getState().vocabularies))
-    .take(1)
-    .mergeMap(()=>{
-      let loadAction = vocabulariesApi.actionCreators.load()
-      let fakeState = vocabulariesApi.callsReducer({},loadAction)
-      let fakeCall = fakeState.primary
-      return Rx.Observable.of(loadAction)
-    })
-    /*
-    .mergeMap((action)=>{
-      let loadAction = vocabulariesApi.actionCreators.load(action)
-      return Rx.Observable.of(loadAction)
-    })
-    */
-)
 const loadConceptIds = (action$, store) => (
   action$.ofType('@@router/LOCATION_CHANGE')
     .switchMap(action=>{
@@ -92,4 +63,4 @@ const loadConceptIds = (action$, store) => (
       return Rx.Observable.empty()
     })
 )
-export const epics = [ loadVocabularies, loadConceptIds, ]
+export const epics = [ loadConceptIds, ]

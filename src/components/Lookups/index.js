@@ -118,7 +118,7 @@ class ConceptCodesLookupForm extends Component {
                   {err.statusText}
                 </p> 
     }
-    let vocabulary = (vocabularies||[]).find(d=>d.vocabulary_id===this.props.vocabulary_id)
+    let vocabulary = vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
     const cardStyle = {
       padding: '0px',
       margin: '14px 10px 20px 0px',
@@ -253,27 +253,20 @@ ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
 })(ConceptCodesLookupForm)
 
-let {vocabulariesApi, codesToCidsApi, } = lookups.apis
+let {codesToCidsApi, } = lookups.apis
 let {conceptInfoApi} = concept.apis
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
-    //const apiStore = apiGlobal.apiStore(state.vocab,props)
-    let vocabCalls = {
-      vocabularies: _.get(state.lookups, 'vocabulariesApi.primary'),
-    }
     let selectors = {
-      vocabularies: _.mapValues(vocabulariesApi.selectors('vocabulariesApi'), s=>s(state)),
       conceptIds: _.mapValues(codesToCidsApi.selectors('codesToCidsApi'), s=>s(state)),
       conceptInfo: _.mapValues(conceptInfoApi.selectors('conceptInfoApi'), s=>s(state)),
     }
     let newState = {
-      vocabCalls,
+      vocabularies: state.vocabularies||[],
       selectors,
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
-      vocabularies: selectors.vocabularies.results(),
-      //concept_ids: selectors.codesToCidsApi.results(),   // don't need it
       concepts: selectors.conceptInfo.results(),
       formRef: state.form.concept_codes_form,
     }
@@ -294,3 +287,4 @@ ConceptCodesLookupForm = connect(
 export {
   ConceptCodesLookupForm
 }
+

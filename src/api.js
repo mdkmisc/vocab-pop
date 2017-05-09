@@ -39,6 +39,17 @@ export const examineAction = o => {
 }
 window.examineAction = examineAction
 
+const prepApiCallEpic = (action$, store) => (
+  action$
+    //.do(action=>examineAction({from:'apiCallEpic start',action$, action, state:store.getState()}))
+    .ofType(apiActions.API_CALL)
+    .do(action=>examineAction({from:'prepapiCallEpic load',action$, action, state:store.getState()}))
+    .mergeMap(action=>{
+      action = util.makeAction({action, type:apiActions.API_CALL_LOAD})
+      console.log(action)
+      return Rx.Observable.of(action)
+    })
+)
 const apiCallEpic = (action$, store) => (
   action$
     //.do(action=>examineAction({from:'apiCallEpic start',action$, action, state:store.getState()}))
@@ -46,7 +57,8 @@ const apiCallEpic = (action$, store) => (
     //.do(action=>examineAction({from:'apiCallEpic load',action$, action, state:store.getState()}))
     .mergeMap(action=>{
       let {apiName, storeName, } = flattenAction(action)
-      let {type, payload, url, } = flattenAction(action)
+      let preppedAction = _.get(store.getState(), `calls.${apiName}.${storeName}.meta.call`) || {}
+      let {type, payload, url, } = flattenAction(preppedAction)
       return (
         cachedAjax(url)
         .map(results=>{
@@ -73,7 +85,7 @@ const apiCallEpic = (action$, store) => (
       debugger
       console.log('error after merge', err)
       return Rx.Observable.of({
-        ...action,
+        //...action,
         type: apiActions.API_CALL_REJECTED,
         payload: err.xhr.response,
         error: true
@@ -90,6 +102,7 @@ const checkCache = (action$, store) => (
 )
 export const epics = [
   checkCache,
+  prepApiCallEpic,
   apiCallEpic,
 ]
 
@@ -102,7 +115,7 @@ export const cachedAjax = url => {
   })
   return rxAjax
 }
-export const isCached = url => {
+export const isCached = (url='') => {
   var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
   if (!allowed) return
   return util.storageExists(url)
@@ -147,7 +160,7 @@ const checkCacheDirty = (store) => { // make sure to use this
 const {cdmSchema, resultsSchema} = config
 //console.log(config)
 const baseUrl = () => `${config.apiRoot}/${config.apiModel}`
-const apiGetUrl = (apiPathname, params) => 
+export const apiGetUrl = (apiPathname, params) => 
   getUrl(`${baseUrl()}/${apiPathname}`, 
          {...params, cdmSchema, resultsSchema})
 
@@ -226,7 +239,7 @@ export class Api {
             return state
           }
           url = apiGetUrl(apiPathname, payload)
-          type = apiActions.API_CALL_LOAD
+          //type = apiActions.API_CALL_LOAD
           break
         case apiActions.API_CALL_LOAD:
           return action
@@ -252,7 +265,7 @@ export class Api {
           return state
       }
       action = util.makeAction({
-        type, action, meta:{call:{url, pending, error, err, params, results}, api}
+        action, meta:{call:{url, pending, error, err, params, results}, api}
       })
       delete action.payload // payload should be in meta in correct field now
       //examineAction({from:'apiCall',action, state})

@@ -131,7 +131,7 @@ export default combineReducers({
 
 /**** start selectors *****************************************************************/
 
-export const storedConceptMap = state => state.concepts.loaded
+export const storedConceptMap = state => {}//state.concepts.loaded
 export const storedConceptList = createSelector(storedConceptMap, m=>_.values(m))
 export const conceptsFromCids = createSelector(
   storedConceptMap, m=>cids=>_.values(_.pick(m, cids)))
@@ -408,9 +408,10 @@ params = {concept_ids}
     .catch(err => {
       console.log('error in loadConcepts', err)
       return Rx.Observable.of({
-        ...action,
+        //...action,
         type: api.apiActions.API_CALL_REJECTED,
-        payload: err.xhr.response,
+        meta: {apiName:'conceptInfoApi'},
+        //payload: err.xhr.response,
         error: true
       })
     })

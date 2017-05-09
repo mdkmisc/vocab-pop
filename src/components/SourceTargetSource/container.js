@@ -63,7 +63,6 @@ class SourceTargetSourceForm extends Component {
               concepts={concepts}
               title={
                 <span>
-                  STS:
                   {concepts.length} {' '}
                   {vocabulary_id} concepts{' '}
                 </span>

@@ -220,8 +220,8 @@ const ScView = muiThemeable()(props => {
             <div style={gridStyles.child} >
               <Subheader style={gridStyles.tileTitle} >
               </Subheader>
-              Rels:
               { 
+                //Rels:
                 _.map(cncpt.concepts2relsMap(concepts),
                       (relcids,relName) => {
                         if (!relName.match(/map/i)) return null
@@ -281,7 +281,7 @@ const RelView = ({relName,relcids,depth,storeName}) => {
   let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
   if (depth > 2) {
     console.error('bailing from RelView to avoid max stack')
-    return <h5>too deep to display ({depth}) {title}</h5>
+    return null//<h5>too deep to display ({depth}) {title}</h5>
   }
   return (
     <ConceptViewContainer key={relName}
@@ -295,7 +295,7 @@ const RelView = ({relName,relcids,depth,storeName}) => {
             return <LinkWithCounts key={i}
                       concepts={[c]}
                       title={c.concept_code}
-                      tip={c.concept_name}
+                      tip={`${c.vocabulary_id}: ${c.concept_name}`}
                       //ttId={`${this.ttid}:${i}`}
                       muiTheme={muit.get({sc:c.standard_concept})}
                   />
@@ -426,7 +426,7 @@ class ConceptViewContainer extends Component {
   componentDidMount() {
     let {concept_ids, depth, title, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
-      if (concept_ids.length > 200) {
+      if (concept_ids.length > 100) {
         console.error(`not fetching ${concept_ids.length} concepts`, title)
         return
       }
@@ -455,7 +455,7 @@ class ConceptViewContainer extends Component {
     }
     if ( depth > 2 ) {
       console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
-      return <h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
+      return null//<h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
     }
     let cnts = cdmCnts( concepts, d=>d)
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
@@ -469,7 +469,6 @@ class ConceptViewContainer extends Component {
                   titleStyle={cardStyles.title}
                   title={
                     <span>
-                      CIGL: 
                       {title}
                       <span >
                         <span style={{fontSize: '.6em',}}
