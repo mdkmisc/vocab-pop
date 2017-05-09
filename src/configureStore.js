@@ -7,6 +7,7 @@ import _ from 'src/supergroup'
 import apiReducer, * as api from 'src/api'
 import lookupsReducer, * as lookups from 'src/ducks/lookups'
 import conceptReducer, * as concept from 'src/ducks/concept'
+import tooltipReducer, * as tooltip from 'src/ducks/tooltip'
 import myrouter from 'src/myrouter'
 
 import React, { Component } from 'react'
@@ -23,6 +24,7 @@ const calls = combineReducers(
   _.mapValues({...lookups.apis, ...concept.apis}, api=>api.callsReducer.bind(apiReducer)))
 
   const rootReducer = combineReducers({
+    tooltips: tooltipReducer,
     concepts: conceptReducer,
     calls,
     form: formReducer,

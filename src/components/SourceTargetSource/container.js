@@ -13,9 +13,6 @@ import React, { Component } from 'react'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
-import ReactTooltip from 'react-tooltip'
-
-window.ReactTooltip = ReactTooltip
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
@@ -35,42 +32,21 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-
-const styles = {
-  ccodeButton: {
-    //padding: 2,
-    padding: '1px 3px 1px 3px',
-    margin: '5px 2px 1px 2px',
-    //margin: 2,
-    //border:'1px solid pink', 
-    color: 'white',
-    lineHeight:'auto',
-    height:'auto',
-    minHeight:'auto',
-    width:'auto',
-    minWidth:'auto',
-  },
-}
+import ReactTooltip from 'react-tooltip'
 
 class SourceTargetSourceForm extends Component {
+  componentDidMount() {
+    this.ttid = _.uniqueId('stsTtId-')
+    ReactTooltip.rebuild()
+  }
   componentDidUpdate() {
     ReactTooltip.rebuild()
-    this.ttid = _.uniqueId('stsTtId-')
   }
   render() {
     let { vocabulary_id, concept_code_search_pattern, concepts } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
-    let cnts = C.cdmCnts( concepts, d=>d)
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
-        <ReactTooltip id={this.ttid}
-                      //place="bottom" 
-                      //effect="solid"
-        >
-          <div>
-            { cnts.long.map((c,i)=><div key={i}>{c}</div>) }
-          </div> 
-        </ReactTooltip>
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
           <CardHeader style={{
               padding:'10px 8px 0px 8px'
@@ -86,44 +62,22 @@ class SourceTargetSourceForm extends Component {
             <C.ConceptViewContainer 
               concepts={concepts}
               title={
-                <span >
+                <span>
+                  STS:
                   {concepts.length} {' '}
                   {vocabulary_id} concepts{' '}
-                  <span style={{fontSize: '.6em',}}
-                    data-tip data-for={this.ttId}
-                  >
-                    ({cnts.short.join(', ')})
-                  </span>
                 </span>
               }
               subtitle={
                 concepts.map(
                   (c,i) => {
-                    let cnts = C.cdmCnts([c], d=>d)
-                    let cttid = `${this.ttid}:${i}`
-                    let href = '#' // should be link to concept focus
-                    return  (
-                      <span>
-                        <ReactTooltip id={cttid} >
-                          {c.concept_name}:
-                          { cnts.long.map((c,i)=><div key={i}>{c}</div>) }
-                        </ReactTooltip>
-                        <FlatButton  
-                          style={
-                            { 
-                              ...styles.ccodeButton,
-                              backgroundColor: muit.get({sc:c.standard_concept}).palette.regular,
-                            }
-                          } 
-                          href={href} 
-                          data-tip
-                          data-for={cttid}
-                        >
-                          {c.concept_code}
-                          ({cnts.short.join(', ')})
-                        </FlatButton>
-                      </span>
-                    )
+                    return <C.LinkWithCounts key={i}
+                              concepts={[c]}
+                              title={c.concept_code}
+                              tip={c.concept_name}
+                              ttId={`${this.ttid}:${i}`}
+                              muiTheme={muit.get({sc:c.standard_concept})}
+                          />
                   })}
             />
           </CardText>

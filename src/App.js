@@ -16,6 +16,13 @@ Copyright 2016 Sigfried Gold
 */
 
 
+import config from 'src/config'
+import 'src/stylesheets/VocabPop.css'
+import _ from 'src/supergroup'
+import {Tooltips, } from 'src/ducks/tooltip'
+import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'
+import SourceTargetSource from 'src/components/SourceTargetSource'
+import VocabPop from 'src/components/VocabPop'
 
 import React, { Component, PropTypes } from 'react'
 import { connect } from 'react-redux'
@@ -34,20 +41,9 @@ import Inspector from 'react-json-inspector'
 import 'react-json-inspector/json-inspector.css'
 import {FilterForm} from 'src/components/Filters'
 import Draggable from 'react-draggable'; // The default
-import config from 'src/config'
 var $ = require('jquery')
 import Spinner from 'react-spinner'
 //require('react-spinner/react-spinner.css')
-//import logo from 'src/logo.svg'
-//import 'src/App.css'
-import 'src/stylesheets/VocabPop.css'
-import _ from 'src/supergroup'
-//import * as util from 'src/ohdsi.util'
-// from: https://github.com/callemall/material-ui/issues/5208
-
-import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'
-import SourceTargetSource from 'src/components/SourceTargetSource'
-import VocabPop from 'src/components/VocabPop'
 
 
 import {
@@ -156,6 +152,7 @@ let  App = muiThemeable()(class App extends Component {
           </div>
         </AppBar>
         <AppTabs {...{route, sidebar, main, muiTheme}}/>
+        <Tooltips />
       </div>
     )
     /*
