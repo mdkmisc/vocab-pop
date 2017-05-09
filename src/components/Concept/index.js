@@ -213,20 +213,12 @@ export const CdmCountView = muiThemeable()(props => {
           </Badge>
 })
 const ScView = muiThemeable()(props => {
-  let {concepts, sc, title, style={}, muiTheme, depth, storeName, } = props
+  let {concepts, title, style={}, muiTheme, depth, storeName, } = props
   let pal = muiTheme.palette
   let cnts = cdmCnts( concepts, d=>d)
   return  <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
               <Subheader style={gridStyles.tileTitle} >
-                {title}
-                <span >
-                  <span style={{fontSize: '.6em',}}
-                    //data-tip data-for={this.ttId}
-                  >
-                    ({cnts.short.join(', ')})
-                  </span>
-                </span>
               </Subheader>
               Rels:
               { 
@@ -247,25 +239,43 @@ const colname = cnt => {
   return cn
 }
 const scsView = props => {
-  let bySc = cncpt.conceptsBySc(props.concepts) // just supergroups by 'standard_concept'
+  let {concepts,depth,muiTheme,storeName} = props
+  let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
-  return  <GridList
-            cellHeight={'auto'}
-            style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
-            //cellHeight={150}
-            //cols={bySc.length}
-            cols={.3}
-          >
-            {
-              bySc.map((sc,i) => {
-                let title=`SC: ${sc.records.length} ${cncpt.scName(sc.records[0])}`
-                return  <MuiThemeProvider muiTheme={muit.get({sc:sc.toString()})} key={i}>
-                            <ScView {...{...props, sc, title, concepts: sc.records }} />
-                        </MuiThemeProvider>
-              })
-            }
-          </GridList>
+  if (bySc.length > 1) {
+    return  <GridList
+              cellHeight={'auto'} cols={.3}
+              style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
+            >
+              {
+                bySc.map((sc,i) => {
+                  let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
+                  return  
+                              <ScView key={i}
+                                {...{
+                                    title, depth, storeName,
+                                    concepts: sc.records,
+                                    muiTheme: muit.get({sc:sc.toString()}) 
+                                }} />
+                })
+              }
+            </GridList>
+  } else {
+    let sc = bySc[0]
+    return  <GridList
+              cellHeight={'auto'} cols={.3}
+              style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
+            >
+              {[ <ScView key={0}
+                  {...{
+                      depth, storeName,
+                      concepts: sc.records,
+                      muiTheme: muit.get({sc:sc.toString()}) 
+                  }} />
+              ]}
+            </GridList>
+  }
 }
 const RelsView = ({relName,relcids,depth,storeName}) => {
   let title = `Relssss View: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
@@ -394,7 +404,7 @@ class ConceptInfoGridList extends Component {
                   style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}} >
           <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
-              {scsView(this.props)}
+              {scsView({concepts,depth,muiTheme})}
             </div>
           </GridTile>
           { showIndividualConcepts && concepts.length > 1 ?
@@ -415,17 +425,18 @@ class ConceptInfoGridList extends Component {
 }
 class ConceptViewContainer extends Component {
   constructor(props) {
+    let {depth, title='CvcNoTitle', storeName, } = props
     super(props)
     this.tt = tooltip.registerTooltip('cvc')
+    this.storeName = `${depth}:${storeName}->${title}`
   }
   componentDidMount() {
-    let {concept_ids, depth, title, storeName, wantConcepts, } = this.props
+    let {concept_ids, depth, title, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
       if (concept_ids.length > 20) {
         return
       }
-      storeName = `${depth}:${storeName}->${title}`
-      wantConcepts(concept_ids, storeName)
+      wantConcepts(concept_ids, this.storeName)
     }
 
     //this.ttId = _.uniqueId('ciglTtId-')
@@ -441,7 +452,7 @@ class ConceptViewContainer extends Component {
   render() {
     if ( ConceptViewContainer.viewCount++ > 35 || depth > 1 )
       return null
-    let {concept_ids, depth, title, subtitle, storeName, wantConcepts, 
+    let {concept_ids, depth, title, subtitle, wantConcepts, 
             initiallyExpanded=true} = this.props
     let cnts = cdmCnts( this.props.concepts, d=>d)
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
