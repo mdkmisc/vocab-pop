@@ -4,8 +4,7 @@ const DEBUG = true
 import * as utils from 'src/utils'
 import _ from 'src/supergroup'
 
-import apiReducer, * as api from 'src/api'
-//import lookupsReducer, * as lookups from 'src/ducks/lookups'
+import cidsReducer, * as cids from 'src/ducks/cids'
 import vocabularies, * as vocabs from 'src/ducks/vocabularies'
 import conceptReducer, * as concept from 'src/ducks/concept'
 import myrouter from 'src/myrouter'
@@ -19,28 +18,19 @@ import { reducer as formReducer } from 'redux-form'
 
 export default function configureStore(initialState = {}) {
 
-  // get rid of these api.callsReducer things at some point
-  /*
-const calls = combineReducers(
-  _.mapValues({
-              ...lookups.apis, 
-              ...concept.apis
-            }, api=>api.callsReducer.bind(apiReducer)))
-            */
-
   const rootReducer = combineReducers({
     vocabularies,
-    //concepts: conceptReducer,
+    cids: cidsReducer,
+    concepts: conceptReducer,
     //calls,
     form: formReducer,
     reduxRouter: myrouter.routerReducer,//redux router, not sure how to use correctly
   })
 
   const allEpics = [
-    ...api.epics,
     ...vocabs.epics,
-    //...lookups.epics,
-    //...concept.epics
+    ...cids.epics,
+    ...concept.epics
   ]
   const rootEpic = combineEpics(...allEpics)
   const epicMiddleware = createEpicMiddleware(rootEpic)

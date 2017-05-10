@@ -6,8 +6,8 @@ import myrouter from 'src/myrouter'
 
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
-import * as lookups from 'src/ducks/lookups'
-import * as concept from 'src/ducks/concept'
+import * as cids from 'src/ducks/cids'
+import * as cncpt from 'src/ducks/concept'
 
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
@@ -87,13 +87,13 @@ class ConceptCodesLookupForm extends Component {
     this.setState({open:false})
   }
   openOrClose() {
-    const {actions, vocabulary_id, concept_code_search_pattern, } = this.props
+    const {vocabulary_id, concept_code_search_pattern, } = this.props
     if (!vocabulary_id || !concept_code_search_pattern) {
       this.open()
     }
   }
   componentDidMount() {
-    const {actions, vocabulary_id, concept_code_search_pattern, } = this.props
+    const {vocabulary_id, concept_code_search_pattern, } = this.props
     this.openOrClose()
   }
   componentDidUpdate(prevProps) {
@@ -253,35 +253,18 @@ ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
 })(ConceptCodesLookupForm)
 
-let {codesToCidsApi, } = lookups.apis
-let {conceptInfoApi} = concept.apis
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
-    let selectors = {
-      conceptIds: _.mapValues(codesToCidsApi.selectors('codesToCidsApi'), s=>s(state)),
-      conceptInfo: _.mapValues(conceptInfoApi.selectors('conceptInfoApi'), s=>s(state)),
-    }
     let newState = {
       vocabularies: state.vocabularies||[],
-      selectors,
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
-      concepts: selectors.conceptInfo.results(),
+      concepts: cncpt.conceptsFromCids(state)(cids.cids(state)),
       formRef: state.form.concept_codes_form,
     }
     return newState
-  }, 
-  lookups.mapDispatchToProps,
-  /*
-  (stateProps, dispatchProps, ownProps) => {
-    let urlProps = 
-    _.pick(myrouter.getQuery(),
-        ['vocabulary_id','concept_code_search_pattern'])
-    console.log({stateProps, dispatchProps, ownProps, urlProps})
-    return urlProps
-  }
-  */
+  } 
 )(ConceptCodesLookupForm)
 
 export {

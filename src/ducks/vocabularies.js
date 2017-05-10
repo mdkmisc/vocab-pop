@@ -1,10 +1,6 @@
 /* eslint-disable */
-
-// probably not a duck...just selectors?
-
 import _ from 'src/supergroup'; // in global space anyway...
 import * as api from 'src/api'
-import * as util from 'src/utils';
 
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
@@ -52,7 +48,7 @@ const loadVocabularies = (action$, store) => (
                 return Rx.Observable.of({
                   type: apiActions.API_CALL_REJECTED,
                   payload: err.xhr.response,
-                  meta: {apiName},
+                  meta: {apiPathname},
                   error: true
                 })
               })

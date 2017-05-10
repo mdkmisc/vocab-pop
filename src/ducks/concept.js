@@ -4,42 +4,24 @@
 
 import _ from 'src/supergroup'; // in global space anyway...
 import * as api from 'src/api'
+import * as cids from 'src/ducks/cids'
 import * as util from 'src/utils';
 
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
 
+const apiPathname = 'conceptInfo'
+
 export const conceptActions = {
   NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',
   WANT_CONCEPTS: 'vocab-pop/concept/WANT_CONCEPTS',
-  FETCHING_CONCEPTS: 'vocab-pop/concept/FETCHING_CONCEPTS',
+  FETCH_CONCEPTS: 'vocab-pop/concept/FETCH_CONCEPTS',
+  FETCH_CONCEPTS_REJECTED: 'vocab-pop/concept/FETCH_CONCEPTS_REJECTED',
   //GOT_BASIC_INFO: 'vocab-pop/concept/GOT_BASIC_INFO',
   //REL_CONCEPTS_WANTED: 'vocab-pop/concept/REL_CONCEPTS_WANTED',
   //REL_CONCEPTS_FETCHED: 'vocab-pop/concept/REL_CONCEPTS_FETCHED',
 }
-
-/**** start action creators *********************************************************/
-const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
-export const wantConcepts = (concept_ids, storeName) => ({
-                                type: conceptActions.WANT_CONCEPTS, 
-                                payload:concept_ids,
-                                meta: {storeName}
-                              })
-export const fetchingConcepts = (concept_ids) => ({
-                                  type: conceptActions.FETCHING_CONCEPTS, 
-                                  payload:concept_ids,
-                                })
-/*
-let junk = {}
-payload.map(c => {
-  if (_.has(junk, c.concept_id))
-    debugger
-  junk[c.concept_id] = c
-})
-*/
-/**** end action creators *********************************************************/
-
 
 /**** start reducers *********************************************************/
 
@@ -65,10 +47,10 @@ const requestsReducer = (state={want:[],got:[],fetching:[]}, action) => {
   if (_.isEmpty(payload))
     return state
   let newState
+  let concept_ids = payload
   switch (type) {
     case conceptActions.NEW_CONCEPTS:
-      let concept_ids = payload.map(c=>c.concept_id)
-      //debugger
+      //let concept_ids = payload.map(c=>c.concept_id)
       newState = {
         got: _.union(state.got, concept_ids),
         want: _.chain(state.want)
@@ -92,7 +74,7 @@ const requestsReducer = (state={want:[],got:[],fetching:[]}, action) => {
                       .value(),
       }
       break
-    case conceptActions.FETCHING_CONCEPTS:
+    case conceptActions.FETCH_CONCEPTS:
       newState = {
         ...state,
         want: _.chain(state.want)
@@ -128,13 +110,175 @@ export default combineReducers({
 
 /**** end reducers *********************************************************/
 
+/**** start action creators *********************************************************/
+const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
+export const wantConcepts = (concept_ids, storeName) => ({
+                                type: conceptActions.WANT_CONCEPTS, 
+                                payload:concept_ids,
+                                meta: {storeName}
+                              })
+export const fetchConcepts = (concept_ids) => ({
+                                  type: conceptActions.FETCH_CONCEPTS, 
+                                  payload:concept_ids,
+                                })
+/*
+let junk = {}
+payload.map(c => {
+  if (_.has(junk, c.concept_id))
+  junk[c.concept_id] = c
+})
+*/
+/**** end action creators *********************************************************/
+
+
+
+/**** start epics ******************************************/
+
+const fetchFocalConceptsEpic = (action$, store) => (
+  action$.ofType(cids.cidsActions.NEW_CIDS)
+    .switchMap(action=>{
+      let {type, payload=[], meta, error} = action
+      payload = payload.map(d=>d.concept_id)
+      return Rx.Observable.of(fetchConcepts(payload, 'primary'))
+    })
+)
+const fetchConceptsEpic = (action$, store) => (
+  action$.ofType(conceptActions.FETCH_CONCEPTS)
+    .mergeMap(action=>{
+      let {type, payload=[], meta, error} = action
+      let concept_ids = payload
+/*
+console.error("testing w/ some random hardcoded cids")
+concept_ids = [
+  38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170,
+  2211763, 2211767, 2211757, 45889987, 2211759, 2211764, 2211761, 40756968, 2211749,
+  2722250, 2211755, 2211762, 2211750, 2211768, 40757038, 2211752, 2211758, 2211746,
+  2211748, 2211754, 2211751, 2211771, 2211770, 2211773, 2211753,
+              ]
+params = {concept_ids}
+*/
+      if (concept_ids.length) {
+        let params = {concept_ids}
+        let url = api.apiGetUrl(apiPathname, params)
+        return api.cachedAjax(url)
+                .map(results=>{
+                  console.log(results)
+                  return newConcepts(results,store)
+                })
+                .catch(err => {
+                  console.log('error loading cids', err)
+                  return Rx.Observable.of({
+                    type: conceptActions.FETCH_CONCEPTS_REJECTED,
+                    payload: err.xhr.response,
+                    meta: {apiPathname},
+                    error: true
+                  })
+                })
+
+      }
+      return Rx.Observable.empty()
+    })
+    .catch(err => {
+      console.log('error in fetchConceptsEpic', err)
+      return Rx.Observable.of({
+        type: conceptActions.FETCH_CONCEPTS_REJECTED,
+        meta: {apiPathname},
+        error: true
+      })
+    })
+)
+/*
+const startCall = (action$, store) => (
+  action$
+    .ofType(api.apiActions.API_CALL)
+    .filter(action=>action.meta.api.apiName==='conceptInfoApi')
+    //.do(action=>{ console.log(action) })
+    .mergeMap(action => {
+      let call = conceptInfoApi.callReducer({},action)
+      let loadAction = util.makeAction({ action:call, type:api.apiActions.API_CALL_LOAD})
+      return Rx.Observable.of(loadAction)
+    })
+    .catch(err => {
+      console.log('error in startCall', err)
+      return Rx.Observable.of({
+        //...action,
+        payload: err.xhr.response,
+        meta: {apiPathname},
+        error: true
+      })
+    })
+)
+const gotConcepts = (action$, store) => (
+  action$.ofType(cids.cidsActions.NEW_CONCEPTS)
+    //.filter(action=>api.newDataActionFilter(action,'conceptInfoApi'))
+    .mergeMap(action=>{
+      let {type, payload=[], error} = action
+      payload = payload.map(d=>d.concept_id)
+      let newcs = newConcepts(payload,store)
+      return Rx.Observable.of(newcs)
+    })
+    .catch(err => {
+      console.log('error in gotConcepts', err)
+      return Rx.Observable.of({
+        ...action,
+        type: 'SOME PROBLEM!!!',
+        payload: err.xhr.response,
+        error: true
+      })
+    })
+)
+*/
+const wantConceptsEpic = (action$, store) => (
+  action$
+    .ofType(conceptActions.WANT_CONCEPTS)
+    .mergeMap(action=>{
+      let {type, payload={}, meta:{storeName}, error} = action
+      /* only fetch for request, or fetch everything currently wanted? */
+      let concept_ids=[] = payload
+      let state = store.getState()
+      concept_ids = _.chain(concept_ids)
+                      .difference(_.get(state,'concepts.requests.got')||[])
+                      .difference(_.get(state,'concepts.requests.fetching')||[])
+                      .value()
+      if (!concept_ids.length)
+        return Rx.Observable.empty()
+
+      return Rx.Observable.of(fetchConcepts(concept_ids, storeName))
+      /*
+
+      let loadAction = conceptInfoApi.actionCreators.load({params:{concept_ids},storeName})
+      console.log('step 1', {type, payload, loadAction})
+      return Rx.Observable.of(loadAction)
+      */
+    })
+    .catch(err => {
+      console.log('error in wantConceptsEpic', err)
+      return Rx.Observable.of({
+        ...action,
+        type: 'SOME PROBLEM!!!',
+        payload: err.xhr.response,
+        error: true
+      })
+    })
+)
+export const epics = [ fetchFocalConceptsEpic, wantConceptsEpic, fetchConceptsEpic, ]
+
+/**** end epics ******************************************/
+
 
 /**** start selectors *****************************************************************/
 
-export const storedConceptMap = state => {}//state.concepts.loaded
+export const storedConceptMap = state => state.concepts.loaded
 export const storedConceptList = createSelector(storedConceptMap, m=>_.values(m))
 export const conceptsFromCids = createSelector(
-  storedConceptMap, m=>cids=>_.values(_.pick(m, cids)))
+  storedConceptMap, 
+  scm => (cids, errorOnMissing=true) => {
+    let concepts = _.values(_.pick(scm, cids))
+    if (errorOnMissing && concepts.length !== cids.length) {
+      throw new Error("decide what to do in this case")
+    }
+    return concepts
+  })
 
 // not using, but might want:
 // export const concepts = state => state.concepts ? storedConceptList(state) : concepts
@@ -199,7 +343,8 @@ export const conceptTableAbbr = tbl => (
 )
 
 
-export const rcsFromConcepts = concepts => (
+export const rcsFromConcepts = concepts => {
+  return (
   _.flatten(
     concepts.map(c=>c.rcs)
   )
@@ -220,7 +365,7 @@ export const rcsFromConcepts = concepts => (
       return rcs
   })
   .filter(rcs=>rcs.cnt)
-)
+)}
 export const repairRcs = concepts => {
   return concepts.map(
     concept => {
@@ -332,6 +477,7 @@ export const colCntsFromConcepts = concepts => colCnts(rcsFromConcepts(concepts)
 
 /**** Api thing -- get rid of eventually ******************************************/
 
+/*
 let conceptInfoApi = new api.Api({
   apiName: 'conceptInfoApi',
   apiPathname: 'conceptInfo',
@@ -367,127 +513,15 @@ let conceptInfoApi = new api.Api({
       return calls && calls(state,props)
       //return conceptInfo(state,action,props)
     }
-    */
+    * /
   }
 })
 
 export const apis = {
-  conceptInfoApi,
+  //conceptInfoApi,
 }
-/**** Api thing -- get rid of eventually ******************************************/
-
-
-
-/**** start epics ******************************************/
-
-const loadConcepts = (action$, store) => (
-  action$
-    .filter(action=>api.newDataActionFilter(action,'codesToCidsApi','primary'))
-    .mergeMap(action=>{
-      let concept_ids = api.apiSelectorMakers('codesToCidsApi')
-                          .results(store.getState())()
-      if (concept_ids.length) {
-        let params = {concept_ids:concept_ids.map(d=>d.concept_id)}
-/*
-console.error("testing w/ some random hardcoded cids")
-concept_ids = [
-  38000177,38000180,44820518,44828623,44825091,44833646,44837172,44837170,
-  2211763, 2211767, 2211757, 45889987, 2211759, 2211764, 2211761, 40756968, 2211749,
-  2722250, 2211755, 2211762, 2211750, 2211768, 40757038, 2211752, 2211758, 2211746,
-  2211748, 2211754, 2211751, 2211771, 2211770, 2211773, 2211753,
-              ]
-params = {concept_ids}
 */
-        let loadAction = conceptInfoApi.actionCreators.load({params})
-        let fakeState = conceptInfoApi.callsReducer({},loadAction)
-        let fakeCall = fakeState.primary
-        return Rx.Observable.of(fakeCall)
-      }
-      return Rx.Observable.empty()
-    })
-    .catch(err => {
-      console.log('error in loadConcepts', err)
-      return Rx.Observable.of({
-        //...action,
-        type: api.apiActions.API_CALL_REJECTED,
-        meta: {apiName:'conceptInfoApi'},
-        //payload: err.xhr.response,
-        error: true
-      })
-    })
-)
-const startCall = (action$, store) => (
-  action$
-    .ofType(api.apiActions.API_CALL)
-    .filter(action=>action.meta.api.apiName==='conceptInfoApi')
-    //.do(action=>{ console.log(action) })
-    .mergeMap(action => {
-      let call = conceptInfoApi.callReducer({},action)
-      let loadAction = util.makeAction({ action:call, type:api.apiActions.API_CALL_LOAD})
-      return Rx.Observable.of(loadAction)
-    })
-    .catch(err => {
-      console.log('error in startCall', err)
-      return Rx.Observable.of({
-        ...action,
-        payload: err.xhr.response,
-        error: true
-      })
-    })
-)
-const gotConcepts = (action$, store) => (
-  action$
-    .filter(action=>api.newDataActionFilter(action,'conceptInfoApi'))
-    .mergeMap(action=>{
-      let {type, payload, apiName, apiPathname, params, url,
-            results, error, err, } = api.flattenAction(action)
-      let newcs = newConcepts(payload,store)
-      return Rx.Observable.of(newcs)
-    })
-    .catch(err => {
-      debugger
-      console.log('error in gotConcepts', err)
-      return Rx.Observable.of({
-        ...action,
-        type: 'SOME PROBLEM!!!',
-        payload: err.xhr.response,
-        error: true
-      })
-    })
-)
-const wantConceptsEpic = (action$, store) => (
-  action$
-    .ofType(conceptActions.WANT_CONCEPTS)
-    .mergeMap(action=>{
-      let {type, payload={}, meta:{storeName}, error} = action
-      /* only fetch for request, or fetch everything currently wanted? */
-      let concept_ids=[] = payload
-      let state = store.getState()
-      concept_ids = _.chain(concept_ids)
-                      .difference(_.get(state,'concepts.requests.got')||[])
-                      .difference(_.get(state,'concepts.requests.fetching')||[])
-                      .value()
-      if (!concept_ids.length)
-        return Rx.Observable.empty()
-
-      let loadAction = conceptInfoApi.actionCreators.load({params:{concept_ids},storeName})
-      console.log('step 1', {type, payload, loadAction})
-      return Rx.Observable.of(loadAction)
-    })
-    .catch(err => {
-      debugger
-      console.log('error in wantConceptsEpic', err)
-      return Rx.Observable.of({
-        ...action,
-        type: 'SOME PROBLEM!!!',
-        payload: err.xhr.response,
-        error: true
-      })
-    })
-)
-export const epics = [ loadConcepts, gotConcepts, wantConceptsEpic, startCall, ]
-
-/**** end epics ******************************************/
+/**** Api thing -- get rid of eventually ******************************************/
 
 
 // FROM ConceptInfo.js -- might want to keep a little bit of it

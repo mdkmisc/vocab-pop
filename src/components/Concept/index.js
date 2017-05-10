@@ -118,6 +118,79 @@ let styles = {
                     },
 }
 */
+const cardStyles = { // stopped using cards, but still using these style below
+  root: {
+    //margin: '3%',
+    zoom: 0.8, 
+    //width: '94%',
+    //borderRadius: '100%',
+    borderRadius: '.8em',
+    backgroundColor: muit.getColors().light,
+    //padding: 10,
+    boxShadow: `inset 0 0 .9em .5em ${muit.getColors().darker}, 0 0 .9em .5em ${muit.getColors().darker}`,
+    //boxShadow: `inset 0 0 2em 2em ${muit.getColors().darker}`,
+//inset 0 0 0.5em 0.5em indigo, 0 0 0.5em 0.5em indigo;  /* padding:1em * /
+    
+  },
+  title: {
+    ...muit.getStyles().headerLight,
+    //boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
+    //backgroundColor: muiTheme.palette.atlasDarkBg,
+    //color: muiTheme.palette.alternateTextColor,
+  },
+  text: {
+  }
+}
+const gridStyles = { // GridList styles based on Simple example
+                      // http://www.material-ui.com/#/components/grid-list
+  parent: {
+    width: '100%',
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    //...cardStyles.root,
+  },
+  gridList: {
+    //border: '5px solid pink',
+    width: '100%',
+    //height: 450,
+    horizontal: {
+      display: 'flex',
+      flexWrap: 'nowrap',
+      overflowX: 'auto',
+    },
+    vertical: {
+      overflowY: 'auto',
+    },
+  },
+  listTitle: cardStyles.title,
+  tile: sc => ({
+    //zoom: 0.8, 
+    backgroundColor: muit.getColors(sc).light,
+    background: `linear-gradient(to top, 
+                                  ${muit.getColors(sc).light} 0%,
+                                  ${muit.getColors(sc).regular} 70%,
+                                  ${muit.getColors(sc).dark} 100%)`,
+    width: '100%',
+    //minHeight: 100,
+  }),
+  tileTitle: {
+    fontSize: '1.6em',
+    color: 'white',
+    //color: muit.getColors().darker,
+  },
+  child: {
+    paddingTop:10,
+    width: '100%',
+    //marginTop: 50,  // WAS ONLY ON SC
+  }
+}
+const junkTile = i =>
+                  <GridTile style={gridStyles.tile()} key={i}>
+                    <div style={gridStyles.child} >
+                      <h3>placeholder</h3>
+                    </div>
+                  </GridTile>
 export const fmtCdmCnt = (fmt='short') => {
   switch(fmt) {
     case 'short':
@@ -243,13 +316,9 @@ const scsView = props => {
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
+  let contents
   if (bySc.length > 1) {
-    return  <GridList
-              cellHeight={'auto'} cols={.3}
-              style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
-            >
-              {
-                bySc.map((sc,i) => {
+    contents = bySc.map((sc,i) => {
                   let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
                   return  
                               <ScView key={i}
@@ -259,23 +328,24 @@ const scsView = props => {
                                     muiTheme: muit.get({sc:sc.toString()}) 
                                 }} />
                 })
-              }
-            </GridList>
+    //contents = [junkTile(0), junkTile(1)]
   } else {
     let sc = bySc[0]
-    return  <GridList
-              cellHeight={'auto'} cols={.3}
-              style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
-            >
-              {[ <ScView key={0}
+    contents = [ <ScView key={0}
                   {...{
                       depth, storeName,
                       concepts: sc.records,
                       muiTheme: muit.get({sc:sc.toString()}) 
                   }} />
-              ]}
-            </GridList>
+              ]
+    //contents = [junkTile(0)]
   }
+  return  <GridList
+            cellHeight={'auto'} cols={.3}
+            style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
+          >
+            {contents}
+          </GridList>
 }
 const RelView = ({relName,relcids,depth,storeName}) => {
   let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
@@ -304,73 +374,6 @@ const RelView = ({relName,relcids,depth,storeName}) => {
     />
   )
 }
-const cardStyles = { // stopped using cards, but still using these style below
-  root: {
-    //margin: '3%',
-    zoom: 0.8, 
-    //width: '94%',
-    //borderRadius: '100%',
-    borderRadius: '.8em',
-    backgroundColor: muit.getColors().light,
-    //padding: 10,
-    boxShadow: `inset 0 0 .9em .5em ${muit.getColors().darker}, 0 0 .9em .5em ${muit.getColors().darker}`,
-    //boxShadow: `inset 0 0 2em 2em ${muit.getColors().darker}`,
-//inset 0 0 0.5em 0.5em indigo, 0 0 0.5em 0.5em indigo;  /* padding:1em * /
-    
-  },
-  title: {
-    ...muit.getStyles().headerLight,
-    //boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
-    //backgroundColor: muiTheme.palette.atlasDarkBg,
-    //color: muiTheme.palette.alternateTextColor,
-  },
-  text: {
-  }
-}
-const gridStyles = { // GridList styles based on Simple example
-                      // http://www.material-ui.com/#/components/grid-list
-  parent: {
-    width: '100%',
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    //...cardStyles.root,
-  },
-  gridList: {
-    //border: '5px solid pink',
-    width: '100%',
-    //height: 450,
-    horizontal: {
-      display: 'flex',
-      flexWrap: 'nowrap',
-      overflowX: 'auto',
-    },
-    vertical: {
-      overflowY: 'auto',
-    },
-  },
-  listTitle: cardStyles.title,
-  tile: sc => ({
-    //zoom: 0.8, 
-    backgroundColor: muit.getColors(sc).light,
-    background: `linear-gradient(to top, 
-                                  ${muit.getColors(sc).light} 0%,
-                                  ${muit.getColors(sc).regular} 70%,
-                                  ${muit.getColors(sc).dark} 100%)`,
-    width: '100%',
-    //minHeight: 100,
-  }),
-  tileTitle: {
-    fontSize: '1.6em',
-    color: 'white',
-    //color: muit.getColors().darker,
-  },
-  child: {
-    paddingTop:10,
-    width: '100%',
-    //marginTop: 50,  // WAS ONLY ON SC
-  }
-}
 class ConceptInfoGridList extends Component {
   componentDidUpdate() {
     ReactTooltip.rebuild()
@@ -386,18 +389,13 @@ class ConceptInfoGridList extends Component {
     if (concepts.length < 1)
       return null
     const onlyOneConcept = concepts.length === 1
-    return (
-      <div style={gridStyles.parent}>
-        <GridList cellHeight={'auto'} 
-                  //cols={concepts.length > 1 ? 2 : 1}
-                  cols={1}
-                  style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}} >
+    let contents =
           <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
               {scsView({concepts,depth,muiTheme})}
             </div>
           </GridTile>
-          { /*  DON'T DELETE, PUT BACK WHEN READY
+           /*  DON'T DELETE, PUT BACK WHEN READY
             showIndividualConcepts && concepts.length > 1 ?
             <GridTile style={gridStyles.tile()} >
               <div style={gridStyles.child} >
@@ -410,7 +408,16 @@ class ConceptInfoGridList extends Component {
               </div>
             </GridTile>
             : []
-          */}
+          */
+
+    //contents = [junkTile(0)]
+    return (
+      <div style={gridStyles.parent}>
+        <GridList cellHeight={'auto'} 
+                  //cols={concepts.length > 1 ? 2 : 1}
+                  cols={1}
+                  style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}} >
+          {contents}
         </GridList>
       </div>
     )
@@ -445,8 +452,8 @@ class ConceptViewContainer extends Component {
   static viewCount = 0 // to prevent stack overflow
   render() {
     let {concepts, concept_ids, depth, title, subtitle, 
-            wantConcepts, waitingForConcepts, initiallyExpanded=true} = this.props
-    if ( waitingForConcepts ) {
+            wantConcepts, conceptFetchStatus, initiallyExpanded=true} = this.props
+    if ( conceptFetchStatus === 'waiting' ) {
       return <h4>Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}</h4>
     }
     if ( ConceptViewContainer.viewCount++ > 200 ) {
@@ -509,19 +516,19 @@ ConceptViewContainer = connect(
   (state, props) => {
     let {storeName='primary', concepts=[], concept_ids=[],
           depth=0, title, } = props
-    let waitingForConcepts = false
+    let conceptFetchStatus = 'ok'
     if (!concepts.length) {
       if (concept_ids.length) {
-        concepts = cncpt.conceptsFromCids(state)(concept_ids)
+        concepts = cncpt.conceptsFromCids(state)(concept_ids, false)
       } else {
         concepts = cncpt.storedConceptList(state)
       }
       if (concept_ids.length > concepts.length) {
-        waitingForConcepts = true
+        conceptFetchStatus = concepts.length ? 'partiallyLoaded' : 'waiting'
       }
     }
     return {
-      waitingForConcepts,
+      conceptFetchStatus,
       depth,
       storeName,
       title,

@@ -4,6 +4,7 @@ import _ from 'src/supergroup'; // in global space anyway...
 import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
+import * as cids from 'src/ducks/cids'
 import * as muit from 'src/muitheme'
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 //import * as sts from 'src/STSReport'
@@ -45,6 +46,7 @@ class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, concept_code_search_pattern, concepts=[] } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
+    console.log(concepts)
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
@@ -101,7 +103,7 @@ SourceTargetSourceForm = connect(
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
       //concepts: cncpt.storedConceptList(state),
-      concepts: cncpt.apis.conceptInfoApi.selectors('conceptInfoApi').results(state)(),
+      concepts: cncpt.conceptsFromCids(state)(cids.cids(state)),
     }
   }
 )(SourceTargetSourceForm)
