@@ -293,7 +293,8 @@ export class AgTable extends Component {
     if (!_.isEmpty(filterModel)) newGridState.filterModel = filterModel;
 
     if (_.isEqual(gridState, newGridState)) return;
-    myrouter.addParam(`agGrid.${id}`, newGridState);
+console.log('NOT SAVING TABLE CHANGES RIGHT NOW')
+    //myrouter.addParam(`agGrid.${id}`, newGridState);
     this.setState({gridState: newGridState});
     this.grid.columnApi.setColumnState(newGridState.columnState);
     //if (gridState.sortModel && gridState.sortModel.length) this.grid.api.setSortModel(gridState.sortModel);

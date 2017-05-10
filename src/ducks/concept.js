@@ -184,6 +184,7 @@ const fetchConceptsEpic = (action$, store) => (
       let {type, payload=[], meta, error} = action
       //let concept_ids = payload
       let concept_ids = _.get(store.getState(), 'concepts.requests.fetching') || []
+
 /*
 console.error("testing w/ some random hardcoded cids")
 concept_ids = [

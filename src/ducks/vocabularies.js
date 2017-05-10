@@ -16,7 +16,7 @@ const reducer = (state=[], action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case vocabActions.GOT_DATA:
-      return payload
+      return _.sortBy(payload, d=>d.vocabulary_id)
   }
   return state
 }

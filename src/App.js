@@ -232,16 +232,17 @@ class AppTabs extends React.Component {
         value={this.state.value}
         onChange={this.handleChange}
       >
-        <Tab label="nothing" value="nothing">
-          <CircularProgress />
-          <CircularProgress color={muiTheme.palette.accent1Color} size={60} thickness={7} />
-          <CircularProgress size={80} thickness={5} />
-        </Tab>
         <Tab  label="STS Report" value="ststreport"
             data-route="/sourcetargetsource"
             onActive={tab=>nav(tab.props['data-route'])} 
         >
           {main}
+        </Tab>
+        {/*
+        <Tab label="nothing" value="nothing">
+          <CircularProgress />
+          <CircularProgress color={muiTheme.palette.accent1Color} size={60} thickness={7} />
+          <CircularProgress size={80} thickness={5} />
         </Tab>
         <Tab label="Tab A" value="a">
           <div>
@@ -263,6 +264,7 @@ class AppTabs extends React.Component {
             </p>
           </div>
         </Tab>
+        */}
       </Tabs>
     );
   }

@@ -36,7 +36,7 @@ import {
 
 class VocabField extends Component {
   render() {
-    const {vocabularies, vocabulary_id, dispatch} = this.props
+    const {vocabularies, vocabulary_id, } = this.props
     return (
       <Field name="vocabulary_id" 
             //value={vocabulary_id}
@@ -46,9 +46,7 @@ class VocabField extends Component {
             floatingLabelText="vocabulary_id"
             onChange={
               (evt,newVal,oldVal) => {
-                debugger
-                dispatch(myrouter.addParams({
-                          vocabulary_id:newVal}))
+                myrouter.addParams({vocabulary_id:newVal})
               }
             }
       >
@@ -66,6 +64,30 @@ class VocabField extends Component {
             })
         }
       </Field>
+    )
+  }
+}
+class CodeSearchField extends Component {
+  render() {
+    const { concept_code_search_pattern, errMsg,
+      } = this.props
+    return (
+      <Field name="concept_code_search_pattern" 
+            hintText='401.1%,401.2,401.3%'
+            floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
+            component={TextField}
+            //ref="concept_code_search_pattern" withRef
+            //multiLine={true}
+            fullWidth={true}
+            errorText={errMsg}
+            label="Concept Codes"
+            onChange={
+              (evt,newVal,oldVal) => 
+                myrouter.addParams({
+                    concept_code_search_pattern:newVal})
+            }
+            style={{padding:'0px 8px 0px 8px'}}
+        />
     )
   }
 }
@@ -102,7 +124,6 @@ class ConceptCodesLookupForm extends Component {
   render() {
     let { 
             handleSubmit, pristine, reset, submitting,
-              dispatch, // initialValues, 
               isPending, err, vocabularies,
               concept_code_search_pattern, vocabulary_id,
               concepts=[],
@@ -193,7 +214,6 @@ class ConceptCodesLookupForm extends Component {
               <CardText>
                 <VocabField vocabularies={vocabularies}
                             vocabulary_id={vocabulary_id}
-                            dispatch={dispatch}
                 />
                 {
                   vocabulary ?
@@ -212,6 +232,10 @@ class ConceptCodesLookupForm extends Component {
             </Card>
             <Card>
               <CardText>
+                <CodeSearchField concept_code_search_pattern={concept_code_search_pattern} />
+              </CardText>
+            {/*
+              <CardText>
                 <Field name="concept_code_search_pattern" 
                       hintText='401.1%,401.2,401.3%'
                       floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
@@ -222,13 +246,13 @@ class ConceptCodesLookupForm extends Component {
                       errorText={errMsg}
                       label="Concept Codes"
                       onChange={
-                        (evt,newVal,oldVal) => dispatch(
-                          myrouter
-                            .addParams({
+                        (evt,newVal,oldVal) => 
+                          myrouter.addParams({
                               concept_code_search_pattern:newVal})
-                        )}
+                      }
                   />
               </CardText>
+            */}
             </Card>
                   {/* <div style={styles.wrapper}> {chips} </div> */}
             <Card>

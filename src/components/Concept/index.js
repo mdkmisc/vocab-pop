@@ -286,6 +286,7 @@ export const CdmCountView = muiThemeable()(props => {
           </Badge>
 })
 const ScView = muiThemeable()(props => {
+  // useless at this point?
   let {concepts, title, style={}, muiTheme, depth, } = props
   let pal = muiTheme.palette
   let cnts = cdmCnts( concepts, d=>d)
@@ -294,12 +295,14 @@ const ScView = muiThemeable()(props => {
   return  <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
               <Subheader style={gridStyles.tileTitle} >
+                ScView: 
+                {title}
               </Subheader>
               { 
                 //Rels:
                 _.map(cncpt.concepts2relsMap(concepts),
                       (relcids,relName) => {
-                        if (!relName.match(/map/i)) return null
+                        //if (!relName.match(/map/i)) return null
                         return <RelView key={relName} 
                                   {...{relName, relcids, depth, }}
                         />
@@ -312,6 +315,34 @@ const colname = cnt => {
   let cn = `${cnt.tbl}.${cnt.col}`
   //console.log(cn)
   return cn
+}
+const SplitIntoScs = props => {
+  let {concepts,depth,muiTheme, children} = props
+  let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
+                .filter(sc=>cncpt.rcsFromConcepts(sc.records))
+  if (bySc.length === 1) {
+    return React.cloneElement(React.Children.only(children), { concepts, muiTheme, })
+  }
+  if (bySc.length > 1) {
+    let contents = bySc.map((sc,i) => {
+      let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
+      return React.cloneElement(React.Children.only(children),
+                    {
+                      title, concepts: sc.records, sc,
+                      muiTheme: muit.get({sc}) 
+                    })
+      /*
+      return React.Children.toArray(children).map(
+        (child,i)=>React.cloneElement(
+                    child, {
+                      title, concepts: sc.records, sc,
+                      muiTheme: muit.get({sc}) 
+                    })
+      )
+      */
+    })
+    return <div>{contents}</div>
+  }
 }
 const scsView = props => {
   let {concepts,depth,muiTheme,} = props
@@ -327,7 +358,7 @@ const scsView = props => {
                                 {...{
                                     title, depth,
                                     concepts: sc.records,
-                                    muiTheme: muit.get({sc:sc.toString()}) 
+                                    muiTheme: muit.get({sc}) 
                                 }} />
                 })
     contents = [junkTile(0), junkTile(1)]
@@ -337,13 +368,32 @@ const scsView = props => {
                   {...{
                       depth,
                       concepts: sc.records,
-                      muiTheme: muit.get({sc:sc.toString()}) 
+                      muiTheme: muit.get({sc}) 
                   }} />
               ]
     //contents = [junkTile(0)]
   }
   return  <GridList
             cellHeight={'auto'} cols={.3}
+            style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
+          >
+            {contents}
+          </GridList>
+}
+const RelsPeek = props => { // assuming I just have cids, no concepts
+  let {concepts=[],title='RelsPeek no title', sc} = props
+  let contents = _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => {
+              return  <GridTile key={relName} style={gridStyles.tile(sc)} >
+                        <div style={gridStyles.child} >
+                          junk: {title}
+                          <Subheader style={gridStyles.tileTitle} >
+                            {relcids.length} {relName}
+                          </Subheader>
+                        </div>
+                      </GridTile>
+              })
+  return  <GridList
+            cellHeight={'auto'} cols={3}
             style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
           >
             {contents}
@@ -392,7 +442,12 @@ class ConceptInfoGridList extends Component {
     let contents =
           <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
+              {/*
               {scsView({concepts,depth,muiTheme})}
+              */}
+              <SplitIntoScs {...{concepts,muiTheme,depth}} >
+                <RelsPeek />
+              </SplitIntoScs>
             </div>
           </GridTile>
            /*  DON'T DELETE, PUT BACK WHEN READY
