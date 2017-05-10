@@ -39,7 +39,7 @@ const loadVocabularies = (action$, store) => (
       let url = api.apiGetUrl(apiPathname)
       return api.cachedAjax(url)
               .map(results=>{
-                console.log(results)
+                //console.log(results)
                 return {type:vocabActions.GOT_DATA,
                           payload:results}
               })

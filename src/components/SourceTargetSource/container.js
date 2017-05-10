@@ -99,11 +99,15 @@ SourceTargetSourceForm = connect(
     //const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
     const {vocabulary_id, concept_code_search_pattern, } 
           = myrouter.getQuery()
+    let concepts = cncpt.conceptsFromCids(state)(cids.cids(state), false)
+    if (concepts.length && concepts.length !== state.cids.length) {
+      debugger
+      throw new Error("expected all the initial concepts")
+    }
     return {
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
-      //concepts: cncpt.storedConceptList(state),
-      concepts: cncpt.conceptsFromCids(state)(cids.cids(state)),
+      concepts,
     }
   }
 )(SourceTargetSourceForm)

@@ -286,9 +286,11 @@ export const CdmCountView = muiThemeable()(props => {
           </Badge>
 })
 const ScView = muiThemeable()(props => {
-  let {concepts, title, style={}, muiTheme, depth, storeName, } = props
+  let {concepts, title, style={}, muiTheme, depth, } = props
   let pal = muiTheme.palette
   let cnts = cdmCnts( concepts, d=>d)
+  if (!concepts || !concepts.length)
+    debugger
   return  <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
               <Subheader style={gridStyles.tileTitle} >
@@ -299,7 +301,7 @@ const ScView = muiThemeable()(props => {
                       (relcids,relName) => {
                         if (!relName.match(/map/i)) return null
                         return <RelView key={relName} 
-                                  {...{relName, relcids, depth, storeName}}
+                                  {...{relName, relcids, depth, }}
                         />
                       })
               }
@@ -308,11 +310,11 @@ const ScView = muiThemeable()(props => {
 })
 const colname = cnt => {
   let cn = `${cnt.tbl}.${cnt.col}`
-  console.log(cn)
+  //console.log(cn)
   return cn
 }
 const scsView = props => {
-  let {concepts,depth,muiTheme,storeName} = props
+  let {concepts,depth,muiTheme,} = props
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
@@ -323,17 +325,17 @@ const scsView = props => {
                   return  
                               <ScView key={i}
                                 {...{
-                                    title, depth, storeName,
+                                    title, depth,
                                     concepts: sc.records,
                                     muiTheme: muit.get({sc:sc.toString()}) 
                                 }} />
                 })
-    //contents = [junkTile(0), junkTile(1)]
+    contents = [junkTile(0), junkTile(1)]
   } else {
     let sc = bySc[0]
     contents = [ <ScView key={0}
                   {...{
-                      depth, storeName,
+                      depth,
                       concepts: sc.records,
                       muiTheme: muit.get({sc:sc.toString()}) 
                   }} />
@@ -347,7 +349,7 @@ const scsView = props => {
             {contents}
           </GridList>
 }
-const RelView = ({relName,relcids,depth,storeName}) => {
+const RelView = ({relName,relcids,depth,}) => {
   let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
   if (depth > 2) {
     console.error('bailing from RelView to avoid max stack')
@@ -356,7 +358,6 @@ const RelView = ({relName,relcids,depth,storeName}) => {
   return (
     <ConceptViewContainer key={relName}
       depth={depth + 1}
-      storeName={storeName}
       concept_ids={relcids}
       title={`From RelView: ${relcids.length} ${relName} concepts`}
       subtitle={
@@ -382,7 +383,6 @@ class ConceptInfoGridList extends Component {
     let { muiTheme,
           // title, subtitle, // use in container, not here
           depth,
-          storeName,
           concepts=[], 
           showIndividualConcepts=false,
         } = this.props
@@ -425,10 +425,9 @@ class ConceptInfoGridList extends Component {
 }
 class ConceptViewContainer extends Component {
   constructor(props) {
-    let {depth, title='CvcNoTitle', storeName, } = props
+    let {depth, title='CvcNoTitle', } = props
     super(props)
     this.tt = tooltip.registerTooltip('cvc')
-    this.storeName = `${depth}:${storeName}->${title}`
   }
   componentDidMount() {
     let {concept_ids, depth, title, wantConcepts, } = this.props
@@ -437,7 +436,7 @@ class ConceptViewContainer extends Component {
         console.error(`not fetching ${concept_ids.length} concepts`, title)
         return
       }
-      wantConcepts(concept_ids, this.storeName)
+      wantConcepts(concept_ids)
     }
 
     //this.ttId = _.uniqueId('ciglTtId-')
@@ -452,9 +451,22 @@ class ConceptViewContainer extends Component {
   static viewCount = 0 // to prevent stack overflow
   render() {
     let {concepts, concept_ids, depth, title, subtitle, 
-            wantConcepts, conceptFetchStatus, initiallyExpanded=true} = this.props
+            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
+            muiTheme,
+        } = this.props
     if ( conceptFetchStatus === 'waiting' ) {
-      return <h4>Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}</h4>
+      return  <h4>
+                <CircularProgress 
+                      style={{
+                        //color: muiTheme.palette.accent1Color,
+                        //backgroundColor: muiTheme.palette.primary1Color,
+                      }}
+                      color={muiTheme.palette.accent1Color} 
+                      //size={60} 
+                      //thickness={7} 
+                />
+                Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
+              </h4>
     }
     if ( ConceptViewContainer.viewCount++ > 200 ) {
       console.error('bailing to avoid max stack (count)',depth, ConceptViewContainer.viewCount )
@@ -514,12 +526,12 @@ class ConceptViewContainer extends Component {
 }
 ConceptViewContainer = connect(
   (state, props) => {
-    let {storeName='primary', concepts=[], concept_ids=[],
+    let {concepts=[], concept_ids=[],
           depth=0, title, } = props
     let conceptFetchStatus = 'ok'
     if (!concepts.length) {
       if (concept_ids.length) {
-        concepts = cncpt.conceptsFromCids(state)(concept_ids, false)
+        concepts = cncpt.conceptsFromCidsWStubs(state)(concept_ids, false)
       } else {
         concepts = cncpt.storedConceptList(state)
       }
@@ -527,15 +539,19 @@ ConceptViewContainer = connect(
         conceptFetchStatus = concepts.length ? 'partiallyLoaded' : 'waiting'
       }
     }
+    /*
+    if (concepts.filter(d=>d.status).length) {
+      debugger
+    }
+    */
     return {
       conceptFetchStatus,
       depth,
-      storeName,
       title,
       concepts,
-      storedConceptMap: cncpt.storedConceptMap(state),
-      storedConceptList: cncpt.storedConceptList(state),
-      conceptsFromCids: cncpt.conceptsFromCids(state),
+      //storedConceptMap: cncpt.storedConceptMap(state),
+      //storedConceptList: cncpt.storedConceptList(state),
+      //conceptsFromCids: cncpt.conceptsFromCids(state),
     }
   },
   dispatch=>bindActionCreators(

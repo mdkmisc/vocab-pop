@@ -12,11 +12,24 @@ import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
 
 const apiPathname = 'conceptInfo'
+const conceptStub = (id,status) => ({
+  concept_id: id,
+  status,
+  concept_code: status,
+  concept_name: status,
+  domain_id: status,
+  standard_concept: status,
+  vocabulary_id: status,
+  concept_class_id: status,
+  rcs: [],
+  rels: []
+})
 
 export const conceptActions = {
   NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',
   WANT_CONCEPTS: 'vocab-pop/concept/WANT_CONCEPTS',
   FETCH_CONCEPTS: 'vocab-pop/concept/FETCH_CONCEPTS',
+  FETCH_FOCAL_CONCEPTS: 'vocab-pop/concept/FETCH_FOCAL_CONCEPTS',
   FETCH_CONCEPTS_REJECTED: 'vocab-pop/concept/FETCH_CONCEPTS_REJECTED',
   //GOT_BASIC_INFO: 'vocab-pop/concept/GOT_BASIC_INFO',
   //REL_CONCEPTS_WANTED: 'vocab-pop/concept/REL_CONCEPTS_WANTED',
@@ -35,31 +48,32 @@ const loadedReducer = (state={}, action) => {
   }
   return state
 }
-const requestsReducer = (state={want:[],got:[],fetching:[]}, action) => {
-  /*
-   * state = {
-   *            want: [1234, 4567, ...],
-   *            fetching: [4321, 7654, ...],
-   *            got: [4321, 7654, ...],
-   * }
-   */
+let requestStore = { // lists of cids
+  want: [],
+  fetching: [],
+  got: [],
+  focal: [],
+  stale: [],
+} 
+const requestsReducer = (state=_.cloneDeep(requestStore), action) => {
   let {type, payload, meta, error} = action
-  if (_.isEmpty(payload))
+  if (_.isEmpty(payload) && type !== conceptActions.FETCH_CONCEPTS)
     return state
   let newState
-  let concept_ids = payload
+  let new_cids = payload
   switch (type) {
     case conceptActions.NEW_CONCEPTS:
-      //let concept_ids = payload.map(c=>c.concept_id)
+      new_cids = payload.map(c=>c.concept_id)
       newState = {
-        got: _.union(state.got, concept_ids),
+        ...state,
+        got: _.union(state.got, new_cids),
         want: _.chain(state.want)
-                      .difference(concept_ids)
+                      .difference(new_cids)
                       .difference(state.got)
                       .difference(state.fetching)
                       .value(),
         fetching: _.chain(state.fetching)
-                      .difference(concept_ids)
+                      .difference(new_cids)
                       .difference(state.got)
                       .value(),
       }
@@ -68,7 +82,7 @@ const requestsReducer = (state={want:[],got:[],fetching:[]}, action) => {
       newState = {
         ...state,
         want: _.chain(state.want)
-                      .union(concept_ids)
+                      .union(new_cids)
                       .difference(state.got)
                       .difference(state.fetching)
                       .value(),
@@ -77,15 +91,20 @@ const requestsReducer = (state={want:[],got:[],fetching:[]}, action) => {
     case conceptActions.FETCH_CONCEPTS:
       newState = {
         ...state,
-        want: _.chain(state.want)
-                      .difference(concept_ids)
-                      .difference(state.got)
-                      .difference(state.fetching)
-                      .value(),
+        want: [],
         fetching: _.chain(state.fetching)
-                      .union(concept_ids)
+                      .union(state.want)
                       .difference(state.got)
                       .value(),
+      }
+      break
+    case conceptActions.FETCH_FOCAL_CONCEPTS:
+      newState = {
+        focal: new_cids,
+        stale: _.union(state.got, state.fetching),
+        got: [],
+        want: [],
+        fetching: new_cids,
       }
       break
     default:
@@ -112,13 +131,14 @@ export default combineReducers({
 
 /**** start action creators *********************************************************/
 const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
-export const wantConcepts = (concept_ids, storeName) => ({
+export const wantConcepts = (concept_ids) => ({
                                 type: conceptActions.WANT_CONCEPTS, 
                                 payload:concept_ids,
-                                meta: {storeName}
+                                meta: {apiPathname},
                               })
-export const fetchConcepts = (concept_ids) => ({
-                                  type: conceptActions.FETCH_CONCEPTS, 
+export const fetchConcepts = () => ({ type: conceptActions.FETCH_CONCEPTS, })
+export const fetchFocalConcepts = (concept_ids) => ({
+                                  type: conceptActions.FETCH_FOCAL_CONCEPTS, 
                                   payload:concept_ids,
                                 })
 /*
@@ -134,19 +154,23 @@ payload.map(c => {
 
 /**** start epics ******************************************/
 
+let epics = []
+
 const fetchFocalConceptsEpic = (action$, store) => (
   action$.ofType(cids.cidsActions.NEW_CIDS)
     .switchMap(action=>{
       let {type, payload=[], meta, error} = action
       payload = payload.map(d=>d.concept_id)
-      return Rx.Observable.of(fetchConcepts(payload, 'primary'))
+      return Rx.Observable.of(fetchFocalConcepts(payload))
     })
 )
+epics.push(fetchFocalConceptsEpic)
 const fetchConceptsEpic = (action$, store) => (
-  action$.ofType(conceptActions.FETCH_CONCEPTS)
+  action$.ofType(conceptActions.FETCH_CONCEPTS, conceptActions.FETCH_FOCAL_CONCEPTS)
     .mergeMap(action=>{
       let {type, payload=[], meta, error} = action
-      let concept_ids = payload
+      //let concept_ids = payload
+      let concept_ids = _.get(store.getState(), 'concepts.requests.fetching') || []
 /*
 console.error("testing w/ some random hardcoded cids")
 concept_ids = [
@@ -162,7 +186,7 @@ params = {concept_ids}
         let url = api.apiGetUrl(apiPathname, params)
         return api.cachedAjax(url)
                 .map(results=>{
-                  console.log(results)
+                  //console.log(results)
                   return newConcepts(results,store)
                 })
                 .catch(err => {
@@ -187,52 +211,12 @@ params = {concept_ids}
       })
     })
 )
-/*
-const startCall = (action$, store) => (
-  action$
-    .ofType(api.apiActions.API_CALL)
-    .filter(action=>action.meta.api.apiName==='conceptInfoApi')
-    //.do(action=>{ console.log(action) })
-    .mergeMap(action => {
-      let call = conceptInfoApi.callReducer({},action)
-      let loadAction = util.makeAction({ action:call, type:api.apiActions.API_CALL_LOAD})
-      return Rx.Observable.of(loadAction)
-    })
-    .catch(err => {
-      console.log('error in startCall', err)
-      return Rx.Observable.of({
-        //...action,
-        payload: err.xhr.response,
-        meta: {apiPathname},
-        error: true
-      })
-    })
-)
-const gotConcepts = (action$, store) => (
-  action$.ofType(cids.cidsActions.NEW_CONCEPTS)
-    //.filter(action=>api.newDataActionFilter(action,'conceptInfoApi'))
-    .mergeMap(action=>{
-      let {type, payload=[], error} = action
-      payload = payload.map(d=>d.concept_id)
-      let newcs = newConcepts(payload,store)
-      return Rx.Observable.of(newcs)
-    })
-    .catch(err => {
-      console.log('error in gotConcepts', err)
-      return Rx.Observable.of({
-        ...action,
-        type: 'SOME PROBLEM!!!',
-        payload: err.xhr.response,
-        error: true
-      })
-    })
-)
-*/
+epics.push(fetchConceptsEpic)
 const wantConceptsEpic = (action$, store) => (
   action$
     .ofType(conceptActions.WANT_CONCEPTS)
     .mergeMap(action=>{
-      let {type, payload={}, meta:{storeName}, error} = action
+      let {type, payload={}, error} = action
       /* only fetch for request, or fetch everything currently wanted? */
       let concept_ids=[] = payload
       let state = store.getState()
@@ -243,13 +227,7 @@ const wantConceptsEpic = (action$, store) => (
       if (!concept_ids.length)
         return Rx.Observable.empty()
 
-      return Rx.Observable.of(fetchConcepts(concept_ids, storeName))
-      /*
-
-      let loadAction = conceptInfoApi.actionCreators.load({params:{concept_ids},storeName})
-      console.log('step 1', {type, payload, loadAction})
-      return Rx.Observable.of(loadAction)
-      */
+      return Rx.Observable.of(fetchConcepts())
     })
     .catch(err => {
       console.log('error in wantConceptsEpic', err)
@@ -261,7 +239,10 @@ const wantConceptsEpic = (action$, store) => (
       })
     })
 )
-export const epics = [ fetchFocalConceptsEpic, wantConceptsEpic, fetchConceptsEpic, ]
+epics.push(wantConceptsEpic)
+export {epics}
+//const foo = 'bar'
+//export {foo}
 
 /**** end epics ******************************************/
 
@@ -279,6 +260,19 @@ export const conceptsFromCids = createSelector(
     }
     return concepts
   })
+export const conceptsFromCidsWStubs = state => (
+  cids => {
+    let loaded = _.get(state, 'concepts.loaded') || {}
+    let want = _.get(state, 'concepts.requests.want') || {}
+    let fetching = _.get(state, 'concepts.requests.fetching') || {}
+    return cids.map(
+      cid => {
+        return  loaded[cid] ||
+                (_.includes(want, cid) && conceptStub(cid, 'want')) ||
+                (_.includes(fetching, cid) && conceptStub(cid, 'fetching')) ||
+                conceptStub(cid, 'mystery')
+      })
+  })
 
 // not using, but might want:
 // export const concepts = state => state.concepts ? storedConceptList(state) : concepts
@@ -294,7 +288,7 @@ export const rels2map = rels =>
       {})
 export const concepts2relsMap = 
   cs => cs.reduce((rels,c)=>rels.concat(c.rels),[])
-          .reduce(util.gulp(rels2map))
+          .reduce(util.gulp(rels2map),[])
 
 export const sc = concept => concept.standard_concept  
 const scClass = createSelector(sc, sc=>`sc-${sc}`)
@@ -348,6 +342,7 @@ export const rcsFromConcepts = concepts => {
   _.flatten(
     concepts.map(c=>c.rcs)
   )
+  .filter(d=>d)
   .map(rcs=>{let {rc,src,crc} = rcs
       if (!!rc + !!src + !!crc > 1) { 
         throw new Error("this should not happen")
