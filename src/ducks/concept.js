@@ -55,6 +55,7 @@ let requestStore = { // lists of cids
   focal: [],
   stale: [],
 } 
+const MAX_CONCEPTS_TO_LOAD = 500
 const requestsReducer = (state=_.cloneDeep(requestStore), action) => {
   let {type, payload, meta, error} = action
   if (_.isEmpty(payload) && type !== conceptActions.FETCH_CONCEPTS)
@@ -89,13 +90,21 @@ const requestsReducer = (state=_.cloneDeep(requestStore), action) => {
       }
       break
     case conceptActions.FETCH_CONCEPTS:
-      newState = {
-        ...state,
-        want: [],
-        fetching: _.chain(state.fetching)
+      let fetching = _.chain(state.fetching)
                       .union(state.want)
                       .difference(state.got)
-                      .value(),
+                      .value()
+      let want = []
+      if (state.got.length + fetching.length > MAX_CONCEPTS_TO_LOAD) {
+        let moveBack = state.got.length + fetching.length - MAX_CONCEPTS_TO_LOAD
+        let split = fetching.length - moveBack
+        want = fetching.slice(split)
+        fetching = fetching.slice(0, split)
+      }
+      newState = {
+        ...state,
+        want,
+        fetching,
       }
       break
     case conceptActions.FETCH_FOCAL_CONCEPTS:
@@ -119,6 +128,8 @@ const requestsReducer = (state=_.cloneDeep(requestStore), action) => {
   ){
     throw new Error("corrupted request state")
   }
+  if (!_.isEqual(state, newState))
+    console.log(_.mapValues(newState, (v,k) => v.length))
   return _.isEqual(state, newState) ? state : newState
 }
 
@@ -165,8 +176,10 @@ const fetchFocalConceptsEpic = (action$, store) => (
     })
 )
 epics.push(fetchFocalConceptsEpic)
+
 const fetchConceptsEpic = (action$, store) => (
   action$.ofType(conceptActions.FETCH_CONCEPTS, conceptActions.FETCH_FOCAL_CONCEPTS)
+    //.debounce(200)
     .mergeMap(action=>{
       let {type, payload=[], meta, error} = action
       //let concept_ids = payload

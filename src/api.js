@@ -41,9 +41,14 @@ const getUrl = (path, params={}) => {
 }
 export const cachedAjax = url => {
   //console.log(url.slice(0,90))
-  if (isCached(url)) return Rx.Observable.of(util.storageGet(url))
+  if (isCached(url)) {
+    let results = util.storageGet(url)
+    console.log(url.slice(0,90), Array.isArray(results) ? results.length : 1)
+    return Rx.Observable.of(results)
+  }
   let rxAjax = Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
   rxAjax.subscribe(results => {
+    console.log(url.slice(0,90), Array.isArray(results) ? results.length : 1)
     util.storagePut(url, results)
   })
   return rxAjax

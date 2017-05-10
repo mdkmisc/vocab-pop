@@ -432,10 +432,12 @@ class ConceptViewContainer extends Component {
   componentDidMount() {
     let {concept_ids, depth, title, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
+      /*
       if (concept_ids.length > 100) {
         console.error(`not fetching ${concept_ids.length} concepts`, title)
         return
       }
+      */
       wantConcepts(concept_ids)
     }
 
@@ -451,7 +453,7 @@ class ConceptViewContainer extends Component {
   static viewCount = 0 // to prevent stack overflow
   render() {
     let {concepts, concept_ids, depth, title, subtitle, 
-            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
+            wantConcepts, conceptFetchStatus, initiallyExpanded=false,
             muiTheme,
         } = this.props
     if ( conceptFetchStatus === 'waiting' ) {
@@ -468,10 +470,12 @@ class ConceptViewContainer extends Component {
                 Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
               </h4>
     }
+    /*
     if ( ConceptViewContainer.viewCount++ > 200 ) {
       console.error('bailing to avoid max stack (count)',depth, ConceptViewContainer.viewCount )
       return <h5>too many to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
     }
+    */
     if ( depth > 2 ) {
       console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
       return null//<h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>

@@ -46,7 +46,7 @@ class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, concept_code_search_pattern, concepts=[] } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
-    console.log(concepts)
+    //console.log(concepts)
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
