@@ -302,7 +302,7 @@ export const conceptsFromCids = createSelector(
   conceptMap, 
   cmap => (cids, errorOnMissing=true) => {
     let concepts = _.values(_.pick(cmap, cids))
-    if (errorOnMissing && concepts.length !== cids.length) {
+    if (errorOnMissing && concepts.length && concepts.length !== cids.length) {
       throw new Error("decide what to do in this case")
     }
     return concepts

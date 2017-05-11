@@ -1,5 +1,8 @@
 import _ from 'src/supergroup' // in global space anyway...
+
+import React, { Component } from 'react'
 import muiThemeable from 'material-ui/styles/muiThemeable'
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
 import getMuiTheme from 'material-ui/styles/getMuiTheme'
 import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme'
 import lightBaseTheme from 'material-ui/styles/baseThemes/lightBaseTheme'
@@ -66,35 +69,17 @@ const subThemeColors =
     })
 
 // https://github.com/callemall/material-ui/blob/master/src/styles/getMuiTheme.js
-/*
-const subThemeStyles = _.fromPairs(_.map(
-  subThemeColors,
-  (colors, sub) => ([
-    sub, 
-    {
-      headerDark: {
-        fontSize: '1.8em',
-        color: 'white',
-        backgroundColor: colors.darker,
-        //margin: '7px 0px 3px 0px',
-        //padding: '0px 5px 0px 5px',
-        padding: 15,
-        //borderBottom: 'solid 1px #ccc',
-      },
-      headerLight: {
-        fontSize: '1.6em',
-        color: colors.darker,
-        backgroundColor: colors.light,
-        //margin: '7px 0px 3px 0px',
-        //padding: '0px 5px 0px 5px',
-        borderBottom: `solid 1px ${colors.darker}`,
-        padding: 10,
-      },
-    }])
-))
-*/
-const getColors = subTheme => subThemeColors[subTheme]
+const getColors = (subTheme='main') => subThemeColors[subTheme]
+
+let DT = getMuiTheme(darkBaseTheme)
+let LT = getMuiTheme(lightBaseTheme)
+
+const getPalette = 
+  (theme=LT, subTheme='main') => getMuiTheme(
+    theme, {palette:getColors(subTheme)}).palette
+
 const getStyles = subTheme => {   //subThemeStyles[subTheme]
+  let pal = getPalette(subTheme)
   return {
     flatButton: { 
       padding: '1px 3px 1px 3px',
@@ -106,49 +91,86 @@ const getStyles = subTheme => {   //subThemeStyles[subTheme]
       minHeight:'auto',
       width:'auto',
       minWidth:'auto',
-      backgroundColor: getColors(subTheme).regular,
+      backgroundColor: pal.regular,
     },
     topRoot: { // just for ConceptViewContainers
       margin: '3%',
       zoom: 0.8, 
       borderRadius: '.8em',
-      backgroundColor: getColors(subTheme).light,
-      boxShadow: `inset 0 0 .9em .5em ${getColors(subTheme).darker} 0 0 .9em .5em ${getColors(subTheme).darker}`,
+      //backgroundColor: 'pink',
+      backgroundColor: pal.light,
+      //boxShadow: `inset 0 0 .9em .5em #B22 0 0 .9em .5em #2BB`,
+      //boxShadow: `inset 0 0 .9em .5em ${pal.darker} 0 0 .9em .5em ${pal.darker}`,
+      boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
+      //boxShadow: `rgb(86, 121, 149) 0px 0px 0.9em 0.5em inset, rgb(86, 121, 149) 0px 0px 0.9em 0.5em`,
+      //border: '2px solid red',
     },
     plainRoot: {
       zoom: 0.8, 
       borderRadius: '.8em',
     },
+    headerDark: {
+      fontSize: '1.8em',
+      color: 'white',
+      backgroundColor: pal.darker,
+      //margin: '7px 0px 3px 0px',
+      //padding: '0px 5px 0px 5px',
+      padding: 15,
+      //borderBottom: 'solid 1px #ccc',
+    },
+    headerLight: {
+      fontSize: '1.6em',
+      color: pal.darker,
+      backgroundColor: pal.light,
+      //margin: '7px 0px 3px 0px',
+      //padding: '0px 5px 0px 5px',
+      borderBottom: `solid 1px ${pal.darker}`,
+      padding: 10,
+    },
   }
 }
 
-let DT = getMuiTheme(darkBaseTheme)
-let LT = getMuiTheme(lightBaseTheme)
+const assembleTheme = 
+  (baseTheme=LT, 
+   subTheme='main',
+   themeProps={}) =>
+  getMuiTheme(baseTheme,
+              {palette: getColors(subTheme)},
+              {...getStyles(subTheme)},
+              {...themeProps})
 
-const defaultTheme = getMuiTheme(
-    LT,   // redundant, it starts here anyway
-    {palette: getColors('main')}
-  )
+const defaultTheme = assembleTheme()
 
-export default (props={}) => {
+/*
+  M.color = propName => M(`palette.${propName}`)
+const getColor = colorProp =>
+*/
+const muit = (props={}) => {
   let {
         muiTheme=defaultTheme, 
-        sub='main', sc, // synonyms
+        sub, sc, // synonyms
         themeProps, // for setting
   } = props
-  sub = sub || sc
-  let theme = getMuiTheme(
-    muiTheme,
-    {palette: { ...getColors(sub||sc) }},
-    { ...getStyles(sub||sc) },
-    themeProps
-  )
-  return request => {
+  sub = sc || sub || 'main'
+  let theme = assembleTheme(defaultTheme,sub,themeProps)
+
+  let M = request => {
     if (!request)
       return theme
     return _.get(theme, request)
   }
+  let pal = theme.palette
+  M.color = colorProp => pal[colorProp]
+  M.wrapElement = (el,wrapperProps={}) => 
+            <MuiThemeProvider muiTheme={theme} {...wrapperProps}>
+              {el}
+            </MuiThemeProvider>
+  return M
 }
+export default muit
+window.getMuiTheme = getMuiTheme
+
+//const M=muit()
 
   /*
     flatButton: {
@@ -184,7 +206,7 @@ const buttonStyles = {
 const cardStyles = {
   title: {
     ...muit.getStyles().headerLight,
-    //boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
+    //boxShadow: `.2em .2em .7em ${muit.getColor().darker}`,
     //backgroundColor: muiTheme.palette.atlasDarkBg,
     //color: muiTheme.palette.alternateTextColor,
   },
@@ -216,18 +238,18 @@ const gridStyles = { // GridList styles based on Simple example
   listTitle: cardStyles.title,
   tile: sc => ({
     //zoom: 0.8, 
-    backgroundColor: muit.getColors(sc).light,
+    backgroundColor: muit.getColor(sc).light,
     background: `linear-gradient(to top, 
-                                  ${muit.getColors(sc).light} 0%,
-                                  ${muit.getColors(sc).regular} 70%,
-                                  ${muit.getColors(sc).dark} 100%)`,
+                                  ${muit.getColor(sc).light} 0%,
+                                  ${muit.getColor(sc).regular} 70%,
+                                  ${muit.getColor(sc).dark} 100%)`,
     width: '100%',
     //minHeight: 100,
   }),
   tileTitle: {
     fontSize: '1.6em',
     color: 'white',
-    //color: muit.getColors().darker,
+    //color: muit.getColor().darker,
   },
   child: {
     paddingTop:10,
