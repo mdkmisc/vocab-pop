@@ -76,13 +76,12 @@ const routes = [
   },
 ]
 
-// from MUI APPBAR EXAMPLE http://www.material-ui.com/#/components/app-bar
+// from APPBAR EXAMPLE http://www.material-ui.com/#/components/app-bar
 import AppBar from 'material-ui/AppBar';
 import IconButton from 'material-ui/IconButton';
 import IconMenu from 'material-ui/IconMenu';
 import Menu from 'material-ui/Menu';
 
-import muiThemeable from 'material-ui/styles/muiThemeable';
 import MenuItem from 'material-ui/MenuItem';
 import FlatButton from 'material-ui/FlatButton';
 import RaisedButton from 'material-ui/RaisedButton';
@@ -113,13 +112,12 @@ const styles = {
               //</ConnectedRouter>
     */
 const defaultRoute = routes[0];
-//export default class App extends Component {
-let  App = muiThemeable()(class App extends Component {
+class App extends Component {
   constructor(props: any) {
     super(props);
   }
   render() {
-    const {match, store, location, pathname, nav, muiTheme} = this.props
+    const {match, store, location, pathname, nav, } = this.props
     let route = _.find(routes, r=>r.path===location.pathname)
                 || defaultRoute
     let sidebar = route.sidebar 
@@ -151,7 +149,7 @@ let  App = muiThemeable()(class App extends Component {
           }} >
           </div>
         </AppBar>
-        <AppTabs {...{route, sidebar, main, muiTheme}}/>
+        <AppTabs {...{route, sidebar, main, }}/>
         <Tooltips />
       </div>
     )
@@ -209,7 +207,7 @@ let  App = muiThemeable()(class App extends Component {
     )
     */
   }
-})
+}
 class AppTabs extends React.Component {
   constructor(props) {
     super(props);
@@ -226,7 +224,7 @@ class AppTabs extends React.Component {
   };
 
   render() {
-    const {route, sidebar, main, muiTheme} = this.props
+    const {route, sidebar, main, } = this.props
     return (
       <Tabs
         value={this.state.value}
@@ -241,7 +239,7 @@ class AppTabs extends React.Component {
         {/*
         <Tab label="nothing" value="nothing">
           <CircularProgress />
-          <CircularProgress color={muiTheme.palette.accent1Color} size={60} thickness={7} />
+          <CircularProgress color={palette.accent1Color} size={60} thickness={7} />
           <CircularProgress size={80} thickness={5} />
         </Tab>
         <Tab label="Tab A" value="a">

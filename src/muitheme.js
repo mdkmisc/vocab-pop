@@ -5,6 +5,7 @@ import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme'
 import lightBaseTheme from 'material-ui/styles/baseThemes/lightBaseTheme'
 
 import {
+  //http://www.material-ui.com/#/customization/colors
   blue200,
   teal500, teal700,
   greenA200,
@@ -12,44 +13,61 @@ import {
   brown50,
   teal100,
   grey100, grey300, grey400, grey500,
+  blueGrey400,
   white, darkBlack, fullBlack,
+  deepPurple300,
+  orange400,
 } from 'material-ui/styles/colors'
 import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator'
 import * as colorManipulator from 'material-ui/utils/colorManipulator'
 window.colorManipulator = colorManipulator
 
-export const baseColors = {
-  S: '#0070dd',
-  C: '#a335ee',
-  X: '#a71a19',
-  neutral: grey400,
-  //main: teal500,
-  //main: 'steelblue',
-  //main: blue200,
-  main: grey400,
+const subThemeRootColors = {
+  // S,C,X primary are from Atlas
+  S: { primary: '#0070dd', accent: teal500, },
+  C: { primary: '#a335ee', accent: deepPurple300, },
+  X: { primary: '#a71a19', accent: orange400, },
+  main: { primary: grey400, accent: blueGrey400, },
 }
 
-export const subThemeColors = _.mapValues(
-  baseColors,
-  baseColor => ({
-          light: lighten(baseColor, 0.95),
-          light: lighten(baseColor, 0.8),
-          regular: lighten(baseColor, 0.4),
-          dark: baseColor,
-          darker: darken(baseColor, 0.4),
-          primary1Color: lighten(baseColor, 0.2),
-          accent1Color: teal500,
-          //textColor: darkBlack,
-          //alternateTextColor: white,
-          //canvasColor: white,
-          //borderColor: grey300,
+// http://www.material-ui.com/#/customization/themes
+const subThemeColors = 
+  _.mapValues(subThemeRootColors,
+    rootColors => {
+      const {primary, accent} = rootColors
+      return {
+          //regular: lighten(primary, 0.4),
+          regular: primary,
+          light: lighten(primary, 0.3),
+          lighter: lighten(primary, 0.8),
+          dark: darken(primary, 0.3),
+          darker: darken(primary, 0.8),
+          lighten: n => lighten(primary, n),
+          darken: n => darken(primary, n),
+          fade: n => fade(primary, n),
+          emphasize: n => emphasize(primary, n),
+          accent: {
+            regular: accent,
+            light: lighten(accent, 0.3),
+            lighter: lighten(accent, 0.8),
+            dark: darken(accent, 0.3),
+            darker: darken(accent, 0.8),
+          },
+          textColor: darkBlack,
+          alternateTextColor: white,
+
+          primary1Color: lighten(primary, 0.2),
+          accent1Color: lighten(accent, 0.2),
+          canvasColor: lighten(primary, .7),
+          borderColor: darken(accent, .4),
           //pickerHeaderColor: teal500,
-          //shadowColor: fullBlack,
-    }))
+          shadowColor: darken(primary, .8),
+      }
+    })
 
-export const getColors = (subTheme='main') => subThemeColors[subTheme]
-
-export const subThemeStyles = _.fromPairs(_.map(
+// https://github.com/callemall/material-ui/blob/master/src/styles/getMuiTheme.js
+/*
+const subThemeStyles = _.fromPairs(_.map(
   subThemeColors,
   (colors, sub) => ([
     sub, 
@@ -74,10 +92,152 @@ export const subThemeStyles = _.fromPairs(_.map(
       },
     }])
 ))
+*/
+const getColors = subTheme => subThemeColors[subTheme]
+const getStyles = subTheme => {   //subThemeStyles[subTheme]
+  return {
+    flatButton: { 
+      padding: '1px 3px 1px 3px',
+      margin: '5px 2px 1px 2px',
+      //border:'1px solid pink', 
+      color: 'white',
+      lineHeight:'auto',
+      height:'auto',
+      minHeight:'auto',
+      width:'auto',
+      minWidth:'auto',
+      backgroundColor: getColors(subTheme).regular,
+    },
+    topRoot: { // just for ConceptViewContainers
+      margin: '3%',
+      zoom: 0.8, 
+      borderRadius: '.8em',
+      backgroundColor: getColors(subTheme).light,
+      boxShadow: `inset 0 0 .9em .5em ${getColors(subTheme).darker} 0 0 .9em .5em ${getColors(subTheme).darker}`,
+    },
+    plainRoot: {
+      zoom: 0.8, 
+      borderRadius: '.8em',
+    },
+  }
+}
 
-export const getStyles = (subTheme='main') => subThemeStyles[subTheme]
+let DT = getMuiTheme(darkBaseTheme)
+let LT = getMuiTheme(lightBaseTheme)
 
-export const atlasColors = {
+const defaultTheme = getMuiTheme(
+    LT,   // redundant, it starts here anyway
+    {palette: getColors('main')}
+  )
+
+export default (props={}) => {
+  let {
+        muiTheme=defaultTheme, 
+        sub='main', sc, // synonyms
+        themeProps, // for setting
+  } = props
+  sub = sub || sc
+  let theme = getMuiTheme(
+    muiTheme,
+    {palette: { ...getColors(sub||sc) }},
+    { ...getStyles(sub||sc) },
+    themeProps
+  )
+  return request => {
+    if (!request)
+      return theme
+    return _.get(theme, request)
+  }
+}
+
+  /*
+    flatButton: {
+      color: transparent,
+      buttonFilterColor: '#999999',
+      disabledTextColor: fade(palette.textColor, 0.3),
+      textColor: palette.textColor,
+      primaryTextColor: palette.primary1Color,
+      secondaryTextColor: palette.accent1Color,
+      fontSize: typography.fontStyleButtonFontSize,
+      fontWeight: typography.fontWeightMedium,
+    },
+
+const styles = props => {
+  //let {muiTheme, base, sc, sub} = props
+  
+}
+const buttonStyles = {
+  ccode: {
+    //padding: 2,
+    padding: '1px 3px 1px 3px',
+    margin: '5px 2px 1px 2px',
+    //margin: 2,
+    //border:'1px solid pink', 
+    color: 'white',
+    lineHeight:'auto',
+    height:'auto',
+    minHeight:'auto',
+    width:'auto',
+    minWidth:'auto',
+  },
+}
+const cardStyles = {
+  title: {
+    ...muit.getStyles().headerLight,
+    //boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
+    //backgroundColor: muiTheme.palette.atlasDarkBg,
+    //color: muiTheme.palette.alternateTextColor,
+  },
+  text: {
+  }
+}
+const gridStyles = { // GridList styles based on Simple example
+                      // http://www.material-ui.com/#/components/grid-list
+  parent: {
+    width: '100%',
+    display: 'flex',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    //...cardStyles.root,
+  },
+  gridList: {
+    //border: '5px solid pink',
+    width: '100%',
+    //height: 450,
+    horizontal: {
+      display: 'flex',
+      flexWrap: 'nowrap',
+      overflowX: 'auto',
+    },
+    vertical: {
+      overflowY: 'auto',
+    },
+  },
+  listTitle: cardStyles.title,
+  tile: sc => ({
+    //zoom: 0.8, 
+    backgroundColor: muit.getColors(sc).light,
+    background: `linear-gradient(to top, 
+                                  ${muit.getColors(sc).light} 0%,
+                                  ${muit.getColors(sc).regular} 70%,
+                                  ${muit.getColors(sc).dark} 100%)`,
+    width: '100%',
+    //minHeight: 100,
+  }),
+  tileTitle: {
+    fontSize: '1.6em',
+    color: 'white',
+    //color: muit.getColors().darker,
+  },
+  child: {
+    paddingTop:10,
+    width: '100%',
+    //marginTop: 50,  // WAS ONLY ON SC
+  }
+}
+*/
+/*
+const atlasColors = {
   // from OHDSI style guide, http://www.ohdsi.org/web/wiki/doku.php?id=development:style_guide
   atlasDarkBg: '#003142',
   atlasAltDarkBg: '#333333',
@@ -93,7 +253,7 @@ export const atlasColors = {
   atlasAlt2Active: '#b7cbdc',
   atlasAlt2Highlight: '#b7cbdc',
 }
-export const atlasStyles = {
+const atlasStyles = {
     headerLight: {
       fontSize: '14px',
       color: '#000',
@@ -110,50 +270,5 @@ export const atlasStyles = {
       borderBottom: 'solid 1px #ccc',
     },
   }
-const tealTheme = {
-  palette: {
-    primary1Color: teal500,
-    primary2Color: teal700,
-    primary3Color: grey400,
-    accent1Color: greenA200,
-    accent2Color: grey100,
-    accent3Color: grey500,
-    textColor: darkBlack,
-    alternateTextColor: white,
-    canvasColor: white,
-    borderColor: grey300,
-    //disabledColor: fade(darkBlack, 0.3),
-    pickerHeaderColor: teal500,
-    //clockCircleColor: fade(darkBlack, 0.07),
-    shadowColor: fullBlack,
-    ...atlasColors,
-    ...subThemeColors.neutral,
-    /*
-    */
-  },
-  appBar: {
-    height: 50,
-  },
-}
+*/
 
-export const scThemes = _.mapValues(subThemeColors, c=>getMuiTheme({palette:c}))
-
-//console.log({default:getMuiTheme(), scThemes, subThemeColors, subThemeStyles})
-
-let DT = getMuiTheme(darkBaseTheme)
-let LT = getMuiTheme(lightBaseTheme)
-export default getMuiTheme({palette: {...LT.palette, ...subThemeColors.main}})
-//export default getMuiTheme({palette: {...DT.palette, ...subThemeColors.neutral}})
-//export default LT
-
-export const get = props => {
-  let {base='light', sc, sub='main'} = props
-  let bTheme = base === 'dark' ? DT : LT
-  let subTheme = sc || sub
-  return getMuiTheme({
-    palette: {
-      ...bTheme.palette, 
-      ...subThemeColors[subTheme]
-    }
-  })
-}

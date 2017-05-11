@@ -5,7 +5,6 @@ import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
 import * as cids from 'src/ducks/cids'
-import * as muit from 'src/muitheme'
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 //import * as sts from 'src/STSReport'
 import { bindActionCreators } from 'redux'
@@ -20,9 +19,7 @@ import FlatButton from 'material-ui/FlatButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
 
-//import { AutoComplete as MUIAutoComplete } from 'material-ui'
 import {
-  AutoComplete,
   Checkbox,
   DatePicker,
   TimePicker,
@@ -73,11 +70,11 @@ class SourceTargetSourceForm extends Component {
                 concepts.map(
                   (c,i) => {
                     return <C.LinkWithCounts key={i}
+                              muitParams={{sc:c.standard_concept}}
                               concepts={[c]}
                               title={c.concept_code}
                               tip={c.concept_name}
                               //ttId={`${this.ttid}:${i}`}
-                              muiTheme={muit.get({sc:c.standard_concept})}
                           />
                   })}
             />

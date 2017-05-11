@@ -13,17 +13,14 @@ import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
-import muiTheme, * as muit from 'src/muitheme'
 import MenuItem from 'material-ui/MenuItem';
 import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
 import RaisedButton from 'material-ui/RaisedButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
-import Chip from 'material-ui/Chip'
 import Dialog from 'material-ui/Dialog';
 import {
-  AutoComplete,
   Checkbox,
   DatePicker,
   TimePicker,
@@ -130,6 +127,7 @@ class ConceptCodesLookupForm extends Component {
           } = this.props
     let errMsg = ''
     if (isPending) {
+      // FIX STYLES
       errMsg =  <p style={{fontColor:'blue',fontWeight:'bold'}}>
                   Loading...
                 </p> 
@@ -140,38 +138,6 @@ class ConceptCodesLookupForm extends Component {
                 </p> 
     }
     let vocabulary = vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
-    const cardStyle = {
-      padding: '0px',
-      margin: '14px 10px 20px 0px',
-      //border: '3px solid purple'
-    };
-    let styles = {
-                        chip: {
-                          margin: 4,
-                          backgroundColor:muiTheme.palette.primary1Color,
-                        },
-                        items: {
-                          color:muiTheme.palette.alternateTextColor,
-                        },
-                        wrapper: {
-                          display: 'flex',
-                          flexWrap: 'wrap',
-                        },
-    }
-    /*
-    let patterns = concept_code_search_pattern.split(/[\s,]+/)
-    if (_.uniq(patterns).length !== patterns.length) {
-      console.error("didn't expect duplicate patterns")
-    }
-    let chips = (patterns||[]).map((code,i) => (
-                  <Chip key={i} style={styles.chip}
-                      onRequestDelete={() => alert('not working yet')}
-                  >
-                    <span style={styles.items}>
-                      {code}
-                    </span>
-                  </Chip>))
-    */
     let open = this.open.bind(this)
     let close = this.close.bind(this)
     const actions = [
@@ -218,13 +184,11 @@ class ConceptCodesLookupForm extends Component {
                 {
                   vocabulary ?
                     <FlatButton
-                      style={{padding:'0px', 
-                              color:muiTheme.palette.primary1Color,
-                              }}
+                      primary={true}
+                      style={{padding:'0px', }}
                       href={vocabulary.vocabulary_reference}
                       target="_blank"
                       label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
-                      //primary={true}
                       icon={<LinkIcon />}
                     /> : undefined
                 }
@@ -254,7 +218,6 @@ class ConceptCodesLookupForm extends Component {
               </CardText>
             */}
             </Card>
-                  {/* <div style={styles.wrapper}> {chips} </div> */}
             <Card>
               <CardHeader
                 title="Details"

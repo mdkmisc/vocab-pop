@@ -20,7 +20,7 @@ import App from 'src/App'
 import configureStore from 'src/configureStore'
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
 import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
-import muiTheme, * as muit from 'src/muitheme'
+import muit from 'src/muitheme'
 
 import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
@@ -28,7 +28,7 @@ injectTapEventPlugin();
 const {store, myrouter} = configureStore()
 render (
           <Provider store={store}>
-            <MuiThemeProvider muiTheme={muiTheme}>
+            <MuiThemeProvider muiTheme={muit()()}>
               <myrouter.ConnectedRouter data-myrouter={myrouter} history={myrouter.history}>
                 <Route path='/' component={App} />
               </myrouter.ConnectedRouter>

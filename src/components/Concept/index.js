@@ -53,9 +53,7 @@ import Subheader from 'material-ui/Subheader';
 import CircularProgress from 'material-ui/CircularProgress';
 import StarBorder from 'material-ui/svg-icons/toggle/star-border';
 import Chip from 'material-ui/Chip'
-import muiThemeable from 'material-ui/styles/muiThemeable';
-import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
-import * as muit from 'src/muitheme'
+import muit from 'src/muitheme'
 import MenuItem from 'material-ui/MenuItem'
 import Paper from 'material-ui/Paper'
 import RaisedButton from 'material-ui/RaisedButton'
@@ -87,37 +85,6 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-/*
-export const getConceptSetAsCard = ({getWith, getArg, props={}}) => {
-  let concepts
-  switch(getWith) {
-    case 'concepts':
-      concepts = getArg || []
-    case 'concept_ids':
-      throw new Error("need to load from concept_ids")
-    case 'concept_code_search_pattern':
-      throw new Error("need to load from code pattern")
-    default:
-      throw new Error("don't know how to do that")
-  }
-  return <ConceptSetAsCard concepts={concepts} {...props} />
-}
-*/
-/*
-let styles = {
-                    chip: {
-                      margin: 4,
-                      backgroundColor:muiTheme.palette.primary1Color,
-                    },
-                    items: {
-                      color:muiTheme.palette.alternateTextColor,
-                    },
-                    wrapper: {
-                      display: 'flex',
-                      flexWrap: 'wrap',
-                    },
-}
-*/
 const buttonStyles = {
   ccode: {
     //padding: 2,
@@ -134,36 +101,9 @@ const buttonStyles = {
   },
 }
 const cardStyles = {
-  plainRoot: {
-    //margin: '3%',
-    zoom: 0.8, 
-    //width: '94%',
-    //borderRadius: '100%',
-    borderRadius: '.8em',
-    //backgroundColor: muit.getColors().light,
-    //padding: 10,
-    //boxShadow: `inset 0 0 .9em .5em ${muit.getColors().darker}, 0 0 .9em .5em ${muit.getColors().darker}`,
-    //boxShadow: `inset 0 0 2em 2em ${muit.getColors().darker}`,
-    //inset 0 0 0.5em 0.5em indigo, 0 0 0.5em 0.5em indigo;  /* padding:1em * /
-  },
-  topRoot: { // just for ConceptViewContainers
-    margin: '3%',
-    zoom: 0.8, 
-    //width: '94%',
-    //borderRadius: '100%',
-    borderRadius: '.8em',
-    backgroundColor: muit.getColors().light,
-    //padding: 10,
-    boxShadow: `inset 0 0 .9em .5em ${muit.getColors().darker}, 0 0 .9em .5em ${muit.getColors().darker}`,
-    //boxShadow: `inset 0 0 2em 2em ${muit.getColors().darker}`,
-//inset 0 0 0.5em 0.5em indigo, 0 0 0.5em 0.5em indigo;  /* padding:1em * /
-    
-  },
   title: {
-    ...muit.getStyles().headerLight,
+    //...muit.getStyles().headerLight,
     //boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
-    //backgroundColor: muiTheme.palette.atlasDarkBg,
-    //color: muiTheme.palette.alternateTextColor,
   },
   text: {
   }
@@ -234,8 +174,9 @@ export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
     long: join(cnts.map(fmtCdmCnt('long'))),
   }
 }
-export const LinkWithCounts = muiThemeable()(props => {
-  let {concepts, ttid, title, tip, muiTheme} = props
+export const LinkWithCounts = props => {
+  let {concepts, ttid, title, tip, muitParams} = props
+  let M = muit(muitParams)
   let cnts = cdmCnts(concepts, d=>d)
   let href = '#' // should be link to concept focus
 
@@ -247,13 +188,7 @@ export const LinkWithCounts = muiThemeable()(props => {
   let ttcid = tooltip.setTooltipContent('cvc', tip)
   return  (
     <span>
-      <FlatButton  
-        style={
-          { 
-            ...buttonStyles.ccode,
-            backgroundColor: muiTheme.palette.regular,
-          }
-        } 
+      <FlatButton  style={M('flatButton')}
         href={href} 
         data-tip
         data-for="cvc"
@@ -263,28 +198,9 @@ export const LinkWithCounts = muiThemeable()(props => {
       </FlatButton>
     </span>
   )
-})
-/*
-const CdmRecsAvatar = muiThemeable()(props => {
-  let {contents, val, muiTheme, ...rest} = props
-  return  <Avatar
-            color='white'
-            backgroundColor={muiTheme.palette.regular}
-            size={30}
-            {...rest}
-            style={{width:'auto',
-                    textAlign: 'right',
-                    margin:'-4px 10px 10px -10px',
-                    padding:5,
-                    //...styles.font,
-            }}
-          >
-            { contents }
-          </Avatar>
-})
-*/
-export const CdmCountView = muiThemeable()(props => {
-  let {cnt, badgeStyle, rootStyle, muiTheme, ...rest} = props
+}
+export const CdmCountView = props => {
+  let {cnt, badgeStyle, rootStyle, ...rest} = props
   return  <Badge 
             style={rootStyle}
             badgeStyle={badgeStyle}
@@ -296,11 +212,10 @@ export const CdmCountView = muiThemeable()(props => {
             <CdmRecsAvatar contents={commify(cnt.cnt)} />
             */}
           </Badge>
-})
-const ScView = muiThemeable()(props => {
+}
+const ScView = props => {
   // useless at this point?
-  let {concepts, title, style={}, muiTheme, depth, } = props
-  let pal = muiTheme.palette
+  let {concepts, title, style={}, depth, } = props
   let cnts = cdmCnts( concepts, d=>d)
   if (!concepts || !concepts.length)
     debugger
@@ -322,7 +237,7 @@ const ScView = muiThemeable()(props => {
               }
             </div>
           </GridTile>
-})
+}
 const colname = cnt => {
   let cn = `${cnt.tbl}.${cnt.col}`
   //console.log(cn)
@@ -350,13 +265,13 @@ debugger
   return null
 }
 const SplitIntoScs = props => {
-  let {concepts,depth,muiTheme, children} = props
+  let {concepts,depth, children} = props
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
   /* DON'T THROW AWAY
   if (bySc.length === 1) {
-    return enhanceChildren(children, { concepts, muiTheme, })
+    return enhanceChildren(children, { concepts,  })
   }
   if (bySc.length > 1) {
   }
@@ -364,19 +279,13 @@ const SplitIntoScs = props => {
 
   let contents = bySc.map((sc,i) => {
     let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
-    /*
-    return React.cloneElement(React.Children.only(children),
-                  {
-                    title, concepts: sc.records, sc,
-                    muiTheme: muit.get({sc}) 
-                  })
-    */
     return  <WrapInCard key={i}
                         initiallyExpanded={true} title={title} >
               {
                 enhanceChildren(children, {
                     concepts: sc.records, sc,
-                    muiTheme: muit.get({sc}) })
+                    //muiTheme: muit.get({sc}) 
+                })
               }
             </WrapInCard>
   })
@@ -386,7 +295,7 @@ const SplitIntoScs = props => {
           </div>
 }
 const scsView = props => {
-  let {concepts,depth,muiTheme,} = props
+  let {concepts,depth,} = props
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
@@ -399,7 +308,7 @@ const scsView = props => {
                                 {...{
                                     title, depth,
                                     concepts: sc.records,
-                                    muiTheme: muit.get({sc}) 
+                                    //muiTheme: muit.get({sc}) 
                                 }} />
                 })
     contents = [junkTile(0), junkTile(1)]
@@ -409,7 +318,7 @@ const scsView = props => {
                   {...{
                       depth,
                       concepts: sc.records,
-                      muiTheme: muit.get({sc}) 
+                      //muiTheme: muit.get({sc}) 
                   }} />
               ]
     //contents = [junkTile(0)]
@@ -423,16 +332,11 @@ const scsView = props => {
 }
 const RelsPeek = props => { // assuming I just have cids, no concepts
   let {concepts=[],title, sc} = props
+  let M = muit({sc})
   return  <div>
             { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
                 <span key={relName} >
-                  <FlatButton
-                    style={
-                      { 
-                        ...buttonStyles.ccode,
-                        backgroundColor: muit.get({sc}).palette.darker,
-                      }
-                    } 
+                  <FlatButton style={M('flatButton')}
                     //href={href} 
                     //data-tip
                     //data-for="cvc"
@@ -464,7 +368,7 @@ const RelView = ({relName,relcids,depth,}) => {
                       title={c.concept_code}
                       tip={`${c.vocabulary_id}: ${c.concept_name}`}
                       //ttId={`${this.ttid}:${i}`}
-                      muiTheme={muit.get({sc:c.standard_concept})}
+                      muitParams={{sc:c.standard_concept}}
                   />
           })
       }
@@ -473,8 +377,8 @@ const RelView = ({relName,relcids,depth,}) => {
 }
 class IndividualConceptViews extends Component {
   render() {
-    const {concepts=[], depth, muiTheme, Wrapper='div'} = this.props
-    return  <SplitIntoScs {...{concepts,muiTheme,depth}} >
+    const {concepts=[], depth, Wrapper='div'} = this.props
+    return  <SplitIntoScs {...{concepts,depth}} >
             { concepts.map((c,i) =>
                 <ConceptViewContainer key={i}
                   {...{
@@ -494,7 +398,7 @@ class ConceptInfoGridList extends Component {
     ReactTooltip.rebuild()
   }
   render() {
-    let { muiTheme,
+    let { 
           // title, subtitle, // use in container, not here
           depth,
           initiallyExpanded,
@@ -507,7 +411,7 @@ class ConceptInfoGridList extends Component {
               <WrapInCard initiallyExpanded={true}
                             title={'Relationships'}
               >
-                <SplitIntoScs {...{concepts,muiTheme,depth}} >
+                <SplitIntoScs {...{concepts,depth}} >
                   <RelsPeek />
                 </SplitIntoScs>
               </WrapInCard>
@@ -529,7 +433,7 @@ class ConceptInfoGridList extends Component {
         >
           <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
-              <SplitIntoScs {...{concepts,muiTheme,depth}} >
+              <SplitIntoScs {...{concepts,depth}} >
                 <RelsPeek />
               </SplitIntoScs>
             </div>
@@ -552,10 +456,12 @@ class WrapInCard extends Component {
   render() {
     let { children,
           title, subtitle, initiallyExpanded=false,
-          muiTheme, 
           titleStyle=cardStyles.title, 
-          rootStyle=cardStyles.plainRoot, 
+          rootStyle,
+          muitParams,
         } = this.props
+    let M = muit(muitParams)
+    rootStyle = rootStyle || M('plainStyle')
     return    <Card
                   style={rootStyle}
                   expandable={true}
@@ -607,11 +513,13 @@ class ConceptViewContainer extends Component {
   render() {
     let {concepts, concept_ids, depth, title, subtitle, 
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muiTheme,
+            muitParams,
         } = this.props
+    let M = muit(muitParams)
     if ( conceptFetchStatus === 'waiting' ) {
       return  <h4>
-                <CircularProgress color={muiTheme.palette.accent1Color} 
+                <CircularProgress 
+                    //color={muiTheme.palette.accent1Color} 
                   //size={60} thickness={7} 
                 />
                 Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
@@ -625,7 +533,7 @@ class ConceptViewContainer extends Component {
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
     return  <WrapInCard
                         initiallyExpanded={initiallyExpanded}
-                        rootStyle={cardStyles.topRoot}
+                        rootStyle={M('flatButton')}
                         title={
                           <span>
                             {title}
@@ -681,7 +589,7 @@ ConceptViewContainer = connect(
     _.pick(cncpt,['wantConcepts']), 
     //..._.pick(tooltip,['showTooltip','hideTooltip']), 
   dispatch)
-)(muiThemeable()(ConceptViewContainer))
+)(ConceptViewContainer)
 
 export {ConceptViewContainer}
 

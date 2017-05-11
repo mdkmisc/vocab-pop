@@ -4,8 +4,6 @@ import _ from 'src/supergroup'; // in global space anyway...
 import * as util from 'src/utils';
 
 import React, { Component } from 'react'
-import muiThemeable from 'material-ui/styles/muiThemeable';
-
 
 class Tooltip {
   constructor(ttid) {
@@ -59,5 +57,4 @@ class Tooltips extends Component {
     */
   }
 }
-//Tooltips = muiThemeable()(Tooltips)
 export {Tooltips}
