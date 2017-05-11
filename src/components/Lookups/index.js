@@ -1,7 +1,7 @@
 /* eslint-disable */
 import _ from 'src/supergroup'; // in global space anyway...
 import {AgTable, } from 'src/components/TableStuff'
-import * as utils from 'src/utils'
+import * as util from 'src/utils'
 import myrouter from 'src/myrouter'
 
 import { connect } from 'react-redux'
@@ -280,19 +280,19 @@ ConceptCodesLookupForm = reduxForm({
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
-    let concepts = cncpt.conceptsFromCids(state)(cids.cids(state), false)
+    let concepts = cncpt.focalConcepts(state)
     if (concepts.length && concepts.length !== state.cids.length) {
       debugger
       throw new Error("expected all the initial concepts")
     }
-    let newState = {
+    let addProps = {
       vocabularies: state.vocabularies||[],
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
       concepts,
       formRef: state.form.concept_codes_form,
     }
-    return newState
+    return addProps
   } 
 )(ConceptCodesLookupForm)
 

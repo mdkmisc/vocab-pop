@@ -25,7 +25,8 @@ export const baseColors = {
   neutral: grey400,
   //main: teal500,
   //main: 'steelblue',
-  main: blue200,
+  //main: blue200,
+  main: grey400,
 }
 
 export const subThemeColors = _.mapValues(
@@ -149,5 +150,10 @@ export const get = props => {
   let {base='light', sc, sub='main'} = props
   let bTheme = base === 'dark' ? DT : LT
   let subTheme = sc || sub
-  return getMuiTheme({palette: {...bTheme.palette, ...subThemeColors[subTheme]}})
+  return getMuiTheme({
+    palette: {
+      ...bTheme.palette, 
+      ...subThemeColors[subTheme]
+    }
+  })
 }

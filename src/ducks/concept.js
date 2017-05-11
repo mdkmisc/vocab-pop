@@ -12,18 +12,6 @@ import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
 
 const apiPathname = 'conceptInfo'
-const conceptStub = (id,status) => ({
-  concept_id: id,
-  status,
-  concept_code: status,
-  concept_name: status,
-  domain_id: status,
-  standard_concept: status,
-  vocabulary_id: status,
-  concept_class_id: status,
-  rcs: [],
-  rels: []
-})
 
 export const conceptActions = {
   NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',
@@ -48,15 +36,16 @@ const loadedReducer = (state={}, action) => {
   }
   return state
 }
-let requestStore = { // lists of cids
-  want: [],
-  fetching: [],
-  got: [],
-  focal: [],
-  stale: [],
-} 
+const requestStore = () => (
+  { // lists of cids
+    want: [],
+    fetching: [],
+    got: [],
+    focal: [],
+    stale: [],
+  })
 const MAX_CONCEPTS_TO_LOAD = 500
-const requestsReducer = (state=_.cloneDeep(requestStore), action) => {
+const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   let {type, payload, meta, error} = action
   if (_.isEmpty(payload) && type !== conceptActions.FETCH_CONCEPTS)
     return state
@@ -263,35 +252,81 @@ export {epics}
 
 /**** start selectors *****************************************************************/
 
-export const storedConceptMap = state => state.concepts.loaded
-export const storedConceptList = createSelector(storedConceptMap, m=>_.values(m))
+const conceptStub = (id,status) => ({
+  concept_id: id,
+  status,
+  concept_code: status,
+  concept_name: status,
+  domain_id: status,
+  standard_concept: status,
+  vocabulary_id: status,
+  concept_class_id: status,
+  rcs: [],
+  rels: []
+})
+
+const expectedConceptFields = [
+  'concept_id',
+  'concept_code',
+  'concept_name',
+  'domain_id',
+  'standard_concept',
+  'vocabulary_id',
+  'concept_class_id',
+  'rcs',
+  'rels',
+]
+export const isConcept = c => _.intersection(_.keys(c), expectedConceptFields).length
+                          === expectedConceptFields.length
+export const isConceptList = clist => Array.isArray(clist) && _.every(clist, isConcept)
+export const isConceptMap = cmap => cmap && _.every(_.values(cmap), isConcept)
+
+export const verifyConceptList = clist => clist && isConceptList(clist) && clist
+export const verifyConceptMap = cmap => cmap && isConceptMap(cmap) && cmap
+
+export const conceptListFromMap = cmap => cmap && verifyConceptList(_.values(cmap))
+export const conceptMapFromList = clist => clist && util.arr2map(verifyConceptList(clist), c=>c.concept_id)
+
+export const conceptListFromMapOrList = mol => verifyConceptList(mol) || conceptListFromMap(mol)
+export const conceptMapFromMapOrList = mol => verifyConceptMap(mol) || conceptMapFromList(mol)
+
+export const concepts = state => 
+        conceptListFromMapOrList(state) ||
+        conceptListFromMapOrList(_.get(state,'concepts.loaded')) || []
+
+export const conceptMap = state => 
+        conceptMapFromMapOrList(state) ||
+        conceptMapFromMapOrList(_.get(state,'concepts.loaded')) || {}
+
 export const conceptsFromCids = createSelector(
-  storedConceptMap, 
-  scm => (cids, errorOnMissing=true) => {
-    let concepts = _.values(_.pick(scm, cids))
+  conceptMap, 
+  cmap => (cids, errorOnMissing=true) => {
+    let concepts = _.values(_.pick(cmap, cids))
     if (errorOnMissing && concepts.length !== cids.length) {
       throw new Error("decide what to do in this case")
     }
     return concepts
   })
-export const conceptsFromCidsWStubs = state => (
-  cids => {
-    let loaded = _.get(state, 'concepts.loaded') || {}
-    let want = _.get(state, 'concepts.requests.want') || {}
-    let fetching = _.get(state, 'concepts.requests.fetching') || {}
-    return cids.map(
-      cid => {
-        return  loaded[cid] ||
-                (_.includes(want, cid) && conceptStub(cid, 'want')) ||
-                (_.includes(fetching, cid) && conceptStub(cid, 'fetching')) ||
-                conceptStub(cid, 'mystery')
-      })
-  })
 
-// not using, but might want:
-// export const concepts = state => state.concepts ? storedConceptList(state) : concepts
-// just to make sure:
-export const concepts = state => {throw new Error("hook this back up")}
+export const requests = state => state.concepts.requests || requestStore()
+export const want = createSelector(requests, r => r.want)
+export const fetching = createSelector(requests, r => r.fetching)
+export const focal = createSelector(requests, r => r.focal)
+export const got = createSelector(requests, r => r.got)
+export const stale = createSelector(requests, r => r.stale)
+
+export const focalConcepts = createSelector( conceptsFromCids, focal, (cfc,f) => cfc(f))
+
+export const conceptsFromCidsWStubs = createSelector(
+  conceptMap, want, fetching, 
+  (cmap, want, fetching) => 
+    (cids=[]) => 
+      cids.map(cid => cmap[cid] ||
+                      (_.includes(want, cid) && conceptStub(cid, 'want')) ||
+                      (_.includes(fetching, cid) && conceptStub(cid, 'fetching')) ||
+                      conceptStub(cid, 'mystery')
+              )
+)
 
 export const rels2map = rels =>
   rels.reduce(
@@ -301,7 +336,7 @@ export const rels2map = rels =>
       }),
       {})
 export const concepts2relsMap = 
-  cs => cs.reduce((rels,c)=>rels.concat(c.rels),[])
+  clist => clist.reduce((rels,c)=>rels.concat(c.rels),[])
           .reduce(util.gulp(rels2map),[])
 
 export const sc = concept => concept.standard_concept  
@@ -472,7 +507,10 @@ export const colCnts = rcs => {
             )
          )
 }
-export const colCntsFromConcepts = concepts => colCnts(rcsFromConcepts(concepts))
+export const colCntsFromConcepts = createSelector(
+  concepts,
+  concepts => colCnts(rcsFromConcepts(concepts))
+)
 
 
 
