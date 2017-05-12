@@ -66,8 +66,9 @@ class SourceTargetSourceForm extends Component {
                   {vocabulary_id} concepts{' '}
                 </span>
               }
-              linkWithCounts={true}
+              linksWithCounts={true}
               rootStyle={'topRoot'}
+              styleOverrides={{root:'card.root.top'}}
             />
           </CardText>
         </Card>

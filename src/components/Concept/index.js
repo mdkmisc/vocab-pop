@@ -178,6 +178,22 @@ export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
     long: join(cnts.map(fmtCdmCnt('long'))),
   }
 }
+export const LinksWithCounts = props => {
+  let {concepts, depth, } = props
+  return  <div>
+            {
+              concepts.map(
+                (c,i) => {
+                  return <LinkWithCounts key={i}
+                            muitParams={{sc:c.standard_concept}}
+                            concepts={[c]}
+                            title={c.concept_code}
+                            tip={`${c.vocabulary_id}: ${c.concept_name}`}
+                        />
+                })
+            }
+          </div>
+}
 export const LinkWithCounts = props => {
   let {concepts, ttid, title, tip, muitParams} = props
   let M = muit(muitParams)
@@ -219,82 +235,46 @@ export const CdmCountView = props => {
             */}
           </Badge>
 }
-const ScView = props => {
-  // useless at this point?
-  let {concepts, title, style={}, depth, } = props
-  let cnts = cdmCnts( concepts, d=>d)
-  if (!concepts || !concepts.length)
-    debugger
-  let M = muit('main')
-  return  <GridTile style={gridStyles.tile(M)} >
-            <div style={gridStyles.child} >
-              <Subheader style={gridStyles.tileTitle} >
-                ScView:
-                {title}
-              </Subheader>
-              {
-                //Rels:
-                _.map(cncpt.concepts2relsMap(concepts),
-                      (relcids,relName) => {
-                        //if (!relName.match(/map/i)) return null
-                        return <RelView key={relName}
-                                  {...{relName, relcids, depth, }}
-                        />
-                      })
-              }
-            </div>
-          </GridTile>
-}
 const colname = cnt => {
   let cn = `${cnt.tbl}.${cnt.col}`
   //console.log(cn)
   return cn
+}
+const enhanceChildren = (children, props) => {
+  let enhanced = React.Children.map(
+    React.Children.toArray(children),
+    (child,i)=> React.cloneElement(child, props)
+  )
+  return <div>{enhanced}</div>
 }
 const SplitIntoScs = props => {
   let {concepts,depth, children} = props
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
 
-  /* DON'T THROW AWAY
+  if (bySc.length < 1) {
+    return null
+  }
   if (bySc.length === 1) {
+    //return <div>{children}</div>
     return enhanceChildren(children, { concepts,  })
   }
-  if (bySc.length > 1) {
-  }
-  */
 
   let contents = bySc.map((sc,i) => {
     let muitParams = {sc}
     let M = muit(muitParams)
-    /*
-    let title = `${sc.records.length}
-                    ${sc}.reg: ${M.color('regular')}
-                      main.reg: ${muit({sc:'main'}).color('regular')}
-                  ${cncpt.scName(sc.records[0])}`
-    */
-    let Mtest = muit({sc:'main'})
-    let title = <div className="foo">
-                  {sc.records.length} {cncpt.scName(sc.records[0])}
-                  <span style={{backgroundColor: M.color('regular'), }} >
-                    {sc.toString}.reg: {M.color('regular')}
-                  </span>
-                  <span style={{backgroundColor: Mtest.color('regular'), }} >
-                      main.reg: {Mtest.color('regular')}
-                  </span>
-                </div>
+    let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
     return  M.wrapElement(
               <WrapInCard key={i}
+                  title={title} >
                   muitParams={muitParams}
-                  initiallyExpanded={true} title={title} >
+                  initiallyExpanded={true} 
                 {
-                  React.Children.map(
-                    React.Children.toArray(children),
-                    (child,i)=> React.cloneElement(
-                        child,
-                        { concepts:sc.records,
-                          muitParams,
-                          sc,
-                        }))
+                  enhanceChildren(children, { concepts:sc.records,
+                                              muitParams,
+                                              sc,
+                                            })
+
                 }
               </WrapInCard>, {key:i}
     )
@@ -303,40 +283,24 @@ const SplitIntoScs = props => {
             {contents}
           </div>
 }
-const scsView = props => {
-  let {concepts,depth,} = props
-  let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
-                .filter(sc=>cncpt.rcsFromConcepts(sc.records))
-  let contents = bySc.map((sc,i) => {
-    let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
-    let M = muit({sc})
-    return <GridTile key={i} style={M('grid.tile')} >
-              <div style={M('grid.child')} >
-                <h3>placeholder</h3>
-              </div>
-            </GridTile>
-    /*
-    return
-                <ScView key={i}
-                  {...{
-                      title, depth,
-                      concepts: sc.records,
-                      //muiTheme: muit.get({sc})
-                  }} />
-  */
-  })
-  //let contents = [junkTile(0), junkTile(1)]
-  return  <GridList
-            cellHeight={'auto'} cols={.3}
-            style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
-          >
-            {contents}
-          </GridList>
-}
 const RelsPeek = props => { // assuming I just have cids, no concepts
   let {concepts=[],title, sc} = props
   let M = muit({sc})
-  return  M.wrapElement(
+  /*
+  return <div>full rels instead of peek<br/>
+                  {
+                    //Rels:
+                    _.map(cncpt.concepts2relsMap(sc.records), // sc.records === concepts
+                          (relcids,relName) => {
+                            //if (!relName.match(/map/i)) return null
+                            return <RelView key={relName}
+                                      {...{relName, relcids, depth, }}
+                            />
+                          })
+                  }
+        </div>
+  */
+  return  ( // M.wrapElement(
             <div>
               { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
                   <span key={relName} >
@@ -362,7 +326,7 @@ const RelView = ({relName,relcids,depth,}) => {
   }
   return (
     <ConceptViewContainer key={relName}
-      linkWithCounts={true}
+      linksWithCounts={true}
       depth={depth + 1}
       concept_ids={relcids}
       title={`From RelView: ${relcids.length} ${relName} concepts`}
@@ -387,87 +351,13 @@ class IndividualConceptViews extends Component {
             </SplitIntoScs>
   }
 }
-class ConceptInfoGridList extends Component {
-  componentDidUpdate() {
-    ReactTooltip.rebuild()
-  }
-  render() {
-    let {
-          // title, subtitle, // use in container, not here
-          depth,
-          initiallyExpanded,
-          concepts=[],
-        } = this.props
-    if (concepts.length < 1)
-      return null
-
-    return  <div>
-              <WrapInCard initiallyExpanded={true}
-                            title={'Relationships'}
-              >
-               {
-                 /*
-                 */
-                 scsView({concepts,depth,})
-               }
-                <SplitIntoScs {...{concepts,depth}} >
-                  <RelsPeek />
-                </SplitIntoScs>
-              </WrapInCard>
-{/*
- <GridTile style={gridStyles.tile(muit())} >
-  <div style={gridStyles.child} >
-    <SplitIntoScs {...{concepts,depth}} >
-      <RelsPeek />
-    </SplitIntoScs>
-  </div>
-</GridTile>
-*/}
-              { false &&
-                concepts.length > 1
-                ? <WrapInCard initiallyExpanded={false}
-                              title={'Individual Concepts'} >
-                    <IndividualConceptViews concepts={concepts} />
-                  </WrapInCard>
-                : ''
-              }
-            </div>
-    /*
-    return (
-      <div style={gridStyles.parent}>
-        <GridList cellHeight={'auto'}
-                  //cols={concepts.length > 1 ? 2 : 1}
-                  cols={1}
-                  style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}}
-        >
-          <GridTile style={gridStyles.tile()} >
-            <div style={gridStyles.child} >
-              <SplitIntoScs {...{concepts,depth}} >
-                <RelsPeek />
-              </SplitIntoScs>
-            </div>
-          </GridTile>
-
-          { concepts.length > 1
-            ? <WrapInCard title={'Individual Concepts'} >
-                <IndividualConceptViews concepts={concepts} />
-              </WrapInCard>
-            : []
-          }
-
-        </GridList>
-      </div>
-    )
-    */
-  }
-}
 class WrapInCard extends Component {
   render() {
     let { children,
           muitParams,
           muiTheme,
-          title="wrapincard title",
-          subtitle="wrapincard subtitle",
+          title,
+          subtitle,
           initiallyExpanded=false,
 
           styleOverrides={},
@@ -496,7 +386,6 @@ class WrapInCard extends Component {
                   //muiTheme={muit({sc:'C'})()}
                   style={M(styleOverrides.root || 'card.root.plain')}
                   containerStyle={M(styleOverrides.container || 'card.container')}
-                  expandable={true}
                   initiallyExpanded={initiallyExpanded}
               >
                 <CardTitle
@@ -505,14 +394,15 @@ class WrapInCard extends Component {
 
                   style={M(styleOverrides.title || 'card.title')}
 
-                  titleStyle={M(styleOverrides.titleTitle || 'card.title.title')}
+                  titleStyle={_.isEmpty(title) ? {} : M(styleOverrides.titleTitle || 'card.title.title')}
                   titleColor={M(styleOverrides.titleColor || 'card.title.title').color}
 
-                  subtitleStyle={M(styleOverrides.subtitle || 'card.title.subtitle')}
+                  subtitleStyle={_.isEmpty(subtitle) ? {} : M(styleOverrides.subtitle || 'card.title.subtitle')}
                   subtitleColor={M(styleOverrides.subtitleColor || 'card.title.subtitle').color}
 
                   showExpandableButton={true}
                   actAsExpander={true}
+                  expandable={false}
                 />
                 <CardText expandable={true}
                           style={M(styleOverrides.text || 'card.text')}
@@ -522,6 +412,37 @@ class WrapInCard extends Component {
                 </CardText >
               </Card>
     )
+  }
+}
+class ConceptInfoGridList extends Component {
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
+  }
+  render() {
+    let {
+          // title, subtitle, // use in container, not here
+          depth,
+          initiallyExpanded,
+          concepts=[],
+          linksWithCounts,
+        } = this.props
+    if (concepts.length < 1)
+      return null
+
+    return  <div>
+              <SplitIntoScs {...{concepts,depth}} >
+                { linksWithCounts ? <LinksWithCounts depth={depth} /> : '' }
+                <RelsPeek />
+              </SplitIntoScs>
+              { false &&
+                concepts.length > 1
+                ? <WrapInCard initiallyExpanded={false}
+                              title={'Individual Concepts'} >
+                    <IndividualConceptViews concepts={concepts} />
+                  </WrapInCard>
+                : ''
+              }
+            </div>
   }
 }
 class ConceptViewContainer extends Component {
@@ -555,7 +476,7 @@ class ConceptViewContainer extends Component {
   render() {
     let {concepts, concept_ids, depth, title, subtitle,
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muitParams, linkWithCounts, styleOverrides={root:'card.root.plain'},
+            muitParams, linksWithCounts, styleOverrides={root:'card.root.plain'},
         } = this.props
     let M = muit(muitParams)
     if ( conceptFetchStatus === 'waiting' ) {
@@ -575,23 +496,12 @@ class ConceptViewContainer extends Component {
     }
     let cnts = cdmCnts( concepts, d=>d)
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
+    /*
     let surroundSubtitle = false
-    if (linkWithCounts) {
-      surroundSubtitle = true
-      //styleOverrides.subtitle = 'card.title.subtitle'
-      subtitle = concepts.map(
-          (c,i) => {
-            return <LinkWithCounts key={i}
-                      muitParams={{sc:c.standard_concept}}
-                      concepts={[c]}
-                      title={c.concept_code}
-                      tip={`${c.vocabulary_id}: ${c.concept_name}`}
-                  />
-          })
-    }
-    if (surroundSubtitle) {
+    if (subtitle && surroundSubtitle) {
       subtitle = <div style={M('card.title.subtitle.surround')} >{subtitle}</div>
     }
+    */
     //return  M.wrapComponent(<WrapInCard>)
     return  (<WrapInCard
                         initiallyExpanded={initiallyExpanded}

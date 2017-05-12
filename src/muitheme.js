@@ -122,11 +122,11 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       fontWeight: typography.fontWeightMedium,
       root: {
         top: { // just for ConceptViewContainers
-          margin: '3%',
+          //margin: '3%',
           zoom: 0.8,
+          padding: 8,
           borderRadius: '.8em',
-          //backgroundColor: 'pink',
-          backgroundColor: pal.regular,
+          backgroundColor: pal.light,
           //boxShadow: `inset 0 0 .9em .5em #B22 0 0 .9em .5em #2BB`,
           //boxShadow: `inset 0 0 .9em .5em ${pal.darker} 0 0 .9em .5em ${pal.darker}`,
           boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
@@ -136,13 +136,13 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         plain: {
           zoom: 0.8,
           borderRadius: '.8em',
-          backgroundColor: pal.regular,
+          backgroundColor: pal.light,
           //boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
         },
       },
       title: {
-        backgroundColor: pal.light,
-        borderBottom: `solid 2px ${pal.dark}`,
+        //backgroundColor: pal.lighter,
+        //borderBottom: `solid 2px ${pal.dark}`,
         title: {
           fontSize: '1.6em',
           fontWeight: typography.fontWeightMedium,
