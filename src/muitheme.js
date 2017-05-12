@@ -2,7 +2,7 @@ import _ from 'src/supergroup' // in global space anyway...
 
 import React, { Component } from 'react'
 import muiThemeable from 'material-ui/styles/muiThemeable'
-import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider';
+import MuiThemeProvider from 'material-ui/styles/MuiThemeProvider'
 import getMuiTheme from 'material-ui/styles/getMuiTheme'
 import darkBaseTheme from 'material-ui/styles/baseThemes/darkBaseTheme'
 import lightBaseTheme from 'material-ui/styles/baseThemes/lightBaseTheme'
@@ -21,9 +21,11 @@ import {
   deepPurple300,
   orange400,
 } from 'material-ui/styles/colors'
+import typography from 'material-ui/styles/typography'
 import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator'
 import * as colorManipulator from 'material-ui/utils/colorManipulator'
 window.colorManipulator = colorManipulator
+window.typography = typography
 
 const subThemeRootColors = {
   // S,C,X primary are from Atlas
@@ -34,7 +36,7 @@ const subThemeRootColors = {
 }
 
 // http://www.material-ui.com/#/customization/themes
-const subThemeColors = 
+const subThemeColors =
   _.mapValues(subThemeRootColors,
     rootColors => {
       const {primary, accent} = rootColors
@@ -56,7 +58,7 @@ const subThemeColors =
             dark: darken(accent, 0.3),
             darker: darken(accent, 0.8),
           },
-          textColor: darkBlack,
+          textColor: darken(primary, 8),
           alternateTextColor: white,
 
           primary1Color: lighten(primary, 0.2),
@@ -74,40 +76,151 @@ const getColors = (subTheme='main') => subThemeColors[subTheme]
 let DT = getMuiTheme(darkBaseTheme)
 let LT = getMuiTheme(lightBaseTheme)
 
-const getPalette = 
+const getPalette =
   (theme=LT, subTheme='main') => getMuiTheme(
     theme, {palette:getColors(subTheme)}).palette
 
-const getStyles = subTheme => {   //subThemeStyles[subTheme]
-  let pal = getPalette(subTheme)
+const getStyles = pal => {   //subThemeStyles[subTheme]
   return {
-    flatButton: { 
+    flatButton: {
       padding: '1px 3px 1px 3px',
       margin: '5px 2px 1px 2px',
-      //border:'1px solid pink', 
+      //border:'1px solid pink',
       color: 'white',
       lineHeight:'auto',
       height:'auto',
       minHeight:'auto',
       width:'auto',
       minWidth:'auto',
-      backgroundColor: pal.regular,
+      styleProps: {
+        // needs to be set directly on component,
+        // not in style
+        backgroundColor: pal.regular,
+      }
     },
-    topRoot: { // just for ConceptViewContainers
-      margin: '3%',
-      zoom: 0.8, 
-      borderRadius: '.8em',
-      //backgroundColor: 'pink',
-      backgroundColor: pal.light,
-      //boxShadow: `inset 0 0 .9em .5em #B22 0 0 .9em .5em #2BB`,
-      //boxShadow: `inset 0 0 .9em .5em ${pal.darker} 0 0 .9em .5em ${pal.darker}`,
-      boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
-      //boxShadow: `rgb(86, 121, 149) 0px 0px 0.9em 0.5em inset, rgb(86, 121, 149) 0px 0px 0.9em 0.5em`,
-      //border: '2px solid red',
+    cardMedia: {
+      /* default: (LT)
+      color: darkWhite,
+      overlayContentBackground: lightBlack,
+      titleColor: darkWhite,
+      subtitleColor: lightWhite,
+      */
     },
-    plainRoot: {
-      zoom: 0.8, 
-      borderRadius: '.8em',
+    cardText: {
+      /* default
+      textColor: pal.textColor,
+      */
+    },
+    card: {
+      /*
+      titleColor: fade(pal.textColor, 0.87),
+      subtitleColor: fade(pal.textColor, 0.54),
+      fontWeight: typography.fontWeightMedium,
+      */
+      titleColor: 'pink',
+      subtitleColor: 'orange',
+      fontWeight: typography.fontWeightMedium,
+      root: {
+        top: { // just for ConceptViewContainers
+          margin: '3%',
+          zoom: 0.8,
+          borderRadius: '.8em',
+          //backgroundColor: 'pink',
+          backgroundColor: pal.regular,
+          //boxShadow: `inset 0 0 .9em .5em #B22 0 0 .9em .5em #2BB`,
+          //boxShadow: `inset 0 0 .9em .5em ${pal.darker} 0 0 .9em .5em ${pal.darker}`,
+          boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
+          //boxShadow: `rgb(86, 121, 149) 0px 0px 0.9em 0.5em inset, rgb(86, 121, 149) 0px 0px 0.9em 0.5em`,
+          //border: '2px solid red',
+        },
+        plain: {
+          zoom: 0.8,
+          borderRadius: '.8em',
+          backgroundColor: pal.regular,
+          //boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
+        },
+      },
+      title: {
+        backgroundColor: pal.light,
+        borderBottom: `solid 2px ${pal.dark}`,
+        title: {
+          fontSize: '1.6em',
+          fontWeight: typography.fontWeightMedium,
+          color: pal.darker,
+          //padding: 10,
+          //boxShadow: `.2em .2em .7em ${muit.getColor().darker}`,
+          //backgroundColor: muiTheme.palette.atlasDarkBg,
+          //color: muiTheme.palette.alternateTextColor,
+        },
+        subtitle: {
+          zoom: 0.8,
+          color: pal.regular,
+          //backgroundColor: pal.regular,
+          boxShadow: `inset 0 0 .4em ${pal.dark}`,
+          padding: '.5em',
+          //border: `9px inset ${pal.darker}`,
+          //border: '9px inset black',
+          //border: `9px inset ${pal.dark}`,
+          surround: {
+            //border: `9px inset ${pal.dark}`,
+          },
+        },
+      },
+      text: {
+      }
+    },
+    grid: {
+      parent: {
+        backgroundColor: pal.darker,
+        width: '100%',
+        display: 'flex',
+        flexWrap: 'wrap',
+        justifyContent: 'space-around',
+        //...cardStyles.root,
+      },
+      title: {
+        fontSize: '1.6em',
+        //color: pal.darker,
+        backgroundColor: pal.dark,
+        borderBottom: `solid 4px ${pal.darker}`,
+        padding: 10,
+        //boxShadow: `.2em .2em .7em ${muit.getColor().darker}`,
+        //backgroundColor: muiTheme.palette.atlasDarkBg,
+        //color: muiTheme.palette.alternateTextColor,
+      },
+      tileTitle: {
+        fontSize: '1.6em',
+        color: 'white',
+        //color: muit.getColor().darker,
+      },
+      gridList: {
+        //border: '5px solid pink',
+        width: '100%',
+        //height: 450,
+        horizontal: {
+          display: 'flex',
+          flexWrap: 'nowrap',
+          overflowX: 'auto',
+        },
+        vertical: {
+          overflowY: 'auto',
+        },
+      },
+      tile: {
+        //zoom: 0.8,
+        backgroundColor: pal.light,
+        background: `linear-gradient(to top,
+                                      ${pal.light} 0%,
+                                      ${pal.regular} 70%,
+                                      ${pal.dark} 100%)`,
+        width: '100%',
+        //minHeight: 100,
+      },
+      child: {
+        paddingTop:10,
+        width: '100%',
+        //marginTop: 50,  // WAS ONLY ON SC
+      }
     },
     headerDark: {
       fontSize: '1.8em',
@@ -127,137 +240,81 @@ const getStyles = subTheme => {   //subThemeStyles[subTheme]
       borderBottom: `solid 1px ${pal.darker}`,
       padding: 10,
     },
+    linkWithCounts: {
+      rootDiv: {
+        //border: `1px solid ${pal.dark}`,
+        backgroundColor: pal.light,
+        //lineHeight: '1em',
+      }
+      
+    },
   }
 }
 
-const assembleTheme = 
-  (baseTheme=LT, 
-   subTheme='main',
-   themeProps={}) =>
-  getMuiTheme(baseTheme,
-              {palette: getColors(subTheme)},
-              {...getStyles(subTheme)},
-              {...themeProps})
+export class Muit {
+  constructor(props) {
+    this.props(props)
 
-const defaultTheme = assembleTheme()
-
-/*
-  M.color = propName => M(`palette.${propName}`)
-const getColor = colorProp =>
-*/
-const muit = (props={}) => {
-  let {
-        muiTheme=defaultTheme, 
-        sub, sc, // synonyms
-        themeProps, // for setting
-  } = props
-  sub = sc || sub || 'main'
-  let theme = assembleTheme(defaultTheme,sub,themeProps)
-
-  let M = request => {
-    if (!request)
-      return theme
-    return _.get(theme, request)
+    // following is so I don't have to change code in Concept/index.js right now
+    let req = this.request.bind(this)
+    _.forEach(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), n => {
+      req[n] = Object.getPrototypeOf(this)[n].bind(this)
+    })
+    req._this = this
+    return req
   }
-  let pal = theme.palette
-  M.color = colorProp => pal[colorProp]
-  M.wrapElement = (el,wrapperProps={}) => 
-            <MuiThemeProvider muiTheme={theme} {...wrapperProps}>
+  request(req) {
+    if (!req)
+      return this._theme
+    return _.get(this._theme, req) || {}
+  }
+  theme(props) {
+    if (typeof props !== 'undefined') {
+      let { muiTheme,
+            sub, sc, // synonyms
+            themeProps, // for setting, haven't used yet
+      } = props
+      sub = sc || sub || 'main'
+      let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
+      this._theme = getMuiTheme(theme,
+                                {...getStyles(theme.palette)},
+                                {...themeProps})
+    }
+    return this._theme
+  }
+  palette() {
+    return this._theme.palette
+  }
+  props(newProps) {
+    if (typeof newProps !== 'undefined') {
+      this._props = newProps  // merge instead of replace?
+      this.theme(this._props)
+    }
+    return this._props
+  }
+  color(colorProp) {
+    return this.palette()[colorProp]
+    //return JSON.stringify(this._theme.palette) + ' ' + this.palette()[colorProp]
+  }
+  wrapElement(el,wrapperProps={}) {
+    // is this doing anything?
+    console.log("wrapElement not doing anything right now")
+    return el
+    return  <MuiThemeProvider muiTheme={this._theme} {...wrapperProps}>
               {el}
             </MuiThemeProvider>
-  return M
+  }
+  wrapComponent(Comp) {
+    return muiThemeable(this._theme)(Comp)
+  }
+}
+const muit = props => { // so I don't have to change code in Concept/index.js right now
+  return new Muit(props)
 }
 export default muit
 window.getMuiTheme = getMuiTheme
+window.muit = muit
 
-//const M=muit()
-
-  /*
-    flatButton: {
-      color: transparent,
-      buttonFilterColor: '#999999',
-      disabledTextColor: fade(palette.textColor, 0.3),
-      textColor: palette.textColor,
-      primaryTextColor: palette.primary1Color,
-      secondaryTextColor: palette.accent1Color,
-      fontSize: typography.fontStyleButtonFontSize,
-      fontWeight: typography.fontWeightMedium,
-    },
-
-const styles = props => {
-  //let {muiTheme, base, sc, sub} = props
-  
-}
-const buttonStyles = {
-  ccode: {
-    //padding: 2,
-    padding: '1px 3px 1px 3px',
-    margin: '5px 2px 1px 2px',
-    //margin: 2,
-    //border:'1px solid pink', 
-    color: 'white',
-    lineHeight:'auto',
-    height:'auto',
-    minHeight:'auto',
-    width:'auto',
-    minWidth:'auto',
-  },
-}
-const cardStyles = {
-  title: {
-    ...muit.getStyles().headerLight,
-    //boxShadow: `.2em .2em .7em ${muit.getColor().darker}`,
-    //backgroundColor: muiTheme.palette.atlasDarkBg,
-    //color: muiTheme.palette.alternateTextColor,
-  },
-  text: {
-  }
-}
-const gridStyles = { // GridList styles based on Simple example
-                      // http://www.material-ui.com/#/components/grid-list
-  parent: {
-    width: '100%',
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    //...cardStyles.root,
-  },
-  gridList: {
-    //border: '5px solid pink',
-    width: '100%',
-    //height: 450,
-    horizontal: {
-      display: 'flex',
-      flexWrap: 'nowrap',
-      overflowX: 'auto',
-    },
-    vertical: {
-      overflowY: 'auto',
-    },
-  },
-  listTitle: cardStyles.title,
-  tile: sc => ({
-    //zoom: 0.8, 
-    backgroundColor: muit.getColor(sc).light,
-    background: `linear-gradient(to top, 
-                                  ${muit.getColor(sc).light} 0%,
-                                  ${muit.getColor(sc).regular} 70%,
-                                  ${muit.getColor(sc).dark} 100%)`,
-    width: '100%',
-    //minHeight: 100,
-  }),
-  tileTitle: {
-    fontSize: '1.6em',
-    color: 'white',
-    //color: muit.getColor().darker,
-  },
-  child: {
-    paddingTop:10,
-    width: '100%',
-    //marginTop: 50,  // WAS ONLY ON SC
-  }
-}
-*/
 /*
 const atlasColors = {
   // from OHDSI style guide, http://www.ohdsi.org/web/wiki/doku.php?id=development:style_guide

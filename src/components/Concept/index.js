@@ -21,7 +21,7 @@ import _ from 'src/supergroup' // in global space anyway...
 import * as cncpt from 'src/ducks/concept'
 import * as tooltip from 'src/tooltip'
 import {AgTable, ConceptTree, } from 'src/components/TableStuff'
-import {commify, updateReason, 
+import {commify, updateReason,
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper,
@@ -35,7 +35,7 @@ import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
 import Spinner from 'react-spinner'
-import {Glyphicon, Row, Col, 
+import {Glyphicon, Row, Col,
           Nav, Navbar, NavItem, Label,
           Form, FormGroup, FormControl, ControlLabel, HelpBlock,
           Button, ButtonToolbar, ButtonGroup,
@@ -68,7 +68,7 @@ import ActionGrade from 'material-ui/svg-icons/action/grade'
 import ContentSend from 'material-ui/svg-icons/content/send'
 import ContentDrafts from 'material-ui/svg-icons/content/drafts'
 import Divider from 'material-ui/Divider'
-import ActionInfo from 'material-ui/svg-icons/action/info' 
+import ActionInfo from 'material-ui/svg-icons/action/info'
 
 import Avatar from 'material-ui/Avatar'
 
@@ -91,7 +91,7 @@ const buttonStyles = {
     padding: '1px 3px 1px 3px',
     margin: '5px 2px 1px 2px',
     //margin: 2,
-    //border:'1px solid pink', 
+    //border:'1px solid pink',
     color: 'white',
     lineHeight:'auto',
     height:'auto',
@@ -133,9 +133,9 @@ const gridStyles = { // GridList styles based on Simple example
   listTitle: cardStyles.title,
   tile: (M=muit()) => {
     return {
-            //zoom: 0.8, 
+            //zoom: 0.8,
             backgroundColor: M.color('light'),
-            background: `linear-gradient(to top, 
+            background: `linear-gradient(to top,
                                           ${M.color('light')} 0%,
                                           ${M.color('regular')} 70%,
                                           ${M.color('dark')} 100%)`,
@@ -154,12 +154,14 @@ const gridStyles = { // GridList styles based on Simple example
     //marginTop: 50,  // WAS ONLY ON SC
   }
 }
+/*
 const junkTile = i =>
                   <GridTile style={gridStyles.tile()} key={i}>
                     <div style={gridStyles.child} >
                       <h3>placeholder</h3>
                     </div>
                   </GridTile>
+*/
 export const fmtCdmCnt = (fmt='short') => {
   switch(fmt) {
     case 'short':
@@ -170,7 +172,7 @@ export const fmtCdmCnt = (fmt='short') => {
   throw new Error("confused")
 }
 export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
-  let cnts = cncpt.colCntsFromConcepts(concepts) 
+  let cnts = cncpt.colCntsFromConcepts(concepts)
   return {
     short: join(cnts.map(fmtCdmCnt('short'))),
     long: join(cnts.map(fmtCdmCnt('long'))),
@@ -190,8 +192,10 @@ export const LinkWithCounts = props => {
   let ttcid = tooltip.setTooltipContent('cvc', tip)
   return  M.wrapElement(
     <span>
-      <FlatButton  style={M('flatButton')}
-        href={href} 
+      <FlatButton
+        style={M('flatButton')}
+        {...M('flatButton').styleProps}
+        href={href}
         data-tip
         data-for="cvc"
         data-ttcid={ttcid}
@@ -203,7 +207,7 @@ export const LinkWithCounts = props => {
 }
 export const CdmCountView = props => {
   let {cnt, badgeStyle, rootStyle, ...rest} = props
-  return  <Badge 
+  return  <Badge
             style={rootStyle}
             badgeStyle={badgeStyle}
             badgeContent={cncpt.conceptTableAbbr(cnt.tbl)}
@@ -225,15 +229,15 @@ const ScView = props => {
   return  <GridTile style={gridStyles.tile(M)} >
             <div style={gridStyles.child} >
               <Subheader style={gridStyles.tileTitle} >
-                ScView: 
+                ScView:
                 {title}
               </Subheader>
-              { 
+              {
                 //Rels:
                 _.map(cncpt.concepts2relsMap(concepts),
                       (relcids,relName) => {
                         //if (!relName.match(/map/i)) return null
-                        return <RelView key={relName} 
+                        return <RelView key={relName}
                                   {...{relName, relcids, depth, }}
                         />
                       })
@@ -260,20 +264,36 @@ const SplitIntoScs = props => {
   */
 
   let contents = bySc.map((sc,i) => {
-    let title = `${sc.records.length} ${sc} ${cncpt.scName(sc.records[0])}`
-    let M = muit({sc})
+    let muitParams = {sc}
+    let M = muit(muitParams)
+    /*
+    let title = `${sc.records.length}
+                    ${sc}.reg: ${M.color('regular')}
+                      main.reg: ${muit({sc:'main'}).color('regular')}
+                  ${cncpt.scName(sc.records[0])}`
+    */
+    let Mtest = muit({sc:'main'})
+    let title = <div className="foo">
+                  {sc.records.length} {cncpt.scName(sc.records[0])}
+                  <span style={{backgroundColor: M.color('regular'), }} >
+                    {sc.toString}.reg: {M.color('regular')}
+                  </span>
+                  <span style={{backgroundColor: Mtest.color('regular'), }} >
+                      main.reg: {Mtest.color('regular')}
+                  </span>
+                </div>
     return  M.wrapElement(
-              <WrapInCard
-                  muiTheme={M()}
+              <WrapInCard key={i}
+                  muitParams={muitParams}
                   initiallyExpanded={true} title={title} >
-                { 
+                {
                   React.Children.map(
                     React.Children.toArray(children),
                     (child,i)=> React.cloneElement(
-                        child, 
+                        child,
                         { concepts:sc.records,
+                          muitParams,
                           sc,
-                          muiTheme: M(),
                         }))
                 }
               </WrapInCard>, {key:i}
@@ -287,31 +307,25 @@ const scsView = props => {
   let {concepts,depth,} = props
   let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                 .filter(sc=>cncpt.rcsFromConcepts(sc.records))
-
-  let contents
-  if (bySc.length > 1) {
-    contents = bySc.map((sc,i) => {
-                  let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
-                  return  
-                              <ScView key={i}
-                                {...{
-                                    title, depth,
-                                    concepts: sc.records,
-                                    //muiTheme: muit.get({sc}) 
-                                }} />
-                })
-    contents = [junkTile(0), junkTile(1)]
-  } else {
-    let sc = bySc[0]
-    contents = [ <ScView key={0}
+  let contents = bySc.map((sc,i) => {
+    let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
+    let M = muit({sc})
+    return <GridTile key={i} style={M('grid.tile')} >
+              <div style={M('grid.child')} >
+                <h3>placeholder</h3>
+              </div>
+            </GridTile>
+    /*
+    return
+                <ScView key={i}
                   {...{
-                      depth,
+                      title, depth,
                       concepts: sc.records,
-                      //muiTheme: muit.get({sc}) 
+                      //muiTheme: muit.get({sc})
                   }} />
-              ]
-    //contents = [junkTile(0)]
-  }
+  */
+  })
+  //let contents = [junkTile(0), junkTile(1)]
   return  <GridList
             cellHeight={'auto'} cols={.3}
             style={{...gridStyles.gridList, ...gridStyles.gridList.horizontal}}
@@ -327,7 +341,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
               { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
                   <span key={relName} >
                     <FlatButton style={M('flatButton')}
-                      //href={href} 
+                      //href={href}
                       //data-tip
                       //data-for="cvc"
                       //data-ttcid={ttcid}
@@ -348,21 +362,10 @@ const RelView = ({relName,relcids,depth,}) => {
   }
   return (
     <ConceptViewContainer key={relName}
+      linkWithCounts={true}
       depth={depth + 1}
       concept_ids={relcids}
       title={`From RelView: ${relcids.length} ${relName} concepts`}
-      subtitle={
-        ({concepts}) => concepts.map(
-          (c,i) => {
-            return <LinkWithCounts key={i}
-                      concepts={[c]}
-                      title={c.concept_code}
-                      tip={`${c.vocabulary_id}: ${c.concept_name}`}
-                      //ttId={`${this.ttid}:${i}`}
-                      muitParams={{sc:c.standard_concept}}
-                  />
-          })
-      }
     />
   )
 }
@@ -374,11 +377,11 @@ class IndividualConceptViews extends Component {
                 <ConceptViewContainer key={i}
                   {...{
                     initiallyExpanded: false,
-                    ...this.props, 
-                    concepts: [c], 
-                    title: c.concept_name, 
+                    ...this.props,
+                    concepts: [c],
+                    title: c.concept_name,
                     subtitle: `individual concept ${c.vocabulary_id} ${c.concept_code}`,
-                  }} 
+                  }}
                 />)
             }
             </SplitIntoScs>
@@ -389,11 +392,11 @@ class ConceptInfoGridList extends Component {
     ReactTooltip.rebuild()
   }
   render() {
-    let { 
+    let {
           // title, subtitle, // use in container, not here
           depth,
           initiallyExpanded,
-          concepts=[], 
+          concepts=[],
         } = this.props
     if (concepts.length < 1)
       return null
@@ -404,8 +407,8 @@ class ConceptInfoGridList extends Component {
               >
                {
                  /*
-                 scsView({concepts,depth,})
                  */
+                 scsView({concepts,depth,})
                }
                 <SplitIntoScs {...{concepts,depth}} >
                   <RelsPeek />
@@ -421,7 +424,7 @@ class ConceptInfoGridList extends Component {
 </GridTile>
 */}
               { false &&
-                concepts.length > 1 
+                concepts.length > 1
                 ? <WrapInCard initiallyExpanded={false}
                               title={'Individual Concepts'} >
                     <IndividualConceptViews concepts={concepts} />
@@ -432,10 +435,10 @@ class ConceptInfoGridList extends Component {
     /*
     return (
       <div style={gridStyles.parent}>
-        <GridList cellHeight={'auto'} 
+        <GridList cellHeight={'auto'}
                   //cols={concepts.length > 1 ? 2 : 1}
                   cols={1}
-                  style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}} 
+                  style={{...gridStyles.gridList, ...gridStyles.gridList.vertical}}
         >
           <GridTile style={gridStyles.tile()} >
             <div style={gridStyles.child} >
@@ -445,7 +448,7 @@ class ConceptInfoGridList extends Component {
             </div>
           </GridTile>
 
-          { concepts.length > 1 
+          { concepts.length > 1
             ? <WrapInCard title={'Individual Concepts'} >
                 <IndividualConceptViews concepts={concepts} />
               </WrapInCard>
@@ -461,29 +464,59 @@ class ConceptInfoGridList extends Component {
 class WrapInCard extends Component {
   render() {
     let { children,
-          title, subtitle, initiallyExpanded=false,
-          titleStyle=cardStyles.title, 
-          rootStyle,
           muitParams,
+          muiTheme,
+          title="wrapincard title",
+          subtitle="wrapincard subtitle",
+          initiallyExpanded=false,
+
+          styleOverrides={},
+          /*
+          containerStyle,
+          rootStyle,
+          titleStyle,
+          titleTitleStyle,
+          titleSubtitleStyle,
+          textStyle,
+                rootStyle = rootStyle || 'plainRoot'
+                titleStyle = titleStyle || M('card.title')
+                subtitleStyle = subtitleStyle || M('card.subtitle')
+          */
+
         } = this.props
-    let M = muit(muitParams)
-    rootStyle = rootStyle || M('plainStyle')
-    return  M.wrapElement(
+    let M = muit({muiTheme, ...muitParams})
+    //let M = muit({sc:'C'})
+    if (!_.isEqual(M('card.title'),
+                    muit({sc:'C'})('card.title'))) {
+    }
+
+    //return  M.wrapElement()
+    return  (
               <Card
-                  style={rootStyle}
+                  //muiTheme={muit({sc:'C'})()}
+                  style={M(styleOverrides.root || 'card.root.plain')}
+                  containerStyle={M(styleOverrides.container || 'card.container')}
                   expandable={true}
-                    initiallyExpanded={initiallyExpanded}
+                  initiallyExpanded={initiallyExpanded}
               >
                 <CardTitle
-                  titleStyle={titleStyle}
-                  titleColor={M.color('darker')}
                   title={title}
                   subtitle={subtitle}
+
+                  style={M(styleOverrides.title || 'card.title')}
+
+                  titleStyle={M(styleOverrides.titleTitle || 'card.title.title')}
+                  titleColor={M(styleOverrides.titleColor || 'card.title.title').color}
+
+                  subtitleStyle={M(styleOverrides.subtitle || 'card.title.subtitle')}
+                  subtitleColor={M(styleOverrides.subtitleColor || 'card.title.subtitle').color}
+
                   showExpandableButton={true}
                   actAsExpander={true}
                 />
                 <CardText expandable={true}
-                          style={cardStyles.text}
+                          style={M(styleOverrides.text || 'card.text')}
+                          color={M(styleOverrides.textColor || 'card.text').color}
                 >
                   {children}
                 </CardText >
@@ -520,17 +553,17 @@ class ConceptViewContainer extends Component {
   }
   static viewCount = 0 // to prevent stack overflow
   render() {
-    let {concepts, concept_ids, depth, title, subtitle, 
+    let {concepts, concept_ids, depth, title, subtitle,
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muitParams,
+            muitParams, linkWithCounts, styleOverrides={root:'card.root.plain'},
         } = this.props
     let M = muit(muitParams)
     if ( conceptFetchStatus === 'waiting' ) {
       return  M.wrapElement(
                 <h4>
-                  <CircularProgress 
-                      //color={muiTheme.palette.accent1Color} 
-                    //size={60} thickness={7} 
+                  <CircularProgress
+                      //color={muiTheme.palette.accent1Color}
+                    //size={60} thickness={7}
                   />
                   Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
                 </h4>
@@ -542,9 +575,28 @@ class ConceptViewContainer extends Component {
     }
     let cnts = cdmCnts( concepts, d=>d)
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
-    return  <WrapInCard
+    let surroundSubtitle = false
+    if (linkWithCounts) {
+      surroundSubtitle = true
+      //styleOverrides.subtitle = 'card.title.subtitle'
+      subtitle = concepts.map(
+          (c,i) => {
+            return <LinkWithCounts key={i}
+                      muitParams={{sc:c.standard_concept}}
+                      concepts={[c]}
+                      title={c.concept_code}
+                      tip={`${c.vocabulary_id}: ${c.concept_name}`}
+                  />
+          })
+    }
+    if (surroundSubtitle) {
+      subtitle = <div style={M('card.title.subtitle.surround')} >{subtitle}</div>
+    }
+    //return  M.wrapComponent(<WrapInCard>)
+    return  (<WrapInCard
                         initiallyExpanded={initiallyExpanded}
-                        rootStyle={M('topRoot')}
+                        muitParams={muitParams}
+                        styleOverrides={styleOverrides}
                         title={
                           <span>
                             {title}
@@ -566,7 +618,7 @@ class ConceptViewContainer extends Component {
                         }
             >
               <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
-            </WrapInCard>
+            </WrapInCard>)
   }
 }
 ConceptViewContainer = connect(
@@ -597,8 +649,8 @@ ConceptViewContainer = connect(
     }
   },
   dispatch=>bindActionCreators(
-    _.pick(cncpt,['wantConcepts']), 
-    //..._.pick(tooltip,['showTooltip','hideTooltip']), 
+    _.pick(cncpt,['wantConcepts']),
+    //..._.pick(tooltip,['showTooltip','hideTooltip']),
   dispatch)
 )(ConceptViewContainer)
 

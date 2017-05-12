@@ -66,17 +66,8 @@ class SourceTargetSourceForm extends Component {
                   {vocabulary_id} concepts{' '}
                 </span>
               }
-              subtitle={
-                concepts.map(
-                  (c,i) => {
-                    return <C.LinkWithCounts key={i}
-                              muitParams={{sc:c.standard_concept}}
-                              concepts={[c]}
-                              title={c.concept_code}
-                              tip={c.concept_name}
-                              //ttId={`${this.ttid}:${i}`}
-                          />
-                  })}
+              linkWithCounts={true}
+              rootStyle={'topRoot'}
             />
           </CardText>
         </Card>

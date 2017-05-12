@@ -132,13 +132,13 @@ export default combineReducers({
 /**** start action creators *********************************************************/
 const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
 export const wantConcepts = (concept_ids) => ({
-                                type: conceptActions.WANT_CONCEPTS, 
+                                type: conceptActions.WANT_CONCEPTS,
                                 payload:concept_ids,
                                 meta: {apiPathname},
                               })
 export const fetchConcepts = () => ({ type: conceptActions.FETCH_CONCEPTS, })
 export const fetchFocalConcepts = (concept_ids) => ({
-                                  type: conceptActions.FETCH_FOCAL_CONCEPTS, 
+                                  type: conceptActions.FETCH_FOCAL_CONCEPTS,
                                   payload:concept_ids,
                                 })
 /*
@@ -290,16 +290,16 @@ export const conceptMapFromList = clist => clist && util.arr2map(verifyConceptLi
 export const conceptListFromMapOrList = mol => verifyConceptList(mol) || conceptListFromMap(mol)
 export const conceptMapFromMapOrList = mol => verifyConceptMap(mol) || conceptMapFromList(mol)
 
-export const concepts = state => 
+export const concepts = state =>
         conceptListFromMapOrList(state) ||
         conceptListFromMapOrList(_.get(state,'concepts.loaded')) || []
 
-export const conceptMap = state => 
+export const conceptMap = state =>
         conceptMapFromMapOrList(state) ||
         conceptMapFromMapOrList(_.get(state,'concepts.loaded')) || {}
 
 export const conceptsFromCids = createSelector(
-  conceptMap, 
+  conceptMap,
   cmap => (cids, errorOnMissing=true) => {
     let concepts = _.values(_.pick(cmap, cids))
     if (errorOnMissing && concepts.length && concepts.length !== cids.length) {
@@ -318,9 +318,9 @@ export const stale = createSelector(requests, r => r.stale)
 export const focalConcepts = createSelector( conceptsFromCids, focal, (cfc,f) => cfc(f))
 
 export const conceptsFromCidsWStubs = createSelector(
-  conceptMap, want, fetching, 
-  (cmap, want, fetching) => 
-    (cids=[]) => 
+  conceptMap, want, fetching,
+  (cmap, want, fetching) =>
+    (cids=[]) =>
       cids.map(cid => cmap[cid] ||
                       (_.includes(want, cid) && conceptStub(cid, 'want')) ||
                       (_.includes(fetching, cid) && conceptStub(cid, 'fetching')) ||
@@ -331,15 +331,15 @@ export const conceptsFromCidsWStubs = createSelector(
 export const rels2map = rels =>
   rels.reduce(
     (acc,{relationship,relcids}) => (
-      { ...acc, 
+      { ...acc,
         [relationship]: _.uniq((acc[relationship]||[]).concat(relcids))
       }),
       {})
-export const concepts2relsMap = 
+export const concepts2relsMap =
   clist => clist.reduce((rels,c)=>rels.concat(c.rels),[])
           .reduce(util.gulp(rels2map),[])
 
-export const sc = concept => concept.standard_concept  
+export const sc = concept => concept.standard_concept
 const scClass = createSelector(sc, sc=>`sc-${sc}`)
 //export const scClass = concept => `sc-${sc(concept)}`
 //
@@ -393,9 +393,9 @@ export const rcsFromConcepts = concepts => {
   )
   .filter(d=>d)
   .map(rcs=>{let {rc,src,crc} = rcs
-      if (!!rc + !!src + !!crc > 1) { 
+      if (!!rc + !!src + !!crc > 1) {
         throw new Error("this should not happen")
-      } 
+      }
       if (rc) {
         rcs.cntType = 'rc'
         rcs.cnt = rc
@@ -428,7 +428,7 @@ export const repairRcs = concepts => {
             throw new Error("pretty weird")
           }
           if (cts.length === 2) {
-            if (cts.lookup('target') && 
+            if (cts.lookup('target') &&
                 cts.lookup('source'))
             {
               if (cts.records.length !== 2 ||
@@ -453,12 +453,12 @@ export const repairRcs = concepts => {
     })
 }
 
-// can use plain selectors with supergroup, but not 
+// can use plain selectors with supergroup, but not
 // createSelector because supergroup not immutable
 
 
 export const conceptsBySc = (concepts=[]) => _.supergroup(concepts, 'standard_concept')
-export const conceptsByScTbl = concepts => 
+export const conceptsByScTbl = concepts =>
   conceptsBySc(concepts).addLevel(c=>c.rcs.map(r=>r.tbl),
                           {multiValuedGroup:true,dimName:'tbl'})
 export const conceptsByScTblCol = concepts => {
@@ -614,7 +614,7 @@ class ConceptAbstract {
   }
   sendUpdate(source) {
     //if (this.parentCi) this.parentCi.sendUpdate();
-    if (this.cb) 
+    if (this.cb)
       this.cb('fromChild');
     //else
     this.bsubj.next(this);
@@ -668,14 +668,14 @@ export class ConceptSetFromCode extends ConceptSet {
     this._status = 'loading';
     throw new Error("FIX")
     /*
-    this.codeLookupStream = new AxxppState.ApiStream({ 
+    this.codeLookupStream = new AxxppState.ApiStream({
       apiCall:'concept_info_from_code', params:{concept_code,}});
     this.codeLookupStream.subscribe((results,stream)=>{
       if (!results.length) {
         this._status = 'failed';
       } else {
         this._items = results.map(
-          rec => new ConceptInfo({  rec, 
+          rec => new ConceptInfo({  rec,
                                     depth: this.depth() + 1,
                                     //cb:this.sendUpdate,
                                     inRelTo: this,
@@ -697,7 +697,7 @@ export class ConceptInfo extends ConceptAbstract {
   //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
   constructor(props) {
     super(props);
-    let { concept_id, 
+    let { concept_id,
           rec, // if creating from already (partially) fetched data
           role='main',  // main, mapsto, etc
       } = props;
@@ -718,14 +718,14 @@ export class ConceptInfo extends ConceptAbstract {
     this.fetchData();
   }
   fetchData() {
-    // at some point allow specifying what specifically needs fetching 
+    // at some point allow specifying what specifically needs fetching
     //  (beyond conceptRecord and related)
 
     //if (this._status !== 'preloading') return;
     this._status = 'loading';
     throw new Error("FIX")
     /*
-    this.conceptStream = new AxxppState.ApiStream({ apiCall:'concept_info', 
+    this.conceptStream = new AxxppState.ApiStream({ apiCall:'concept_info',
                                                   params:{concept_id:this.concept_id}});
     this.conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
       this._status = 'loading';
@@ -797,7 +797,7 @@ export class ConceptInfo extends ConceptAbstract {
 
     if (this.isRole('conceptAncestors') && !field.match(/^a_/))
       return this.get('a_'+field,dflt)
-    if (this.isRole('conceptDescendants') && !field.match(/^d_/)) 
+    if (this.isRole('conceptDescendants') && !field.match(/^d_/))
       return this.get('d_'+field,dflt);
     if (dflt === 'fail') throw new Error(`can't find ${field}`);
     return dflt;
@@ -817,16 +817,16 @@ export class ConceptInfo extends ConceptAbstract {
     * /
     this._bitIdx = 0;
     if (this.failed()) {
-      this._bits.add({ci:this, title:'Status', className:'ci-status', 
+      this._bits.add({ci:this, title:'Status', className:'ci-status',
                   value: `No concept id ${this.concept_id}`});
       return;
     }
     this._bits.add({
         context: 'main-desc',
         name: 'header',
-        title: this.scTitle(), 
-        value: this.get('concept_name'), 
-        className: 'name', 
+        title: this.scTitle(),
+        value: this.get('concept_name'),
+        className: 'name',
         //handlers: { 'onClick': },
         //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
         linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')},
@@ -836,10 +836,10 @@ export class ConceptInfo extends ConceptAbstract {
     this._bits.add({context:'main-desc', name: 'domain_id', title: this.fieldTitle('domain_id'), className: this.fieldClass('domain_id'), value: this.get('domain_id')});
     this._bits.add({context:'main-desc', name: 'concept_class_id', title: this.fieldTitle('concept_class_id'), className: this.fieldClass('concept_class_id'), value: this.get('concept_class_id')});
 
-    ['C','S','X'].forEach( 
+    ['C','S','X'].forEach(
       sc => {
         let cfld = ({S: 'rc', X: 'src', C: 'crc'})[sc];
-        let j = _.compact(this.get('rcs',[])) 
+        let j = _.compact(this.get('rcs',[]))
         // _.comapact is to fix temporary bug where rcs can equal [null] instead of []
             .filter(d=>d[cfld])
             .map(countRec => ({
@@ -875,7 +875,7 @@ export class ConceptInfo extends ConceptAbstract {
             wholeRow: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
             /*
             title: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
-            value: `${grp.domain_id} ${grp.vocabulary_id} 
+            value: `${grp.domain_id} ${grp.vocabulary_id}
                       ${grp.concept_class_id}
                       ${grp.defines_ancestry ? ' defines ancestry ' : ''}
                       ${grp.is_hierarchical ? ' is hierarchical' : ''}
@@ -910,7 +910,7 @@ export class ConceptInfo extends ConceptAbstract {
     } else {
       bits = bits.concat(cgs.map(grp => ({
                         title: `${grp.cc} ${grp.relationship_id} concepts`,
-                        value: `${grp.domain_id} ${grp.vocabulary_id} 
+                        value: `${grp.domain_id} ${grp.vocabulary_id}
                                   ${grp.concept_class_id}
                                   ${grp.defines_ancestry ? ' defines ancestry ' : ''}
                                   ${grp.is_hierarchical ? ' is hierarchical' : ''}
@@ -931,7 +931,7 @@ export class ConceptInfo extends ConceptAbstract {
       case 'mappedfrom':
       case 'relatedConcept':
         return [      // same as this.valid() at the moment...should combine stuff
-          {title: this.scTitle(), className: 'name', 
+          {title: this.scTitle(), className: 'name',
               wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
               linkParams:{concept_id: this.get('concept_id')}},
           {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
