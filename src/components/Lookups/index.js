@@ -2,6 +2,7 @@
 import _ from 'src/supergroup'; // in global space anyway...
 import {AgTable, } from 'src/components/TableStuff'
 import * as util from 'src/utils'
+import {ApiSnackbar} from 'src/api'
 import myrouter from 'src/myrouter'
 
 import { connect } from 'react-redux'
@@ -121,12 +122,12 @@ class ConceptCodesLookupForm extends Component {
   render() {
     let { 
             handleSubmit, pristine, reset, submitting,
-              isPending, err, vocabularies,
+              fetching, waiting, err, vocabularies,
               concept_code_search_pattern, vocabulary_id,
               concepts=[],
           } = this.props
     let errMsg = ''
-    if (isPending) {
+    if (waiting) {
       // FIX STYLES
       errMsg =  <p style={{fontColor:'blue',fontWeight:'bold'}}>
                   Loading...
@@ -160,10 +161,16 @@ class ConceptCodesLookupForm extends Component {
                       codes matching
                       ${concept_code_search_pattern}` }
           />
+          <ApiSnackbar />
           <Dialog
             title={
               <div>
                 {concepts.length} concept codes
+                {
+                  fetching.length 
+                    ?  `waiting for ${fetching.length} concepts`
+                    : ''
+                }
                 <div style={{fontSize:12}}>
                   { concepts.map(d=>d.concept_code).join(', ') }
                 </div>
@@ -243,16 +250,18 @@ ConceptCodesLookupForm = reduxForm({
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
+    let cids = state.cids
+    let focalCids = cncpt.focal(state)
     let concepts = cncpt.focalConcepts(state)
-    if (concepts.length && concepts.length !== state.cids.length) {
-      debugger
-      throw new Error("expected all the initial concepts")
-    }
     let addProps = {
       vocabularies: state.vocabularies||[],
       initialValues: { vocabulary_id, concept_code_search_pattern, },
       vocabulary_id, concept_code_search_pattern,
       concepts,
+      focalCids,
+      fetching: cncpt.fetching(state),
+      waiting: concepts.length < focalCids.length,
+      errMsg: concepts.length < focalCids.length ? 'waiting' : undefined,
       formRef: state.form.concept_codes_form,
     }
     return addProps

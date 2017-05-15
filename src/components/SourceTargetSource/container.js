@@ -6,7 +6,9 @@ import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
 import * as cids from 'src/ducks/cids'
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
+import {ApiWatch, ApiSnackbar} from 'src/api'
 //import * as sts from 'src/STSReport'
+//
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
 import React, { Component } from 'react'
@@ -41,11 +43,46 @@ class SourceTargetSourceForm extends Component {
     ReactTooltip.rebuild()
   }
   render() {
-    let { vocabulary_id, concept_code_search_pattern, concepts=[] } = this.props
+    let { vocabulary_id, concept_code_search_pattern, 
+          concepts=[], fetching=[],
+          api,
+        } = this.props
     let formParams = {  vocabulary_id, concept_code_search_pattern, }
     //console.log(concepts)
+    if (fetching.length) {
+      return (
+        <div ref={d=>this.divRef=d} id="sts-div" >
+          <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
+            <CardHeader style={{
+                padding:'10px 8px 0px 8px'
+              }}
+              actAsExpander={true}
+              showExpandableButton={true}
+              title={<h4>Source Target Source Report</h4>}
+            />
+            <ConceptCodesLookupForm style={{ margin: 10, }}
+            />
+            <CardText style={{leftMargin:15}} >
+              waiting for {fetching.join(', ')}
+            </CardText>
+          </Card>
+        </div>
+      )
+    }
+    
+              //<ApiSnackbar />
+              /*
+    return  <div>
+              <h4>nothing</h4>
+              <ApiWatch />
+              {vocabulary_id}: {concept_code_search_pattern} <br/>
+              {concepts.length} concepts
+            </div>
+        <ApiWatch />
+            */
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
+        <ApiSnackbar />
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
           <CardHeader style={{
               padding:'10px 8px 0px 8px'
@@ -88,12 +125,13 @@ SourceTargetSourceForm = connect(
     //const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
     const {vocabulary_id, concept_code_search_pattern, } 
           = myrouter.getQuery()
-    let concepts = cncpt.conceptsFromCids(state)(cids.cids(state), false)
-    if (concepts.length && concepts.length !== state.cids.length) {
-      debugger
-      throw new Error("expected all the initial concepts")
-    }
+    let cids = state.cids
+    let focalCids = cncpt.focal(state)
+    let concepts = cncpt.focalConcepts(state)
     return {
+      api: state.api,
+      fetching: cncpt.fetching(state),
+      waiting: concepts.length < focalCids.length,
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
       concepts,

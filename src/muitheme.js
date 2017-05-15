@@ -1,3 +1,41 @@
+
+/*
+const atlasColors = {
+  // from OHDSI style guide, http://www.ohdsi.org/web/wiki/doku.php?id=development:style_guide
+  atlasDarkBg: '#003142',
+  atlasAltDarkBg: '#333333',
+  atlasLightBg: '#cccccc',
+  atlasDisabledBg: '#cccccc',
+
+  atlasActive: '#f19119',
+  atlasHighlight: '#f19119',
+
+  atlasAltActive: '#337ab7',
+  atlasAltHighlight: '#337ab7',
+
+  atlasAlt2Active: '#b7cbdc',
+  atlasAlt2Highlight: '#b7cbdc',
+}
+const atlasStyles = {
+    headerLight: {
+      fontSize: '14px',
+      color: '#000',
+      margin: '7px 0px 3px 0px',
+      padding: '0px 5px 0px 5px',
+      borderBottom: 'solid 1px #ccc',
+    },
+    headerDark: { // sort of atlas, not really
+      fontSize: '14px',
+      color: 'white',
+      backgroundColor: atlasColors.atlasDarkBg,
+      margin: '7px 0px 3px 0px',
+      padding: '0px 5px 0px 5px',
+      borderBottom: 'solid 1px #ccc',
+    },
+  }
+*/
+
+/* eslint-disable */
 import _ from 'src/supergroup' // in global space anyway...
 
 import React, { Component } from 'react'
@@ -20,6 +58,7 @@ import {
   white, darkBlack, fullBlack,
   deepPurple300,
   orange400,
+  yellow500, yellow700,
 } from 'material-ui/styles/colors'
 import typography from 'material-ui/styles/typography'
 import {darken, fade, emphasize, lighten} from 'material-ui/utils/colorManipulator'
@@ -33,6 +72,7 @@ const subThemeRootColors = {
   C: { primary: '#a335ee', accent: deepPurple300, },
   X: { primary: '#a71a19', accent: orange400, },
   main: { primary: grey400, accent: blueGrey400, },
+  want: { primary: yellow500, accent: yellow700, },
 }
 
 // http://www.material-ui.com/#/customization/themes
@@ -275,12 +315,16 @@ export class Muit {
             themeProps, // for setting, haven't used yet
       } = props
       sub = sc || sub || 'main'
+      this._desc = {subTheme: sub}
       let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
       this._theme = getMuiTheme(theme,
                                 {...getStyles(theme.palette)},
                                 {...themeProps})
     }
     return this._theme
+  }
+  desc() {
+    return _.map(this._desc, (v,k)=>`${k}: ${v}`).join(', ')
   }
   palette() {
     return this._theme.palette
@@ -298,10 +342,13 @@ export class Muit {
   }
   wrapElement(el,wrapperProps={}) {
     // is this doing anything?
-    console.log("wrapElement not doing anything right now")
-    return el
+    //console.log("wrapElement not doing anything right now")
+    //return el
     return  <MuiThemeProvider muiTheme={this._theme} {...wrapperProps}>
-              {el}
+              <div style={{backgroundColor:this.color('accent1Color')}}>
+                <h4>Wrapped in: {this.desc()}</h4>
+                {el}
+              </div>
             </MuiThemeProvider>
   }
   wrapComponent(Comp) {
@@ -314,40 +361,3 @@ const muit = props => { // so I don't have to change code in Concept/index.js ri
 export default muit
 window.getMuiTheme = getMuiTheme
 window.muit = muit
-
-/*
-const atlasColors = {
-  // from OHDSI style guide, http://www.ohdsi.org/web/wiki/doku.php?id=development:style_guide
-  atlasDarkBg: '#003142',
-  atlasAltDarkBg: '#333333',
-  atlasLightBg: '#cccccc',
-  atlasDisabledBg: '#cccccc',
-
-  atlasActive: '#f19119',
-  atlasHighlight: '#f19119',
-
-  atlasAltActive: '#337ab7',
-  atlasAltHighlight: '#337ab7',
-
-  atlasAlt2Active: '#b7cbdc',
-  atlasAlt2Highlight: '#b7cbdc',
-}
-const atlasStyles = {
-    headerLight: {
-      fontSize: '14px',
-      color: '#000',
-      margin: '7px 0px 3px 0px',
-      padding: '0px 5px 0px 5px',
-      borderBottom: 'solid 1px #ccc',
-    },
-    headerDark: { // sort of atlas, not really
-      fontSize: '14px',
-      color: 'white',
-      backgroundColor: atlasColors.atlasDarkBg,
-      margin: '7px 0px 3px 0px',
-      padding: '0px 5px 0px 5px',
-      borderBottom: 'solid 1px #ccc',
-    },
-  }
-*/
-

@@ -5,6 +5,7 @@ const DEBUG = true;
 import myrouter from 'src/myrouter'
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
+import { connect } from 'react-redux'
 
 import config from 'src/config'
 import * as util from 'src/utils';
@@ -39,26 +40,158 @@ const getUrl = (path, params={}) => {
   //console.log({url,params})
   return url
 }
-export const cachedAjax = url => {
-  //console.log(url.slice(0,90))
-  if (isCached(url)) {
-    let results = util.storageGet(url)
-    console.log(url.slice(0,90), Array.isArray(results) ? results.length : 1)
-    return Rx.Observable.of(results)
-  }
-  let rxAjax = Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
-  rxAjax.subscribe(results => {
-    console.log(url.slice(0,90), Array.isArray(results) ? results.length : 1)
-    util.storagePut(url, results)
-  })
-  return rxAjax
-}
 export const isCached = (url='') => {
   var allowed = _.find(ALLOW_CACHING, allowedUrl => url.match(allowedUrl));
   if (!allowed) return
   return util.storageExists(url)
 }
 
+const apiActions = {
+  CACHE_DIRTY: 'vocab-pop/api/CACHE_DIRTY',
+  API_CALL: 'vocab-pop/api/API_CALL',
+  CACHED_RESULTS: 'vocab-pop/api/CACHED_RESULTS',
+  NEW_RESULTS: 'vocab-pop/api/NEW_RESULTS',
+  REJECTED: 'vocab-pop/api/REJECTED',
+}
+export {apiActions}
+export const reducer = (state={active:{},complete:{},failed:{}}, action) => {
+  let {active,complete,failed} = state
+  let {type, payload, meta, error} = action
+  let apiPathname, params, url, results, msg
+  switch (type) {
+    case apiActions.CACHE_DIRTY:
+      // check this
+      return {...state, cacheDirty: (state.cachDirty||[]).push(payload)}
+    case apiActions.API_CALL:
+      ({apiPathname, params, url} = payload)
+      if (_.has(active, url)) {
+        if (_.isEqual(active[url].params,params)) {
+          return state
+        }
+        throw new Error("do something")
+      }
+      active = {...active, [url]: {params,msg,apiPathname}}
+      break
+    case apiActions.CACHED_RESULTS:
+    case apiActions.NEW_RESULTS:
+      //debugger
+      ({apiPathname, params, url, msg='no message'} = meta)
+      results = payload
+      if (!_.has(active, url)) {
+        throw new Error("do something")
+      }
+      if (_.has(complete, url)) {
+        throw new Error("do something")
+      }
+      active = _.pickBy(active, (v,k) => k !== url)
+      complete = {...complete, [url]: {params,msg,apiPathname}}
+      break
+    case apiActions.REJECTED:
+      ({apiPathname, url, results} = meta)
+      if (!_.has(active, url)) {
+        throw new Error("do something")
+      }
+      if (_.has(complete, url)) {
+        throw new Error("do something")
+      }
+      if (_.has(failed, url)) {
+        throw new Error("do something")
+      }
+      active = _.pickBy(active, (v,k) => k !== url)
+      failed = {...failed, [url]: action}
+      break
+    default:
+      return state
+  }
+  return {active,complete,failed}
+}
+export default reducer
+export const actionGenerators = {
+  apiCall: props => {
+    let { apiPathname, params, } = props
+    let url = apiGetUrl(apiPathname, params)
+    return {type: apiActions.API_CALL, payload: {apiPathname,params,url}}
+  },
+  cachedResults: ({apiPathname,params,url,results}) => 
+      ({type: apiActions.CACHED_RESULTS, 
+        payload: results, 
+        meta:{apiPathname,params,url}}),
+  newResults: ({apiPathname,params,url,results}) => 
+      ({type: apiActions.NEW_RESULTS, payload: results, meta:{apiPathname,params,url}}),
+}
+export const cachedAjax = props => {
+  //debugger
+  let {apiPathname, params, url} = props
+  console.log(url.slice(0,90))
+  if (isCached(url)) {
+    let results = util.storageGet(url)
+    return Rx.Observable.of(actionGenerators.cachedResults({apiPathname,params,url,results}))
+    //return Rx.Observable.of(results)
+  }
+  let rxAjax = 
+    Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
+              .map(results => {
+                //debugger
+                return actionGenerators.newResults({apiPathname,params,url,results})
+              })
+  rxAjax.subscribe(action => {
+    util.storagePut(action.meta.url, action.payload)
+  })
+  return rxAjax
+}
+export const apiCall = 
+  (props, store) => {
+  let { apiPathname, 
+        params, 
+        url,
+
+        msgFunc= r => Array.isArray(r) ? `${r.length} records` :'got something...',
+        paramsValidation=d=>d,
+        resultsTransform=d=>d,
+        //successMap=results=>{console.error("do something with results!",results)},
+        catchFunc=err => {
+          console.log('error loading cids', err)
+          return Rx.Observable.of({
+            type: apiActions.REJECTED,
+            payload: err.xhr.response,
+            meta: {apiPathname},
+            error: true
+          })
+        },
+  } = props
+
+  return cachedAjax({apiPathname, params, url})
+              //.do(action=>{debugger})
+              .do(action=>{
+                action = {...action, meta:{...action.meta,msg:msgFunc(action.payload)}}
+                store.dispatch(action)
+              })
+              //.map(successMap)
+              .catch(catchFunc)
+}
+
+/**** start epics ******************************************/
+
+/*
+const apiCallEpic = (action$, store) => (
+  action$.ofType(apiActions.API_CALL)
+    .mergeMap(()=>{
+      let successMap = results=>{ return {type:vocabActions.GOT_DATA, payload:results} }
+      return apiCall({apiPathname, successMap, store})
+    })
+    .catch(err => {
+      console.error('error in loadVocabularies', err)
+      return Rx.Observable.of({
+        type: 'vocab-pop/vocabularies/FAILURE',
+        meta: {apiPathname},
+        error: true
+      })
+    })
+)
+export const epics = [ apiCallEpic ]
+*/
+
+/**** end epics ******************************************/
 function handleErrors(p) {
     let {jsonPromise,response} = p
     if (!response.ok) {
@@ -82,7 +215,7 @@ const checkCacheDirty = (store) => { // make sure to use this
       })
       .catch((err, obs) => {
         let action = util.makeAction({payload:err,
-                             type:apiActions.API_CALL_REJECTED})
+                             type:apiActions.REJECTED})
         return Rx.Observable.of(action)
       })
       .map(results => {
@@ -91,3 +224,134 @@ const checkCacheDirty = (store) => { // make sure to use this
       })
   return ajax
 }
+
+
+
+import Snackbar from 'material-ui/Snackbar';
+import RaisedButton from 'material-ui/RaisedButton';
+
+
+class ApiSnackbar extends Component {
+
+  constructor(props) {
+    super(props)
+    this.state = {
+      open: false,
+      msg: 'nothing yet',
+      msgs:['blah','foo'],
+    }
+  }
+  componentDidUpdate(prevProps) {
+    return
+    let {api} = this.props
+    //let msg = `${_.keys(api.active).length} active, ${_.keys(api.complete).length} complete`
+    //setTimeout(()=>this.setState({open:true}), 500)
+
+    let msgs = [
+                'Active: ' + _.map(api.active,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+                'Complete: ' + _.map(api.complete,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+                'Failed: ' + _.map(api.failed,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+    ]
+    msgs.filter(msg=>!_.includes(this.state.msgs, msg))
+    if (msgs.length) {
+      //console.log(msgs)
+      //debugger
+      this.setState({open:true, msgs: this.state.msgs.concat(msgs)})
+    }
+  }
+
+  handleTouchTap = () => {
+    this.setState({
+      open: true,
+    });
+  };
+
+  handleRequestClose = () => {
+    this.setState({
+      open: false,
+    });
+  };
+
+  render() {
+    let {api} = this.props
+    return (
+      <div>
+        <RaisedButton
+          onTouchTap={this.handleTouchTap}
+          label="Add to my calendar"
+        />
+        <Snackbar
+          open={this.state.open}
+          message={this.state.msgs.join('\n')}
+          autoHideDuration={400}
+          onRequestClose={this.handleRequestClose}
+        />
+      </div>
+    );
+  }
+}
+ApiSnackbar = connect(
+  (state, props) => {
+    //debugger
+    return {
+      api: state.api,
+    }
+  }
+  //, dispatch => mapDispatchToProps
+)(ApiSnackbar)
+
+export {ApiSnackbar}
+
+
+class ApiWatch extends Component {
+  constructor(props) {
+    super(props)
+    this.state = {msgs:['blah','foo']}
+  }
+  componentDidUpdate() {
+    let {api} = this.props
+    //let msg = `${_.keys(api.active).length} active, ${_.keys(api.complete).length} complete`
+    let msgs = [
+                'Active: ' + _.map(api.active,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+                'Complete: ' + _.map(api.complete,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+                'Failed: ' + _.map(api.failed,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+    ]
+    msgs.filter(msg=>!_.includes(this.state.msgs, msg))
+    if (msgs.length) {
+      //console.log(msgs)
+      //debugger
+      this.setState({msgs: this.state.msgs.concat(msgs)})
+    }
+    //setTimeout(()=>this.setState({open:true}), 500)
+  }
+  render() {
+    let {api} = this.props
+    let {msgs} = this.state
+    //let msg = JSON.stringify(api)
+    let msg = [
+                'Active: ' + _.map(api.active,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+                'Complete: ' + _.map(api.complete,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+                'Failed: ' + _.map(api.failed,(v,k)=>`${v.apiPathname}: ${v.msg}`),
+    ].join('\n')
+
+    //let msg = `${_.keys(api.active).length} active, ${_.keys(api.complete).length} complete`
+    return (
+      <pre>
+        {msgs.join('\n')}
+
+        {msg}
+      </pre>
+    );
+  }
+}
+ApiWatch = connect(
+  (state, props) => {
+    //debugger
+    return {
+      api: state.api,
+    }
+  }
+  //, dispatch => mapDispatchToProps
+)(ApiWatch)
+
+export {ApiWatch}

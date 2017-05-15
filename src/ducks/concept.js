@@ -32,7 +32,6 @@ const loadedReducer = (state={}, action) => {
     case conceptActions.NEW_CONCEPTS:
       //if (!Array.isArray(payload)) { return state } // just assume, don't check
       return { ...state, ...util.arr2map(payload, c=>c.concept_id)}
-    case conceptActions.WANT_CONCEPTS:
   }
   return state
 }
@@ -47,8 +46,10 @@ const requestStore = () => (
 const MAX_CONCEPTS_TO_LOAD = 500
 const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   let {type, payload, meta, error} = action
+  /*
   if (_.isEmpty(payload) && type !== conceptActions.FETCH_CONCEPTS)
     return state
+  */
   let newState
   let new_cids = payload
   switch (type) {
@@ -89,6 +90,7 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
         let split = fetching.length - moveBack
         want = fetching.slice(split)
         fetching = fetching.slice(0, split)
+        console.log(`not fetching ${want.length} concepts`)
       }
       newState = {
         ...state,
@@ -96,13 +98,26 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
         fetching,
       }
       break
+    case "@@redux-form/CHANGE":
+      if (action.meta.form === "concept_codes_form") {
+        newState = {
+          ...state,
+          focal: [],
+          stale: state.got,
+          want: [],
+          fetching: [],
+        }
+      } else {
+        return state
+      }
+      break
     case conceptActions.FETCH_FOCAL_CONCEPTS:
       newState = {
+        ...state,
         focal: new_cids,
-        stale: _.union(state.got, state.fetching),
-        got: [],
+        stale: state.got,
         want: [],
-        fetching: new_cids,
+        fetching: _.difference(new_cids, state.got)
       }
       break
     default:
@@ -118,7 +133,6 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
     throw new Error("corrupted request state")
   }
   if (!_.isEqual(state, newState))
-    console.log(_.mapValues(newState, (v,k) => v.length))
   return _.isEqual(state, newState) ? state : newState
 }
 
@@ -161,18 +175,21 @@ const fetchFocalConceptsEpic = (action$, store) => (
     .switchMap(action=>{
       let {type, payload=[], meta, error} = action
       payload = payload.map(d=>d.concept_id)
-      return Rx.Observable.of(fetchFocalConcepts(payload))
+      return (payload.length 
+                ? Rx.Observable.of(fetchFocalConcepts(payload)) 
+                : Rx.Observable.empty())
+    })
+    .catch(err => {
+      console.log('error in fetchFocalConceptsEpic', err)
+      return Rx.Observable.of({
+        type: conceptActions.FETCH_CONCEPTS_REJECTED,
+        meta: {apiPathname},
+        error: true
+      })
     })
 )
 epics.push(fetchFocalConceptsEpic)
 
-const fetchConceptsEpic = (action$, store) => (
-  action$.ofType(conceptActions.FETCH_CONCEPTS, conceptActions.FETCH_FOCAL_CONCEPTS)
-    //.debounce(200)
-    .mergeMap(action=>{
-      let {type, payload=[], meta, error} = action
-      //let concept_ids = payload
-      let concept_ids = _.get(store.getState(), 'concepts.requests.fetching') || []
 
 /*
 console.error("testing w/ some random hardcoded cids")
@@ -184,52 +201,62 @@ concept_ids = [
               ]
 params = {concept_ids}
 */
+const conceptsCall = (action$, store) => (
+  action$.ofType(conceptActions.FETCH_CONCEPTS, conceptActions.FETCH_FOCAL_CONCEPTS)
+    //.debounce(200)
+    .mergeMap(action=>{
+      let {type, payload=[], meta, error} = action
+      //let concept_ids = payload
+      let concept_ids = _.get(store.getState(), 'concepts.requests.fetching') || []
       if (concept_ids.length) {
         let params = {concept_ids}
-        let url = api.apiGetUrl(apiPathname, params)
-        return api.cachedAjax(url)
-                .map(results=>{
-                  //console.log(results)
-                  return newConcepts(results,store)
-                })
-                .catch(err => {
-                  console.log('error loading cids', err)
-                  return Rx.Observable.of({
-                    type: conceptActions.FETCH_CONCEPTS_REJECTED,
-                    payload: err.xhr.response,
-                    meta: {apiPathname},
-                    error: true
-                  })
-                })
-
+        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname,params}))
       }
       return Rx.Observable.empty()
     })
     .catch(err => {
-      console.log('error in fetchConceptsEpic', err)
+      console.error('error in conceptsCall', err)
       return Rx.Observable.of({
-        type: conceptActions.FETCH_CONCEPTS_REJECTED,
+        type: 'vocab-pop/concept/FAILURE',
         meta: {apiPathname},
         error: true
       })
     })
 )
-epics.push(fetchConceptsEpic)
+epics.push(conceptsCall)
+
+const loadConcepts = (action$, store) => (
+  action$.ofType(api.apiActions.API_CALL)
+    .filter((action) => (action.payload||{}).apiPathname === apiPathname)
+    .mergeMap((action)=>{
+      let {type, payload, meta, error} = action
+      let {apiPathname, params, url} = payload
+      return api.apiCall({apiPathname, params, url, }, store)
+    })
+    .catch(err => {
+      console.error('error in loadVocabularies', err)
+      return Rx.Observable.of({
+        type: 'vocab-pop/vocabularies/FAILURE',
+        meta: {apiPathname},
+        error: true
+      })
+    })
+    .map(action=>{
+      let {type, payload, meta} = action
+      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
+        throw new Error("did something go wrong?")
+      }
+      return newConcepts(payload)
+    })
+)
+epics.push(loadConcepts)
+
+
+
 const wantConceptsEpic = (action$, store) => (
   action$
     .ofType(conceptActions.WANT_CONCEPTS)
     .mergeMap(action=>{
-      let {type, payload={}, error} = action
-      /* only fetch for request, or fetch everything currently wanted? */
-      let concept_ids=[] = payload
-      let state = store.getState()
-      concept_ids = _.chain(concept_ids)
-                      .difference(_.get(state,'concepts.requests.got')||[])
-                      .difference(_.get(state,'concepts.requests.fetching')||[])
-                      .value()
-      if (!concept_ids.length)
-        return Rx.Observable.empty()
-
       return Rx.Observable.of(fetchConcepts())
     })
     .catch(err => {
@@ -241,6 +268,7 @@ const wantConceptsEpic = (action$, store) => (
         error: true
       })
     })
+    .debounceTime(200)
 )
 epics.push(wantConceptsEpic)
 export {epics}
@@ -302,9 +330,11 @@ export const conceptsFromCids = createSelector(
   conceptMap,
   cmap => (cids, errorOnMissing=true) => {
     let concepts = _.values(_.pick(cmap, cids))
+    /*
     if (errorOnMissing && concepts.length && concepts.length !== cids.length) {
       throw new Error("decide what to do in this case")
     }
+    */
     return concepts
   })
 
@@ -328,16 +358,28 @@ export const conceptsFromCidsWStubs = createSelector(
               )
 )
 
-export const rels2map = rels =>
-  rels.reduce(
-    (acc,{relationship,relcids}) => (
-      { ...acc,
-        [relationship]: _.uniq((acc[relationship]||[]).concat(relcids))
-      }),
-      {})
-export const concepts2relsMap =
-  clist => clist.reduce((rels,c)=>rels.concat(c.rels),[])
-          .reduce(util.gulp(rels2map),[])
+export const rels2map = rels => {
+  return timeFunc(()=>rels.reduce((acc,{relationship,relcids}) => (
+                        { ...acc,
+                          [relationship]: _.uniq((acc[relationship]||[]).concat(relcids))
+                        }),
+                        {}))
+}
+export const timeFunc = f => {
+  let start = performance.now()
+  let ret = f()
+  let end = performance.now()
+  console.log(end - start)
+  return ret
+}
+export const concepts2relsMap = clist => {
+  //let flat = timeFunc(()=>_.flatten(clist.map(c=>c.rels)))
+  //let map = timeFunc(()=>rels2map(flat))
+  //let map2 = flat.reduce(util.gulp(rels2map),[])
+  let flat = _.flatten(clist.map(c=>c.rels))
+  let map = rels2map(flat)
+  return map
+}
 
 export const sc = concept => concept.standard_concept
 const scClass = createSelector(sc, sc=>`sc-${sc}`)

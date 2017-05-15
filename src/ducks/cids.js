@@ -10,6 +10,7 @@ window.createSelector = createSelector
 
 export const cidsActions = {
   NEW_CIDS: 'vocab-pop/cids/NEW_CIDS',
+  GET_NEW_CIDS: 'vocab-pop/cids/GET_NEW_CIDS',
 }
 const apiPathname = 'codeSearchToCids'
 
@@ -19,6 +20,10 @@ const reducer = (state=[], action) => {
   switch (type) {
     case cidsActions.NEW_CIDS:
       return payload
+    case "@@redux-form/CHANGE":
+      if (action.meta.form === "concept_codes_form") {
+        return []
+      }
   }
   return state
 }
@@ -31,9 +36,10 @@ export const cids_w_match = state => state.cids||[]
 export const cids = createSelector( cids_w_match, cwm=>cwm.map(d=>d.concept_id))
 /**** end selectors *****************************************************************/
 
-const loadConceptIds = (action$, store) => (
+let epics = [ ]
+const getCidsTrigger = (action$, store) => (
   action$.ofType('@@router/LOCATION_CHANGE')
-    .switchMap(action=>{
+    .mergeMap(action=>{
       let {path,search,hash,state,key} = action
       let query = myrouter.getQuery()
       let go = false
@@ -45,26 +51,59 @@ const loadConceptIds = (action$, store) => (
       }
       let {vocabulary_id, concept_code_search_pattern} = query
       if (go && vocabulary_id && concept_code_search_pattern) {
-        let params = {vocabulary_id, concept_code_search_pattern}
-        let url = api.apiGetUrl(apiPathname, params)
-        return api.cachedAjax(url)
-                .map(results=>{
-                  //console.log(results)
-                  return {type:cidsActions.NEW_CIDS,
-                            payload:results}
-                })
-                .catch(err => {
-                  console.log('error loading cids', err)
-                  return Rx.Observable.of({
-                    type: apiActions.API_CALL_REJECTED,
-                    payload: err.xhr.response,
-                    meta: {apiPathname},
-                    error: true
-                  })
-                })
-
+        return Rx.Observable.of({type: cidsActions.GET_NEW_CIDS})
       }
       return Rx.Observable.empty()
     })
 )
-export const epics = [ loadConceptIds, ]
+epics.push(getCidsTrigger)
+const cidsCall = (action$, store) => (
+  action$.ofType(cidsActions.GET_NEW_CIDS)
+    .switchMap(action=>{
+      let {path,search,hash,state,key} = action
+      let query = myrouter.getQuery()
+      let {vocabulary_id, concept_code_search_pattern} = query
+      if (vocabulary_id && concept_code_search_pattern) {
+        let params = {vocabulary_id, concept_code_search_pattern}
+        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname,params}))
+      }
+      return Rx.Observable.empty()
+    })
+    .catch(err => {
+      console.error('error in loadConceptIds', err)
+      debugger
+      return Rx.Observable.of({
+        type: 'vocab-pop/cids/FAILURE',
+        meta: {apiPathname},
+        error: true
+      })
+    })
+)
+epics.push(cidsCall)
+
+const loadCids = (action$, store) => (
+  action$.ofType(api.apiActions.API_CALL)
+    .filter((action) => (action.payload||{}).apiPathname === apiPathname)
+    .mergeMap((action)=>{
+      let {type, payload, meta, error} = action
+      let {apiPathname, params, url} = payload
+      return api.apiCall({apiPathname, params, url, }, store)
+    })
+    .catch(err => {
+      console.error('error in loadVocabularies', err)
+      return Rx.Observable.of({
+        type: 'vocab-pop/vocabularies/FAILURE',
+        meta: {apiPathname},
+        error: true
+      })
+    })
+    .map(action=>{
+      let {type, payload, meta} = action
+      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
+        throw new Error("did something go wrong?")
+      }
+      return {type:cidsActions.NEW_CIDS, payload}
+    })
+)
+epics.push(loadCids)
+export {epics}

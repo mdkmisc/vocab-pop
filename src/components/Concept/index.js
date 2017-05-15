@@ -178,8 +178,16 @@ export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
     long: join(cnts.map(fmtCdmCnt('long'))),
   }
 }
+export const ConceptsSummary = props => {
+  let {concepts} = props
+  let sg = _.supergroup(concepts, ['domain_id','vocabulary_id','concept_class_id'])
+  return <pre>{sg.leafNodes().namePaths().join('\n')}</pre>
+}
 export const LinksWithCounts = props => {
   let {concepts, depth, } = props
+  if (concepts.length > 30) {
+    return <ConceptsSummary concepts={concepts} />
+  }
   return  <div>
             {
               concepts.map(
@@ -245,7 +253,10 @@ const enhanceChildren = (children, props) => {
     React.Children.toArray(children),
     (child,i)=> React.cloneElement(child, props)
   )
-  return <div>{enhanced}</div>
+  return  <div>
+            enhanced with {_.keys(props).join(', ')}:<br/>
+            {enhanced}
+          </div>
 }
 const SplitIntoScs = props => {
   let {concepts,depth, children} = props
@@ -257,7 +268,9 @@ const SplitIntoScs = props => {
   }
   if (bySc.length === 1) {
     //return <div>{children}</div>
-    return enhanceChildren(children, { concepts,  })
+    let sc = bySc[0]
+    let muitParams = {sc}
+    return enhanceChildren(children, { concepts, muitParams, sc, depth })
   }
 
   let contents = bySc.map((sc,i) => {
@@ -272,7 +285,7 @@ const SplitIntoScs = props => {
                 {
                   enhanceChildren(children, { concepts:sc.records,
                                               muitParams,
-                                              sc,
+                                              sc, depth,
                                             })
 
                 }
@@ -284,9 +297,8 @@ const SplitIntoScs = props => {
           </div>
 }
 const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {concepts=[],title, sc} = props
+  let {concepts=[],title, sc, depth} = props
   let M = muit({sc})
-  /*
   return <div>full rels instead of peek<br/>
                   {
                     //Rels:
@@ -299,6 +311,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
                           })
                   }
         </div>
+  /*
   */
   return  ( // M.wrapElement(
             <div>
@@ -496,6 +509,7 @@ class ConceptViewContainer extends Component {
     }
     let cnts = cdmCnts( concepts, d=>d)
     let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
+
     /*
     let surroundSubtitle = false
     if (subtitle && surroundSubtitle) {
@@ -536,6 +550,10 @@ ConceptViewContainer = connect(
     let {concepts=[], concept_ids=[],
           depth=0, title, } = props
     let conceptFetchStatus = 'ok'
+    let fetching = cncpt.fetching(state)
+    if (fetching.length) {
+      debugger
+    }
     if (!concepts.length) {
       if (concept_ids.length) {
         concepts = cncpt.conceptsFromCidsWStubs(state)(concept_ids, false)

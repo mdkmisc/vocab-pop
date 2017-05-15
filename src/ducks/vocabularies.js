@@ -30,30 +30,48 @@ export const vocabularies = state => state.vocabularies
 
 
 /**** start epics ******************************************/
-
-const loadVocabularies = (action$, store) => (
+let epics = []
+const vocabCall = (action$, store) => (
   action$.ofType('@@router/LOCATION_CHANGE') // happens on init
     .filter(() => _.isEmpty(store.getState().vocabularies))
     .take(1)
     .mergeMap(()=>{
-      let url = api.apiGetUrl(apiPathname)
-      return api.cachedAjax(url)
-              .map(results=>{
-                //console.log(results)
-                return {type:vocabActions.GOT_DATA,
-                          payload:results}
-              })
-              .catch(err => {
-                console.log('error loading vocabularies', err)
-                return Rx.Observable.of({
-                  type: apiActions.API_CALL_REJECTED,
-                  payload: err.xhr.response,
-                  meta: {apiPathname},
-                  error: true
-                })
-              })
+      return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname}))
+    })
+    .catch(err => {
+      console.error('error in vocabCall', err)
+      return Rx.Observable.of({
+        type: 'vocab-pop/vocabularies/FAILURE',
+        meta: {apiPathname},
+        error: true
+      })
     })
 )
-export const epics = [ loadVocabularies ]
-
+epics.push(vocabCall)
+const loadVocabularies = (action$, store) => (
+  action$.ofType(api.apiActions.API_CALL)
+    .filter((action) => (action.payload||{}).apiPathname === apiPathname)
+    .mergeMap((action)=>{
+      let {type, payload, meta, error} = action
+      let {apiPathname, params, url} = payload
+      return api.apiCall({apiPathname, /*params,*/ url, }, store)
+    })
+    .catch(err => {
+      console.error('error in loadVocabularies', err)
+      return Rx.Observable.of({
+        type: 'vocab-pop/vocabularies/FAILURE',
+        meta: {apiPathname},
+        error: true
+      })
+    })
+    .map(action=>{
+      let {type, payload, meta} = action
+      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
+        throw new Error("did something go wrong?")
+      }
+      return {type:vocabActions.GOT_DATA, payload} 
+    })
+)
+epics.push(loadVocabularies)
+export {epics}
 /**** end epics ******************************************/

@@ -7,6 +7,7 @@ import _ from 'src/supergroup'
 import cidsReducer, * as cids from 'src/ducks/cids'
 import vocabularies, * as vocabs from 'src/ducks/vocabularies'
 import conceptReducer, * as concept from 'src/ducks/concept'
+import apiReducer, * as api from 'src/api'
 import myrouter from 'src/myrouter'
 
 import React, { Component } from 'react'
@@ -19,6 +20,7 @@ import { reducer as formReducer } from 'redux-form'
 export default function configureStore(initialState = {}) {
 
   const rootReducer = combineReducers({
+    api:apiReducer,
     vocabularies,
     cids: cidsReducer,
     concepts: conceptReducer,
@@ -30,7 +32,7 @@ export default function configureStore(initialState = {}) {
   const allEpics = [
     ...vocabs.epics,
     ...cids.epics,
-    ...concept.epics
+    ...concept.epics,
   ]
   const rootEpic = combineEpics(...allEpics)
   const epicMiddleware = createEpicMiddleware(rootEpic)
