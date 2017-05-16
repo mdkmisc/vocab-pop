@@ -68,11 +68,13 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
       newState = {...state, status:type}
       break
     case conceptActions.NEW_CONCEPTS:
+      /*
       if (_.includes([conceptActions.FULL,conceptActions.PAUSE], status)) {
         // not working right
         console.log(`concept store ${status}, not accepting ${payload.length} concepts`)
         return state
       }
+      */
 
       new_cids = payload.map(c=>c.concept_id)
       newState = {

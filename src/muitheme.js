@@ -396,6 +396,7 @@ export class Muit {
   request(req) {
     if (!req)
       return this._theme
+    //if (req === 'visible') debugger
     return _.has(this._theme, req) ? _.get(this._theme, req) : {}
   }
   theme() {

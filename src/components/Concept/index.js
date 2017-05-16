@@ -184,16 +184,21 @@ export const ConceptsSummary = props => {
   return <pre>{sg.leafNodes().namePaths().join('\n')}</pre>
 }
 export const LinksWithCounts = props => {
-  let {concepts, depth, } = props
+  let {concepts, depth, M} = props
   if (concepts.length > 30) {
     return <ConceptsSummary concepts={concepts} />
   }
-  return  <div>
+  if (M('invisible'))
+    return null
+  let visibility = M('invisible') ? 'hidden' : 'visible'
+  let height = M('invisible') ? '0px' : 'auto'
+  return  <div style={{visibility, height}}>
             {
               concepts.map(
                 (c,i) => {
                   return <LinkWithCounts key={i}
-                            muitParams={{sc:c.standard_concept}}
+                            M={M}
+                            //muitParams={{sc:c.standard_concept}}
                             concepts={[c]}
                             title={c.concept_code}
                             tip={`${c.vocabulary_id}: ${c.concept_name}`}
@@ -203,8 +208,8 @@ export const LinksWithCounts = props => {
           </div>
 }
 export const LinkWithCounts = props => {
-  let {concepts, ttid, title, tip, muitParams} = props
-  let M = muit(muitParams)
+  let {concepts, ttid, title, tip, muitParams, M} = props
+  //let M = muit(muitParams)
   let cnts = cdmCnts(concepts, d=>d)
   let href = '#' // should be link to concept focus
 
@@ -249,11 +254,11 @@ const colname = cnt => {
   return cn
 }
 const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {concepts=[],title='', sc, depth} = props
+  let {concepts=[],title='', sc, depth, M} = props
   if (!_.includes(['S','C','X'], sc.toString() )) {
     //debugger
   }
-  let M = muit({sc})
+  M.props({sc})
   return <div>full rels instead of peek<br/>
                   {
                     //Rels:
@@ -358,12 +363,12 @@ class WrapInCard extends Component {
           */
 
         } = this.props
+    let visibility = M('invisible') ? 'hidden' : 'visible'
+    let height = M('invisible') ? '0px' : 'auto'
     return  (
+              <div style={{visibility, height}}>
               <Card
-                  style={{
-                          ...M('card.style'), 
-                          visibility:M('visible')? 'visible' : 'invisible',
-                        }}
+                  style={M('card.style')}
                   containerStyle={M('card.containerStyle')}
                   initiallyExpanded={initiallyExpanded}
               >
@@ -399,6 +404,7 @@ class WrapInCard extends Component {
                   {children}
                 </CardText >
               </Card>
+              </div>
     )
   }
 }
@@ -409,6 +415,7 @@ class ConceptInfoGridList extends Component {
   render() {
     let {
           // title, subtitle, // use in container, not here
+          M,
           depth,
           initiallyExpanded,
           concepts=[],
@@ -434,8 +441,7 @@ class ConceptInfoGridList extends Component {
     }
     */
     let contents = bySc.map((sc,i) => {
-      let muitParams = {sc}
-      let M = muit(muitParams)
+      M.props({sc})
       let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
       return  <div key={i} style={M('ciglDiv')}>
                 <h4>{title}</h4>
@@ -461,19 +467,9 @@ class ConceptInfoGridList extends Component {
                 }
               </div>
     })
-    return  <div>
+    let visibility = M('invisible') ? 'hidden' : 'visible'
+    return  <div style={{visibility}}>
               {contents}
-            </div>
-
-
-
-
-
-
-
-    return  <div>
-              <SplitIntoScs {...{concepts,depth}} >
-              </SplitIntoScs>
             </div>
   }
 }
@@ -512,6 +508,7 @@ class ConceptViewContainer extends Component {
             muitParams={}, linksWithCounts, M, invisible,
         } = this.props
     M = M || muit()
+    invisible = M('invisible') || invisible
     M.props({...muitParams, invisible})
     if ( depth > 2 ) {
       console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
@@ -547,16 +544,6 @@ class ConceptViewContainer extends Component {
                   title={title}
                   subtitle={subtitle}
       >
-        { invisible
-            ?  <CircularProgress />
-              /*
-              <h4>
-                //color={muiTheme.palette.accent1Color} //size={60} thickness={7}
-                Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
-              </h4>
-              */
-            : null
-        }
         <ConceptInfoGridList {...{...this.props, M, title:undefined, subtitle:undefined}} />
       </WrapInCard>
     )

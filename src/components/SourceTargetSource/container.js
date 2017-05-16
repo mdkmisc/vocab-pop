@@ -46,7 +46,7 @@ class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, concept_code_search_pattern, 
           concepts=[], fetching=[],
-          api, conceptStatus,
+          api, conceptStatus, requests, focalCids,
         } = this.props
     //let formParams = {  vocabulary_id:'blah', concept_code_search_pattern:'eek', }
     let form = <ConceptCodesLookupForm />
@@ -57,11 +57,11 @@ class SourceTargetSourceForm extends Component {
       case cncpt.conceptActions.PAUSE:
         content = <CircularProgress />
         break
+      case cncpt.conceptActions.BUSY:
+        invisible = true
       case cncpt.conceptActions.FULL:
         //content = <div>concept store is full</div>
         //break
-      case cncpt.conceptActions.BUSY:
-        invisible = true
       default:
         content =
             <C.ConceptViewContainer 
@@ -90,7 +90,13 @@ class SourceTargetSourceForm extends Component {
           />
           {form}
           <CardText style={{leftMargin:15}} >
-            conceptStatus: {conceptStatus}
+            <pre>{
+              `loaded: ${concepts.length}\n` +
+              _.map(requests,
+                (r,k)=>`${k}: ${Array.isArray(r) ? r.length : r}`
+                   ).join('\n')
+              + `\nmissing focal: ${_.difference(focalCids, concepts.map(c=>c.concept_id)).length}\n`
+            }</pre>
           </CardText>
           <CardText style={{leftMargin:15}} >
             {content}
@@ -115,8 +121,10 @@ SourceTargetSourceForm = connect(
     let cids = state.cids
     let focalCids = cncpt.focal(state)
     let concepts = cncpt.focalConcepts(state)
+    let requests = state.concepts.requests
     let conceptStatus = state.concepts.requests.status
     return {
+      focalCids,
       api: state.api,
       fetching: cncpt.fetching(state),
       waiting: concepts.length < focalCids.length,
@@ -124,6 +132,8 @@ SourceTargetSourceForm = connect(
       formRef: state.form.stsform,
       concepts,
       conceptStatus,
+      requests,
+      got:requests.got,
     }
   }
 )(SourceTargetSourceForm)
