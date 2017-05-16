@@ -261,7 +261,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
                           (relcids,relName) => {
                             //if (!relName.match(/map/i)) return null
                             return <RelView key={relName}
-                                      {...{relName, relcids, depth, }}
+                                      {...{relName, relcids, depth, M, }}
                             />
                           })
                   }
@@ -300,7 +300,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
 /*
                     */
 }
-const RelView = ({relName,relcids,depth,}) => {
+const RelView = ({relName,relcids,depth,M,}) => {
   /* only called by RelsPeek (full rels) */
   let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
   if (depth > 2) {
@@ -308,7 +308,7 @@ const RelView = ({relName,relcids,depth,}) => {
     return null//<h5>too deep to display ({depth}) {title}</h5>
   }
   return (
-    <ConceptViewContainer key={relName}
+    <ConceptViewContainer key={relName} M={M}
       linksWithCounts={true}
       depth={depth + 1}
       concept_ids={relcids}
@@ -318,10 +318,10 @@ const RelView = ({relName,relcids,depth,}) => {
 }
 class IndividualConceptViews extends Component {
   render() {
-    const {concepts=[], depth, Wrapper='div'} = this.props
+    const {concepts=[], depth, Wrapper='div', M,} = this.props
     return  <div>
             { concepts.map((c,i) =>
-                <ConceptViewContainer key={i}
+                <ConceptViewContainer key={i} M={M}
                   {...{
                     initiallyExpanded: false,
                     ...this.props,
@@ -341,11 +341,10 @@ class WrapInCard extends Component {
    */
   render() {
     let { children,
-          muitParams,
-          muiTheme,
           title,
           subtitle,
           initiallyExpanded=false,
+          M,
           /*
           containerStyle,
           rootStyle,
@@ -359,10 +358,12 @@ class WrapInCard extends Component {
           */
 
         } = this.props
-    let M = muit({muiTheme, ...muitParams})
     return  (
               <Card
-                  style={M('card.style')}
+                  style={{
+                          ...M('card.style'), 
+                          visibility:M('visible')? 'visible' : 'invisible',
+                        }}
                   containerStyle={M('card.containerStyle')}
                   initiallyExpanded={initiallyExpanded}
               >
@@ -450,9 +451,9 @@ class ConceptInfoGridList extends Component {
                           M={M}
                           depth={depth} 
                 />
-                { //false &&
+                { false &&
                   concepts.length > 1
-                  ? <WrapInCard initiallyExpanded={false}
+                  ? <WrapInCard initiallyExpanded={false} M={M}
                                 title={'Individual Concepts'} >
                       <IndividualConceptViews concepts={sc.records} />
                     </WrapInCard>
@@ -485,13 +486,14 @@ class ConceptViewContainer extends Component {
   componentDidMount() {
     let {concept_ids, depth, title, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
-      /*
-      if (concept_ids.length > 100) {
-        console.error(`not fetching ${concept_ids.length} concepts`, title)
-        return
+      if (concept_ids.length > 200) {
+        //debugger
+        console.error(`not fetching ${concept_ids.length - 50} concepts`, title)
+        //return
+        wantConcepts(concept_ids.slice(0,50))
+      } else {
+        wantConcepts(concept_ids)
       }
-      */
-      wantConcepts(concept_ids)
     }
 
     //this.ttId = _.uniqueId('ciglTtId-')
@@ -507,20 +509,10 @@ class ConceptViewContainer extends Component {
   render() {
     let {concepts, concept_ids, depth, title, subtitle,
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muitParams, linksWithCounts,
+            muitParams={}, linksWithCounts, M, invisible,
         } = this.props
-    let M = muit(muitParams)
-    if ( conceptFetchStatus === 'waiting' ) {
-      return  (
-                <h4>
-                  <CircularProgress
-                      //color={muiTheme.palette.accent1Color}
-                    //size={60} thickness={7}
-                  />
-                  Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
-                </h4>
-      )
-    }
+    M = M || muit()
+    M.props({...muitParams, invisible})
     if ( depth > 2 ) {
       console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
       return <h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
@@ -535,31 +527,37 @@ class ConceptViewContainer extends Component {
     }
     */
     //return <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
+    title = <span>
+              {title}
+              <span >
+                <span style={{fontSize: '.6em',}}
+                  data-tip
+                  data-for="cvc"
+                  data-ttcid={ttcid}
+                >
+                  ({cnts.short.join(', ')})
+                </span>
+              </span>
+            </span>
+    subtitle= typeof subtitle === 'function' ? subtitle(this.props) : subtitle
     return  (
-      <WrapInCard
+      <WrapInCard M={M}
                   initiallyExpanded={initiallyExpanded}
-                  muitParams={muitParams}
-                  title={
-                    <span>
-                      {title}
-                      <span >
-                        <span style={{fontSize: '.6em',}}
-                          data-tip
-                          data-for="cvc"
-                          data-ttcid={ttcid}
-                        >
-                          ({cnts.short.join(', ')})
-                        </span>
-                      </span>
-                    </span>
-                  }
-                  subtitle={
-                    typeof subtitle === 'function'
-                      ? subtitle(this.props)
-                      : subtitle
-                  }
+                  //muitParams={muitParams}
+                  title={title}
+                  subtitle={subtitle}
       >
-        <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
+        { invisible
+            ?  <CircularProgress />
+              /*
+              <h4>
+                //color={muiTheme.palette.accent1Color} //size={60} thickness={7}
+                Waiting for concepts: {title} - {subtitle} {concept_ids.join(', ')}
+              </h4>
+              */
+            : null
+        }
+        <ConceptInfoGridList {...{...this.props, M, title:undefined, subtitle:undefined}} />
       </WrapInCard>
     )
   }
@@ -569,10 +567,6 @@ ConceptViewContainer = connect(
     let {concepts=[], concept_ids=[],
           depth=0, title, } = props
     let conceptFetchStatus = 'ok'
-    let fetching = cncpt.fetching(state)
-    if (fetching.length) {
-      debugger
-    }
     if (!concepts.length) {
       if (concept_ids.length) {
         concepts = cncpt.conceptsFromCidsWStubs(state)(concept_ids, false)

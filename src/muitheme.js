@@ -385,38 +385,45 @@ export class Muit {
     req._this = this
     return req
   }
+  props(newProps={}) {
+    if (!_.isEmpty(newProps) || !this._theme) {
+      this._props = _.merge(this._props, newProps)
+      this.setTheme()
+    }
+    return this._props
+    //return this.request.bind(this)
+  }
   request(req) {
     if (!req)
       return this._theme
-    return _.get(this._theme, req) || {}
+    return _.has(this._theme, req) ? _.get(this._theme, req) : {}
   }
-  theme(props) {
-    if (typeof props !== 'undefined') {
-      let { muiTheme,
-            sub, sc, // synonyms
-            themeProps, // for setting, haven't used yet
-      } = props
-      sub = sc || sub || 'main'
-      let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
-      this._theme = getMuiTheme(theme,
-                                {...getStyles(theme.palette)},
-                                {...themeProps})
-      this._desc = {subTheme: sub, cardTitle: JSON.stringify(this._theme.cardTitle)}
-    }
+  theme() {
     return this._theme
+  }
+  setTheme() {
+    let { muiTheme,
+          sub, sc, // synonyms
+          themeProps={}, // for setting, haven't used yet
+          invisible=false,
+    } = this._props
+    sub = sc || sub || 'main'
+    themeProps.invisible = invisible
+    let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
+    this._theme = getMuiTheme(theme,
+                              {...getStyles(theme.palette)},
+                              {...themeProps})
+    this._desc = {
+          invisible, 
+          subTheme: sub, 
+          cardTitle: JSON.stringify(this._theme.cardTitle)
+    }
   }
   desc() {
     return _.map(this._desc, (v,k)=>`${k}: ${v}`).join(', ')
   }
   palette() {
     return this._theme.palette
-  }
-  props(newProps) {
-    if (typeof newProps !== 'undefined') {
-      this._props = newProps  // merge instead of replace?
-      this.theme(this._props)
-    }
-    return this._props
   }
   color(colorProp) {
     return this.palette()[colorProp]

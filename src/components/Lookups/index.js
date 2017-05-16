@@ -6,6 +6,7 @@ import {ApiSnackbar} from 'src/api'
 import myrouter from 'src/myrouter'
 
 import { connect } from 'react-redux'
+import { bindActionCreators, } from 'redux'
 import React, { Component } from 'react'
 import * as cids from 'src/ducks/cids'
 import * as cncpt from 'src/ducks/concept'
@@ -32,63 +33,6 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-class VocabField extends Component {
-  render() {
-    const {vocabularies, vocabulary_id, } = this.props
-    return (
-      <Field name="vocabulary_id" 
-            //value={vocabulary_id}
-            style={{padding:'0px 8px 0px 8px'}}
-            component={SelectField}
-            fullWidth={true}
-            floatingLabelText="vocabulary_id"
-            onChange={
-              (evt,newVal,oldVal) => {
-                myrouter.addParams({vocabulary_id:newVal})
-              }
-            }
-      >
-        {
-          (vocabularies||[]).map(
-            d=>{
-                return <MenuItem 
-                  className="vocab-item"
-                  key={d.vocabulary_id}
-                  checked={d.vocabulary_id === vocabulary_id}
-                  value={d.vocabulary_id}
-                  primaryText={d.vocabulary_id}
-                  secondaryText={d.vocabulary_name}
-                  />
-            })
-        }
-      </Field>
-    )
-  }
-}
-class CodeSearchField extends Component {
-  render() {
-    const { concept_code_search_pattern, errMsg,
-      } = this.props
-    return (
-      <Field name="concept_code_search_pattern" 
-            hintText='401.1%,401.2,401.3%'
-            floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
-            component={TextField}
-            //ref="concept_code_search_pattern" withRef
-            //multiLine={true}
-            fullWidth={true}
-            errorText={errMsg}
-            label="Concept Codes"
-            onChange={
-              (evt,newVal,oldVal) => 
-                myrouter.addParams({
-                    concept_code_search_pattern:newVal})
-            }
-            style={{padding:'0px 8px 0px 8px'}}
-        />
-    )
-  }
-}
 class ConceptCodesLookupForm extends Component {
   constructor(props) {
     super(props)
@@ -99,32 +43,37 @@ class ConceptCodesLookupForm extends Component {
   open(do_it=false) {
     if (this.state.open)
       return
+    this.props.conceptPause()
     this.setState({open:true})
   }
   close() {
     if (!this.state.open)
       return
+    this.props.conceptResume()
     this.setState({open:false})
   }
+  /*
   openOrClose() {
-    const {vocabulary_id, concept_code_search_pattern, } = this.props
-    if (!vocabulary_id || !concept_code_search_pattern) {
+    const {focalConcepts=[]} = this.props
+    //const {vocabulary_id, concept_code_search_pattern, } = this.props
+    //if (!vocabulary_id || !concept_code_search_pattern) {}
+    if (!focalConcepts.length) {
       this.open()
     }
   }
+  */
   componentDidMount() {
-    const {vocabulary_id, concept_code_search_pattern, } = this.props
-    this.openOrClose()
+    this.open()
   }
   componentDidUpdate(prevProps) {
-    this.openOrClose()
+    //this.openOrClose()
   }
   render() {
     let { 
             handleSubmit, pristine, reset, submitting,
               fetching, waiting, err, vocabularies,
               concept_code_search_pattern, vocabulary_id,
-              concepts=[],
+              concepts=[], conceptStatus,
           } = this.props
     let errMsg = ''
     if (waiting) {
@@ -161,10 +110,12 @@ class ConceptCodesLookupForm extends Component {
                       codes matching
                       ${concept_code_search_pattern}` }
           />
-          <ApiSnackbar />
           <Dialog
             title={
               <div>
+
+              {`conceptStatus: ${conceptStatus}
+                vocid: ${vocabulary_id}, ccsp: ${concept_code_search_pattern} ` }
                 {concepts.length} concept codes
                 {
                   fetching.length 
@@ -185,9 +136,32 @@ class ConceptCodesLookupForm extends Component {
           >
             <Card>
               <CardText>
-                <VocabField vocabularies={vocabularies}
-                            vocabulary_id={vocabulary_id}
-                />
+                <Field name="vocabulary_id" 
+                      //value={vocabulary_id}
+                      style={{padding:'0px 8px 0px 8px'}}
+                      component={SelectField}
+                      fullWidth={true}
+                      floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
+                      onChange={
+                        (evt,newVal,oldVal) => {
+                          myrouter.addParams({vocabulary_id:newVal})
+                        }
+                      }
+                >
+                  {
+                    (vocabularies||[]).map(
+                      d=>{
+                          return <MenuItem 
+                            className="vocab-item"
+                            key={d.vocabulary_id}
+                            checked={d.vocabulary_id === vocabulary_id}
+                            value={d.vocabulary_id}
+                            primaryText={d.vocabulary_id}
+                            secondaryText={d.vocabulary_name}
+                            />
+                      })
+                  }
+                </Field>
                 {
                   vocabulary ?
                     <FlatButton
@@ -203,16 +177,12 @@ class ConceptCodesLookupForm extends Component {
             </Card>
             <Card>
               <CardText>
-                <CodeSearchField concept_code_search_pattern={concept_code_search_pattern} />
-              </CardText>
-            {/*
-              <CardText>
                 <Field name="concept_code_search_pattern" 
                       hintText='401.1%,401.2,401.3%'
                       floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
                       component={TextField}
-                      ref="concept_code_search_pattern" withRef
-                      multiLine={true}
+                      //ref="concept_code_search_pattern" withRef
+                      //multiLine={true}
                       fullWidth={true}
                       errorText={errMsg}
                       label="Concept Codes"
@@ -221,9 +191,9 @@ class ConceptCodesLookupForm extends Component {
                           myrouter.addParams({
                               concept_code_search_pattern:newVal})
                       }
+                      style={{padding:'0px 8px 0px 8px'}}
                   />
               </CardText>
-            */}
             </Card>
             <Card>
               <CardHeader
@@ -245,11 +215,12 @@ class ConceptCodesLookupForm extends Component {
 // Decorate with reduxForm(). It will read the initialValues prop provided by connect()
 ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
+  //initialValues: { vocabulary_id:'FOO', concept_code_search_pattern:"BAR", },
 })(ConceptCodesLookupForm)
 
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
-    const { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
+    let { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
     let cids = state.cids
     let focalCids = cncpt.focal(state)
     let concepts = cncpt.focalConcepts(state)
@@ -262,10 +233,17 @@ ConceptCodesLookupForm = connect(
       fetching: cncpt.fetching(state),
       waiting: concepts.length < focalCids.length,
       errMsg: concepts.length < focalCids.length ? 'waiting' : undefined,
-      formRef: state.form.concept_codes_form,
+      conceptStatus: state.concepts.requests.status,
+      //formRef: state.form.concept_codes_form,
     }
     return addProps
-  } 
+  },
+  dispatch => {
+    return bindActionCreators({ 
+      conceptPause:cncpt.pause, 
+      conceptResume:cncpt.resume, 
+    },dispatch)
+  }
 )(ConceptCodesLookupForm)
 
 export {

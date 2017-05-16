@@ -47,15 +47,20 @@ export const isCached = (url='') => {
 }
 
 const apiActions = {
-  CACHE_DIRTY: 'vocab-pop/api/CACHE_DIRTY',
   API_CALL: 'vocab-pop/api/API_CALL',
   CACHED_RESULTS: 'vocab-pop/api/CACHED_RESULTS',
   NEW_RESULTS: 'vocab-pop/api/NEW_RESULTS',
   REJECTED: 'vocab-pop/api/REJECTED',
+
+  CACHE_DIRTY: 'vocab-pop/api/CACHE_DIRTY',
 }
 export {apiActions}
-export const reducer = (state={active:{},complete:{},failed:{}}, action) => {
-  let {active,complete,failed} = state
+export const reducer = (
+  state={ active:{},
+          complete:{},
+          failed:{}
+        }, action) => {
+  let {status,active,complete,failed} = state
   let {type, payload, meta, error} = action
   let apiPathname, params, url, results, msg
   switch (type) {
@@ -103,7 +108,8 @@ export const reducer = (state={active:{},complete:{},failed:{}}, action) => {
     default:
       return state
   }
-  return {active,complete,failed}
+  let newState = {status,active,complete,failed}
+  return _.isEqual(state, newState) ? state : newState
 }
 export default reducer
 export const actionGenerators = {
@@ -153,13 +159,14 @@ export const apiCall =
           console.log('error loading cids', err)
           return Rx.Observable.of({
             type: apiActions.REJECTED,
-            payload: err.xhr.response,
+            payload: (err.xhr||{}).response || err,
             meta: {apiPathname},
             error: true
           })
         },
   } = props
 
+  //console.log(apiPathname, JSON.stringify(params))
   return cachedAjax({apiPathname, params, url})
               //.do(action=>{debugger})
               .do(action=>{

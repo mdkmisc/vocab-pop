@@ -20,6 +20,7 @@ import Paper from 'material-ui/Paper';
 import FlatButton from 'material-ui/FlatButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
+import CircularProgress from 'material-ui/CircularProgress';
 
 import {
   Checkbox,
@@ -45,60 +46,40 @@ class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, concept_code_search_pattern, 
           concepts=[], fetching=[],
-          api,
+          api, conceptStatus,
         } = this.props
-    let formParams = {  vocabulary_id, concept_code_search_pattern, }
+    //let formParams = {  vocabulary_id:'blah', concept_code_search_pattern:'eek', }
+    let form = <ConceptCodesLookupForm />
     //console.log(concepts)
-    if (fetching.length) {
-      return (
-        <div ref={d=>this.divRef=d} id="sts-div" >
-          <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
-            <CardHeader style={{
-                padding:'10px 8px 0px 8px'
-              }}
-              actAsExpander={true}
-              showExpandableButton={true}
-              title={<h4>Source Target Source Report</h4>}
+    let content = null
+    let invisible = false
+    switch (conceptStatus) {
+      case cncpt.conceptActions.PAUSE:
+        content = <CircularProgress />
+        break
+      case cncpt.conceptActions.FULL:
+        //content = <div>concept store is full</div>
+        //break
+      case cncpt.conceptActions.BUSY:
+        invisible = true
+      default:
+        content =
+            <C.ConceptViewContainer 
+              invisible={invisible}
+              concepts={concepts}
+              subtitle={
+                <span>
+                  {concepts.length} {' '}
+                  {vocabulary_id} concepts{' '}
+                </span>
+              }
+              linksWithCounts={true}
+              //styleOverrides={{root:'card.root.top'}}
             />
-            <ConceptCodesLookupForm style={{ margin: 10, }}
-            />
-            <CardText style={{leftMargin:15}} >
-              waiting for {fetching.join(', ')}
-            </CardText>
-          </Card>
-        </div>
-      )
     }
-    
-              //<ApiSnackbar />
-              /*
-    return  <div>
-              <h4>nothing</h4>
-              <ApiWatch />
-              {vocabulary_id}: {concept_code_search_pattern} <br/>
-              {concepts.length} concepts
-            </div>
-        <ApiWatch />
-            */
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
-        <ApiSnackbar />
-        <ConceptCodesLookupForm 
-            //style={{ margin: 10, }} 
-        />
-        <C.ConceptViewContainer 
-          concepts={concepts}
-          title={<h4>Source Target Source Report</h4>}
-          subtitle={
-            <span>
-              {concepts.length} {' '}
-              {vocabulary_id} concepts{' '}
-            </span>
-          }
-          linksWithCounts={true}
-          //styleOverrides={{root:'card.root.top'}}
-        />
-        {/*
+        <h4>Source Target Source Report</h4>
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
           <CardHeader style={{
               padding:'10px 8px 0px 8px'
@@ -107,29 +88,14 @@ class SourceTargetSourceForm extends Component {
             showExpandableButton={true}
             title={<h4>Source Target Source Report</h4>}
           />
-          //<ConceptCodesLookupForm style={{ margin: 10, }} />
-          <CardText style={{leftMargin:15}}
-                    expandable={true} >
-
-
-<C.SplitIntoScs {...{concepts,depth:0}} >
-            <C.ConceptViewContainer 
-              concepts={concepts}
-              title={
-                <span>
-                  {concepts.length} {' '}
-                  {vocabulary_id} concepts{' '}
-                </span>
-              }
-              linksWithCounts={true}
-              styleOverrides={{root:'card.root.top'}}
-            />
-</C.SplitIntoScs>
-
-
+          {form}
+          <CardText style={{leftMargin:15}} >
+            conceptStatus: {conceptStatus}
+          </CardText>
+          <CardText style={{leftMargin:15}} >
+            {content}
           </CardText>
         </Card>
-        */}
       </div>
     )
   }
@@ -142,13 +108,14 @@ SourceTargetSourceForm = reduxForm({
 
 SourceTargetSourceForm = connect(
   (state, props) => { // mapStateToProps
-    const selector = formValueSelector('concept_codes_form')
+    //const selector = formValueSelector('concept_codes_form')
     //const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
     const {vocabulary_id, concept_code_search_pattern, } 
           = myrouter.getQuery()
     let cids = state.cids
     let focalCids = cncpt.focal(state)
     let concepts = cncpt.focalConcepts(state)
+    let conceptStatus = state.concepts.requests.status
     return {
       api: state.api,
       fetching: cncpt.fetching(state),
@@ -156,6 +123,7 @@ SourceTargetSourceForm = connect(
       vocabulary_id, concept_code_search_pattern,
       formRef: state.form.stsform,
       concepts,
+      conceptStatus,
     }
   }
 )(SourceTargetSourceForm)
