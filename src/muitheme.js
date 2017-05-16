@@ -68,11 +68,19 @@ window.typography = typography
 
 const subThemeRootColors = {
   // S,C,X primary are from Atlas
+  /* different primary and accent colors...
+   * for now though, easier to see what's going on if i use same for both
   S: { primary: '#0070dd', accent: teal500, },
   C: { primary: '#a335ee', accent: deepPurple300, },
   X: { primary: '#a71a19', accent: orange400, },
   main: { primary: grey400, accent: blueGrey400, },
   want: { primary: yellow500, accent: yellow700, },
+  */
+  S: { primary: '#0070dd', accent: '#0070dd', },
+  C: { primary: '#a335ee', accent: '#a335ee', },
+  X: { primary: '#a71a19', accent: '#a71a19', },
+  main: { primary: blueGrey400, accent: blueGrey400, },
+  want: { primary: yellow700, accent: yellow700, },
 }
 
 // http://www.material-ui.com/#/customization/themes
@@ -122,6 +130,49 @@ const getPalette =
 
 const getStyles = pal => {   //subThemeStyles[subTheme]
   return {
+    appBar: {
+    },
+    ciglDiv: { 
+      padding: 4,
+      backgroundColor: pal.light,
+      border: `4px dotted ${pal.regular}`,
+      //zoom: .7,
+    },
+    raisedButton: {
+      //padding: 8,
+      //margin: 4,
+      width:'auto',
+      minWidth:'auto',
+      //border:'1px solid pink',
+      //color: 'white',
+      lineHeight:'auto',
+      height:'auto',
+      minHeight:'auto',
+          padding: '1px 3px 1px 3px',
+          margin: '5px 2px 1px 2px',
+          backgroundColor: pal.regular,
+          color: pal.alternateTextColor,
+      styleProps: {
+        buttonStyle: {
+          backgroundColor: pal.regular,
+          color: pal.alternateTextColor,
+          //padding: 4,
+          //margin: 4,
+          //width:'auto',
+          //minWidth:'auto',
+          //color:'darkgray'
+        },
+      },
+      container: {
+        //padding: 20,
+        //margin: 20,
+        //backgroundColor: pal.lighter,
+        //textColor: pal.textColor,
+        //border: `1px solid ${pal.darker}`,
+        //width:'auto',
+      },
+    },
+    /* not working right
     flatButton: {
       padding: '1px 3px 1px 3px',
       margin: '5px 2px 1px 2px',
@@ -135,9 +186,22 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       styleProps: {
         // needs to be set directly on component,
         // not in style
-        backgroundColor: pal.regular,
-      }
+        buttonStyle: {
+          labelColor: 'purple',
+          padding: 4,
+          margin: 4,
+          //width:'auto',
+          //minWidth:'auto',
+          //backgroundColor:'yellow',
+          //padding: '1px 3px 1px 3px',
+          //margin: '5px 2px 1px 2px',
+          //labelColor: 'purple',
+          //backgroundColor:'yellow',
+          //color:'darkgray'
+        },
+      },
     },
+    */
     cardMedia: {
       /* default: (LT)
       color: darkWhite,
@@ -146,39 +210,56 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       subtitleColor: lightWhite,
       */
     },
-    cardText: {
+    cardTitle: {
+      border: '20px solid blue',
+      backgroundColor: 'pink',
       /* default
       textColor: pal.textColor,
       */
     },
     card: {
+      // 
+      containerStyle: { // Override the inline-styles of the container element.
+          padding: 8,
+          borderRadius: '.8em',
+          //border: '20px solid red',
+          backgroundColor: pal.light,
+          boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
+      },
+      style: { // Override the inline-styles of the root element.
+      },
+
+
+
       /*
+      border: '20px solid blue',
       titleColor: fade(pal.textColor, 0.87),
       subtitleColor: fade(pal.textColor, 0.54),
       fontWeight: typography.fontWeightMedium,
-      */
       titleColor: 'pink',
       subtitleColor: 'orange',
+      */
       fontWeight: typography.fontWeightMedium,
       root: {
         top: { // just for ConceptViewContainers
           //margin: '3%',
-          zoom: 0.8,
-          padding: 8,
-          borderRadius: '.8em',
-          backgroundColor: pal.light,
-          //boxShadow: `inset 0 0 .9em .5em #B22 0 0 .9em .5em #2BB`,
-          //boxShadow: `inset 0 0 .9em .5em ${pal.darker} 0 0 .9em .5em ${pal.darker}`,
-          boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
+          //zoom: 1.2,
           //boxShadow: `rgb(86, 121, 149) 0px 0px 0.9em 0.5em inset, rgb(86, 121, 149) 0px 0px 0.9em 0.5em`,
           //border: '2px solid red',
+          backgroundColor: pal.regular,
         },
         plain: {
           zoom: 0.8,
           borderRadius: '.8em',
-          backgroundColor: pal.light,
+          backgroundColor: pal.regular,
           //boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
         },
+      },
+      cardTitle: {
+        border: '20px solid blue',
+        /* default
+        textColor: pal.textColor,
+        */
       },
       title: {
         //backgroundColor: pal.lighter,
@@ -187,6 +268,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
           fontSize: '1.6em',
           fontWeight: typography.fontWeightMedium,
           color: pal.darker,
+          backgroundColor: pal.light,
           //padding: 10,
           //boxShadow: `.2em .2em .7em ${muit.getColor().darker}`,
           //backgroundColor: muiTheme.palette.atlasDarkBg,
@@ -292,7 +374,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
 }
 
 export class Muit {
-  constructor(props) {
+  constructor(props={}) {
     this.props(props)
 
     // following is so I don't have to change code in Concept/index.js right now
@@ -315,11 +397,11 @@ export class Muit {
             themeProps, // for setting, haven't used yet
       } = props
       sub = sc || sub || 'main'
-      this._desc = {subTheme: sub}
       let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
       this._theme = getMuiTheme(theme,
                                 {...getStyles(theme.palette)},
                                 {...themeProps})
+      this._desc = {subTheme: sub, cardTitle: JSON.stringify(this._theme.cardTitle)}
     }
     return this._theme
   }
@@ -339,20 +421,6 @@ export class Muit {
   color(colorProp) {
     return this.palette()[colorProp]
     //return JSON.stringify(this._theme.palette) + ' ' + this.palette()[colorProp]
-  }
-  wrapElement(el,wrapperProps={}) {
-    // is this doing anything?
-    //console.log("wrapElement not doing anything right now")
-    //return el
-    return  <MuiThemeProvider muiTheme={this._theme} {...wrapperProps}>
-              <div style={{backgroundColor:this.color('accent1Color')}}>
-                <h4>Wrapped in: {this.desc()}</h4>
-                {el}
-              </div>
-            </MuiThemeProvider>
-  }
-  wrapComponent(Comp) {
-    return muiThemeable(this._theme)(Comp)
   }
 }
 const muit = props => { // so I don't have to change code in Concept/index.js right now

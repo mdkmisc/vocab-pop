@@ -26,9 +26,10 @@ import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
 
 const {store, myrouter} = configureStore()
+let theme = muit()()
 render (
           <Provider store={store}>
-            <MuiThemeProvider muiTheme={muit()()}>
+            <MuiThemeProvider muiTheme={theme}>
               <myrouter.ConnectedRouter data-myrouter={myrouter} history={myrouter.history}>
                 <Route path='/' component={App} />
               </myrouter.ConnectedRouter>

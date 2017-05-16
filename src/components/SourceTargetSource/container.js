@@ -83,6 +83,22 @@ class SourceTargetSourceForm extends Component {
     return (
       <div ref={d=>this.divRef=d} id="sts-div" >
         <ApiSnackbar />
+        <ConceptCodesLookupForm 
+            //style={{ margin: 10, }} 
+        />
+        <C.ConceptViewContainer 
+          concepts={concepts}
+          title={<h4>Source Target Source Report</h4>}
+          subtitle={
+            <span>
+              {concepts.length} {' '}
+              {vocabulary_id} concepts{' '}
+            </span>
+          }
+          linksWithCounts={true}
+          //styleOverrides={{root:'card.root.top'}}
+        />
+        {/*
         <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
           <CardHeader style={{
               padding:'10px 8px 0px 8px'
@@ -91,10 +107,12 @@ class SourceTargetSourceForm extends Component {
             showExpandableButton={true}
             title={<h4>Source Target Source Report</h4>}
           />
-          <ConceptCodesLookupForm style={{ margin: 10, }}
-          />
+          //<ConceptCodesLookupForm style={{ margin: 10, }} />
           <CardText style={{leftMargin:15}}
                     expandable={true} >
+
+
+<C.SplitIntoScs {...{concepts,depth:0}} >
             <C.ConceptViewContainer 
               concepts={concepts}
               title={
@@ -104,11 +122,14 @@ class SourceTargetSourceForm extends Component {
                 </span>
               }
               linksWithCounts={true}
-              rootStyle={'topRoot'}
               styleOverrides={{root:'card.root.top'}}
             />
+</C.SplitIntoScs>
+
+
           </CardText>
         </Card>
+        */}
       </div>
     )
   }

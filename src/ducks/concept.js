@@ -132,7 +132,6 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   ){
     throw new Error("corrupted request state")
   }
-  if (!_.isEqual(state, newState))
   return _.isEqual(state, newState) ? state : newState
 }
 
@@ -359,11 +358,11 @@ export const conceptsFromCidsWStubs = createSelector(
 )
 
 export const rels2map = rels => {
-  return timeFunc(()=>rels.reduce((acc,{relationship,relcids}) => (
+  return rels.reduce((acc,{relationship,relcids}) => (
                         { ...acc,
                           [relationship]: _.uniq((acc[relationship]||[]).concat(relcids))
                         }),
-                        {}))
+                        {})
 }
 export const timeFunc = f => {
   let start = performance.now()
