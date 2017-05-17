@@ -108,25 +108,28 @@ class ConceptCodesLookupForm extends Component {
             contentStyle={M('dialog.contentStyle')}
             //contentStyle={{width:'100%',maxWidth:'none',}}
             overlayStyle={M('dialog.overlayStyle')}
+            titleStyle={M('dialog.titleStyle')}
+            actionsContainerStyle={M('dialog.actionsContainerStyle')}
             title={
               <div>
                 Choose focal concepts<br/>
                 <div style={M('dialog.titleStyle.subtitle')}>
                   {concepts.length 
                     ? concepts.length 
-                    : 'None' } selected
-                </div>
-                {
-                  fetching.length 
-                    ?  `waiting for ${fetching.length} concepts`
-                    : ''
-                }
-                <div style={{fontSize:12}}>
+                    : 'None' 
+                  } selected
+                  {
+                    fetching.length 
+                      ?  <div>waiting for {fetching.length} concepts</div>
+                      : null
+                  }
+                  <hr/>
                   { concepts.map(
                       d=> matchBy==='codes' 
                             ? d.concept_code
                             : d.concept_name
-                    ).join(', ') }
+                    ).join(', ') 
+                  }
                 </div>
               </div>
             }
@@ -142,11 +145,16 @@ class ConceptCodesLookupForm extends Component {
                       component={SelectField}
                       fullWidth={true}
                       floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
+                      /*
                       onChange={
                         (evt,newVal,oldVal) => {
-                          myrouter.addParams({vocabulary_id:newVal})
+                          myrouter.addParams({
+                            vocabulary_id:newVal,
+                            matchBy, matchStr
+                          })
                         }
                       }
+                      */
                 >
                   {
                     (vocabularies||[]).map(
@@ -178,15 +186,18 @@ class ConceptCodesLookupForm extends Component {
 
 
                 <Field  name="matchBy" 
+                      /*
                         onChange={
                           (evt,newVal,oldVal) => 
                             myrouter.addParams({
                               matchBy:newVal,
+                              matchStr:'',
                           })}
+                      */
                         component={RadioButtonGroup}>
                   <RadioButton value="codes" label="Concept Codes" />
-                  <RadioButton value="text" label="Concept name" />
-                  <RadioButton value="concept_id" label="Concept ID" />
+                  <RadioButton value="text" label="Concept Name" />
+                  <RadioButton disabled={true} value="concept_id" label="Concept ID" />
                 </Field>
 
 
@@ -206,12 +217,15 @@ class ConceptCodesLookupForm extends Component {
                       }
                       fullWidth={true}
                       errorText={errMsg}
+                      /*
                       onChange={
                         (evt,newVal,oldVal) => 
                           myrouter.addParams({
                             matchStr:newVal,
+                            matchBy,
                           })
                       }
+                      */
                       style={{padding:'0px 8px 0px 8px'}}
                   />
 

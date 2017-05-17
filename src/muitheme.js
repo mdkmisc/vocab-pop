@@ -156,7 +156,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         //border: `24px solid purple`,
       },
       contentStyle: {
-        zoom: .8,
+        //zoom: .8,
         //left: '30%',
         //width: '100%',
         backgroundColor: 'white',
@@ -182,10 +182,20 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         */
       },
       titleStyle: {
+        backgroundColor: 'white',
+        //border: `6px solid ${pal.regular}`,
+        //margin: 15,
         subtitle: {
           zoom: .7,
+          lineHeight: '1em',
+          //border: `6px solid ${pal.regular}`,
         },
       },
+      actionsContainerStyle: {
+        //margin: 15,
+        //border: `6px solid ${pal.regular}`,
+        backgroundColor: 'white',
+      }
     },
     raisedButton: {
       //padding: 8,

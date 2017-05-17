@@ -62,6 +62,11 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   }
   let {type, payload, meta, error} = action
   let new_cids = payload
+  if (new_cids && new_cids.length && !got.length && !fetching.length && !want.length) {
+    // KLUDGE
+    //type = conceptActions
+    //debugger
+  }
   switch (type) {
     case conceptActions.IDLE:
     case conceptActions.BUSY:
@@ -108,6 +113,7 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
         //console.log(`concept store now ${status}, not fetching ${toFetch.length} concepts`)
         status = conceptActions.FULL
       } else if (status === conceptActions.PAUSE) {
+        debugger
         delayedRequest = toFetch
         toFetch = []
       }
@@ -143,9 +149,9 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
     throw new Error("corrupted request state")
   }
   if (status === conceptActions.PAUSE) {
-    status = status
+    //status = status
   } else if (status === conceptActions.FULL) {
-    status = status
+    //status = status
   } else if (!fetching.length && !want.length) {
     status = conceptActions.IDLE
   } else {

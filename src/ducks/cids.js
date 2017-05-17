@@ -33,6 +33,12 @@ const reducer = (state=[], action) => {
 export default reducer
 /**** end reducers *********************************************************/
 
+/**** start action creators *********************************************************/
+export const getNewCids = (payload) => ({
+                                type: cidsActions.GET_NEW_CIDS,
+                                payload,
+                              })
+/**** end action creators *********************************************************/
 
 /**** start selectors *****************************************************************/
 export const cids_w_match = state => state.cids||[]
@@ -41,22 +47,17 @@ export const cids = createSelector( cids_w_match, cwm=>cwm.map(d=>d.concept_id))
 
 let epics = [ ]
 const getCidsTrigger = (action$, store) => (
-  action$.ofType('@@router/LOCATION_CHANGE')
+  action$.ofType('@@redux-form/CHANGE','@@redux-form/INITIALIZE')
+    .filter(action=>action.meta.form === 'concept_codes_form')
+    .debounceTime(500)
     .mergeMap(action=>{
-      let {path,search,hash,state,key} = action
-      let query = myrouter.getQuery()
-      let go = false
-      if (_.has(state, 'vocabulary_id') || 
-          _.has(state, 'matchStr') ||
-          _.has(state, 'matchBy')) {
-        go = true
-      }
-      if (typeof state === 'undefined') { // initializing?
-        go = true
-      }
-      let {vocabulary_id, matchBy, matchStr} = query
-      if (go && vocabulary_id && matchStr) {
-        return Rx.Observable.of({type: cidsActions.GET_NEW_CIDS})
+      let {payload, meta: {form, field,}} = action
+      let formState = store.getState().form[form]
+      let {values} = formState
+      let {vocabulary_id, matchBy, matchStr} = values
+      myrouter.addParams(values)
+      if (vocabulary_id && matchBy && matchStr) {
+        return Rx.Observable.of(getNewCids(values))
       }
       return Rx.Observable.empty()
     })
@@ -65,12 +66,14 @@ epics.push(getCidsTrigger)
 const cidsCall = (action$, store) => (
   action$.ofType(cidsActions.GET_NEW_CIDS)
     .switchMap(action=>{
-      let {path,search,hash,state,key} = action
-      let query = myrouter.getQuery()
-      let {vocabulary_id, matchBy, matchStr} = query
-      if (vocabulary_id && matchStr) {
-        let params = {vocabulary_id, matchBy, concept_code_search_pattern:matchStr}
+      let {payload:{vocabulary_id, matchBy, matchStr}} = action
+      if (matchBy === 'codes') {
+        let params = {vocabulary_id, concept_code_search_pattern:matchStr}
         return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname:apiPathname(matchBy),params}))
+      } else {
+        debugger
+      }
+      if (vocabulary_id && matchBy && matchStr) {
       }
       return Rx.Observable.empty()
     })
