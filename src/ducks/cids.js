@@ -12,7 +12,10 @@ export const cidsActions = {
   NEW_CIDS: 'vocab-pop/cids/NEW_CIDS',
   GET_NEW_CIDS: 'vocab-pop/cids/GET_NEW_CIDS',
 }
-const apiPathname = 'codeSearchToCids'
+const apiPathname = matchBy=> (
+  (matchBy === 'codes' && 'codeSearchToCids') ||
+  'notWorkingYet'
+)
 
 /**** start reducers *********************************************************/
 const reducer = (state=[], action) => {
@@ -43,14 +46,16 @@ const getCidsTrigger = (action$, store) => (
       let {path,search,hash,state,key} = action
       let query = myrouter.getQuery()
       let go = false
-      if (_.has(state, 'vocabulary_id') || _.has(state, 'concept_code_search_pattern')) {
+      if (_.has(state, 'vocabulary_id') || 
+          _.has(state, 'matchStr') ||
+          _.has(state, 'matchBy')) {
         go = true
       }
       if (typeof state === 'undefined') { // initializing?
         go = true
       }
-      let {vocabulary_id, concept_code_search_pattern} = query
-      if (go && vocabulary_id && concept_code_search_pattern) {
+      let {vocabulary_id, matchBy, matchStr} = query
+      if (go && vocabulary_id && matchStr) {
         return Rx.Observable.of({type: cidsActions.GET_NEW_CIDS})
       }
       return Rx.Observable.empty()
@@ -62,10 +67,10 @@ const cidsCall = (action$, store) => (
     .switchMap(action=>{
       let {path,search,hash,state,key} = action
       let query = myrouter.getQuery()
-      let {vocabulary_id, concept_code_search_pattern} = query
-      if (vocabulary_id && concept_code_search_pattern) {
-        let params = {vocabulary_id, concept_code_search_pattern}
-        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname,params}))
+      let {vocabulary_id, matchBy, matchStr} = query
+      if (vocabulary_id && matchStr) {
+        let params = {vocabulary_id, matchBy, concept_code_search_pattern:matchStr}
+        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname:apiPathname(matchBy),params}))
       }
       return Rx.Observable.empty()
     })
@@ -74,7 +79,7 @@ const cidsCall = (action$, store) => (
       debugger
       return Rx.Observable.of({
         type: 'vocab-pop/cids/FAILURE',
-        meta: {apiPathname},
+        meta: {action},
         error: true
       })
     })
@@ -83,7 +88,8 @@ epics.push(cidsCall)
 
 const loadCids = (action$, store) => (
   action$.ofType(api.apiActions.API_CALL)
-    .filter((action) => (action.payload||{}).apiPathname === apiPathname)
+    .filter((action) => 
+            (action.payload||{}).apiPathname === 'codeSearchToCids')
     .mergeMap((action)=>{
       let {type, payload, meta, error} = action
       let {apiPathname, params, url} = payload
@@ -93,7 +99,7 @@ const loadCids = (action$, store) => (
       console.error('error in loadVocabularies', err)
       return Rx.Observable.of({
         type: 'vocab-pop/vocabularies/FAILURE',
-        meta: {apiPathname},
+        meta: {apiPathname:'codeSearchToCids'},
         error: true
       })
     })

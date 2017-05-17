@@ -49,127 +49,109 @@ const requestStore = () => (
     got: [],
     focal: [],
     stale: [],
+    requests: [],
   })
 const MAX_CONCEPTS_TO_LOAD = 500
 const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
-  let {status, want, fetching, got, focal, stale} = state
+  let {status, want, fetching, got, focal, stale, requests} = state
+  if (  _.intersection(got,want).length ||
+        _.intersection(got,fetching).length ||
+        _.intersection(want,fetching).length
+  ){
+    throw new Error("corrupted request state")
+  }
   let {type, payload, meta, error} = action
-  /*
-  if (_.isEmpty(payload) && type !== conceptActions.FETCH_CONCEPTS)
-    return state
-  */
-  let newState
   let new_cids = payload
   switch (type) {
     case conceptActions.IDLE:
     case conceptActions.BUSY:
     case conceptActions.FULL:
     case conceptActions.PAUSE:
-      newState = {...state, status:type}
+      status = type
       break
     case conceptActions.NEW_CONCEPTS:
-      /*
-      if (_.includes([conceptActions.FULL,conceptActions.PAUSE], status)) {
-        // not working right
-        console.log(`concept store ${status}, not accepting ${payload.length} concepts`)
-        return state
-      }
-      */
-
       new_cids = payload.map(c=>c.concept_id)
-      newState = {
-        ...state,
-        got: _.union(got, new_cids),
-        want: _.chain(want)
-                      .difference(new_cids)
-                      .difference(got)
-                      .difference(fetching)
-                      .value(),
-        fetching: _.chain(fetching)
-                      .difference(new_cids)
-                      .difference(got)
-                      .value(),
-      }
+      got = _.union(got, new_cids)
+      want = _.chain(want)
+                    .difference(new_cids)
+                    .difference(got)
+                    .difference(fetching)
+                    .value()
+      fetching = _.chain(fetching)
+                    .difference(new_cids)
+                    .difference(got)
+                    .value()
+      //status = conceptActions.IDLE
       break
     case conceptActions.WANT_CONCEPTS:
-      newState = {
-        ...state,
-        want: _.chain(want)
-                      .union(new_cids)
-                      .difference(got)
-                      .difference(fetching)
-                      .value(),
-      }
+      want = _.chain(want)
+                    .union(new_cids)
+                    .difference(got)
+                    .difference(fetching)
+                    .value()
+      requests = [...requests, action]
       break
-    case conceptActions.FETCH_CONCEPTS:
-      if (_.includes([conceptActions.FULL,conceptActions.PAUSE], status)) {
-        // not working right
-        console.log(`concept store ${status}, not fetching concepts`)
-        return state
-      }
     case conceptActions.RESUME:
+      status = type
+    case conceptActions.FETCH_CONCEPTS:
       let toFetch = _.chain(fetching)
                       .union(want)
                       .difference(got)
                       .value()
       let delayedRequest = []
-      status = toFetch.length ? conceptActions.BUSY : conceptActions.IDLE
-      if (got.length + toFetch.length > MAX_CONCEPTS_TO_LOAD) {
-        let moveBack = got.length + toFetch.length - MAX_CONCEPTS_TO_LOAD
+      let total = got.length + toFetch.length
+      if (total > MAX_CONCEPTS_TO_LOAD) {
+        let moveBack = total - MAX_CONCEPTS_TO_LOAD
         let split = toFetch.length - moveBack
         delayedRequest = toFetch.slice(split)
         toFetch = toFetch.slice(0, split)
-        console.log(`concept store now ${status}, not fetching ${toFetch.length} concepts`)
+        //console.log(`concept store now ${status}, not fetching ${toFetch.length} concepts`)
         status = conceptActions.FULL
-        // not working right
+      } else if (status === conceptActions.PAUSE) {
+        delayedRequest = toFetch
+        toFetch = []
       }
-      newState = {
-        ...state,
-        want: delayedRequest,
-        fetching: toFetch,
-        status,
-      }
+      want = delayedRequest
+      fetching = toFetch
       break
     case "@@redux-form/CHANGE":
       if (action.meta.form === "concept_codes_form") {
-        newState = {
-          ...state,
-          focal: [],
-          stale: got,
-          want: [],
-          fetching: [],
-        }
+        focal = []
+        stale = got
+        want = []
+        fetching = []
       } else {
         return state
       }
       break
     case conceptActions.FETCH_FOCAL_CONCEPTS:
-      newState = {
-        ...state,
-        focal: new_cids,
-        stale: got,
-        want: [],
-        fetching: _.difference(new_cids, got),
-        status: conceptActions.BUSY,
-      }
+      focal = new_cids
+      stale = got
+      want = []
+      fetching = _.difference(new_cids, got)
+      requests = [...requests, {...action, focal: true}]
+      if (status === conceptActions.IDLE)
+        status = conceptActions.BUSY
       break
     default:
       return state
   }
   if (  _.intersection(got,want).length ||
         _.intersection(got,fetching).length ||
-        _.intersection(want,fetching).length ||
-        _.intersection(newState.got,newState.want).length ||
-        _.intersection(newState.got,newState.fetching).length ||
-        _.intersection(newState.want,newState.fetching).length
+        _.intersection(want,fetching).length
   ){
     throw new Error("corrupted request state")
   }
-  if (!fetching.length && !want.length) {
-    newState.status = newState.status || conceptActions.IDLE
+  if (status === conceptActions.PAUSE) {
+    status = status
+  } else if (status === conceptActions.FULL) {
+    status = status
+  } else if (!fetching.length && !want.length) {
+    status = conceptActions.IDLE
   } else {
-    newState.status = newState.status || conceptActions.BUSY
+    status = conceptActions.BUSY
   }
+  let newState = {status, want, fetching, got, focal, stale, requests}
   return _.isEqual(state, newState) ? state : newState
 }
 
@@ -182,10 +164,10 @@ export default combineReducers({
 
 /**** start action creators *********************************************************/
 const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
-export const wantConcepts = (concept_ids) => ({
+export const wantConcepts = (concept_ids,meta) => ({
                                 type: conceptActions.WANT_CONCEPTS,
                                 payload:concept_ids,
-                                meta: {apiPathname},
+                                meta: {apiPathname, ...meta},
                               })
 export const fetchConcepts = () => ({ type: conceptActions.FETCH_CONCEPTS, })
 export const fetchFocalConcepts = (concept_ids) => ({

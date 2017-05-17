@@ -1,5 +1,6 @@
 /* eslint-disable */
 import myrouter from 'src/myrouter'
+import muit from 'src/muitheme'
 import _ from 'src/supergroup'; // in global space anyway...
 import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
@@ -44,12 +45,13 @@ class SourceTargetSourceForm extends Component {
     ReactTooltip.rebuild()
   }
   render() {
-    let { vocabulary_id, concept_code_search_pattern, 
+    let { vocabulary_id, matchBy, matchStr, 
           concepts=[], fetching=[],
           api, conceptStatus, requests, focalCids,
         } = this.props
-    //let formParams = {  vocabulary_id:'blah', concept_code_search_pattern:'eek', }
-    let form = <ConceptCodesLookupForm />
+    let M = muit()
+    //let formParams = {  vocabulary_id:'blah', matchBy, matchStr:'eek', }
+    let form = <ConceptCodesLookupForm M={M}/>
     //console.log(concepts)
     let content = null
     let invisible = false
@@ -67,7 +69,7 @@ class SourceTargetSourceForm extends Component {
             <C.ConceptViewContainer 
               invisible={invisible}
               concepts={concepts}
-              subtitle={
+              title={
                 <span>
                   {concepts.length} {' '}
                   {vocabulary_id} concepts{' '}
@@ -115,8 +117,7 @@ SourceTargetSourceForm = reduxForm({
 SourceTargetSourceForm = connect(
   (state, props) => { // mapStateToProps
     //const selector = formValueSelector('concept_codes_form')
-    //const {vocabulary_id, concept_code_search_pattern, } = selector(state, 'vocabulary_id', 'concept_code_search_pattern')
-    const {vocabulary_id, concept_code_search_pattern, } 
+    const {vocabulary_id, matchBy, matchStr, } 
           = myrouter.getQuery()
     let cids = state.cids
     let focalCids = cncpt.focal(state)
@@ -128,7 +129,7 @@ SourceTargetSourceForm = connect(
       api: state.api,
       fetching: cncpt.fetching(state),
       waiting: concepts.length < focalCids.length,
-      vocabulary_id, concept_code_search_pattern,
+      vocabulary_id, matchBy, matchStr,
       formRef: state.form.stsform,
       concepts,
       conceptStatus,

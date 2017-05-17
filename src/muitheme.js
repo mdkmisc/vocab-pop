@@ -134,9 +134,58 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
     },
     ciglDiv: { 
       padding: 4,
-      backgroundColor: pal.light,
+      backgroundColor: pal.lighter,
       border: `4px dotted ${pal.regular}`,
       //zoom: .7,
+    },
+    randomDiv: {
+      backgroundColor: pal.lighter,
+      border: `4px solid ${pal.regular}`,
+    },
+    dialog: {
+      //zoom: .4,
+      /* defaults:
+      titleFontSize: 22,
+      bodyFontSize: 16,
+      bodyColor: fade(palette.textColor, 0.6),
+      */
+      bodyColor: 'white',
+      bodyStyle: {
+        top: '50%',
+        backgroundColor: 'white',
+        //border: `24px solid purple`,
+      },
+      contentStyle: {
+        zoom: .8,
+        //left: '30%',
+        //width: '100%',
+        backgroundColor: 'white',
+        //backgroundColor: 'green',
+        //border: `24px dotted ${pal.regular}`,
+      },
+      overlayStyle: { // covers the stuff behind the dialog
+        /*
+        width: '60%',
+        zoom: .6,
+        top: '50%',
+        left: '20%',
+        //backgroundColor: 'orange',
+        */
+      },
+      style: {
+        /*
+        width: '60%',
+        zoom: .6,
+        top: '50%',
+        left: '20%',
+        backgroundColor: 'pink',
+        */
+      },
+      titleStyle: {
+        subtitle: {
+          zoom: .7,
+        },
+      },
     },
     raisedButton: {
       //padding: 8,

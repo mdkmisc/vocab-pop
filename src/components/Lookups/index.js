@@ -22,6 +22,7 @@ import RaisedButton from 'material-ui/RaisedButton';
 import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
 import Dialog from 'material-ui/Dialog';
+import {RadioButton, } from 'material-ui/RadioButton'
 import {
   Checkbox,
   DatePicker,
@@ -52,27 +53,16 @@ class ConceptCodesLookupForm extends Component {
     this.props.conceptResume()
     this.setState({open:false})
   }
-  /*
-  openOrClose() {
-    const {focalConcepts=[]} = this.props
-    //const {vocabulary_id, concept_code_search_pattern, } = this.props
-    //if (!vocabulary_id || !concept_code_search_pattern) {}
-    if (!focalConcepts.length) {
-      this.open()
-    }
-  }
-  */
   componentDidMount() {
     this.open()
   }
   componentDidUpdate(prevProps) {
-    //this.openOrClose()
   }
   render() {
-    let { 
+    let {   M,
             handleSubmit, pristine, reset, submitting,
               fetching, waiting, err, vocabularies,
-              concept_code_search_pattern, vocabulary_id,
+              matchBy, matchStr, vocabulary_id,
               concepts=[], conceptStatus,
           } = this.props
     let errMsg = ''
@@ -107,23 +97,36 @@ class ConceptCodesLookupForm extends Component {
               onTouchTap={open}
               label={`${concepts.length}
                       ${vocabulary_id}
-                      codes matching
-                      ${concept_code_search_pattern}` }
+                      ${matchBy === 'codes' 
+                          ? ' codes matching '
+                          : ' concepts containing '}
+                      ${matchStr}` }
           />
-          <Dialog
+          <Dialog 
+            style={M('dialog.style')}
+            bodyStyle={M('dialog.bodyStyle')}
+            contentStyle={M('dialog.contentStyle')}
+            //contentStyle={{width:'100%',maxWidth:'none',}}
+            overlayStyle={M('dialog.overlayStyle')}
             title={
               <div>
-
-              {`conceptStatus: ${conceptStatus}
-                vocid: ${vocabulary_id}, ccsp: ${concept_code_search_pattern} ` }
-                {concepts.length} concept codes
+                Choose focal concepts<br/>
+                <div style={M('dialog.titleStyle.subtitle')}>
+                  {concepts.length 
+                    ? concepts.length 
+                    : 'None' } selected
+                </div>
                 {
                   fetching.length 
                     ?  `waiting for ${fetching.length} concepts`
                     : ''
                 }
                 <div style={{fontSize:12}}>
-                  { concepts.map(d=>d.concept_code).join(', ') }
+                  { concepts.map(
+                      d=> matchBy==='codes' 
+                            ? d.concept_code
+                            : d.concept_name
+                    ).join(', ') }
                 </div>
               </div>
             }
@@ -131,11 +134,8 @@ class ConceptCodesLookupForm extends Component {
             modal={false}
             open={this.state.open}
             onRequestClose={close}
-            contentStyle={{width:'100%',maxWidth:'none',}}
             autoScrollBodyContent={true}
           >
-            <Card>
-              <CardText>
                 <Field name="vocabulary_id" 
                       //value={vocabulary_id}
                       style={{padding:'0px 8px 0px 8px'}}
@@ -173,28 +173,50 @@ class ConceptCodesLookupForm extends Component {
                       icon={<LinkIcon />}
                     /> : undefined
                 }
-              </CardText>
-            </Card>
-            <Card>
-              <CardText>
-                <Field name="concept_code_search_pattern" 
-                      hintText='401.1%,401.2,401.3%'
-                      floatingLabelText="Concept codes, separated by comma or space, use % for wildcard"
+
+
+
+
+                <Field  name="matchBy" 
+                        onChange={
+                          (evt,newVal,oldVal) => 
+                            myrouter.addParams({
+                              matchBy:newVal,
+                          })}
+                        component={RadioButtonGroup}>
+                  <RadioButton value="codes" label="Concept Codes" />
+                  <RadioButton value="text" label="Concept name" />
+                  <RadioButton value="concept_id" label="Concept ID" />
+                </Field>
+
+
+
+                <Field name="matchStr" 
                       component={TextField}
-                      //ref="concept_code_search_pattern" withRef
-                      //multiLine={true}
+                      //hintText='401.1%,401.2,401.3%'
+                      hintText={
+                        matchBy === 'codes'
+                          ? "Concept codes, separated by comma or space, use % for wildcard"
+                          : "Case-insensitive text appearing in concept_name"
+                      }
+                      floatingLabelText={
+                        matchBy === 'codes'
+                          ? "Concept Codes"
+                          : "Text Search"
+                      }
                       fullWidth={true}
                       errorText={errMsg}
-                      label="Concept Codes"
                       onChange={
                         (evt,newVal,oldVal) => 
                           myrouter.addParams({
-                              concept_code_search_pattern:newVal})
+                            matchStr:newVal,
+                          })
                       }
                       style={{padding:'0px 8px 0px 8px'}}
                   />
-              </CardText>
-            </Card>
+
+
+
             <Card>
               <CardHeader
                 title="Details"
@@ -215,19 +237,21 @@ class ConceptCodesLookupForm extends Component {
 // Decorate with reduxForm(). It will read the initialValues prop provided by connect()
 ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
-  //initialValues: { vocabulary_id:'FOO', concept_code_search_pattern:"BAR", },
 })(ConceptCodesLookupForm)
 
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
-    let { vocabulary_id, concept_code_search_pattern, } = myrouter.getQuery()
+    let { vocabulary_id, 
+          matchBy='codes', matchStr, } = myrouter.getQuery()
     let cids = state.cids
     let focalCids = cncpt.focal(state)
     let concepts = cncpt.focalConcepts(state)
     let addProps = {
       vocabularies: state.vocabularies||[],
-      initialValues: { vocabulary_id, concept_code_search_pattern, },
-      vocabulary_id, concept_code_search_pattern,
+      initialValues: {  vocabulary_id, 
+                        matchBy, matchStr, },
+      vocabulary_id, 
+      matchBy, matchStr,
       concepts,
       focalCids,
       fetching: cncpt.fetching(state),

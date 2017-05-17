@@ -179,19 +179,26 @@ export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
   }
 }
 export const ConceptsSummary = props => {
-  let {concepts} = props
+  let {concepts, M} = props
+  let cnts = cdmCnts( concepts, d=>d)
   let sg = _.supergroup(concepts, ['domain_id','vocabulary_id','concept_class_id'])
-  return <pre>{sg.leafNodes().namePaths().join('\n')}</pre>
+  return  <div style={M('randomDiv')}>
+            Concepts Summary for {concepts.length} concepts
+            <pre style={M('randomDiv')}>
+              {JSON.stringify(cnts)} {'\n\n'}
+              {sg.leafNodes().namePaths().join('\n')}
+            </pre>
+          </div>
 }
 export const LinksWithCounts = props => {
   let {concepts, depth, M} = props
-  if (concepts.length > 30) {
-    return <ConceptsSummary concepts={concepts} />
-  }
   if (M('invisible'))
     return null
   let visibility = M('invisible') ? 'hidden' : 'visible'
   let height = M('invisible') ? '0px' : 'auto'
+  if (concepts.length > 30) {
+    return <ConceptsSummary M={M} concepts={concepts} />
+  }
   return  <div style={{visibility, height}}>
             {
               concepts.map(
@@ -264,7 +271,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
                     //Rels:
                     _.map(cncpt.concepts2relsMap(sc.records), // sc.records === concepts
                           (relcids,relName) => {
-                            //if (!relName.match(/map/i)) return null
+                            if (!relName.match(/map/i)) return null
                             return <RelView key={relName}
                                       {...{relName, relcids, depth, M, }}
                             />
@@ -444,7 +451,6 @@ class ConceptInfoGridList extends Component {
       M.props({sc})
       let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
       return  <div key={i} style={M('ciglDiv')}>
-                <h4>{title}</h4>
                 { linksWithCounts 
                     ? <LinksWithCounts 
                         concepts={sc.records}
@@ -482,6 +488,8 @@ class ConceptViewContainer extends Component {
   componentDidMount() {
     let {concept_ids, depth, title, wantConcepts, } = this.props
     if (concept_ids && concept_ids.length) {
+      wantConcepts(concept_ids, {title,depth})
+    /*
       if (concept_ids.length > 200) {
         //debugger
         console.error(`not fetching ${concept_ids.length - 50} concepts`, title)
@@ -490,6 +498,7 @@ class ConceptViewContainer extends Component {
       } else {
         wantConcepts(concept_ids)
       }
+    */
     }
 
     //this.ttId = _.uniqueId('ciglTtId-')
