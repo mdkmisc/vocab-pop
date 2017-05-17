@@ -156,11 +156,11 @@ export const apiCall =
         resultsTransform=d=>d,
         //successMap=results=>{console.error("do something with results!",results)},
         catchFunc=err => {
-          console.log('error loading cids', err)
+          console.log('error with some apiCall', err)
           return Rx.Observable.of({
             type: apiActions.REJECTED,
             payload: (err.xhr||{}).response || err,
-            meta: {apiPathname},
+            meta: {apiPathname, params, url},
             error: true
           })
         },

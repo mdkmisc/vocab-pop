@@ -14,7 +14,8 @@ export const cidsActions = {
 }
 const apiPathname = matchBy=> (
   (matchBy === 'codes' && 'codeSearchToCids') ||
-  'notWorkingYet'
+  (matchBy === 'text' && 'conceptNameSearch') ||
+  `noApiPathFor_${matchBy}`
 )
 
 /**** start reducers *********************************************************/
@@ -69,11 +70,12 @@ const cidsCall = (action$, store) => (
       let {payload:{vocabulary_id, matchBy, matchStr}} = action
       if (matchBy === 'codes') {
         let params = {vocabulary_id, concept_code_search_pattern:matchStr}
-        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname:apiPathname(matchBy),params}))
-      } else {
-        debugger
-      }
-      if (vocabulary_id && matchBy && matchStr) {
+        return Rx.Observable.of(api.actionGenerators.apiCall(
+          {apiPathname:apiPathname(matchBy),params}))
+      } else if (matchBy === 'text') {
+        let params = {vocabulary_id, match_str: matchStr}
+        return Rx.Observable.of(api.actionGenerators.apiCall(
+          {apiPathname:apiPathname(matchBy),params}))
       }
       return Rx.Observable.empty()
     })
@@ -91,23 +93,30 @@ epics.push(cidsCall)
 
 const loadCids = (action$, store) => (
   action$.ofType(api.apiActions.API_CALL)
-    .filter((action) => 
-            (action.payload||{}).apiPathname === 'codeSearchToCids')
+    .filter(
+      (action) => 
+        (action.payload||{}).apiPathname === 'codeSearchToCids' ||
+        (action.payload||{}).apiPathname === 'conceptNameSearch'
+    )
     .mergeMap((action)=>{
       let {type, payload, meta, error} = action
       let {apiPathname, params, url} = payload
       return api.apiCall({apiPathname, params, url, }, store)
     })
     .catch(err => {
-      console.error('error in loadVocabularies', err)
+      console.error('error in loadCids', err)
       return Rx.Observable.of({
-        type: 'vocab-pop/vocabularies/FAILURE',
-        meta: {apiPathname:'codeSearchToCids'},
+        type: 'vocab-pop/cids/FAILURE',
+        //meta: {apiPathname:'codeSearchToCids'},
         error: true
       })
     })
     .map(action=>{
-      let {type, payload, meta} = action
+      let {type, payload, meta, error} = action
+      if (error) {
+        console.error(error)
+        return action
+      }
       if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
         throw new Error("did something go wrong?")
       }
