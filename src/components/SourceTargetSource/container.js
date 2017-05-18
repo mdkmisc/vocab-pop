@@ -5,7 +5,6 @@ import _ from 'src/supergroup'; // in global space anyway...
 import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
-import * as cids from 'src/ducks/cids'
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 import {ApiWatch, ApiSnackbar} from 'src/api'
 //import * as sts from 'src/STSReport'
@@ -46,8 +45,8 @@ class SourceTargetSourceForm extends Component {
   }
   render() {
     let { vocabulary_id, matchBy, matchStr, 
-          concepts=[], fetching=[],
-          api, conceptStatus, requests, focalCids,
+          concepts=[],
+          conceptStatus, conceptStatusReport,
         } = this.props
     let M = muit()
     //let formParams = {  vocabulary_id:'blah', matchBy, matchStr:'eek', }
@@ -91,15 +90,7 @@ class SourceTargetSourceForm extends Component {
             title={<h4>Source Target Source Report</h4>}
           />
           {form}
-          <CardText style={{leftMargin:15}} >
-            <pre>{
-              `loaded: ${concepts.length}\n` +
-              _.map(requests,
-                (r,k)=>`${k}: ${Array.isArray(r) ? r.length : r}`
-                   ).join('\n')
-              + `\nmissing focal: ${_.difference(focalCids, concepts.map(c=>c.concept_id)).length}\n`
-            }</pre>
-          </CardText>
+          <C.ConceptStatusReport lines={conceptStatusReport} />
           <CardText style={{leftMargin:15}} >
             {content}
           </CardText>
@@ -119,22 +110,12 @@ SourceTargetSourceForm = connect(
     //const selector = formValueSelector('concept_codes_form')
     const {vocabulary_id, matchBy, matchStr, } 
           = myrouter.getQuery()
-    let cids = state.cids
-    let focalCids = cncpt.focal(state)
-    let concepts = cncpt.focalConcepts(state)
-    let requests = state.concepts.requests
-    let conceptStatus = state.concepts.requests.status
     return {
-      focalCids,
-      api: state.api,
-      fetching: cncpt.fetching(state),
-      waiting: concepts.length < focalCids.length,
       vocabulary_id, matchBy, matchStr,
       formRef: state.form.stsform,
-      concepts,
-      conceptStatus,
-      requests,
-      got:requests.got,
+      concepts: cncpt.focalConcepts(state),
+      conceptStatus: state.concepts.requests.status,
+      conceptStatusReport: cncpt.conceptStatusReport(state),
     }
   }
 )(SourceTargetSourceForm)

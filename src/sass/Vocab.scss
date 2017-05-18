@@ -69,6 +69,20 @@ $mute_opacity: 0.3;
 $color_green_30: rgba(20,255,50,.3);
 
 
+div.dialog-content {
+  //max-height: none!important;
+  //border: 25px solid maroon;
+}
+div.dialog {
+  //max-height: none!important;
+  //border: 25px solid magenta;
+}
+div.dialog-body {
+  max-height: none!important;
+  //border: 5px solid seagreen;
+}
+/*
+*/
 
 .sc-standard-concept, .rc, .sc-S { // don't use all of these
   //background-color: $color_lochmara_30_approx;

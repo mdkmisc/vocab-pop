@@ -53,21 +53,21 @@ const getQuery = (path) => {
 const routeAction = o => {
   //console.log('routeAction', reduxPush(o), 'only works if you dispatch it!')
   let action = reduxPush(o)
-  console.log('routeAction', {action, o})
+  //console.log('routeAction', {action, o})
   return action
 }
 const addParams = (params) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   query = _.merge(query, params)
   //myrouter.history.push({search: myqs.stringify(query)})
-  return myrouter.changeRoute({search: myqs.stringify(query), state:{action:'addParams',params}})
+  return myrouter.routeActionConnected({search: myqs.stringify(query), state:{action:'addParams',params}})
 }
 const addParam = (path, val) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   _.set(query, path, val)
   //myrouter.history.push({search: myqs.stringify(query)})
-  //return myrouter.changeRoute({search: myqs.stringify(query), state:{addParam:{path,val}}})
-  return myrouter.changeRoute({search: myqs.stringify(query), state:{action:'addParam',params:{[path]:val}}})
+  //return myrouter.routeActionConnected({search: myqs.stringify(query), state:{addParam:{path,val}}})
+  return myrouter.routeActionConnected({search: myqs.stringify(query), state:{action:'addParam',params:{[path]:val}}})
 }
 const deleteParams = (params) => {
   if (typeof params === 'string') {
@@ -76,12 +76,12 @@ const deleteParams = (params) => {
   let query = myqs.parse(myrouter.history.location.search.slice(1))
   params.forEach(p => _.unset(query, p))
   //myrouter.history.push({search: myqs.stringify(query)})
-  return myrouter.changeRoute({search: myqs.stringify(query), state:{action:'deleteParams',params}})
+  return myrouter.routeActionConnected({search: myqs.stringify(query), state:{action:'deleteParams',params}})
 }
 const setPathname = pathname => {
   if (pathname === myrouter.history.location.pathname)
     return {type:'EMPTY'}
-  return myrouter.changeRoute(myrouter.history.createHref({
+  return myrouter.routeActionConnected(myrouter.history.createHref({
     ...myrouter.history.location,
     pathname,
     state:{action:'setPathname',pathname}
@@ -109,9 +109,9 @@ var myrouter = {
   history,// history/createBrowserHistory
 
   routeAction,
-  // changeRoute needs to be connected to routeAction and dispatcher
+  // routeActionConnected needs to be connected to routeAction and dispatcher
   // which is happening in configureStore
-  changeRoute: ()=>{throw new Error("CONNECT THIS!")}, 
+  routeActionConnected: ()=>{throw new Error("CONNECT THIS!")}, 
 }
 export default myrouter
 

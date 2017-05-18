@@ -8,6 +8,7 @@ import cidsReducer, * as cids from 'src/ducks/cids'
 import vocabularies, * as vocabs from 'src/ducks/vocabularies'
 import conceptReducer, * as concept from 'src/ducks/concept'
 import apiReducer, * as api from 'src/api'
+import tooltipReducer, * as tooltip from 'src/tooltip'
 import myrouter from 'src/myrouter'
 
 import React, { Component } from 'react'
@@ -26,6 +27,7 @@ export default function configureStore(initialState = {}) {
     concepts: conceptReducer,
     //calls,
     form: formReducer,
+    tooltips: tooltipReducer,
     reduxRouter: myrouter.routerReducer,//redux router, not sure how to use correctly
   })
 
@@ -47,7 +49,8 @@ export default function configureStore(initialState = {}) {
       applyMiddleware(...middleware)
     )
   )
-  myrouter.changeRoute = bindActionCreators(myrouter.routeAction, store.dispatch)
+  myrouter.routeActionConnected = bindActionCreators(myrouter.routeAction, store.dispatch)
+  tooltip.ttContentConnected = bindActionCreators(tooltip.storeTtContent, store.dispatch)
 
   if (DEBUG) {
     window.store = store

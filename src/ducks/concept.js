@@ -12,12 +12,16 @@ import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
 
 const apiPathname = 'conceptInfo'
+const MAX_CONCEPTS_TO_LOAD = 500
 
 export const conceptActions = {
-  NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',
-  WANT_CONCEPTS: 'vocab-pop/concept/WANT_CONCEPTS',
-  FETCH_CONCEPTS: 'vocab-pop/concept/FETCH_CONCEPTS',
-  FETCH_FOCAL_CONCEPTS: 'vocab-pop/concept/FETCH_FOCAL_CONCEPTS',
+  // "@@redux-form/CHANGE"      // empty want,fetching,focal,loaded; NEW_CIDS coming
+  // cids.cidsActions.NEW_CIDS  // from cids lookup form, these become focal concepts
+  WANT_CONCEPTS: 'vocab-pop/concept/WANT_CONCEPTS',   // from Concept view
+                                                      // these are cids related to focal
+  FETCH_CONCEPTS: 'vocab-pop/concept/FETCH_CONCEPTS', // prepare fetching queue
+                                                      // and call conceptInfo api
+  NEW_CONCEPTS: 'vocab-pop/concept/NEW_CONCEPTS',     // received concept records
   FETCH_CONCEPTS_REJECTED: 'vocab-pop/concept/FETCH_CONCEPTS_REJECTED',
   //GOT_BASIC_INFO: 'vocab-pop/concept/GOT_BASIC_INFO',
   //REL_CONCEPTS_WANTED: 'vocab-pop/concept/REL_CONCEPTS_WANTED',
@@ -36,8 +40,9 @@ const loadedReducer = (state={}, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case conceptActions.NEW_CONCEPTS:
-      //if (!Array.isArray(payload)) { return state } // just assume, don't check
       return { ...state, ...util.arr2map(payload, c=>c.concept_id)}
+    case cids.cidsActions.NEW_CIDS:
+      return _.pick(state, payload) // only keep the focal concepts, if there are any
   }
   return state
 }
@@ -48,25 +53,14 @@ const requestStore = () => (
     fetching: [],
     got: [],
     focal: [],
-    stale: [],
+    //stale: [],
     requests: [],
   })
-const MAX_CONCEPTS_TO_LOAD = 500
 const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
-  let {status, want, fetching, got, focal, stale, requests} = state
-  if (  _.intersection(got,want).length ||
-        _.intersection(got,fetching).length ||
-        _.intersection(want,fetching).length
-  ){
-    throw new Error("corrupted request state")
-  }
+  let {status, want, fetching, got, focal, requests} = state
   let {type, payload, meta, error} = action
-  let new_cids = payload
-  if (new_cids && new_cids.length && !got.length && !fetching.length && !want.length) {
-    // KLUDGE
-    //type = conceptActions
-    //debugger
-  }
+  let new_cids
+  checkCorrupted({status, want, fetching, got, focal, action, state})
   switch (type) {
     case conceptActions.IDLE:
     case conceptActions.BUSY:
@@ -74,80 +68,64 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
     case conceptActions.PAUSE:
       status = type
       break
-    case conceptActions.NEW_CONCEPTS:
-      new_cids = payload.map(c=>c.concept_id)
-      got = _.union(got, new_cids)
-      want = _.chain(want)
-                    .difference(new_cids)
-                    .difference(got)
-                    .difference(fetching)
-                    .value()
-      fetching = _.chain(fetching)
-                    .difference(new_cids)
-                    .difference(got)
-                    .value()
-      //status = conceptActions.IDLE
+    case "@@redux-form/CHANGE":
+      if (action.meta.form !== "concept_codes_form") {
+        return state
+      }
+      // stop wanting, fetching (this doesn't stop it, but stops new fetches)
+      // because we're about to get NEW_CIDS
+      focal = []
+      want = []
+      fetching = []
       break
-    case conceptActions.WANT_CONCEPTS:
-      want = _.chain(want)
-                    .union(new_cids)
-                    .difference(got)
-                    .difference(fetching)
-                    .value()
+    case cids.cidsActions.NEW_CIDS: // new focal concepts
+      new_cids = payload.map(c=>c.concept_id)
+      got = _.intersection(got, new_cids)  // only keep focal, if there are any in store
+      focal = new_cids
+      fetching = [] // clear previous fetch/want (add focal to fetching below)
+      want = []
+      requests = [...requests, {...action, focal: true}]
+      break
+    case conceptActions.WANT_CONCEPTS: // only occurs for non-focal
+      want = _.union(want, payload)    // this only adds cids to want list, nothing else
       requests = [...requests, action]
       break
     case conceptActions.RESUME:
       status = type
-    case conceptActions.FETCH_CONCEPTS:
-      let toFetch = _.chain(fetching)
-                      .union(want)
-                      .difference(got)
-                      .value()
-      let delayedRequest = []
-      let total = got.length + toFetch.length
-      if (total > MAX_CONCEPTS_TO_LOAD) {
-        let moveBack = total - MAX_CONCEPTS_TO_LOAD
-        let split = toFetch.length - moveBack
-        delayedRequest = toFetch.slice(split)
-        toFetch = toFetch.slice(0, split)
-        //console.log(`concept store now ${status}, not fetching ${toFetch.length} concepts`)
-        status = conceptActions.FULL
-      } else if (status === conceptActions.PAUSE) {
-        debugger
-        delayedRequest = toFetch
-        toFetch = []
-      }
-      want = delayedRequest
-      fetching = toFetch
-      break
-    case "@@redux-form/CHANGE":
-      if (action.meta.form === "concept_codes_form") {
-        focal = []
-        stale = got
-        want = []
-        fetching = []
-      } else {
-        return state
-      }
-      break
-    case conceptActions.FETCH_FOCAL_CONCEPTS:
-      focal = new_cids
-      stale = got
-      want = []
-      fetching = _.difference(new_cids, got)
-      requests = [...requests, {...action, focal: true}]
-      if (status === conceptActions.IDLE)
+    case conceptActions.FETCH_CONCEPTS:   // just prepares fetching list, api call
+      fetching = _.union(fetching, want)  // is launched in conceptsCall epic
+      if (status === conceptActions.IDLE) // but not PAUSE or FULL
         status = conceptActions.BUSY
+      break
+    case conceptActions.NEW_CONCEPTS:
+      new_cids = payload.map(c=>c.concept_id)
+      got = _.union(got, new_cids)
       break
     default:
       return state
   }
-  if (  _.intersection(got,want).length ||
-        _.intersection(got,fetching).length ||
-        _.intersection(want,fetching).length
-  ){
-    throw new Error("corrupted request state")
+
+  let focalMissing = _.difference(focal, got)
+  if (fetching.length && focalMissing.length) {
+    throw new Error("shouldn't happen")
   }
+  fetching = _.union(fetching, focal)
+  fetching = _.difference(fetching, got)
+  if (got.length + fetching.length > MAX_CONCEPTS_TO_LOAD) {
+    status = conceptActions.FULL
+    let dontFetch = got.length + fetching.length - MAX_CONCEPTS_TO_LOAD
+    let splitIdx = fetching.length - dontFetch
+    want = _.union(want, fetching.slice(splitIdx))
+    fetching = fetching.slice(0, splitIdx)
+  } else if (status === conceptActions.PAUSE && !focalMissing.length) {
+    // don't fetch if paused, except always fetch focal
+    want = _.union(want, fetching)
+    fetching = []
+  }
+  want = _.chain(want).difference(got)
+                      .difference(fetching)
+                      .value()
+  checkCorrupted({status, want, fetching, got, focal, action, state})
   if (status === conceptActions.PAUSE) {
     //status = status
   } else if (status === conceptActions.FULL) {
@@ -157,8 +135,19 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   } else {
     status = conceptActions.BUSY
   }
-  let newState = {status, want, fetching, got, focal, stale, requests}
+  let newState = {status, want, fetching, got, focal, requests}
   return _.isEqual(state, newState) ? state : newState
+}
+const checkCorrupted = props => {
+  let {status, want, fetching, got, focal, action, state} = props
+  if (  _.intersection(got,want).length ||
+        _.intersection(got,fetching).length ||
+        _.intersection(want,fetching).length ||
+        (want.length && !focal.length && status !== conceptActions.FULL)
+  ){
+    debugger
+    throw new Error("corrupted request state")
+  }
 }
 
 export default combineReducers({
@@ -176,11 +165,6 @@ export const wantConcepts = (concept_ids,meta) => ({
                                 meta: {apiPathname, ...meta},
                               })
 export const fetchConcepts = () => ({ type: conceptActions.FETCH_CONCEPTS, })
-export const fetchFocalConcepts = (concept_ids) => ({
-                                  type: conceptActions.FETCH_FOCAL_CONCEPTS,
-                                  payload:concept_ids,
-                                })
-
 export const pause = () => ({type: conceptActions.PAUSE})
 export const idle = () => ({type: conceptActions.IDLE})
 export const busy = () => ({type: conceptActions.BUSY})
@@ -201,27 +185,6 @@ payload.map(c => {
 
 let epics = []
 
-const fetchFocalConceptsEpic = (action$, store) => (
-  action$.ofType(cids.cidsActions.NEW_CIDS)
-    .switchMap(action=>{
-      let {type, payload=[], meta, error} = action
-      payload = payload.map(d=>d.concept_id)
-      return (payload.length 
-                ? Rx.Observable.of(fetchFocalConcepts(payload)) 
-                : Rx.Observable.empty())
-    })
-    .catch(err => {
-      console.log('error in fetchFocalConceptsEpic', err)
-      return Rx.Observable.of({
-        type: conceptActions.FETCH_CONCEPTS_REJECTED,
-        meta: {apiPathname},
-        error: true
-      })
-    })
-)
-epics.push(fetchFocalConceptsEpic)
-
-
 /*
 console.error("testing w/ some random hardcoded cids")
 concept_ids = [
@@ -234,8 +197,8 @@ params = {concept_ids}
 */
 const conceptsCall = (action$, store) => (
   action$.ofType(
+            cids.cidsActions.NEW_CIDS,
             conceptActions.FETCH_CONCEPTS, 
-            conceptActions.FETCH_FOCAL_CONCEPTS,
             conceptActions.RESUME,
   )
     //.debounce(200)
@@ -379,9 +342,24 @@ export const want = createSelector(requests, r => r.want)
 export const fetching = createSelector(requests, r => r.fetching)
 export const focal = createSelector(requests, r => r.focal)
 export const got = createSelector(requests, r => r.got)
-export const stale = createSelector(requests, r => r.stale)
+//export const stale = createSelector(requests, r => r.stale)
 
 export const focalConcepts = createSelector( conceptsFromCids, focal, (cfc,f) => cfc(f))
+
+export const conceptStatusReport = createSelector(
+  concepts,
+  requests,
+  focal,
+  focalConcepts,
+  (concepts, requests, focal, focalConcepts) => {
+    let lines = [
+      `loaded: ${concepts.length}`,
+      ..._.map(requests, (r,k)=>`${k}: ${Array.isArray(r) ? r.length : r}`),
+      `missing focal: ${_.difference(focal, concepts.map(c=>c.concept_id)).length}`
+    ]
+    return lines
+  }
+)
 
 export const conceptsFromCidsWStubs = createSelector(
   conceptMap, want, fetching,

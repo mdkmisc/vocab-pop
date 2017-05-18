@@ -44,7 +44,6 @@ import {Glyphicon, Row, Col,
 import SortableTree from 'react-sortable-tree'
 
 import ReactTooltip from 'react-tooltip'
-window.ReactTooltip = ReactTooltip
 
 import Badge from 'material-ui/Badge'
 import {GridList, GridTile} from 'material-ui/GridList';
@@ -108,60 +107,6 @@ const cardStyles = {
   text: {
   }
 }
-const gridStyles = { // GridList styles based on Simple example
-                      // http://www.material-ui.com/#/components/grid-list
-  parent: {
-    width: '100%',
-    display: 'flex',
-    flexWrap: 'wrap',
-    justifyContent: 'space-around',
-    //...cardStyles.root,
-  },
-  gridList: {
-    //border: '5px solid pink',
-    width: '100%',
-    //height: 450,
-    horizontal: {
-      display: 'flex',
-      flexWrap: 'nowrap',
-      overflowX: 'auto',
-    },
-    vertical: {
-      overflowY: 'auto',
-    },
-  },
-  listTitle: cardStyles.title,
-  tile: (M=muit()) => {
-    return {
-            //zoom: 0.8,
-            backgroundColor: M.color('light'),
-            background: `linear-gradient(to top,
-                                          ${M.color('light')} 0%,
-                                          ${M.color('regular')} 70%,
-                                          ${M.color('dark')} 100%)`,
-            width: '100%',
-            //minHeight: 100,
-          }
-  },
-  tileTitle: {
-    fontSize: '1.6em',
-    color: 'white',
-    //color: muit.getColors().darker,
-  },
-  child: {
-    paddingTop:10,
-    width: '100%',
-    //marginTop: 50,  // WAS ONLY ON SC
-  }
-}
-/*
-const junkTile = i =>
-                  <GridTile style={gridStyles.tile()} key={i}>
-                    <div style={gridStyles.child} >
-                      <h3>placeholder</h3>
-                    </div>
-                  </GridTile>
-*/
 export const fmtCdmCnt = (fmt='short') => {
   switch(fmt) {
     case 'short':
@@ -220,12 +165,18 @@ export const LinkWithCounts = props => {
   let cnts = cdmCnts(concepts, d=>d)
   let href = '#' // should be link to concept focus
 
+  let textTip = tip
   let contents = title
   if (cnts.short.length) {
     contents += ` (${cnts.short.join(', ')})`
+
+    textTip += ` (${cnts.long.join(', ')})`
     tip = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
   }
-  let ttcid = tooltip.setTooltipContent('cvc', tip)
+  /*
+  let ttProps = tooltip.makeTtContent({ttid, content:textTip, fancyContent:tip})
+  tooltip.ttContentConnected(ttProps)
+  */
   return  (
     <span>
       <RaisedButton
@@ -233,8 +184,8 @@ export const LinkWithCounts = props => {
         buttonStyle={M('raisedButton.styleProps.buttonStyle')}
         href={href}
         data-tip
-        data-for="cvc"
-        data-ttcid={ttcid}
+        //data-for={ttid}
+        //data-ttcid={ttProps.ttcid}
       >
         {contents}
       </RaisedButton>
@@ -483,49 +434,91 @@ class ConceptViewContainer extends Component {
   constructor(props) {
     let {depth, title='CvcNoTitle', } = props
     super(props)
-    this.tt = tooltip.registerTooltip('cvc')
+    this.state = {
+      M: props.M || muit(),
+      cnts: {long:[],short:[]},
+      ttProps: {ttid:'cvc'},
+    }
   }
   componentDidMount() {
-    let {concept_ids, depth, title, wantConcepts, } = this.props
-    if (concept_ids && concept_ids.length) {
-      wantConcepts(concept_ids, {title,depth})
-    /*
-      if (concept_ids.length > 200) {
-        //debugger
-        console.error(`not fetching ${concept_ids.length - 50} concepts`, title)
-        //return
-        wantConcepts(concept_ids.slice(0,50))
-      } else {
-        wantConcepts(concept_ids)
-      }
-    */
-    }
-
-    //this.ttId = _.uniqueId('ciglTtId-')
-    ReactTooltip.rebuild()
-  }
-  componentWillUnmount() {
-    tooltip.unregisterTooltip('cvc')
-  }
-  componentDidUpdate() {
-    ReactTooltip.rebuild()
-  }
-  static viewCount = 0 // to prevent stack overflow
-  render() {
     let {concepts, concept_ids, depth, title, subtitle,
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muitParams={}, linksWithCounts, M, invisible,
+            muitParams={}, linksWithCounts, invisible,
         } = this.props
-    M = M || muit()
+    if (concept_ids && concept_ids.length) {
+      wantConcepts(concept_ids, {title,depth})
+    }
+    tooltip.registerTooltip(this.state.ttProps.ttid)
+  }
+  componentWillUnmount() {
+    tooltip.unregisterTooltip(this.state.ttProps.ttid)
+  }
+  shouldComponentUpdate(nextProps, nextState) {
+    /*
+    if (  _.isEqual(this.props.concepts, nextProps.concepts) &&
+          _.isEqual(this.props.concept_ids, nextProps.concept_ids) &&
+          nextProps.concepts.length && !nextState.cnts.short.length
+       ) {
+      let cnts = (cdmCnts( nextProps.concepts, d=>d))
+      if (cnts.short.length)
+        debugger
+    }
+    */
+   //if ( nextState.mustUpdate || this.state.mustUpdate) debugger
+    return !_.isEqual(this.props.concepts, nextProps.concepts) ||
+           !_.isEqual(this.props.concept_ids, nextProps.concept_ids) ||
+           !!nextState.mustUpdate ||
+           !!this.state.mustUpdate ||
+           this.state.mustUpdate !== nextState.mustUpdate
+  }
+  componentDidUpdate(prevProps, prevState) {
+    let {concepts, concept_ids, depth, title, subtitle,
+            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
+            muitParams={}, linksWithCounts, invisible,
+        } = this.props
+    if (!concepts.length) {
+      return
+    }
+    let {M, cnts, ttProps, mustUpdate} = this.state
     invisible = M('invisible') || invisible
     M.props({...muitParams, invisible})
     if ( depth > 2 ) {
       console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
       return <h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
     }
-    let cnts = cdmCnts( concepts, d=>d)
-    let ttcid = this.tt.setContent(cnts.long.map((c,i)=><div key={i}>{c}</div>))
-
+    cnts = cdmCnts( concepts, d=>d)
+    if (!_.isEqual(this.state.cnts, cnts)) {
+      mustUpdate = true
+      //debugger
+    } else {
+      if (mustUpdate) {
+        mustUpdate = false
+        //debugger
+      }
+    }
+    let ttText = cnts.long.join(', ')
+    let ttDiv = cnts.long.map((c,i)=><div key={i}>{c}</div>)
+    ttProps = tooltip.makeTtContent({ttid:this.state.ttProps.ttid, 
+                                          content:ttText, fancyContent:ttDiv})
+    tooltip.ttContentConnected(ttProps)
+    ReactTooltip.rebuild()
+    this.setState({M,cnts,ttProps, mustUpdate})
+  }
+  static viewCount = 0 // to prevent stack overflow
+  render() {
+    let {concepts, concept_ids, depth, title, subtitle,
+            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
+            muitParams={}, linksWithCounts,
+        } = this.props
+    let {M, cnts, ttProps, mustUpdate} = this.state
+    /*
+    if (!_.isEqual(cnts, cdmCnts(concepts,d=>d))) {
+    }
+    if (!cnts.short.length && depth === 0 && concepts.length > 5) {
+      console.log(cdmCnts( concepts, d=>d))
+      debugger
+    }
+    */
     /*
     let surroundSubtitle = false
     if (subtitle && surroundSubtitle) {
@@ -534,13 +527,14 @@ class ConceptViewContainer extends Component {
     */
     //return <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
     title = <span>
-              {title}
+              {title}, Depth: {depth}, ttcid: {ttProps.ttcid}, mustUpdate: {mustUpdate ? 'yes' : 'no'}
               <span >
                 <span style={{fontSize: '.6em',}}
                   data-tip
-                  data-for="cvc"
-                  data-ttcid={ttcid}
+                  data-for={ttProps.ttid}
+                  data-ttcid={ttProps.ttcid}
                 >
+                  ({JSON.stringify(cnts)})
                   ({cnts.short.join(', ')})
                 </span>
               </span>
@@ -593,6 +587,39 @@ ConceptViewContainer = connect(
 
 export {ConceptViewContainer}
 
+export const ConceptStatusReport = ({lines=[], M}) => {
+  M = M || muit()
+  if (!lines.length)
+    return <div>GOT NO STATUS!!</div>
+  let cols = 3
+  let linesPerCol = Math.ceil(lines.length / cols)
+  return (<div style={{
+                  ...M('grid.parent'),
+                  backgroundColor:'white',
+                  justifyContent: 'auto',
+                  padding: 10,
+                }}>
+            Concept fetch status
+            <GridList 
+              {...M('grid.styleProps')}
+              style={{...M('grid.gridList.horizontal'),
+                        padding:0, margin: 0,
+                      }} cols={3}
+            >
+              {_.range(cols).map(col => {
+                col = parseInt(col)
+                return (<GridTile style={{
+                                ...M('grid.tile.plain'),
+                                padding:0, margin: 0,
+                              }} key={col} >
+                          <pre style={{border: 'none',}} >
+                            {lines.slice(col * linesPerCol, (col+1) * linesPerCol).join('\n')}
+                          </pre>
+                        </GridTile>)})}
+            </GridList>
+          </div>
+  )
+}
 /*
 const conceptViewAbstract = (conceptSet=[], opts={}) => {
   let view = {

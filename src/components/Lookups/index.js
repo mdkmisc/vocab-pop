@@ -4,12 +4,13 @@ import {AgTable, } from 'src/components/TableStuff'
 import * as util from 'src/utils'
 import {ApiSnackbar} from 'src/api'
 import myrouter from 'src/myrouter'
+import 'src/sass/Vocab.css'
+import * as cncpt from 'src/ducks/concept'
+import {ConceptStatusReport} from 'src/components/Concept'
 
 import { connect } from 'react-redux'
 import { bindActionCreators, } from 'redux'
 import React, { Component } from 'react'
-import * as cids from 'src/ducks/cids'
-import * as cncpt from 'src/ducks/concept'
 
 import { get } from 'lodash'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
@@ -61,22 +62,10 @@ class ConceptCodesLookupForm extends Component {
   render() {
     let {   M,
             handleSubmit, pristine, reset, submitting,
-              fetching, waiting, err, vocabularies,
+              errMsg, vocabularies,
               matchBy, matchStr, vocabulary_id,
-              concepts=[], conceptStatus,
+              concepts=[], conceptStatusReport,
           } = this.props
-    let errMsg = ''
-    if (waiting) {
-      // FIX STYLES
-      errMsg =  <p style={{fontColor:'blue',fontWeight:'bold'}}>
-                  Loading...
-                </p> 
-    } else 
-    if (err) {
-      errMsg =  <p style={{fontColor:'red',fontWeight:'bold'}}>
-                  {err.statusText}
-                </p> 
-    }
     let vocabulary = vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
     let open = this.open.bind(this)
     let close = this.close.bind(this)
@@ -103,33 +92,28 @@ class ConceptCodesLookupForm extends Component {
                       ${matchStr}` }
           />
           <Dialog 
+            {...M('dialog.styleProps')}
             style={M('dialog.style')}
-            bodyStyle={M('dialog.bodyStyle')}
-            contentStyle={M('dialog.contentStyle')}
-            //contentStyle={{width:'100%',maxWidth:'none',}}
             overlayStyle={M('dialog.overlayStyle')}
+            contentStyle={M('dialog.contentStyle')}
+            bodyStyle={M('dialog.bodyStyle')}
+            //contentStyle={{width:'100%',maxWidth:'none',}}
             titleStyle={M('dialog.titleStyle')}
             actionsContainerStyle={M('dialog.actionsContainerStyle')}
             title={
-              <div>
+              <div className="myDialogTitle">
                 Choose focal concepts<br/>
                 <div style={M('dialog.titleStyle.subtitle')}>
                   {concepts.length 
                     ? concepts.length 
                     : 'None' 
                   } selected
-                  {
-                    fetching.length 
-                      ?  <div>waiting for {fetching.length} concepts</div>
-                      : null
-                  }
                   <hr/>
-                  { concepts.map(
-                      d=> matchBy==='codes' 
-                            ? d.concept_code
-                            : d.concept_name
-                    ).join(', ') 
+                  { matchBy==='codes' 
+                      ? concepts.map(d=>d.concept_code).join(', ') 
+                      : ''
                   }
+                  <ConceptStatusReport lines={conceptStatusReport} />
                 </div>
               </div>
             }
@@ -137,112 +121,94 @@ class ConceptCodesLookupForm extends Component {
             modal={false}
             open={this.state.open}
             onRequestClose={close}
-            autoScrollBodyContent={true}
           >
-                <Field name="vocabulary_id" 
-                      //value={vocabulary_id}
-                      style={{padding:'0px 8px 0px 8px'}}
-                      component={SelectField}
-                      fullWidth={true}
-                      floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
-                      /*
-                      onChange={
-                        (evt,newVal,oldVal) => {
-                          myrouter.addParams({
-                            vocabulary_id:newVal,
-                            matchBy, matchStr
-                          })
-                        }
-                      }
-                      */
-                >
-                  {
-                    (vocabularies||[]).map(
-                      d=>{
-                          return <MenuItem 
-                            className="vocab-item"
-                            key={d.vocabulary_id}
-                            checked={d.vocabulary_id === vocabulary_id}
-                            value={d.vocabulary_id}
-                            primaryText={d.vocabulary_id}
-                            secondaryText={d.vocabulary_name}
-                            />
+            <Field name="vocabulary_id" 
+                  //value={vocabulary_id}
+                  style={{padding:'0px 8px 0px 8px'}}
+                  component={SelectField}
+                  fullWidth={true}
+                  floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
+                  /*
+                  onChange={
+                    (evt,newVal,oldVal) => {
+                      myrouter.addParams({
+                        vocabulary_id:newVal,
+                        matchBy, matchStr
+                      })
+                    }
+                  }
+                  */
+            >
+              {
+                (vocabularies||[]).map(
+                  d=>{
+                      return <MenuItem 
+                        className="vocab-item"
+                        key={d.vocabulary_id}
+                        checked={d.vocabulary_id === vocabulary_id}
+                        value={d.vocabulary_id}
+                        primaryText={d.vocabulary_id}
+                        secondaryText={d.vocabulary_name}
+                        />
+                  })
+              }
+            </Field>
+            {
+              vocabulary ?
+                <FlatButton
+                  primary={true}
+                  style={{padding:'0px', }}
+                  href={vocabulary.vocabulary_reference}
+                  target="_blank"
+                  label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
+                  icon={<LinkIcon />}
+                /> : undefined
+            }
+            <Field  name="matchBy" 
+                  /*
+                    onChange={
+                      (evt,newVal,oldVal) => 
+                        myrouter.addParams({
+                          matchBy:newVal,
+                          matchStr:'',
+                      })}
+                  */
+                    component={RadioButtonGroup}>
+              <RadioButton value="codes" label="Concept Codes" />
+              <RadioButton value="text" label="Concept Name" />
+              <RadioButton disabled={true} value="concept_id" label="Concept ID" />
+            </Field>
+            <Field name="matchStr" 
+                  component={TextField}
+                  //hintText='401.1%,401.2,401.3%'
+                  hintText={
+                    matchBy === 'codes'
+                      ? "Concept codes, separated by comma or space, use % for wildcard"
+                      : "Case-insensitive text appearing in concept_name"
+                  }
+                  floatingLabelText={
+                    matchBy === 'codes'
+                      ? "Concept Codes"
+                      : "Text Search"
+                  }
+                  fullWidth={true}
+                  errorText={errMsg}
+                  /*
+                  onChange={
+                    (evt,newVal,oldVal) => 
+                      myrouter.addParams({
+                        matchStr:newVal,
+                        matchBy,
                       })
                   }
-                </Field>
-                {
-                  vocabulary ?
-                    <FlatButton
-                      primary={true}
-                      style={{padding:'0px', }}
-                      href={vocabulary.vocabulary_reference}
-                      target="_blank"
-                      label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
-                      icon={<LinkIcon />}
-                    /> : undefined
-                }
+                  */
+                  style={{padding:'0px 8px 0px 8px'}}
+            />
 
-
-
-
-                <Field  name="matchBy" 
-                      /*
-                        onChange={
-                          (evt,newVal,oldVal) => 
-                            myrouter.addParams({
-                              matchBy:newVal,
-                              matchStr:'',
-                          })}
-                      */
-                        component={RadioButtonGroup}>
-                  <RadioButton value="codes" label="Concept Codes" />
-                  <RadioButton value="text" label="Concept Name" />
-                  <RadioButton disabled={true} value="concept_id" label="Concept ID" />
-                </Field>
-
-
-
-                <Field name="matchStr" 
-                      component={TextField}
-                      //hintText='401.1%,401.2,401.3%'
-                      hintText={
-                        matchBy === 'codes'
-                          ? "Concept codes, separated by comma or space, use % for wildcard"
-                          : "Case-insensitive text appearing in concept_name"
-                      }
-                      floatingLabelText={
-                        matchBy === 'codes'
-                          ? "Concept Codes"
-                          : "Text Search"
-                      }
-                      fullWidth={true}
-                      errorText={errMsg}
-                      /*
-                      onChange={
-                        (evt,newVal,oldVal) => 
-                          myrouter.addParams({
-                            matchStr:newVal,
-                            matchBy,
-                          })
-                      }
-                      */
-                      style={{padding:'0px 8px 0px 8px'}}
-                  />
-
-
-
-            <Card>
-              <CardHeader
-                title="Details"
-                actAsExpander={true}
-                showExpandableButton={true}
-              />
-              <CardText expandable={true}>
-                <AgTable data={concepts||[]}
-                        width={"100%"} height={250}
-                        id="src_target_recs" />
-              </CardText>
-            </Card>
+            <hr/>
+            <AgTable data={concepts||[]}
+                  width={"100%"} height={250}
+                  id="src_target_recs" />
           </Dialog>
         </form>
     )
@@ -257,8 +223,6 @@ ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     let { vocabulary_id, 
           matchBy='codes', matchStr, } = myrouter.getQuery()
-    let cids = state.cids
-    let focalCids = cncpt.focal(state)
     let concepts = cncpt.focalConcepts(state)
     let addProps = {
       vocabularies: state.vocabularies||[],
@@ -267,12 +231,8 @@ ConceptCodesLookupForm = connect(
       vocabulary_id, 
       matchBy, matchStr,
       concepts,
-      focalCids,
-      fetching: cncpt.fetching(state),
-      waiting: concepts.length < focalCids.length,
-      errMsg: concepts.length < focalCids.length ? 'waiting' : undefined,
-      conceptStatus: state.concepts.requests.status,
-      //formRef: state.form.concept_codes_form,
+      conceptStatusReport: cncpt.conceptStatusReport(state),
+      errMsg: undefined,
     }
     return addProps
   },

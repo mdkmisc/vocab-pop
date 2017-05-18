@@ -143,36 +143,23 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       border: `4px solid ${pal.regular}`,
     },
     dialog: {
-      //zoom: .4,
-      /* defaults:
-      titleFontSize: 22,
-      bodyFontSize: 16,
-      bodyColor: fade(palette.textColor, 0.6),
-      */
-      bodyColor: 'white',
-      bodyStyle: {
-        top: '50%',
-        backgroundColor: 'white',
-        //border: `24px solid purple`,
-      },
-      contentStyle: {
-        //zoom: .8,
-        //left: '30%',
-        //width: '100%',
-        backgroundColor: 'white',
-        //backgroundColor: 'green',
-        //border: `24px dotted ${pal.regular}`,
-      },
-      overlayStyle: { // covers the stuff behind the dialog
-        /*
-        width: '60%',
-        zoom: .6,
-        top: '50%',
-        left: '20%',
-        //backgroundColor: 'orange',
+      styleProps: {
+        bodyClassName: 'dialog-body',
+        contentClassName: 'dialog-content',
+        className: 'dialog',
+        autoScrollBodyContent: true,
+        //autoDetectWindowHeight: false,
+        //bodyFontSize: 6,
+        /* defaults:
+        titleFontSize: 22,
+        bodyFontSize: 16,
+        bodyColor: fade(palette.textColor, 0.6),
         */
       },
       style: {
+        zoom: .7,
+        //width: '100%',
+        //border: `24px solid purple`,
         /*
         width: '60%',
         zoom: .6,
@@ -181,10 +168,47 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         backgroundColor: 'pink',
         */
       },
+      overlayStyle: { // covers the stuff behind the dialog
+        /*
+        backgroundColor: 'black',
+        width: '100%',
+        border: `24px solid purple`,
+        width: '60%',
+        top: '50%',
+        left: '20%',
+        //backgroundColor: 'orange',
+        */
+      },
+      contentStyle: { // whole dialog (not overlay)
+        //border: `24px solid green`,
+        //left: '30%',
+        //zoom: .6,
+        width: '90%',
+        maxWidth: 'auto',
+        height: `${window.innerHeight * 1.1}px`,
+        //top: `-${window.innerHeight * .08}px`,
+        backgroundColor: 'white',
+        //backgroundColor: 'green',
+        //border: `24px dotted ${pal.regular}`,
+      },
+      bodyStyle: { // actual content...?
+        //height: `${window.innerHeight * 2.8}px`,
+        //maxHeight: '800px',
+        //maxHeight: 'none!important',
+        //border: `24px solid purple`,
+        /*
+        width: '80%',
+        //top: '20%',
+        backgroundColor: 'pink',
+        */
+      },
       titleStyle: {
+        /*
+        border: `24px solid purple`,
         backgroundColor: 'white',
         //border: `6px solid ${pal.regular}`,
         //margin: 15,
+        */
         subtitle: {
           zoom: .7,
           lineHeight: '1em',
@@ -192,9 +216,13 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         },
       },
       actionsContainerStyle: {
+        /*
+        width: '100%',
+        border: `24px solid purple`,
         //margin: 15,
         //border: `6px solid ${pal.regular}`,
         backgroundColor: 'white',
+        */
       }
     },
     raisedButton: {
@@ -351,6 +379,9 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       }
     },
     grid: {
+      styleProps: {
+        cellHeight: 'auto',
+      },
       parent: {
         backgroundColor: pal.darker,
         width: '100%',
@@ -359,6 +390,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         justifyContent: 'space-around',
         //...cardStyles.root,
       },
+      /*
       title: {
         fontSize: '1.6em',
         //color: pal.darker,
@@ -369,32 +401,38 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         //backgroundColor: muiTheme.palette.atlasDarkBg,
         //color: muiTheme.palette.alternateTextColor,
       },
+      */
       tileTitle: {
         fontSize: '1.6em',
         color: 'white',
         //color: muit.getColor().darker,
       },
       gridList: {
-        //border: '5px solid pink',
-        width: '100%',
         //height: 450,
         horizontal: {
           display: 'flex',
           flexWrap: 'nowrap',
           overflowX: 'auto',
+          width: '100%',
         },
         vertical: {
           overflowY: 'auto',
         },
       },
       tile: {
-        //zoom: 0.8,
+        plain: {
+          padding: 15,
+          height: '100%',
+          //zoom: 0.8,
+          //backgroundColor: pal.light,
+        },
+        zoom: 0.8,
         backgroundColor: pal.light,
         background: `linear-gradient(to top,
                                       ${pal.light} 0%,
                                       ${pal.regular} 70%,
                                       ${pal.dark} 100%)`,
-        width: '100%',
+        //width: '100%',
         //minHeight: 100,
       },
       child: {
