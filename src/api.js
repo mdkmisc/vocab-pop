@@ -86,7 +86,8 @@ export const reducer = (
         throw new Error("do something")
       }
       if (_.has(complete, url)) {
-        throw new Error("do something")
+        console.log('loading for a second time. not sure handling this correctly', url)
+        //throw new Error("do something")
       }
       active = _.pickBy(active, (v,k) => k !== url)
       complete = {...complete, [url]: {params,msg,apiPathname}}

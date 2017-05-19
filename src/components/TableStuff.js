@@ -312,7 +312,7 @@ console.log('NOT SAVING TABLE CHANGES RIGHT NOW')
     const {id} = this.props;
     const {gridReady, gridState} = this.state;
     if (!gridReady || !gridState) return;
-    updateReason(prevProps, prevState, this.props, this.state, 'TableStuff/AgGrid');
+    //updateReason(prevProps, prevState, this.props, this.state, 'TableStuff/AgGrid');
     if (this.props.data.length) this.grid.api.hideOverlay();
     if (!_.isEmpty(gridState.columnState))
       this.grid.columnApi.setColumnState(gridState.columnState);

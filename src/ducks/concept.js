@@ -55,12 +55,13 @@ const requestStore = () => (
     focal: [],
     //stale: [],
     requests: [],
+    staleRequests: [],
   })
 const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
-  let {status, want, fetching, got, focal, requests} = state
+  let {status, want, fetching, got, focal, requests, staleRequests} = state
   let {type, payload, meta, error} = action
   let new_cids
-  checkCorrupted({status, want, fetching, got, focal, requests, action, state})
+  checkCorrupted({status, want, fetching, got, focal, requests, staleRequests, action, state})
   switch (type) {
     case conceptActions.IDLE:
     case conceptActions.BUSY:
@@ -77,6 +78,8 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
       focal = []
       want = []
       fetching = []
+      staleRequests = requests  // maybe should put with NEW_CIDS... not sure
+      requests = []
       break
     case cids.cidsActions.NEW_CIDS: // new focal concepts
       new_cids = payload.map(c=>c.concept_id)
@@ -125,7 +128,7 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   want = _.chain(want).difference(got)
                       .difference(fetching)
                       .value()
-  checkCorrupted({status, want, fetching, got, focal, requests, action, state})
+  checkCorrupted({status, want, fetching, got, focal, requests, staleRequests, action, state})
   if (status === conceptActions.PAUSE) {
     //status = status
   } else if (status === conceptActions.FULL) {
@@ -135,11 +138,11 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   } else {
     status = conceptActions.BUSY
   }
-  let newState = {status, want, fetching, got, focal, requests}
+  let newState = {status, want, fetching, got, focal, staleRequests, requests}
   return _.isEqual(state, newState) ? state : newState
 }
 const checkCorrupted = props => {
-  let {status, want, fetching, got, focal, requests, action, state} = props
+  let {status, want, fetching, got, focal, requests, staleRequests, action, state} = props
   if (  _.intersection(got,want).length         || // shouldn't want gotten concepts
         _.intersection(got,fetching).length     || // shouldn't fetch gotten concepts
         _.intersection(want,fetching).length    || // shouldn't leave fetching in want list

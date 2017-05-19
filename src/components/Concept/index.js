@@ -211,7 +211,10 @@ const colname = cnt => {
   return cn
 }
 export class RelButton extends Component {
-  componentDidUpdate() {
+  componentDidMount() {
+    this.makeTip()
+  }
+  makeTip() {
     let {relcids, relName, ttid, tip, } = this.props
     let href = '#' // should be link to concept focus
 
@@ -219,6 +222,10 @@ export class RelButton extends Component {
     ttText = `${ttText}${ttText ? ' ' : ''}${relcids.length} ${relName}`
     tooltip.ttContentConnected({ttid, ttText})
   }
+  componentDidUpdate(nextProps) {
+    this.makeTip()
+  }
+
   render() {
     let {relcids, relName, ttid, tip, M,} = this.props
     let href = '#' // should be link to concept focus
@@ -232,7 +239,7 @@ export class RelButton extends Component {
         <RaisedButton
           style={M('raisedButton')}
           buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-          href={href}
+          //href={href}
           data-tip
           data-for={ttid}
           data-tttext={ttText}
@@ -250,18 +257,18 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
     //debugger
   }
   M = M.props({sc})
+  return (
+            <div //style={M('raisedButton.container')}
+                  //style={{ border: '4px solid green', }}
+            >
+              { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
+                  <RelButton {...{relcids, relName, ttid, key:relName,
+                                  tip:sourceTitle, M,
+                                }} />))
+              }
+            </div>
+  )
   if (depth > maxDepth) {
-    return (
-              <div //style={M('raisedButton.container')}
-                    //style={{ border: '4px solid green', }}
-              >
-                { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
-                    <RelButton {...{relcids, relName, ttid, key:relName,
-                                    tip:sourceTitle, M,
-                                  }} />))
-                }
-              </div>
-    )
   }
   return <div>
           full rels instead of peek, depth: {depth} &lt; {maxDepth}

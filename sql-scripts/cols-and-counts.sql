@@ -379,6 +379,7 @@ alter table :results.relcnts add primary key (concept_id);
 create index idx_relcntscgid on :results.relcnts (cgid);
 
 
+/*    not using concept_info, at least at the moment...have an api call (conceptInfo) that does it
 drop table if exists :results.concept_info cascade;
 create table :results.concept_info as
   select
@@ -407,6 +408,7 @@ create table :results.concept_info as
   left join relcnts rct on cr.concept_id = rct.concept_id;
 
 alter table :results.concept_info add primary key (concept_id);
+*/
 
 /*
 create or replace view :results.related_concept_plus as
@@ -486,8 +488,9 @@ select * from :results.concept_group where cgid in (405, 115, 200);
 select * from :results.related_concept where concept_id in (8504, 8505, 44631062, 0);
 
 
-/* these two should have everything...right? */
+/*
 select * from :results.concept_info limit 2;
+ */
 
 
 
