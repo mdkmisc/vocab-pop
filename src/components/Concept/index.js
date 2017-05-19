@@ -27,7 +27,6 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from 'src/utils'
 
-const md5 = require('blueimp-md5')
 import React, { Component } from 'react'
 
 
@@ -85,28 +84,14 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-const buttonStyles = {
-  ccode: {
-    //padding: 2,
-    padding: '1px 3px 1px 3px',
-    margin: '5px 2px 1px 2px',
-    //margin: 2,
-    //border:'1px solid pink',
-    color: 'white',
-    lineHeight:'auto',
-    height:'auto',
-    minHeight:'auto',
-    width:'auto',
-    minWidth:'auto',
-  },
-}
-const cardStyles = {
-  title: {
-    //...muit.getStyles().headerLight,
-    //boxShadow: `.2em .2em .7em ${muit.getColors().darker}`,
-  },
-  text: {
-  }
+window.viewCounts = {
+  LinksWithCounts: 0,
+  RelsPeek: 0,
+  RelView: 0,
+  IndividualConceptViews: 0,
+  WrapInCard: 0,
+  ConceptInfoGridList: 0,
+  ConceptViewContainer: 0,
 }
 export const fmtCdmCnt = (fmt='short') => {
   switch(fmt) {
@@ -137,9 +122,10 @@ export const ConceptsSummary = props => {
           </div>
 }
 export const LinksWithCounts = props => {
-  let {concepts, depth, M} = props
+  let {concepts, depth, M, ttid} = props
   if (M('invisible'))
     return null
+  viewCounts.LinksWithCounts++
   let visibility = M('invisible') ? 'hidden' : 'visible'
   let height = M('invisible') ? '0px' : 'auto'
   if (concepts.length > 30) {
@@ -150,6 +136,7 @@ export const LinksWithCounts = props => {
               concepts.map(
                 (c,i) => {
                   return <LinkWithCounts key={i}
+                            ttid={ttid}
                             M={M}
                             //muitParams={{sc:c.standard_concept}}
                             concepts={[c]}
@@ -160,38 +147,49 @@ export const LinksWithCounts = props => {
             }
           </div>
 }
-export const LinkWithCounts = props => {
-  let {concepts, ttid, title, tip, muitParams, M} = props
-  //let M = muit(muitParams)
-  let cnts = cdmCnts(concepts, d=>d)
-  let href = '#' // should be link to concept focus
+export class LinkWithCounts extends Component {
+  componentDidUpdate() {
+    let {concepts, ttid, title, tip, muitParams, M} = this.props
+    //let M = muit(muitParams)
+    let cnts = cdmCnts(concepts, d=>d)
+    let href = '#' // should be link to concept focus
 
-  let textTip = tip
-  let contents = title
-  if (cnts.short.length) {
-    contents += ` (${cnts.short.join(', ')})`
-
-    textTip += ` (${cnts.long.join(', ')})`
-    tip = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
+    let ttText = _.isString(tip) ? tip : ''
+    let ttFancy = tip
+    if (cnts.short.length) {
+      ttText += ` (${cnts.long.join(', ')})`
+      ttFancy = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
+    }
+    tooltip.ttContentConnected({ttid, ttText, ttFancy})
   }
-  /*
-  let ttProps = tooltip.makeTtContent({ttid, content:textTip, fancyContent:tip})
-  tooltip.ttContentConnected(ttProps)
-  */
-  return  (
-    <span>
-      <RaisedButton
-        style={M('raisedButton')}
-        buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-        href={href}
-        data-tip
-        //data-for={ttid}
-        //data-ttcid={ttProps.ttcid}
-      >
-        {contents}
-      </RaisedButton>
-    </span>
-  )
+  render() {
+    let {concepts, ttid, title, tip, muitParams, M} = this.props
+    //let M = muit(muitParams)
+    let cnts = cdmCnts(concepts, d=>d)
+    let href = '#' // should be link to concept focus
+
+    let ttText = _.isString(tip) ? tip : ''
+    let contents = title
+    if (cnts.short.length) {
+      contents += ` (${cnts.short.join(', ')})`
+
+      ttText += ` (${cnts.long.join(', ')})`
+    }
+    return  (
+      <span>
+        <RaisedButton
+          style={M('raisedButton')}
+          buttonStyle={M('raisedButton.styleProps.buttonStyle')}
+          href={href}
+          data-tip
+          data-for={ttid}
+          data-tttext={ttText}
+        >
+          {contents}
+        </RaisedButton>
+      </span>
+    )
+  }
 }
 export const CdmCountView = props => {
   let {cnt, badgeStyle, rootStyle, ...rest} = props
@@ -212,80 +210,107 @@ const colname = cnt => {
   //console.log(cn)
   return cn
 }
+export class RelButton extends Component {
+  componentDidUpdate() {
+    let {relcids, relName, ttid, tip, } = this.props
+    let href = '#' // should be link to concept focus
+
+    let ttText = _.isString(tip) ? tip : ''
+    ttText = `${ttText}${ttText ? ' ' : ''}${relcids.length} ${relName}`
+    tooltip.ttContentConnected({ttid, ttText})
+  }
+  render() {
+    let {relcids, relName, ttid, tip, M,} = this.props
+    let href = '#' // should be link to concept focus
+
+    let ttText = _.isString(tip) ? tip : ''
+    ttText = `${ttText}${ttText ? ' ' : ''}${relcids.length} ${relName}`
+
+    let contents = `${relcids.length} ${relName}`
+    return  (
+      <span>
+        <RaisedButton
+          style={M('raisedButton')}
+          buttonStyle={M('raisedButton.styleProps.buttonStyle')}
+          href={href}
+          data-tip
+          data-for={ttid}
+          data-tttext={ttText}
+        >
+          {contents}
+        </RaisedButton>
+      </span>
+    )
+  }
+}
 const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {concepts=[],title='', sc, depth, M} = props
+  let {concepts=[],title='', sc, depth, maxDepth, M, sourceTitle, ttid} = props
+  viewCounts.RelsPeek++
   if (!_.includes(['S','C','X'], sc.toString() )) {
     //debugger
   }
   M = M.props({sc})
-  return <div>full rels instead of peek<br/>
-                  {
-                    //Rels:
-                    _.map(cncpt.concepts2relsMap(concepts),
-                          (relcids,relName) => {
-                            //if (!relName.match(/map/i)) return null
-                            return <RelView key={relName}
-                                      {...{relName, relcids, depth, M, }}
+  if (depth > maxDepth) {
+    return (
+              <div //style={M('raisedButton.container')}
+                    //style={{ border: '4px solid green', }}
+              >
+                { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
+                    <RelButton {...{relcids, relName, ttid, key:relName,
+                                    tip:sourceTitle, M,
+                                  }} />))
+                }
+              </div>
+    )
+  }
+  return <div>
+          full rels instead of peek, depth: {depth} &lt; {maxDepth}
+          {
+            //Rels:
+            _.map(cncpt.concepts2relsMap(concepts),
+                  (relcids,relName) => {
+                    //if (!relName.match(/map/i)) return null
+                    return <RelView key={relName} 
+                              {...{relName, relcids, title, sourceTitle,
+                                  depth, maxDepth, M, }}
                             />
-                          })
-                  }
+                  })
+          }
         </div>
   /*
   */
-  return (
-            <div //style={M('raisedButton.container')}
-                  //style={{ border: '4px solid green', }}
-            >
-              { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
-                  <span key={relName} >
-                    <RaisedButton 
-                      style={M('raisedButton')}
-                      buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-                      //    line above is sort of equivalent to line below
-                      //{...M('raisedButton').styleProps}
-                      //labelColor={'blue'}
-                      //backgroundColor={'green'}
-                      primary={true}
-                      //style={{backgroundColor:'yellow'}}
-                      //labelStyle={{...M('raisedButton').styleProps}}
-                      //href={href}
-                      //data-tip
-                      //data-for="cvc"
-                      //data-ttcid={ttcid}
-                      //label={ `${title} ${relcids.length} ${relName}` }
-                    >
-                      {title}
-                      {relcids.length} {relName}
-                    </RaisedButton>
-                  </span>))
-              }
-            </div>
-  )
 /*
                     */
 }
-const RelView = ({relName,relcids,depth,M,}) => {
+const RelView = ({relName,relcids,depth,maxDepth,title,sourceTitle,M,}) => {
+  viewCounts.RelView++
   /* only called by RelsPeek (full rels) */
-  let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
-  if (depth > 2) {
-    console.error('bailing from RelView to avoid max stack')
-    return null//<h5>too deep to display ({depth}) {title}</h5>
+  //let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
+  title = `${title}-->RelView ${relcids.length} ${relName}`
+  if (depth > maxDepth) {
+    //console.error('bailing from RelView to avoid max stack')
+    return <h5>too deep to display {title}</h5>
   }
   return (
     <ConceptViewContainer key={relName} M={M}
       linksWithCounts={true}
-      depth={depth + 1}
+      depth={depth}
+      maxDepth={maxDepth}
       concept_ids={relcids}
-      title={`From RelView: ${relcids.length} ${relName} concepts`}
+      title={title}
+      sourceTitle={sourceTitle}
     />
   )
 }
 class IndividualConceptViews extends Component {
   render() {
-    const {concepts=[], depth, Wrapper='div', M,} = this.props
+    let {concepts=[], depth, maxDepth, Wrapper='div', M,} = this.props
+    viewCounts.IndividualConceptViews++
     return  <div>
             { concepts.map((c,i) =>
                 <ConceptViewContainer key={i} M={M}
+                  depth={depth}
+                  maxDepth={maxDepth}
                   {...{
                     initiallyExpanded: false,
                     ...this.props,
@@ -304,6 +329,7 @@ class WrapInCard extends Component {
    *    - SplitIntoScs: <WrapInCard ... />
    */
   render() {
+    viewCounts.WrapInCard++
     let { children,
           title,
           subtitle,
@@ -372,15 +398,19 @@ class ConceptInfoGridList extends Component {
     let {
           // title, subtitle, // use in container, not here
           M,
+          ttid,
           depth,
           maxDepth,
           initiallyExpanded,
           concepts=[],
           linksWithCounts,
+          titleText,
+          sourceTitle,
         } = this.props
     if (concepts.length < 1)
       return null
 
+    viewCounts.ConceptInfoGridList++
 
     let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
                   //.filter(sc=>cncpt.rcsFromConcepts(sc.records))
@@ -403,19 +433,28 @@ class ConceptInfoGridList extends Component {
       return  <div key={i} style={M('ciglDiv')}>
                 { linksWithCounts 
                     ? <LinksWithCounts 
+                        ttid={ttid}
                         concepts={sc.records}
                         sc={sc}
                         M={M}
                         depth={depth} 
+                        sourceTitle={sourceTitle}
+                        //titleText={`${titleText} / ${title}`}
                       /> : '' }
-                { depth > maxDepth
-                    ? ''
-                    : <RelsPeek concepts={sc.records}
-                                sc={sc}
-                                M={M}
-                                depth={depth} 
-                      />
-                }
+                {/* depth > maxDepth
+                    ? <div>no RelsPeek: {depth} > {maxDepth}</div>
+                    : <div>yes RelsPeek: {depth} &lte; {maxDepth}
+                      </div>
+                */}
+                        <RelsPeek concepts={sc.records}
+                                  sc={sc}
+                                  M={M}
+                                  ttid={ttid}
+                                  depth={depth} 
+                                  maxDepth={maxDepth} 
+                                  sourceTitle={sourceTitle}
+                                  //sourceTitle={`${titleText} / ${title}`}
+                        />
                 { false &&
                   concepts.length > 1
                   ? <WrapInCard initiallyExpanded={false} M={M}
@@ -434,12 +473,15 @@ class ConceptInfoGridList extends Component {
 }
 class ConceptViewContainer extends Component {
   constructor(props) {
-    let {depth, title='CvcNoTitle', } = props
+    let {depth, maxDepth, title='CvcNoTitle', sourceTitle} = props
+    if (typeof depth === 'undefined' || typeof maxDepth === 'undefined' || depth > maxDepth + 1) {
+      throw new Error(`tried to construct problem CVC: ${depth} / ${maxDepth}, ${sourceTitle} => ${title}`)
+    }
+    viewCounts.ConceptViewContainer++
     super(props)
     this.state = {
       M: props.M || muit(),
       ttid: 'cvc',
-      maxDepth: 1,
     }
   }
   componentDidMount() {
@@ -451,20 +493,16 @@ class ConceptViewContainer extends Component {
       //wantConcepts(_.difference(concept_ids,concepts.map(d=>d.concept_id)), {title,depth})
       wantConcepts(concept_ids, {title,depth})
     }
-    //tooltip.registerTooltip(this.state.ttid)
-  }
-  componentWillUnmount() {
-    //tooltip.unregisterTooltip(this.state.ttid)
   }
   componentDidUpdate(prevProps, prevState) {
-    let {concepts, concept_ids, depth, title, subtitle,
+    let {concepts, concept_ids, depth, maxDepth, title, subtitle,
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
             muitParams={}, linksWithCounts, invisible,
         } = this.props
     if (!concepts.length) {
       return
     }
-    let {M, ttid, maxDepth} = this.state
+    let {M, ttid} = this.state
     if (depth > maxDepth) {
       return
     }
@@ -475,23 +513,21 @@ class ConceptViewContainer extends Component {
       return
     }
     let ttText = cnts.long.join(', ')
-    let ttDiv = <div>
+    let ttFancy = <div>
                   {
                     cnts.long.map((c,i)=><div style={M('tooltip.div')} key={i}>{c}</div>)
                   }
                 </div>
-    tooltip.ttContentConnected({ttid, content:ttText, fancyContent:ttDiv})
+    tooltip.ttContentConnected({ttid, ttText, ttFancy})
   }
-  static viewCount = 0 // to prevent stack overflow
   render() {
-    let {concepts, concept_ids, depth, title, subtitle,
+    let {concepts, concept_ids, depth, maxDepth, title, subtitle,
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
             muitParams={}, linksWithCounts,
         } = this.props
-    let {M, ttid, maxDepth} = this.state
+    let {M, ttid} = this.state
     let cnts = cdmCnts(concepts, d=>d)
     let ttText = cnts.long.join(', ')
-    let ttcid = md5(ttText)
     /*
     if (!_.isEqual(cnts, cdmCnts(concepts,d=>d))) {
     }
@@ -508,12 +544,12 @@ class ConceptViewContainer extends Component {
     */
     //return <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
     title = <span>
-              {title}, Depth: {depth}, ttcid: {ttcid},
+              {title}, Depth: {depth} / {maxDepth},
               <span >
                 <span style={{fontSize: '.6em',}}
                   data-tip
                   data-for={ttid}
-                  data-ttcid={ttcid}
+                  data-tttext={ttText}
                 >
                   ({JSON.stringify(cnts)})
                   ({cnts.short.join(', ')})
@@ -533,8 +569,7 @@ class ConceptViewContainer extends Component {
         <ConceptInfoGridList 
           {...{
             ...this.props, 
-            maxDepth,
-            M, title:undefined, subtitle:undefined,
+            M, title:undefined, subtitle:undefined, ttid,
           }} />
       </WrapInCard>
     )
@@ -543,7 +578,21 @@ class ConceptViewContainer extends Component {
 ConceptViewContainer = connect(
   (state, props) => {
     let {concepts=[], concept_ids=[],
-          depth=0, title, } = props
+          depth=0, maxDepth=2,
+          title, 
+          sourceTitle, titleText, // confusingly named
+    } = props
+    titleText = titleText || title
+    if (!_.isString(titleText)) {
+      debugger
+      throw new Error('string titleText required')
+    }
+    if (!_.isString(sourceTitle)) {
+      debugger
+      throw new Error('string sourceTitle required')
+    }
+    depth++
+    sourceTitle = `${sourceTitle}(${depth-1}) => ${titleText}(${depth})`
     let conceptFetchStatus = 'ok'
     if (!concepts.length) {
       if (concept_ids.length) {
@@ -567,13 +616,16 @@ ConceptViewContainer = connect(
           &&cncpt.concepts(state).length > 95
           )
       debugger
+     console.log(depth, props)
       */
     return {
       conceptFetchStatus,
       depth,
+      maxDepth,
       title,
       concepts,
-      //conceptStatusReport: cncpt.csReport( concepts, cncpt.requests(state), cncpt.focalConcepts(state)),
+      titleText,
+      sourceTitle,
     }
   },
   dispatch=>bindActionCreators(
@@ -588,6 +640,7 @@ export const ConceptStatusReport = ({lines=[], M}) => {
   M = M || muit()
   if (!lines.length)
     return <div>GOT NO STATUS!!</div>
+  lines = lines.concat(_.map(viewCounts, (v,k)=>`${k}: ${v}`))
   let cols = 3
   let linesPerCol = Math.ceil(lines.length / cols)
   return (<div style={{

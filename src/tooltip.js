@@ -5,29 +5,31 @@ import * as util from 'src/utils';
 import React, { Component } from 'react'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
-import md5 from 'blueimp-md5'
 import ReactTooltip from 'react-tooltip'
-window.ReactTooltip = ReactTooltip
+//window.ReactTooltip = ReactTooltip
 
-var globalTtStore = {}
+//var globalTtStore = {}
+window.globalTtStore = {}  // just for debugging
 
 class Tooltips extends Component {
   render() {
     let {tooltips} = this.props
     return  <div className="ttdiv" >
               {
-                _.map(tooltips, (tt,ttid) => 
-                  <ReactTooltip 
-                      key={ttid}
-                      id={ttid}
-                      className="tooltip-holder"
-                      getContent={x=>{
-                        let ttcid = event.target.getAttribute('data-ttcid')
-                        let content = globalTtStore[ttcid]
-                        return content
-                      }}
-                  />
-                )
+                _.map(tooltips, (tt,ttid) => {
+                  return <ReactTooltip 
+                          key={ttid}
+                          id={ttid}
+                          className="tooltip-holder"
+                          getContent={x=>{
+                            let ttText = event.target.getAttribute('data-tttext')
+                            let id = storeId(ttid, ttText)
+                            let ttFancy = globalTtStore[id]
+                            console.log({tooltips, tt,ttid, id, globalTtStore, ttFancy})
+                            return ttFancy
+                          }}
+                        />
+                })
               }
             </div>
   }
@@ -45,7 +47,7 @@ export const ttConsts = {
   NEW_CONTENT: 'vocab-pop/tt/NEW_CONTENT',
 }
 
-
+const storeId = (ttid,ttText) => `${ttid}:${ttText}`
 /**** start reducers *********************************************************/
 // tooltip id and tooltip content id -- each piece of content saved...stupid?
 // can't send dynamic content with react-tooltip  and can't 
@@ -54,12 +56,12 @@ const reducer = (state={}, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case ttConsts.NEW_CONTENT:
-      var {content, fancyContent, ttid, } = payload
-      if (_.has(state, [ttid, content]))
+      var {ttText, ttFancy, ttid, } = payload
+      let id = storeId(ttid,ttText)
+      if (_.has(globalTtStore, id))
         return state
-      let ttcid = md5(content)
-      globalTtStore[ttcid] = fancyContent
-      let ttState = {...state[ttid], [content]: ttcid}
+      globalTtStore[id] = ttFancy
+      let ttState = [...(state[ttid]||[]), ttText]
       return {...state, [ttid]: ttState}
     /*
     case ttConsts.NEW_TT:
@@ -80,28 +82,16 @@ export default reducer
 export const registerTooltip = ttid => ({type: ttConsts.NEW_TT, payload:ttid})
 export const unregisterTooltip = ttid => ({type: ttConsts.TRASH_TT, payload:ttid})
 export const makeTtContent = props => {
-  let {ttid, content, fancyContent} = props
-  fancyContent = fancyContent || content
-  if (!_.isString(content)) {
-    throw new Error("content must be string. use fancyContent for react components")
+  let {ttid, ttText, ttFancy} = props
+  ttFancy = ttFancy || ttText
+  if (!_.isString(ttText)) {
+    throw new Error("ttText must be string. use ttFancy for react components")
   }
-  return {type: ttConsts.NEW_CONTENT, payload: {ttid, content, fancyContent}}
+  return {type: ttConsts.NEW_CONTENT, payload: {ttid, ttText, ttFancy}}
 }
 export const ttActions = {
   ttContentConnected: ()=>{throw new Error("CONNECT THIS!")}, 
 }
-
-/*
-export const setTooltipContent = (ttid, content, ) => {
-  let tt = Tooltip.nodes[ttid]
-  if (!tt) {
-    //throw new Error("trying to set content on a tooltip that no longer exists:",ttid, content)
-    // not sure why this is happening...for now just ignore it
-    return
-  }
-  return Tooltip.nodes[ttid].setContent(content)
-}
-*/
 
 /**** end action creators *********************************************************/
 

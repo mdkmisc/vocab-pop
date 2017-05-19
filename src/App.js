@@ -113,6 +113,10 @@ const styles = {
               //</ConnectedRouter>
     */
 const defaultRoute = routes[0];
+
+
+import * as cncpt from 'src/ducks/concept'
+import * as C from 'src/components/Concept'
 class App extends Component {
   constructor(props: any) {
     super(props);
@@ -127,6 +131,8 @@ class App extends Component {
     let main = <Route {...route} component={route.main} />;
     return (
       <div>
+                <C.ConceptStatusReport lines={ this.props.conceptStatusReport } />
+
         <AppBar
           iconElementLeft={ 
             <IconMenu
@@ -209,6 +215,25 @@ class App extends Component {
     */
   }
 }
+App = connect(
+  (state, props) => { // mapStateToProps
+    let conceptStatusReport = cncpt.conceptStatusReport(state)
+    conceptStatusReport = conceptStatusReport.concat(
+      'ttips: ' + _.map(state.tooltips, (v,k) => `${k}: ${_.keys(v).length}`),
+      `globalTtStore: ${_.keys(globalTtStore).length}`
+    )
+    return {
+      conceptStatusReport,
+    }
+  },
+  // mapDispatchToProps:
+  dispatch => bindActionCreators(
+    { nav,
+    }, dispatch)
+)(App)
+export default App
+
+
 class AppTabs extends React.Component {
   constructor(props) {
     super(props);
@@ -271,19 +296,6 @@ class AppTabs extends React.Component {
 function nav(pathname) {
   return myrouter.setPathname(pathname)
 }
-App = connect(
-  (state, props) => { // mapStateToProps
-    return {
-    }
-  },
-  // mapDispatchToProps:
-  dispatch => bindActionCreators(
-    { nav,
-    }, dispatch)
-)(App)
-export default App
-
-
 
     //console.log("IN APP", this.props);
 const Settings = ({props}) => <h4>Settings</h4>

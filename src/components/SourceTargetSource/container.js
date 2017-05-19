@@ -46,7 +46,7 @@ class SourceTargetSourceForm extends Component {
   render() {
     let { vocabulary_id, matchBy, matchStr, 
           concepts=[],
-          conceptStatus, conceptStatusReport,
+          conceptStatus,
         } = this.props
     let M = muit()
     //let formParams = {  vocabulary_id:'blah', matchBy, matchStr:'eek', }
@@ -56,7 +56,7 @@ class SourceTargetSourceForm extends Component {
     let invisible = false
     switch (conceptStatus) {
       case cncpt.conceptActions.PAUSE:
-        content = <CircularProgress />
+        content = <div />
         break
       case cncpt.conceptActions.BUSY:
         invisible = true
@@ -66,14 +66,12 @@ class SourceTargetSourceForm extends Component {
       default:
         content =
             <C.ConceptViewContainer 
+              depth={0}
+              maxDepth={1}
               invisible={invisible}
               concepts={concepts}
-              title={
-                <span>
-                  {concepts.length} {' '}
-                  {vocabulary_id} concepts{' '}
-                </span>
-              }
+              title={`${concepts.length} ${vocabulary_id} concepts`}
+              sourceTitle="STS Report"
               linksWithCounts={true}
               //styleOverrides={{root:'card.root.top'}}
             />
@@ -90,7 +88,6 @@ class SourceTargetSourceForm extends Component {
             title={<h4>Source Target Source Report</h4>}
           />
           {form}
-          <C.ConceptStatusReport lines={conceptStatusReport} />
           <CardText style={{leftMargin:15}} >
             {content}
           </CardText>
@@ -115,7 +112,6 @@ SourceTargetSourceForm = connect(
       formRef: state.form.stsform,
       concepts: cncpt.focalConcepts(state),
       conceptStatus: state.concepts.requests.status,
-      conceptStatusReport: cncpt.conceptStatusReport(state),
     }
   }
 )(SourceTargetSourceForm)

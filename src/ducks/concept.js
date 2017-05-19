@@ -88,7 +88,7 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
       break
     case conceptActions.WANT_CONCEPTS: // only occurs for non-focal
       want = _.union(want, payload)    // this only adds cids to want list, nothing else
-      requests = [...requests, {...action, cids:payload, focal: true}]
+      requests = [...requests, {...action, cids:payload, }]
       break
     case conceptActions.RESUME:
       status = type
@@ -211,7 +211,7 @@ const conceptsCall = (action$, store) => (
             conceptActions.FETCH_CONCEPTS, 
             conceptActions.RESUME,
   )
-    //.debounce(200)
+    .debounceTime(200)
     .mergeMap(action=>{
       let {type, payload=[], meta, error} = action
       //let concept_ids = payload

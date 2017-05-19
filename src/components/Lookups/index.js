@@ -6,7 +6,6 @@ import {ApiSnackbar} from 'src/api'
 import myrouter from 'src/myrouter'
 import 'src/sass/Vocab.css'
 import * as cncpt from 'src/ducks/concept'
-import {ConceptStatusReport} from 'src/components/Concept'
 
 import { connect } from 'react-redux'
 import { bindActionCreators, } from 'redux'
@@ -64,7 +63,7 @@ class ConceptCodesLookupForm extends Component {
             handleSubmit, pristine, reset, submitting,
               errMsg, vocabularies,
               matchBy, matchStr, vocabulary_id,
-              concepts=[], conceptStatusReport,
+              concepts=[], 
           } = this.props
     let vocabulary = vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
     let open = this.open.bind(this)
@@ -113,7 +112,6 @@ class ConceptCodesLookupForm extends Component {
                       ? concepts.map(d=>d.concept_code).join(', ') 
                       : ''
                   }
-                  <ConceptStatusReport lines={conceptStatusReport} />
                 </div>
               </div>
             }
@@ -231,7 +229,6 @@ ConceptCodesLookupForm = connect(
       vocabulary_id, 
       matchBy, matchStr,
       concepts,
-      conceptStatusReport: cncpt.conceptStatusReport(state),
       errMsg: undefined,
     }
     return addProps

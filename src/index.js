@@ -27,6 +27,7 @@ injectTapEventPlugin();
 
 const {store, myrouter} = configureStore()
 let theme = muit()()
+
 render (
           <Provider store={store}>
             <MuiThemeProvider muiTheme={theme}>
