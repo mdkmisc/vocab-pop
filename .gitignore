@@ -6,7 +6,7 @@ junk
 VOCAB/vocab_data_files
 VOCAB
 
-src/**/*.css
+# src/**/*.css  -- don't want to screw up users who won't compile css themselves
 
 .sass-cache
 
