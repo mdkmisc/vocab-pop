@@ -5,6 +5,7 @@ import * as util from 'src/utils';
 import React, { Component } from 'react'
 import { bindActionCreators } from 'redux'
 import { connect } from 'react-redux'
+import md5 from 'blueimp-md5'
 import ReactTooltip from 'react-tooltip'
 window.ReactTooltip = ReactTooltip
 
@@ -39,31 +40,36 @@ Tooltips = connect(
 export {Tooltips}
 
 export const ttConsts = {
-  NEW_TT: 'vocab-pop/tt/NEW_TT',
-  TRASH_TT: 'vocab-pop/tt/TRASH_TT',
+  //NEW_TT: 'vocab-pop/tt/NEW_TT',
+  //TRASH_TT: 'vocab-pop/tt/TRASH_TT',
   NEW_CONTENT: 'vocab-pop/tt/NEW_CONTENT',
 }
 
 
 /**** start reducers *********************************************************/
+// tooltip id and tooltip content id -- each piece of content saved...stupid?
+// can't send dynamic content with react-tooltip  and can't 
+// store React components in store...
 const reducer = (state={}, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
+    case ttConsts.NEW_CONTENT:
+      var {content, fancyContent, ttid, } = payload
+      if (_.has(state, [ttid, content]))
+        return state
+      let ttcid = md5(content)
+      globalTtStore[ttcid] = fancyContent
+      let ttState = {...state[ttid], [content]: ttcid}
+      return {...state, [ttid]: ttState}
+    /*
     case ttConsts.NEW_TT:
       var ttid = payload
       if (state[ttid])
         return state
       return {...state, [ttid]: {}}
-    case ttConsts.NEW_CONTENT:
-      var {content, fancyContent, ttid, ttcid} = payload
-      // tooltip id and tooltip content id -- each piece of content saved...stupid?
-      // can't send dynamic content with react-tooltip  and can't 
-      // store React components in store...
-      globalTtStore[ttcid] = fancyContent
-      let ttState = {...state[ttid], [ttcid]: content}
-      return {...state, [ttid]: ttState}
     case ttConsts.TRASH_CONTENT:
       debugger
+    */
   }
   return state
 }
@@ -73,18 +79,15 @@ export default reducer
 /**** start action creators *********************************************************/
 export const registerTooltip = ttid => ({type: ttConsts.NEW_TT, payload:ttid})
 export const unregisterTooltip = ttid => ({type: ttConsts.TRASH_TT, payload:ttid})
-export const storeTtContent = payload => ({type: ttConsts.NEW_CONTENT, payload})
 export const makeTtContent = props => {
   let {ttid, content, fancyContent} = props
   fancyContent = fancyContent || content
   if (!_.isString(content)) {
     throw new Error("content must be string. use fancyContent for react components")
   }
-  let ttcid = _.uniqueId(ttid + '-')
-  return {ttid, ttcid, content, fancyContent}
+  return {type: ttConsts.NEW_CONTENT, payload: {ttid, content, fancyContent}}
 }
 export const ttActions = {
-  makeTtContent,
   ttContentConnected: ()=>{throw new Error("CONNECT THIS!")}, 
 }
 

@@ -130,6 +130,12 @@ const getPalette =
 
 const getStyles = pal => {   //subThemeStyles[subTheme]
   return {
+    tooltip: {
+      div: {
+        backgroundColor: pal.dark,
+        color: pal.lighter,
+      },
+    },
     appBar: {
     },
     ciglDiv: { 
@@ -472,60 +478,42 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
 
 export class Muit {
   constructor(props={}) {
-    this.props(props)
-
-    // following is so I don't have to change code in Concept/index.js right now
-    let req = this.request.bind(this)
-    _.forEach(Object.getOwnPropertyNames(Object.getPrototypeOf(this)), n => {
-      req[n] = Object.getPrototypeOf(this)[n].bind(this)
-    })
-    req._this = this
-    return req
-  }
-  props(newProps={}) {
-    if (!_.isEmpty(newProps) || !this._theme) {
-      this._props = _.merge(this._props, newProps)
-      this.setTheme()
-    }
-    return this._props
-    //return this.request.bind(this)
-  }
-  request(req) {
-    if (!req)
-      return this._theme
-    //if (req === 'visible') debugger
-    return _.has(this._theme, req) ? _.get(this._theme, req) : {}
-  }
-  theme() {
-    return this._theme
-  }
-  setTheme() {
     let { muiTheme,
           sub, sc, // synonyms
           themeProps={}, // for setting, haven't used yet
           invisible=false,
-    } = this._props
+    } = props
     sub = sc || sub || 'main'
     themeProps.invisible = invisible
     let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
-    this._theme = getMuiTheme(theme,
-                              {...getStyles(theme.palette)},
-                              {...themeProps})
-    this._desc = {
-          invisible, 
-          subTheme: sub, 
-          cardTitle: JSON.stringify(this._theme.cardTitle)
+    theme = getMuiTheme(theme,{...getStyles(theme.palette)}, {...themeProps})
+    let desc = { invisible, subTheme: sub, 
+                 cardTitle: JSON.stringify(theme.cardTitle) }
+
+    let reqFunc = req => {
+      if (!req)
+        return theme
+      return _.has(theme, req) ? _.get(theme, req) : {}
     }
-  }
-  desc() {
-    return _.map(this._desc, (v,k)=>`${k}: ${v}`).join(', ')
-  }
-  palette() {
-    return this._theme.palette
-  }
-  color(colorProp) {
-    return this.palette()[colorProp]
-    //return JSON.stringify(this._theme.palette) + ' ' + this.palette()[colorProp]
+
+    reqFunc.props = newProps => {
+      if (!_.isEmpty(newProps) || !theme) {
+        return muit({muiTheme:theme, ...newProps})
+      }
+      throw new Error("not sure what return is expected")
+    }
+
+    reqFunc.desc = () => {
+      return _.map(desc, (v,k)=>`${k}: ${v}`).join(', ')
+    }
+    reqFunc.palette = () => {
+      return theme.palette
+    }
+    reqFunc.color = (colorProp) => {
+      return palette()[colorProp]
+    }
+
+    return reqFunc
   }
 }
 const muit = props => { // so I don't have to change code in Concept/index.js right now

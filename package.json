@@ -17,6 +17,7 @@
   "dependencies": {
     "ag-grid": "^8.2.0",
     "ag-grid-react": "^8.2.0",
+    "blueimp-md5": "^2.7.0",
     "bootstrap": "^3.3.7",
     "d3": "^4.7.3",
     "history": "^4.6.1",

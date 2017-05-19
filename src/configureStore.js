@@ -50,7 +50,7 @@ export default function configureStore(initialState = {}) {
     )
   )
   myrouter.routeActionConnected = bindActionCreators(myrouter.routeAction, store.dispatch)
-  tooltip.ttContentConnected = bindActionCreators(tooltip.storeTtContent, store.dispatch)
+  tooltip.ttContentConnected = bindActionCreators(tooltip.makeTtContent, store.dispatch)
 
   if (DEBUG) {
     window.store = store

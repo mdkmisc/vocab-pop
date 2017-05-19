@@ -27,6 +27,7 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from 'src/utils'
 
+const md5 = require('blueimp-md5')
 import React, { Component } from 'react'
 
 
@@ -216,13 +217,13 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
   if (!_.includes(['S','C','X'], sc.toString() )) {
     //debugger
   }
-  M.props({sc})
+  M = M.props({sc})
   return <div>full rels instead of peek<br/>
                   {
                     //Rels:
-                    _.map(cncpt.concepts2relsMap(sc.records), // sc.records === concepts
+                    _.map(cncpt.concepts2relsMap(concepts),
                           (relcids,relName) => {
-                            if (!relName.match(/map/i)) return null
+                            //if (!relName.match(/map/i)) return null
                             return <RelView key={relName}
                                       {...{relName, relcids, depth, M, }}
                             />
@@ -367,14 +368,12 @@ class WrapInCard extends Component {
   }
 }
 class ConceptInfoGridList extends Component {
-  componentDidUpdate() {
-    ReactTooltip.rebuild()
-  }
   render() {
     let {
           // title, subtitle, // use in container, not here
           M,
           depth,
+          maxDepth,
           initiallyExpanded,
           concepts=[],
           linksWithCounts,
@@ -399,7 +398,7 @@ class ConceptInfoGridList extends Component {
     }
     */
     let contents = bySc.map((sc,i) => {
-      M.props({sc})
+      M = M.props({sc})
       let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
       return  <div key={i} style={M('ciglDiv')}>
                 { linksWithCounts 
@@ -409,11 +408,14 @@ class ConceptInfoGridList extends Component {
                         M={M}
                         depth={depth} 
                       /> : '' }
-                <RelsPeek concepts={sc.records}
-                          sc={sc}
-                          M={M}
-                          depth={depth} 
-                />
+                { depth > maxDepth
+                    ? ''
+                    : <RelsPeek concepts={sc.records}
+                                sc={sc}
+                                M={M}
+                                depth={depth} 
+                      />
+                }
                 { false &&
                   concepts.length > 1
                   ? <WrapInCard initiallyExpanded={false} M={M}
@@ -436,8 +438,8 @@ class ConceptViewContainer extends Component {
     super(props)
     this.state = {
       M: props.M || muit(),
-      cnts: {long:[],short:[]},
-      ttProps: {ttid:'cvc'},
+      ttid: 'cvc',
+      maxDepth: 1,
     }
   }
   componentDidMount() {
@@ -446,30 +448,13 @@ class ConceptViewContainer extends Component {
             muitParams={}, linksWithCounts, invisible,
         } = this.props
     if (concept_ids && concept_ids.length) {
+      //wantConcepts(_.difference(concept_ids,concepts.map(d=>d.concept_id)), {title,depth})
       wantConcepts(concept_ids, {title,depth})
     }
-    tooltip.registerTooltip(this.state.ttProps.ttid)
+    //tooltip.registerTooltip(this.state.ttid)
   }
   componentWillUnmount() {
-    tooltip.unregisterTooltip(this.state.ttProps.ttid)
-  }
-  shouldComponentUpdate(nextProps, nextState) {
-    /*
-    if (  _.isEqual(this.props.concepts, nextProps.concepts) &&
-          _.isEqual(this.props.concept_ids, nextProps.concept_ids) &&
-          nextProps.concepts.length && !nextState.cnts.short.length
-       ) {
-      let cnts = (cdmCnts( nextProps.concepts, d=>d))
-      if (cnts.short.length)
-        debugger
-    }
-    */
-   //if ( nextState.mustUpdate || this.state.mustUpdate) debugger
-    return !_.isEqual(this.props.concepts, nextProps.concepts) ||
-           !_.isEqual(this.props.concept_ids, nextProps.concept_ids) ||
-           !!nextState.mustUpdate ||
-           !!this.state.mustUpdate ||
-           this.state.mustUpdate !== nextState.mustUpdate
+    //tooltip.unregisterTooltip(this.state.ttid)
   }
   componentDidUpdate(prevProps, prevState) {
     let {concepts, concept_ids, depth, title, subtitle,
@@ -479,30 +464,23 @@ class ConceptViewContainer extends Component {
     if (!concepts.length) {
       return
     }
-    let {M, cnts, ttProps, mustUpdate} = this.state
-    invisible = M('invisible') || invisible
-    M.props({...muitParams, invisible})
-    if ( depth > 2 ) {
-      console.error('bailing to avoid max stack (depth)',depth, ConceptViewContainer.viewCount )
-      return <h5>too deep to display ({depth}: {ConceptViewContainer.viewCount}) {title} - {subtitle}</h5>
+    let {M, ttid, maxDepth} = this.state
+    if (depth > maxDepth) {
+      return
     }
-    cnts = cdmCnts( concepts, d=>d)
-    if (!_.isEqual(this.state.cnts, cnts)) {
-      mustUpdate = true
-      //debugger
-    } else {
-      if (mustUpdate) {
-        mustUpdate = false
-        //debugger
-      }
+    invisible = M('invisible') || invisible
+    M = M.props({...muitParams, invisible})
+    let cnts = cdmCnts( concepts, d=>d)
+    if (!cnts.short.length) {
+      return
     }
     let ttText = cnts.long.join(', ')
-    let ttDiv = cnts.long.map((c,i)=><div key={i}>{c}</div>)
-    ttProps = tooltip.makeTtContent({ttid:this.state.ttProps.ttid, 
-                                          content:ttText, fancyContent:ttDiv})
-    tooltip.ttContentConnected(ttProps)
-    ReactTooltip.rebuild()
-    this.setState({M,cnts,ttProps, mustUpdate})
+    let ttDiv = <div>
+                  {
+                    cnts.long.map((c,i)=><div style={M('tooltip.div')} key={i}>{c}</div>)
+                  }
+                </div>
+    tooltip.ttContentConnected({ttid, content:ttText, fancyContent:ttDiv})
   }
   static viewCount = 0 // to prevent stack overflow
   render() {
@@ -510,7 +488,10 @@ class ConceptViewContainer extends Component {
             wantConcepts, conceptFetchStatus, initiallyExpanded=true,
             muitParams={}, linksWithCounts,
         } = this.props
-    let {M, cnts, ttProps, mustUpdate} = this.state
+    let {M, ttid, maxDepth} = this.state
+    let cnts = cdmCnts(concepts, d=>d)
+    let ttText = cnts.long.join(', ')
+    let ttcid = md5(ttText)
     /*
     if (!_.isEqual(cnts, cdmCnts(concepts,d=>d))) {
     }
@@ -527,15 +508,17 @@ class ConceptViewContainer extends Component {
     */
     //return <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
     title = <span>
-              {title}, Depth: {depth}, ttcid: {ttProps.ttcid}, mustUpdate: {mustUpdate ? 'yes' : 'no'}
+              {title}, Depth: {depth}, ttcid: {ttcid},
               <span >
                 <span style={{fontSize: '.6em',}}
                   data-tip
-                  data-for={ttProps.ttid}
-                  data-ttcid={ttProps.ttcid}
+                  data-for={ttid}
+                  data-ttcid={ttcid}
                 >
                   ({JSON.stringify(cnts)})
                   ({cnts.short.join(', ')})
+                  <br/>
+                  Got {(concepts||[]).length} of {(concept_ids||[]).length} concepts
                 </span>
               </span>
             </span>
@@ -547,7 +530,12 @@ class ConceptViewContainer extends Component {
                   title={title}
                   subtitle={subtitle}
       >
-        <ConceptInfoGridList {...{...this.props, M, title:undefined, subtitle:undefined}} />
+        <ConceptInfoGridList 
+          {...{
+            ...this.props, 
+            maxDepth,
+            M, title:undefined, subtitle:undefined,
+          }} />
       </WrapInCard>
     )
   }
@@ -559,7 +547,8 @@ ConceptViewContainer = connect(
     let conceptFetchStatus = 'ok'
     if (!concepts.length) {
       if (concept_ids.length) {
-        concepts = cncpt.conceptsFromCidsWStubs(state)(concept_ids, false)
+        //concepts = cncpt.conceptsFromCidsWStubs(state)(concept_ids, false)
+        concepts = cncpt.conceptsFromCids(state)(concept_ids, false)
       } else {
         concepts = cncpt.concepts(state)
       }
@@ -572,11 +561,19 @@ ConceptViewContainer = connect(
       debugger
     }
     */
+    //let requests = cncpt.requests(state)
+    /*
+    if (depth > 0 && requests.requests.length > 1 && !requests.want.length
+          &&cncpt.concepts(state).length > 95
+          )
+      debugger
+      */
     return {
       conceptFetchStatus,
       depth,
       title,
       concepts,
+      //conceptStatusReport: cncpt.csReport( concepts, cncpt.requests(state), cncpt.focalConcepts(state)),
     }
   },
   dispatch=>bindActionCreators(

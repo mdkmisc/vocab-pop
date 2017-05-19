@@ -60,7 +60,7 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   let {status, want, fetching, got, focal, requests} = state
   let {type, payload, meta, error} = action
   let new_cids
-  checkCorrupted({status, want, fetching, got, focal, action, state})
+  checkCorrupted({status, want, fetching, got, focal, requests, action, state})
   switch (type) {
     case conceptActions.IDLE:
     case conceptActions.BUSY:
@@ -84,11 +84,11 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
       focal = new_cids
       fetching = [] // clear previous fetch/want (add focal to fetching below)
       want = []
-      requests = [...requests, {...action, focal: true}]
+      requests = [...requests, {...action, cids:new_cids, focal: true}]
       break
     case conceptActions.WANT_CONCEPTS: // only occurs for non-focal
       want = _.union(want, payload)    // this only adds cids to want list, nothing else
-      requests = [...requests, action]
+      requests = [...requests, {...action, cids:payload, focal: true}]
       break
     case conceptActions.RESUME:
       status = type
@@ -125,7 +125,7 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   want = _.chain(want).difference(got)
                       .difference(fetching)
                       .value()
-  checkCorrupted({status, want, fetching, got, focal, action, state})
+  checkCorrupted({status, want, fetching, got, focal, requests, action, state})
   if (status === conceptActions.PAUSE) {
     //status = status
   } else if (status === conceptActions.FULL) {
@@ -139,11 +139,21 @@ const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
   return _.isEqual(state, newState) ? state : newState
 }
 const checkCorrupted = props => {
-  let {status, want, fetching, got, focal, action, state} = props
-  if (  _.intersection(got,want).length ||
-        _.intersection(got,fetching).length ||
-        _.intersection(want,fetching).length ||
-        (want.length && !focal.length && status !== conceptActions.FULL)
+  let {status, want, fetching, got, focal, requests, action, state} = props
+  if (  _.intersection(got,want).length         || // shouldn't want gotten concepts
+        _.intersection(got,fetching).length     || // shouldn't fetch gotten concepts
+        _.intersection(want,fetching).length    || // shouldn't leave fetching in want list
+        (want.length && !focal.length &&           // shouldn't want (only related are in want list)
+          status !== conceptActions.FULL)       || //    before focal are gotten
+        (state.status === conceptActions.FULL &&   // shouldn't stop being full
+         status !== conceptActions.FULL)        || //    (at least for now)
+
+        _.chain(requests)                          // all requested cids should
+          .map(d=>d.cids)                          //     appear somewhere (got,fetch,want)
+          .flatten()
+          .uniq()
+          .difference(_.union(got,fetching,want))
+          .value().length
   ){
     debugger
     throw new Error("corrupted request state")
@@ -279,18 +289,26 @@ export {epics}
 
 /**** start selectors *****************************************************************/
 
-const conceptStub = (id,status) => ({
-  concept_id: id,
-  status,
-  concept_code: status,
-  concept_name: status,
-  domain_id: status,
-  standard_concept: status,
-  vocabulary_id: status,
-  concept_class_id: status,
-  rcs: [],
-  rels: []
-})
+/*
+const conceptStub = (id,status) => {
+  let stub = {
+    concept_id: id,
+    stub_id: _.uniqueId(),
+    status,
+    concept_code: status,
+    concept_name: status,
+    domain_id: status,
+    standard_concept: status,
+    vocabulary_id: status,
+    concept_class_id: status,
+    rcs: [],
+    rels: []
+  }
+  if (stub.stub_id > 1000)
+    debugger
+  return stub
+}
+*/
 
 const expectedConceptFields = [
   'concept_id',
@@ -342,25 +360,28 @@ export const want = createSelector(requests, r => r.want)
 export const fetching = createSelector(requests, r => r.fetching)
 export const focal = createSelector(requests, r => r.focal)
 export const got = createSelector(requests, r => r.got)
-//export const stale = createSelector(requests, r => r.stale)
-
 export const focalConcepts = createSelector( conceptsFromCids, focal, (cfc,f) => cfc(f))
 
 export const conceptStatusReport = createSelector(
   concepts,
   requests,
-  focal,
   focalConcepts,
-  (concepts, requests, focal, focalConcepts) => {
+  (concepts, requests, focalConcepts) => {
+    return csReport(concepts, requests, focalConcepts)
+  }
+)
+export const csReport = (concepts, requests, focalConcepts) => {
     let lines = [
       `loaded: ${concepts.length}`,
       ..._.map(requests, (r,k)=>`${k}: ${Array.isArray(r) ? r.length : r}`),
-      `missing focal: ${_.difference(focal, concepts.map(c=>c.concept_id)).length}`
+      `missing focal: ${_.difference(requests.focal, concepts.map(c=>c.concept_id)).length}`,
+      `requested cids: ${_.chain(requests.requests).map(d=>d.cids).flatten().value().length}`,
+      `uniq requested cids: ${_.chain(requests.requests).map(d=>d.cids).flatten().uniq().value().length}`,
     ]
     return lines
-  }
-)
+}
 
+/*
 export const conceptsFromCidsWStubs = createSelector(
   conceptMap, want, fetching,
   (cmap, want, fetching) =>
@@ -371,6 +392,7 @@ export const conceptsFromCidsWStubs = createSelector(
                       conceptStub(cid, 'mystery')
               )
 )
+*/
 
 export const rels2map = rels => {
   return rels.reduce((acc,{relationship,relcids}) => (
