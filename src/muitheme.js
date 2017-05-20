@@ -141,7 +141,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
     ciglDiv: { 
       padding: 4,
       backgroundColor: pal.lighter,
-      border: `4px dotted ${pal.regular}`,
+      //border: `4px dotted ${pal.regular}`,
       //zoom: .7,
     },
     randomDiv: {

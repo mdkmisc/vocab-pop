@@ -66,10 +66,13 @@ class SourceTargetSourceForm extends Component {
       default:
         content =
             <C.ConceptViewContainer 
+
+              cset={new cncpt.ConceptSet({concepts})}
+
               depth={0}
-              maxDepth={1}
+              maxDepth={2}
               invisible={invisible}
-              concepts={concepts}
+              //concepts={concepts}
               title={`${concepts.length} ${vocabulary_id} concepts`}
               sourceTitle="STS Report"
               linksWithCounts={true}

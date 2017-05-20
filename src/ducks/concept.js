@@ -424,14 +424,6 @@ export const sc = concept => concept.standard_concept
 const scClass = createSelector(sc, sc=>`sc-${sc}`)
 //export const scClass = concept => `sc-${sc(concept)}`
 //
-export const scName = (concept) => (
-  ({S:'Standard',C:'Classification',X:'Non-standard'}
-   )[sc(concept)]
-)
-export const scLongName = (concept,cnt) => plural(`${scName(concept)} Concept`, cnt)
-export const plural = (str, cnt) => {
-  return cnt === 1 ? str : `${str}s`
-}
 
 export const conceptTableAbbr = tbl => (
   ({
@@ -468,12 +460,29 @@ export const conceptTableAbbr = tbl => (
 
 
 export const rcsFromConcepts = concepts => {
+  /* rcs look like this:  { col : "condition_source_concept_id",
+                            coltype : "source",
+                            crc : 0,
+                            rc : 0,
+                            src : 1,
+                            tbl : "condition_occurrence"
+                          }
+      i.e., a tbl/col/coltyp and three counts
+      but only only of the counts will have numbers
+      so rcsFromConcepts adds, e.g., { cnt : 1, cntType : "src"}
+      the cntType and count from whichever field has it
+
+      rcsFromConcepts also flattens all the rcs's from all the concepts
+      into a single list
+  */
   return (
-  _.flatten(
-    concepts.map(c=>c.rcs)
-  )
-  .filter(d=>d)
-  .map(rcs=>{let {rc,src,crc} = rcs
+    _.flatten(
+      concepts.map(c=>c.rcs)
+    )
+    .filter(d=>d)
+    .map(rcs=>{
+      rcs = _.cloneDeep(rcs)
+      let {rc,src,crc} = rcs
       if (!!rc + !!src + !!crc > 1) {
         throw new Error("this should not happen")
       }
@@ -488,9 +497,31 @@ export const rcsFromConcepts = concepts => {
         rcs.cnt = crc
       }
       return rcs
-  })
-  .filter(rcs=>rcs.cnt)
+    })
+    .filter(rcs=>rcs.cnt)
 )}
+export const colCnts = rcs => { 
+  // converts a list of rcs's as processed by rcsFromConcepts
+  // into a list of { col, tbl, cnt }
+  let byTblCol = _.supergroup(rcs,['tbl','col'])
+  return (byTblCol.leafNodes()
+            .map(
+              col => {
+                let cnt = {
+                  tbl: col.parent.toString(),
+                  col: col.toString(),
+                  cnt: col.aggregate(_.sum,'cnt'),
+                }
+                return cnt
+              }
+            )
+         )
+}
+export const colCntsFromConcepts = createSelector(
+  concepts,
+  concepts => colCnts(rcsFromConcepts(concepts))
+)
+
 export const repairRcs = concepts => {
   return concepts.map(
     concept => {
@@ -537,7 +568,7 @@ export const repairRcs = concepts => {
 // can use plain selectors with supergroup, but not
 // createSelector because supergroup not immutable
 
-
+/*
 export const conceptsBySc = (concepts=[]) => _.supergroup(concepts, 'standard_concept')
 export const conceptsByScTbl = concepts =>
   conceptsBySc(concepts).addLevel(c=>c.rcs.map(r=>r.tbl),
@@ -573,32 +604,80 @@ export const conceptsByScTblCol = concepts => {
     )
   return bycol
 }
-export const colCnts = rcs => {
-  let byTblCol = _.supergroup(rcs,['tbl','col'])
-  return (byTblCol.leafNodes()
-            .map(
-              col => {
-                let cnt = {
-                  col: col.toString(),
-                  tbl: col.parent.toString(),
-                  cnt: col.aggregate(_.sum,'cnt'),
-                }
-                return cnt
-              }
-            )
-         )
-}
-export const colCntsFromConcepts = createSelector(
-  concepts,
-  concepts => colCnts(rcsFromConcepts(concepts))
-)
-
+*/
 
 
 
 /**** end selectors *****************************************************************/
 
+/*
+class Test {
+  constructor(props) {
+    _.map(props, (v,k) => this[k] = v)
+  }
+  keys() {
+    return _.keys(this)
+  }
+  meth() {
+    return this.foo
+  }
+  imeth = () => this.foo  // nice arrow functions
+}
+window.Test = Test
+*/
 
+export const scName = 
+  sc => ({S:'Standard',C:'Classification',X:'Non-standard'})[sc]
+
+export const scLongName = 
+  (sc,cnt) => plural(`${scName(sc)} Concept`, cnt)
+
+export const plural = (str, cnt) => {
+  return cnt === 1 ? str : `${str}s`
+}
+export class ConceptSet {
+  /*  for use in Concept component for passing around concepts and
+   *  meta data. not for use in store or selectors!
+   */
+  constructor(props) {  // still, try to make this immutable
+    this.props = props
+    /* expecting: let {concepts,
+                        depth,
+                        pedigree,
+                        title,
+                        fancyTitle,
+                        ttText,
+                        ttFancy,
+                  } = props */
+  }
+  concepts = () => this.props.concepts || []
+  subset = (concepts) => new ConceptSet({...this.props, concepts})
+  sc = (failOnMissing=true, failOnPresent=false) => {
+    if (typeof this.props.sc === 'undefined') {
+      if (failOnMissing) {
+        throw new Error("asked for sc on ConceptSet without one")
+      }
+    } else {
+      if (failOnPresent) {
+        throw new Error("found sc on ConceptSet that shouldn't have one")
+      }
+      return this.props.sc
+    }
+  }
+  scName = () => scName(this.sc())
+  scLongName = () => scLongName(this.sc())
+  scCsets = () => {
+    if (this.sc(false, true)) {
+      debugger // already should have failed if this is already an sc cset
+    }
+    let bySc = _.supergroup(this.concepts(), 'standard_concept')
+    return bySc.map(sc => new ConceptSet({...this.props, 
+                                          concepts: sc.records,
+                                          sc: sc.toString(),
+                                        }))
+  }
+  cCount = () => this.concepts().length
+}
 
 
 

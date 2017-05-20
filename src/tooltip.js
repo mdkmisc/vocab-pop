@@ -11,6 +11,35 @@ import ReactTooltip from 'react-tooltip'
 //var globalTtStore = {}
 window.globalTtStore = {}  // just for debugging
 
+class TooltipWrapper extends Component {
+  componentDidMount() {
+    let {ttid, ttText, ttFancy, M=muit()} = this.props
+    ttFancy = ttFancy || ttText
+    this.props.makeTtContent({ttid, ttText, ttFancy})
+  }
+  componentDidUpdate() {
+    let {ttid, ttText, ttFancy, M=muit()} = this.props
+    ttFancy = ttFancy || ttText
+    this.props.makeTtContent({ttid, ttText, ttFancy})
+  }
+  render() {
+    let {ttid, ttText, ttFancy, M=muit(), children} = this.props
+    return React.cloneElement(
+      children, {"data-tip":true,"data-for":ttid,"data-tttext":ttText})
+  }
+}
+TooltipWrapper = connect(
+  (state, props) => { // mapStateToProps
+    return {}
+  },
+  dispatch => bindActionCreators({ makeTtContent, },dispatch)
+)(TooltipWrapper)
+export { TooltipWrapper }
+
+
+
+
+
 class Tooltips extends Component {
   render() {
     let {tooltips} = this.props

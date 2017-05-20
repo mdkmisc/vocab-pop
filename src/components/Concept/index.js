@@ -19,13 +19,14 @@ var d3 = require('d3')
 var $ = require('jquery')
 import _ from 'src/supergroup' // in global space anyway...
 import * as cncpt from 'src/ducks/concept'
-import * as tooltip from 'src/tooltip'
+import {TooltipWrapper} from 'src/tooltip'
 import {AgTable, ConceptTree, } from 'src/components/TableStuff'
 import {commify, updateReason,
         setToAncestorHeight, setToAncestorSize, getAncestorSize,
         getRefsFunc, sendRefsToParent,
         ListenerWrapper, ListenerTargetWrapper,
         LoadingButton} from 'src/utils'
+import 'src/sass/style.css'
 
 import React, { Component } from 'react'
 
@@ -42,8 +43,6 @@ import {Glyphicon, Row, Col,
           } from 'react-bootstrap'
 //if (DEBUG) window.d3 = d3
 import SortableTree from 'react-sortable-tree'
-
-import ReactTooltip from 'react-tooltip'
 
 import Badge from 'material-ui/Badge'
 import {GridList, GridTile} from 'material-ui/GridList';
@@ -93,53 +92,24 @@ window.viewCounts = {
   ConceptInfoGridList: 0,
   ConceptViewContainer: 0,
 }
-export const fmtCdmCnt = (fmt='short') => {
-  switch(fmt) {
-    case 'short':
-      return cnt=>`${commify(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`
-    case 'long':
-      return cnt=>`${commify(cnt.cnt)} records in ${cnt.tbl}.${cnt.col}`
-  }
-  throw new Error("confused")
-}
-export const cdmCnts = (concepts, join=d=>d.join(', ')) => {
-  let cnts = cncpt.colCntsFromConcepts(concepts)
-  return {
-    short: join(cnts.map(fmtCdmCnt('short'))),
-    long: join(cnts.map(fmtCdmCnt('long'))),
-  }
-}
-export const ConceptsSummary = props => {
-  let {concepts, M} = props
-  let cnts = cdmCnts( concepts, d=>d)
-  let sg = _.supergroup(concepts, ['domain_id','vocabulary_id','concept_class_id'])
-  return  <div style={M('randomDiv')}>
-            Concepts Summary for {concepts.length} concepts
-            <pre style={M('randomDiv')}>
-              {JSON.stringify(cnts)} {'\n\n'}
-              {sg.leafNodes().namePaths().join('\n')}
-            </pre>
-          </div>
-}
 export const LinksWithCounts = props => {
-  let {concepts, depth, M, ttid} = props
+  let {cset, depth, M, ttid} = props
   if (M('invisible'))
     return null
   viewCounts.LinksWithCounts++
   let visibility = M('invisible') ? 'hidden' : 'visible'
   let height = M('invisible') ? '0px' : 'auto'
-  if (concepts.length > 30) {
-    return <ConceptsSummary M={M} concepts={concepts} />
+  if (cset.concepts().length > 50) {
+    return <ConceptsSummary M={M} cset={cset} />
   }
   return  <div style={{visibility, height}}>
             {
-              concepts.map(
+              cset.concepts().map(
                 (c,i) => {
                   return <LinkWithCounts key={i}
                             ttid={ttid}
                             M={M}
-                            //muitParams={{sc:c.standard_concept}}
-                            concepts={[c]}
+                            cset={cset.subset([c])}
                             title={c.concept_code}
                             tip={`${c.vocabulary_id}: ${c.concept_name}`}
                         />
@@ -148,45 +118,32 @@ export const LinksWithCounts = props => {
           </div>
 }
 export class LinkWithCounts extends Component {
-  componentDidUpdate() {
-    let {concepts, ttid, title, tip, muitParams, M} = this.props
+  render() {
+    let {cset, ttid, title, tip, muitParams, M} = this.props
     //let M = muit(muitParams)
-    let cnts = cdmCnts(concepts, d=>d)
+    let cnts = cdmCnts(cset, d=>d)
     let href = '#' // should be link to concept focus
 
     let ttText = _.isString(tip) ? tip : ''
     let ttFancy = tip
-    if (cnts.short.length) {
-      ttText += ` (${cnts.long.join(', ')})`
-      ttFancy = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
-    }
-    tooltip.ttContentConnected({ttid, ttText, ttFancy})
-  }
-  render() {
-    let {concepts, ttid, title, tip, muitParams, M} = this.props
-    //let M = muit(muitParams)
-    let cnts = cdmCnts(concepts, d=>d)
-    let href = '#' // should be link to concept focus
-
-    let ttText = _.isString(tip) ? tip : ''
     let contents = title
     if (cnts.short.length) {
       contents += ` (${cnts.short.join(', ')})`
-
       ttText += ` (${cnts.long.join(', ')})`
+      ttFancy = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
     }
     return  (
       <span>
-        <RaisedButton
-          style={M('raisedButton')}
-          buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-          href={href}
-          data-tip
-          data-for={ttid}
-          data-tttext={ttText}
-        >
-          {contents}
-        </RaisedButton>
+        <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
+          <RaisedButton
+            style={M('raisedButton')}
+            buttonStyle={M('raisedButton.styleProps.buttonStyle')}
+            href={href}
+          >
+            {contents}
+            <Counts cset={cset} />
+          </RaisedButton>
+        </TooltipWrapper>
       </span>
     )
   }
@@ -211,57 +168,38 @@ const colname = cnt => {
   return cn
 }
 export class RelButton extends Component {
-  componentDidMount() {
-    this.makeTip()
-  }
-  makeTip() {
-    let {relcids, relName, ttid, tip, } = this.props
-    let href = '#' // should be link to concept focus
-
-    let ttText = _.isString(tip) ? tip : ''
-    ttText = `${ttText}${ttText ? ' ' : ''}${relcids.length} ${relName}`
-    tooltip.ttContentConnected({ttid, ttText})
-  }
-  componentDidUpdate(nextProps) {
-    this.makeTip()
-  }
-
   render() {
     let {relcids, relName, ttid, tip, M,} = this.props
     let href = '#' // should be link to concept focus
 
     let ttText = _.isString(tip) ? tip : ''
     ttText = `${ttText}${ttText ? ' ' : ''}${relcids.length} ${relName}`
-
     let contents = `${relcids.length} ${relName}`
     return  (
       <span>
-        <RaisedButton
-          style={M('raisedButton')}
-          buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-          //href={href}
-          data-tip
-          data-for={ttid}
-          data-tttext={ttText}
-        >
-          {contents}
-        </RaisedButton>
+        <TooltipWrapper {...{ttid,ttText,M}} >
+          <RaisedButton
+            style={M('raisedButton')}
+            buttonStyle={M('raisedButton.styleProps.buttonStyle')}
+            //href={href}
+          >
+            {contents}
+          </RaisedButton>
+        </TooltipWrapper>
       </span>
     )
   }
 }
 const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {concepts=[],title='', sc, depth, maxDepth, M, sourceTitle, ttid} = props
+  let {cset,title='', depth, maxDepth, M, sourceTitle, ttid} = props
   viewCounts.RelsPeek++
-  if (!_.includes(['S','C','X'], sc.toString() )) {
-    //debugger
-  }
-  M = M.props({sc})
+  M = M.props({sc: cset.sc()})
   return (
             <div //style={M('raisedButton.container')}
                   //style={{ border: '4px solid green', }}
             >
-              { _.map(cncpt.concepts2relsMap(concepts), (relcids,relName) => (
+              Related to:
+              { _.map(cncpt.concepts2relsMap(cset.concepts()), (relcids,relName) => (
                   <RelButton {...{relcids, relName, ttid, key:relName,
                                   tip:sourceTitle, M,
                                 }} />))
@@ -274,7 +212,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
           full rels instead of peek, depth: {depth} &lt; {maxDepth}
           {
             //Rels:
-            _.map(cncpt.concepts2relsMap(concepts),
+            _.map(cncpt.concepts2relsMap(cset.concepts()),
                   (relcids,relName) => {
                     //if (!relName.match(/map/i)) return null
                     return <RelView key={relName} 
@@ -298,6 +236,8 @@ const RelView = ({relName,relcids,depth,maxDepth,title,sourceTitle,M,}) => {
     //console.error('bailing from RelView to avoid max stack')
     return <h5>too deep to display {title}</h5>
   }
+  throw new Error("broken")
+  /*
   return (
     <ConceptViewContainer key={relName} M={M}
       linksWithCounts={true}
@@ -307,21 +247,26 @@ const RelView = ({relName,relcids,depth,maxDepth,title,sourceTitle,M,}) => {
       title={title}
       sourceTitle={sourceTitle}
     />
+    if (concept_ids && concept_ids.length) {
+      //wantConcepts(_.difference(concept_ids,cset.concepts().map(d=>d.concept_id)), {title,depth})
+      wantConcepts(concept_ids, {title,depth})
+    }
   )
+  */
 }
 class IndividualConceptViews extends Component {
   render() {
-    let {concepts=[], depth, maxDepth, Wrapper='div', M,} = this.props
+    let {cset, depth, maxDepth, Wrapper='div', M,} = this.props
     viewCounts.IndividualConceptViews++
     return  <div>
-            { concepts.map((c,i) =>
+            { cset.concepts().map((c,i) =>
                 <ConceptViewContainer key={i} M={M}
                   depth={depth}
                   maxDepth={maxDepth}
                   {...{
                     initiallyExpanded: false,
                     ...this.props,
-                    concepts: [c],
+                    cset: cset.subset([c]),
                     title: c.concept_name,
                     subtitle: `individual concept ${c.vocabulary_id} ${c.concept_code}`,
                   }}
@@ -409,20 +354,19 @@ class ConceptInfoGridList extends Component {
           depth,
           maxDepth,
           initiallyExpanded,
-          concepts=[],
+          cset,
           linksWithCounts,
           titleText,
           sourceTitle,
         } = this.props
-    if (concepts.length < 1)
+    if (cset.concepts().length < 1)
       return null
 
     viewCounts.ConceptInfoGridList++
 
-    let bySc = cncpt.conceptsBySc(concepts) // just supergroups by 'standard_concept'
-                  //.filter(sc=>cncpt.rcsFromConcepts(sc.records))
-
-    if (bySc.length < 1) {
+    let scCsets = cset.scCsets() //.filter(sc=>cncpt.rcsFromConcepts(sc.records))
+    if (scCsets.length < 1) {
+      debugger
       return null
     }
     /*
@@ -434,15 +378,14 @@ class ConceptInfoGridList extends Component {
       return  enhanceChildren(children, { concepts, muitParams, sc, depth }, M)
     }
     */
-    let contents = bySc.map((sc,i) => {
-      M = M.props({sc})
-      let title = `${sc.records.length} ${cncpt.scName(sc.records[0])}`
+    let contents = scCsets.map((scCset,i) => {
+      M = M.props({sc: scCset.sc()})
+      let title = `${scCset.cCount()} ${scCset.scName()}`
       return  <div key={i} style={M('ciglDiv')}>
                 { linksWithCounts 
                     ? <LinksWithCounts 
                         ttid={ttid}
-                        concepts={sc.records}
-                        sc={sc}
+                        cset ={scCset}
                         M={M}
                         depth={depth} 
                         sourceTitle={sourceTitle}
@@ -453,8 +396,8 @@ class ConceptInfoGridList extends Component {
                     : <div>yes RelsPeek: {depth} &lte; {maxDepth}
                       </div>
                 */}
-                        <RelsPeek concepts={sc.records}
-                                  sc={sc}
+                        <RelsPeek
+                                  cset ={scCset}
                                   M={M}
                                   ttid={ttid}
                                   depth={depth} 
@@ -463,10 +406,10 @@ class ConceptInfoGridList extends Component {
                                   //sourceTitle={`${titleText} / ${title}`}
                         />
                 { false &&
-                  concepts.length > 1
+                  cset.concepts().length > 1
                   ? <WrapInCard initiallyExpanded={false} M={M}
                                 title={'Individual Concepts'} >
-                      <IndividualConceptViews concepts={sc.records} />
+                      <IndividualConceptViews cset ={scCset} />
                     </WrapInCard>
                   : null
                 }
@@ -491,22 +434,12 @@ class ConceptViewContainer extends Component {
       ttid: 'cvc',
     }
   }
-  componentDidMount() {
-    let {concepts, concept_ids, depth, title, subtitle,
-            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muitParams={}, linksWithCounts, invisible,
-        } = this.props
-    if (concept_ids && concept_ids.length) {
-      //wantConcepts(_.difference(concept_ids,concepts.map(d=>d.concept_id)), {title,depth})
-      wantConcepts(concept_ids, {title,depth})
-    }
-  }
   componentDidUpdate(prevProps, prevState) {
-    let {concepts, concept_ids, depth, maxDepth, title, subtitle,
-            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
+    let {concepts, depth, maxDepth, title, subtitle,
+            initiallyExpanded=true,
             muitParams={}, linksWithCounts, invisible,
         } = this.props
-    if (!concepts.length) {
+    if (!cset.concepts().length) {
       return
     }
     let {M, ttid} = this.state
@@ -515,54 +448,33 @@ class ConceptViewContainer extends Component {
     }
     invisible = M('invisible') || invisible
     M = M.props({...muitParams, invisible})
-    let cnts = cdmCnts( concepts, d=>d)
+    let cnts = cdmCnts( cset, d=>d)
     if (!cnts.short.length) {
       return
     }
+  }
+  render() {
+    let {cset, depth, maxDepth, title, subtitle,
+            wantConcepts, initiallyExpanded=true,
+            muitParams={}, linksWithCounts,
+        } = this.props
+    let {M, ttid} = this.state
+    let cnts = cdmCnts(cset, d=>d)
     let ttText = cnts.long.join(', ')
     let ttFancy = <div>
                   {
                     cnts.long.map((c,i)=><div style={M('tooltip.div')} key={i}>{c}</div>)
                   }
                 </div>
-    tooltip.ttContentConnected({ttid, ttText, ttFancy})
-  }
-  render() {
-    let {concepts, concept_ids, depth, maxDepth, title, subtitle,
-            wantConcepts, conceptFetchStatus, initiallyExpanded=true,
-            muitParams={}, linksWithCounts,
-        } = this.props
-    let {M, ttid} = this.state
-    let cnts = cdmCnts(concepts, d=>d)
-    let ttText = cnts.long.join(', ')
-    /*
-    if (!_.isEqual(cnts, cdmCnts(concepts,d=>d))) {
-    }
-    if (!cnts.short.length && depth === 0 && concepts.length > 5) {
-      console.log(cdmCnts( concepts, d=>d))
-      debugger
-    }
-    */
-    /*
-    let surroundSubtitle = false
-    if (subtitle && surroundSubtitle) {
-      subtitle = <div style={M('card.title.subtitle.surround')} >{subtitle}</div>
-    }
-    */
-    //return <ConceptInfoGridList {...{...this.props, title:undefined, subtitle:undefined}} />
     title = <span>
               {title}, Depth: {depth} / {maxDepth},
               <span >
-                <span style={{fontSize: '.6em',}}
-                  data-tip
-                  data-for={ttid}
-                  data-tttext={ttText}
-                >
-                  ({JSON.stringify(cnts)})
-                  ({cnts.short.join(', ')})
-                  <br/>
-                  Got {(concepts||[]).length} of {(concept_ids||[]).length} concepts
-                </span>
+                  <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
+                  <span style={{fontSize: '.6em',}} >
+                    ({cnts.short.join(', ')})
+                    ( <Counts cset={cset} /> )
+                  </span>
+                </TooltipWrapper>
               </span>
             </span>
     subtitle= typeof subtitle === 'function' ? subtitle(this.props) : subtitle
@@ -582,13 +494,60 @@ class ConceptViewContainer extends Component {
     )
   }
 }
+const sFmt = d3.format('.2s')
+export const Counts = props => {
+  let {cset} = props
+  let cnts = cncpt.colCntsFromConcepts(cset.concepts())
+  return  <span>
+            {
+              cnts.map(cnt=>`${sFmt(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`)
+                .join(', ')
+            }
+          </span>
+}
+export const fmtCdmCnt = (fmt='short') => {
+  switch(fmt) {
+    case 'short':
+      return cnt=>`${commify(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`
+    case 'long':
+      return cnt=>`${commify(cnt.cnt)} records in ${cnt.tbl}.${cnt.col}`
+  }
+  throw new Error("confused")
+}
+export const cdmCnts = (cset, join=d=>d.join(', ')) => {
+  let cnts = cncpt.colCntsFromConcepts(cset.concepts())
+  return {
+    short: join(cnts.map(fmtCdmCnt('short'))),
+    long: join(cnts.map(fmtCdmCnt('long'))),
+  }
+}
+export const ConceptsSummary = props => {
+  let {cset, M} = props
+  let cnts = cdmCnts( cset, d=>d)
+  let sg = _.supergroup(cset.concepts(), ['domain_id','vocabulary_id','concept_class_id'])
+  return  <div style={M('randomDiv')}>
+            Concepts Summary for {cset.concepts().length} concepts
+            <pre style={M('randomDiv')}>
+              {JSON.stringify(cnts)} {'\n\n'}
+              {sg.leafNodes().namePaths().join('\n')}
+                    ( <Counts cset={cset} /> )
+            </pre>
+          </div>
+}
 ConceptViewContainer = connect(
   (state, props) => {
-    let {concepts=[], concept_ids=[],
+    let { 
+          cset,
+          concepts=[],
           depth=0, maxDepth=2,
           title, 
           sourceTitle, titleText, // confusingly named
     } = props
+
+    //concepts
+
+
+
     titleText = titleText || title
     if (!_.isString(titleText)) {
       debugger
@@ -600,37 +559,11 @@ ConceptViewContainer = connect(
     }
     depth++
     sourceTitle = `${sourceTitle}(${depth-1}) => ${titleText}(${depth})`
-    let conceptFetchStatus = 'ok'
-    if (!concepts.length) {
-      if (concept_ids.length) {
-        //concepts = cncpt.conceptsFromCidsWStubs(state)(concept_ids, false)
-        concepts = cncpt.conceptsFromCids(state)(concept_ids, false)
-      } else {
-        concepts = cncpt.concepts(state)
-      }
-      if (concept_ids.length > concepts.length) {
-        conceptFetchStatus = concepts.length ? 'partiallyLoaded' : 'waiting'
-      }
-    }
-    /*
-    if (concepts.filter(d=>d.status).length) {
-      debugger
-    }
-    */
-    //let requests = cncpt.requests(state)
-    /*
-    if (depth > 0 && requests.requests.length > 1 && !requests.want.length
-          &&cncpt.concepts(state).length > 95
-          )
-      debugger
-     console.log(depth, props)
-      */
     return {
-      conceptFetchStatus,
       depth,
       maxDepth,
       title,
-      concepts,
+      cset,
       titleText,
       sourceTitle,
     }

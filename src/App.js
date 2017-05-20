@@ -18,7 +18,7 @@ Copyright 2016 Sigfried Gold
 
 import {ApiWatch, ApiSnackbar} from 'src/api'
 import config from 'src/config'
-import 'src/stylesheets/VocabPop.css'
+import 'src/sass/Vocab.css'
 import _ from 'src/supergroup'
 import {Tooltips, } from 'src/tooltip'
 import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'

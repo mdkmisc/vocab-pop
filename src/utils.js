@@ -28,6 +28,7 @@ export function storageExists(key, store = _store) {
 export function storageGet(key, store = _store) {
   return JSON.parse(LZString.decompressFromBase64(store[key]));
 }
+window.storageGet = storageGet
 
 /* SvgLayout class
   * manages layout of subcomponents in zones of an svg
