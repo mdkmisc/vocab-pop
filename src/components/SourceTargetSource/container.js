@@ -66,7 +66,7 @@ class SourceTargetSourceForm extends Component {
         content =
             <C.ConceptViewContainer 
 
-              cset={new cncpt.ConceptSet({cids, cSelector})}
+              cset={new cncpt.ConceptSet({cids}, cSelector)}
 
               depth={0}
               maxDepth={2}

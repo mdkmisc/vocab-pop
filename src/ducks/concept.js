@@ -274,14 +274,16 @@ const newConcepts = (payload=[],loadedAlready={}) => {
                 cts.records[1].cntType !== 'rc' ||
                 cts.records[0].cnt !== cts.records[1].cnt
                 ) {
-              debugger
               throw new Error("pretty weird")
             }
             fixedCnts.push(cts.records.find(d=>d.coltype==='target'))
           }
           //c._origRcs = c.rcs
           //c.rcs = fixedCnts
+              throw new Error("fix")
         } else {
+          // do nothing
+              //throw new Error("fix")
           //c._origRcs = c.rcs
           //c.rcs = rcss
         }
@@ -432,6 +434,18 @@ const conceptStub = (id,status) => {
 }
 */
 
+export const conceptStub = (id,status) => ({
+  concept_id: id,
+  status,
+  concept_code: status,
+  concept_name: status,
+  domain_id: status,
+  standard_concept: status,
+  vocabulary_id: status,
+  concept_class_id: status,
+  rcs: [],
+  rels: []
+})
 const expectedConceptFields = [
   'concept_id',
   'concept_code',
@@ -597,70 +611,127 @@ export class ConceptSet {
   /*  for use in Concept component for passing around concepts and
    *  meta data. not for use in store or selectors!
    */
-  constructor(props) {  // still, try to make this never mutate
+  constructor(props, cSelector) {  // still, try to make this never mutate
     this._props = props
+    this.cSelector = cSelector
 
-    /* expecting: let {concepts, depth, pedigree, title, fancyTitle, ttText, ttFancy, } = props */
-    if (props.concepts || !props.cids || !props.cSelector ) { //|| !props.wantConcepts
+    /* expecting: let {cids, cSelector
+     *  for subsets: parent (subsetOf), cids, nature of subset (probably a group?), the group prop
+     *  for rels (which are not subsets -- but the only kind of descendants that aren't):
+     *    parent (relFrom), relName, cids, any known props of parent
+    * title, fancyTitle, ttText, ttFancy, } = props */
+    if (props.concepts || !props.cids || !cSelector ) { //|| !wantConcepts
       throw new Error("just give me cids and a live concepts selector")
     }
-
-    props.depth = props.depth || 0
-    if (props.depth && !props.parent) {
-      throw new Error("send a parent!")
-    }
-    if (this.loaded()) {
-      this.sc() && (this._props.sc = this.sc())
-    }
-
-
+    console.log("done with constructor", this)
   }
   props = () => this._props
-  cids = createSelector(this.props, props => props.cids)
-  //concepts = (cids=this.cids()) => this.props.cSelector(cids)
-  concepts = createSelector(this.cids, cids => this.props().cSelector(cids))
+  //_prop = createSelector(this.props, props => prop => props[prop])
+  prop = prop => this.props()[prop]
+  hasProp = prop => _.has(this.props(), prop)
+  // maybe fancier?:
+    // prop = prop => _.get(this.props(), prop)
+
+  //cids = createSelector(this.prop, prop => prop('cids'))
+  cids = () => this.prop('cids')
+
+  csel = () => this.cSelector || (() => 'cSelector not available yet')
+  allConcepts = createSelector(this.csel, csel => csel())
+  myConcepts = createSelector(
+    this.allConcepts,
+    this.cids, 
+    (all,cids) => all.filter(c=>_.includes(cids,c.concept_id))
+  )
+  someConcepts = createSelector(
+    this.allConcepts,
+    this.myConcepts,
+    (all, my) => cids => cids ? all.filter(c=>_.includes(cids,c.concept_id)) : my
+  )
+  concepts = cids => this.someConcepts()(cids) // REMEMBER, if something else depends
+  //                                                on it, make it a selector, i think
+  //concepts = createSelector(this.someConcepts, some => cids => some(cids))
   loaded = createSelector(this.cids, this.concepts,
     (cids,concepts) => cids.length === concepts.length)
 
   //groups = (fld) => _.supergroup(this.concepts(), fld)
   //scs = () => this.groups('standard_concept')
   groups = createSelector(
-    this.concepts, concepts => (fld) => _.supergroup(concepts, fld))
+    this.concepts, 
+    concepts => {
+      debugger
+      return (fld) => _.supergroup(concepts, fld)
+    }
+  )
+  // these return supergroups by grp prop
+  scs = createSelector(this.groups, groups => groups('standard_concept'))
+  doms = createSelector(this.groups, groups => groups('domain_id'))
+  vocs = createSelector(this.groups, groups => groups('vocabulary_id'))
+  clss = createSelector(this.groups, groups => groups('concept_class_id'))
+  wcdms = createSelector(
+    this.concepts, 
+    concepts => _.supergroup(c=>!!(c.cnts && c.cnts.length),{dimName:'wcdm'})
+  )
 
-    /*
-    _.map(groupings, (fld,grp) => {
-      this[grp] = createSelector(this.groups, groups => groups(fld))
-    })
-    */
-    scs = createSelector(this.groups, groups => groups('standard_concept'))
-    doms = createSelector(this.groups, groups => groups('domain_id'))
-    vocs = createSelector(this.groups, groups => groups('vocabulary_id'))
-    clss = createSelector(this.groups, groups => groups('concept_class_id'))
+  // these return simple value (not obj) for csets having only one
+  // member in a group... meaning that all their subsets will also have only that member
+  singleMemberGroupLabel = dimName => { // dimName = sc, dom, voc, cls, wcdm
+    debugger
+    if (this.hasProp(dimName)) {
+      return this.prop(dimName)
+    } else {
+      let grps = this.groups()(dimName)
+      if (grps.length === 1) {
+        return grps[0].valueOf()
+      }
+    }
+  }
+  sc = () => this.singleMemberGroupLabel('sc')
+  dom = () => this.singleMemberGroupLabel('dom')
+  voc = () => this.singleMemberGroupLabel('voc')
+  cls = () => this.singleMemberGroupLabel('cls')
+  wcdm = () => this.singleMemberGroupLabel('wcdm')
 
+  scName = () => scName(this.sc())
+  scLongName = () => scLongName(this.sc())
 
-  subset = (props) => {
+  cCount = () => this.concepts().length
+  cdmCnts = createSelector(
+    this.concepts, 
+    concepts => colCnts(_.flatten(concepts.map(c=>c.cnts)))
+  )
+
+  scCsets = () => {
+    debugger
+    return this.scs().map(
+            sc=>this.subset({
+              cids:sc.records.map(d=>d.concept_id),
+              sc:sc.toString(),
+              subtype: 'sc',
+            }))
+  }
+
+  subset = (props, forceNew=false) => {
+    // expects props with cids, subtype (sc,dom,voc,cls,wcdm)
+    if (!props.cids || !props.cids.length) {
+      throw new Error("not sure what to do")
+    }
+    if (!props.subtype) {
+      throw new Error("need a subtype")
+    }
+    if (!forceNew && 
+        (props.cids.length === 1 || props.cids.length === this.cids().length)) {
+      console.error('warning: not making subset! will this work?')
+      debugger
+      return this
+    }
     if (_.difference(props.cids, this.cids()).length) {
-      throw new Error("can only include cids in concept set")
+      throw new Error("can only include subset of cids in concept set")
     }
     if (props.cids.length !== this.concepts(props.cids).length) {
       throw new Error("can only subset loaded concepts")
     }
-    return new ConceptSet({...this.props(), ...props, parent: this})
+    return new ConceptSet({...this.props(), ...props, 
+                            parent: this, isSub: true, })
   }
-
-  sc = (failOnMissing=false) => {
-    let sc = this.props().sc || (this.scs().length === 1 && this.scs()[0])
-    if (!sc && failOnMissing) {
-      throw new Error("asked for sc on ConceptSet without one")
-    }
-    return sc
-  }
-  scName = () => scName(this.sc())
-  scLongName = () => scLongName(this.sc())
-
-  scCsets = () => this.scs().map(
-    sc=>this.subset({cids:sc.records.map(d=>d.concept_id),sc:sc.toString()}))
-  cCount = () => this.concepts().length
-  cdmCnts = () => colCnts(_.flatten(this.concepts().map(c=>c.cnts)))
 }
 
