@@ -171,7 +171,126 @@ export default combineReducers({
 /**** end reducers *********************************************************/
 
 /**** start action creators *********************************************************/
-const newConcepts = payload => ({type: conceptActions.NEW_CONCEPTS, payload})
+export const colCnts = rcs => {
+  // converts a list of rcs's as processed by rcsFromConcepts
+  // into a list of { col, tbl, cnt }
+  let byTblCol = _.supergroup(rcs,['tbl','col'])
+  return (byTblCol.leafNodes()
+            .map(
+              col => {
+                let cnt = {
+                  tbl: col.parent.toString(),
+                  col: col.toString(),
+                  cnt: col.aggregate(_.sum,'cnt'),
+                }
+                return cnt
+              }
+            )
+         )
+}
+export const rcsFromConcepts = concepts => {
+  /* rcs look like this:  { col : "condition_source_concept_id",
+                            coltype : "source",
+                            crc : 0,
+                            rc : 0,
+                            src : 1,
+                            tbl : "condition_occurrence"
+                          }
+      i.e., a tbl/col/coltyp and three counts
+      but only only of the counts will have numbers
+      so rcsFromConcepts adds, e.g., { cnt : 1, cntType : "src"}
+      the cntType and count from whichever field has it
+
+      rcsFromConcepts also flattens all the rcs's from all the concepts
+      into a single list
+
+
+      THIS NOW HAPPENS ON CONCEPT LOADING, SO rcs FROM HERE OUT
+      REFERS TO THE OUTPUT
+  */
+  return (
+    _.flatten(
+      concepts.map(c=>c.rcs)
+    )
+    .filter(d=>d)
+    .map(rcs=>{
+      let {rc,src,crc,tbl,col,coltype} = rcs
+      if (!!rc + !!src + !!crc > 1) {
+        throw new Error("this should not happen")
+      }
+      if (rc) {
+        return {tbl, col, coltype, cntType:'rc', cnt:rc}
+      } else if (src) {
+        return {tbl, col, coltype, cntType:'src', cnt:src}
+      } else if (crc) {
+        return {tbl, col, coltype, cntType:'crc', cnt:crc}
+      }
+    })
+    .filter(r => r && r.cnt)
+)}
+const newConcepts = (payload=[],loadedAlready={}) => {  
+  // does this need to be pure function(no side effects)? probably not
+  // it's the only entry point for concept records
+  let concepts = payload.map(c => {
+    if (loadedAlready[c.concept_id]) {
+      return
+    }
+    //c = _.cloneDeep(c)      // uncomment to make immutable-ish
+
+    c.cnts = c.rcs.map(rcs=>{
+      let {rc,src,crc,tbl,col,coltype} = rcs
+      if (!!rc + !!src + !!crc > 1) {
+        throw new Error("this should not happen")
+      }
+      if (rc) {
+        return {tbl, col, coltype, cntType:'rc', cnt:rc}
+      } else if (src) {
+        return {tbl, col, coltype, cntType:'src', cnt:src}
+      } else if (crc) {
+        return {tbl, col, coltype, cntType:'crc', cnt:crc}
+      }
+    })
+    .filter(r => r && r.cnt)
+
+
+    // from previous repairRcs -- deals with double counting when same
+    // concept is source and target
+    let tbct = _.supergroup(c.cnts, ['tbl','coltype'])
+    let fixedCnts = []
+    tbct.forEach(
+      tbl => {
+        let cts = tbl.getChildren()
+        if (cts.length > 2) {
+          debugger
+          throw new Error("pretty weird")
+        }
+        if (cts.length === 2) {
+          debugger
+          if (cts.lookup('target') &&
+              cts.lookup('source'))
+          {
+            if (cts.records.length !== 2 ||
+                cts.records[0].cntType !== 'rc' ||
+                cts.records[1].cntType !== 'rc' ||
+                cts.records[0].cnt !== cts.records[1].cnt
+                ) {
+              debugger
+              throw new Error("pretty weird")
+            }
+            fixedCnts.push(cts.records.find(d=>d.coltype==='target'))
+          }
+          //c._origRcs = c.rcs
+          //c.rcs = fixedCnts
+        } else {
+          //c._origRcs = c.rcs
+          //c.rcs = rcss
+        }
+      }
+    )
+    return c
+  })
+  return {type: conceptActions.NEW_CONCEPTS, payload: concepts}
+}
 export const wantConcepts = (concept_ids,meta) => ({
                                 type: conceptActions.WANT_CONCEPTS,
                                 payload:concept_ids,
@@ -258,7 +377,7 @@ const loadConcepts = (action$, store) => (
       if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
         throw new Error("did something go wrong?")
       }
-      return newConcepts(payload)
+      return newConcepts(payload, store.getState().concepts.loaded)
     })
 )
 epics.push(loadConcepts)
@@ -459,173 +578,6 @@ export const conceptTableAbbr = tbl => (
 )
 
 
-export const rcsFromConcepts = concepts => {
-  /* rcs look like this:  { col : "condition_source_concept_id",
-                            coltype : "source",
-                            crc : 0,
-                            rc : 0,
-                            src : 1,
-                            tbl : "condition_occurrence"
-                          }
-      i.e., a tbl/col/coltyp and three counts
-      but only only of the counts will have numbers
-      so rcsFromConcepts adds, e.g., { cnt : 1, cntType : "src"}
-      the cntType and count from whichever field has it
-
-      rcsFromConcepts also flattens all the rcs's from all the concepts
-      into a single list
-  */
-  return (
-    _.flatten(
-      concepts.map(c=>c.rcs)
-    )
-    .filter(d=>d)
-    .map(rcs=>{
-      rcs = _.cloneDeep(rcs)
-      let {rc,src,crc} = rcs
-      if (!!rc + !!src + !!crc > 1) {
-        throw new Error("this should not happen")
-      }
-      if (rc) {
-        rcs.cntType = 'rc'
-        rcs.cnt = rc
-      } else if (src) {
-        rcs.cntType = 'src'
-        rcs.cnt = src
-      } else if (crc) {
-        rcs.cntType = 'crc'
-        rcs.cnt = crc
-      }
-      return rcs
-    })
-    .filter(rcs=>rcs.cnt)
-)}
-export const colCnts = rcs => { 
-  // converts a list of rcs's as processed by rcsFromConcepts
-  // into a list of { col, tbl, cnt }
-  let byTblCol = _.supergroup(rcs,['tbl','col'])
-  return (byTblCol.leafNodes()
-            .map(
-              col => {
-                let cnt = {
-                  tbl: col.parent.toString(),
-                  col: col.toString(),
-                  cnt: col.aggregate(_.sum,'cnt'),
-                }
-                return cnt
-              }
-            )
-         )
-}
-export const colCntsFromConcepts = createSelector(
-  concepts,
-  concepts => colCnts(rcsFromConcepts(concepts))
-)
-
-export const repairRcs = concepts => {
-  return concepts.map(
-    concept => {
-      if (_.isEmpty(concept.rcs)) {
-        return concept
-      }
-      concept = _.cloneDeep(concept)
-      let rcss = rcsFromConcepts([concept])
-      let tbct = _.supergroup(rcss, ['tbl','coltype'])
-      let newRcs = []
-      tbct.forEach(
-        tbl => {
-          let cts = tbl.getChildren()
-          if (cts.length > 2) {
-            debugger
-            throw new Error("pretty weird")
-          }
-          if (cts.length === 2) {
-            if (cts.lookup('target') &&
-                cts.lookup('source'))
-            {
-              if (cts.records.length !== 2 ||
-                  cts.records[0].cntType !== 'rc' ||
-                  cts.records[1].cntType !== 'rc' ||
-                  cts.records[0].cnt !== cts.records[1].cnt
-                 ) {
-                debugger
-                throw new Error("pretty weird")
-              }
-              newRcs.push(cts.records.find(d=>d.coltype==='target'))
-            }
-            concept._origRcs = concept.rcs
-            concept.rcs = newRcs
-          } else {
-            concept._origRcs = concept.rcs
-            concept.rcs = rcss
-          }
-        }
-      )
-      return concept
-    })
-}
-
-// can use plain selectors with supergroup, but not
-// createSelector because supergroup not immutable
-
-/*
-export const conceptsBySc = (concepts=[]) => _.supergroup(concepts, 'standard_concept')
-export const conceptsByScTbl = concepts =>
-  conceptsBySc(concepts).addLevel(c=>c.rcs.map(r=>r.tbl),
-                          {multiValuedGroup:true,dimName:'tbl'})
-export const conceptsByScTblCol = concepts => {
-  let bycol = conceptsByScTbl(concepts).addLevel(c=>c.rcs.map(r=>r.col),
-                          {multiValuedGroup:true,dimName:'col'})
-  bycol.leafNodes()
-    .filter(l=>l.depth===3)
-    .forEach(
-      leaf => {
-        leaf.col = leaf.toString()
-        leaf.tbl = leaf.parent.toString()
-        leaf.sc = leaf.parent.parent.toString()
-        leaf.allRcs =  rcsFromConcepts(leaf.records)
-
-        let cntTypes = _.uniq(leaf.allRcs.map(d=>d.cntType))
-        // cntType is rc/src/crc, should always correspond to standard_concept:
-        // S=rc, X=src, C=crc
-        if (cntTypes.length > 1) {
-          debugger
-          throw new Error("shouldn't happen")
-        }
-        if (cntTypes.length === 0) {
-          debugger
-          throw new Error("not sure")
-          return
-        }
-        leaf.cntType = cntTypes[0]
-        leaf.cnt = _.sum(leaf.allRcs.map(d=>d.cnt))
-            //leaf.cnt = `${cnt} records in ${leaf.tbl}.${leaf.col}`
-      }
-    )
-  return bycol
-}
-*/
-
-
-
-/**** end selectors *****************************************************************/
-
-/*
-class Test {
-  constructor(props) {
-    _.map(props, (v,k) => this[k] = v)
-  }
-  keys() {
-    return _.keys(this)
-  }
-  meth() {
-    return this.foo
-  }
-  imeth = () => this.foo  // nice arrow functions
-}
-window.Test = Test
-*/
-
 export const scName = 
   sc => ({S:'Standard',C:'Classification',X:'Non-standard'})[sc]
 
@@ -635,602 +587,80 @@ export const scLongName =
 export const plural = (str, cnt) => {
   return cnt === 1 ? str : `${str}s`
 }
+const groupings = {
+  sc: 'standanrd_concept',
+  dom: 'domain_id',
+  voc: 'vocabulary_id',
+  cls: 'concept_class_id',
+}
 export class ConceptSet {
   /*  for use in Concept component for passing around concepts and
    *  meta data. not for use in store or selectors!
    */
-  constructor(props) {  // still, try to make this immutable
-    this.props = props
-    /* expecting: let {concepts,
-                        depth,
-                        pedigree,
-                        title,
-                        fancyTitle,
-                        ttText,
-                        ttFancy,
-                  } = props */
-  }
-  concepts = () => this.props.concepts || []
-  subset = (concepts) => new ConceptSet({...this.props, concepts})
-  sc = (failOnMissing=true, failOnPresent=false) => {
-    if (typeof this.props.sc === 'undefined') {
-      if (failOnMissing) {
-        throw new Error("asked for sc on ConceptSet without one")
-      }
-    } else {
-      if (failOnPresent) {
-        throw new Error("found sc on ConceptSet that shouldn't have one")
-      }
-      return this.props.sc
+  constructor(props) {  // still, try to make this never mutate
+    this._props = props
+
+    /* expecting: let {concepts, depth, pedigree, title, fancyTitle, ttText, ttFancy, } = props */
+    if (props.concepts || !props.cids || !props.cSelector ) { //|| !props.wantConcepts
+      throw new Error("just give me cids and a live concepts selector")
     }
+
+    props.depth = props.depth || 0
+    if (props.depth && !props.parent) {
+      throw new Error("send a parent!")
+    }
+    if (this.loaded()) {
+      this.sc() && (this._props.sc = this.sc())
+    }
+
+
+  }
+  props = () => this._props
+  cids = createSelector(this.props, props => props.cids)
+  //concepts = (cids=this.cids()) => this.props.cSelector(cids)
+  concepts = createSelector(this.cids, cids => this.props().cSelector(cids))
+  loaded = createSelector(this.cids, this.concepts,
+    (cids,concepts) => cids.length === concepts.length)
+
+  //groups = (fld) => _.supergroup(this.concepts(), fld)
+  //scs = () => this.groups('standard_concept')
+  groups = createSelector(
+    this.concepts, concepts => (fld) => _.supergroup(concepts, fld))
+
+    /*
+    _.map(groupings, (fld,grp) => {
+      this[grp] = createSelector(this.groups, groups => groups(fld))
+    })
+    */
+    scs = createSelector(this.groups, groups => groups('standard_concept'))
+    doms = createSelector(this.groups, groups => groups('domain_id'))
+    vocs = createSelector(this.groups, groups => groups('vocabulary_id'))
+    clss = createSelector(this.groups, groups => groups('concept_class_id'))
+
+
+  subset = (props) => {
+    if (_.difference(props.cids, this.cids()).length) {
+      throw new Error("can only include cids in concept set")
+    }
+    if (props.cids.length !== this.concepts(props.cids).length) {
+      throw new Error("can only subset loaded concepts")
+    }
+    return new ConceptSet({...this.props(), ...props, parent: this})
+  }
+
+  sc = (failOnMissing=false) => {
+    let sc = this.props().sc || (this.scs().length === 1 && this.scs()[0])
+    if (!sc && failOnMissing) {
+      throw new Error("asked for sc on ConceptSet without one")
+    }
+    return sc
   }
   scName = () => scName(this.sc())
   scLongName = () => scLongName(this.sc())
-  scCsets = () => {
-    if (this.sc(false, true)) {
-      debugger // already should have failed if this is already an sc cset
-    }
-    let bySc = _.supergroup(this.concepts(), 'standard_concept')
-    return bySc.map(sc => new ConceptSet({...this.props, 
-                                          concepts: sc.records,
-                                          sc: sc.toString(),
-                                        }))
-  }
+
+  scCsets = () => this.scs().map(
+    sc=>this.subset({cids:sc.records.map(d=>d.concept_id),sc:sc.toString()}))
   cCount = () => this.concepts().length
+  cdmCnts = () => colCnts(_.flatten(this.concepts().map(c=>c.cnts)))
 }
 
-
-
-
-/**** Api thing -- get rid of eventually ******************************************/
-
-/*
-let conceptInfoApi = new api.Api({
-  apiName: 'conceptInfoApi',
-  apiPathname: 'conceptInfo',
-  defaultResults: [],
-  resultsReducer: true,
-  //myACs: { newConcepts, },
-
-  paramsValidation: ({concept_ids}) => {
-    //console.log('validating', concept_ids)
-    if (!Array.isArray(concept_ids)) {
-      console.error('expected {concept_ids:[]}', params)
-      return false
-    }
-    if (!_.every(concept_ids, _.isNumber)) {
-      console.error('expected {concept_ids:[Number,...]}', params)
-      return false
-    }
-    if (! concept_ids.length) {
-      return false
-    }
-    return true
-  },
-  apiSelectorMakers: {
-    concept_ids: (apiName) => {
-      return (state) => {
-        let calls = _.get(state,['apis',apiName,'calls'])
-        return calls && calls(state,action)
-      }
-    },
-    /*
-    conceptInfoWithMatchStrs: (state,props={}) => {
-      let calls = _.get(state,['apis',props.apiName,'calls'])
-      return calls && calls(state,props)
-      //return conceptInfo(state,action,props)
-    }
-    * /
-  }
-})
-
-export const apis = {
-  //conceptInfoApi,
-}
-*/
-/**** Api thing -- get rid of eventually ******************************************/
-
-
-// FROM ConceptInfo.js -- might want to keep a little bit of it
-/*
-import Rx from 'rxjs/Rx';
-class ConceptAbstract {
-  constructor({ inRelTo, depth, cb, title, infoBitCollection,
-                relatedToFetch=[
-                                  //'mapsto','mappedfrom', 'conceptAncestorGroups', 'conceptDescendantGroups'
-                                ],
-              } = {}) {
-    this._inRelTo = inRelTo;
-    this._depth = typeof depth === 'undefined'
-                    ? (inRelTo ? inRelTo.depth() + 1 : 0)
-                    : 0;
-    this._relatedToFetch = relatedToFetch;
-    this._cb = cb;
-    this._title = title;
-    this.bsubj = new Rx.BehaviorSubject(this); // caller will subscribe
-    this.sendUpdate = this.sendUpdate.bind(this);
-    this._bits = infoBitCollection || new InfoBitCollection({parent:this});
-  }
-  bits(context, name, filt) {
-    return this._bits.select(context, name, filt);
-  }
-  get(field, dflt) { // this is getting too complicated
-    if (typeof this[field] === 'function') return this[field]();
-    if (_.has(this, field)) return this[field];
-    if (_.has(this, ['_'+field])) return this['_'+field];
-    if (dflt === 'fail') throw new Error(`can't find ${field}`);
-    return dflt;
-  }
-  inRelTo() {
-    return this._inRelTo;
-  }
-  subscribe(cb) {
-    this.bsubj.subscribe(cb); // get rid of old ones!
-  }
-  done() {
-    console.log("not saving streams for unsubscribing! is that a problem?");
-    //this.stream.unsubscribe();
-    //this.bsubj.unsubscribe();
-  }
-  sendUpdate(source) {
-    //if (this.parentCi) this.parentCi.sendUpdate();
-    if (this.cb)
-      this.cb('fromChild');
-    //else
-    this.bsubj.next(this);
-    //if (this._inRelTo) this._inRelTo.sendUpdate();
-  }
-  loading() {
-    return this._status.match(/loading/);
-  }
-  loaded() {
-    return !this._status.match(/loading/) && this._status !== 'failed';
-  }
-  failed() {
-    return this._status === 'failed';
-  }
-  depth() {
-    return this._depth;
-  }
-  inRelTo() {
-    return this._inRelTo;
-  }
-  role() {
-    return this._role;
-  }
-  isRole(role) {
-    return this._role === role;
-  }
-}
-export class RelatedConceptsAbstract {
-  constructor(props) {
-    let { inRelTo,
-      } = props;
-    this._inRelTo = inRelTo;
-  }
-}
-export class ConceptSet extends ConceptAbstract {
-  constructor(props) {
-    super(props);
-    let { role='main',       // main, ?
-      } = props;
-    this._items = [];
-  }
-  items() {
-    return this._items;
-  }
-}
-export class ConceptSetFromCode extends ConceptSet {
-  constructor(props) {
-    super(props);
-    let concept_code = this.concept_code = props.concept_code;
-    if (!concept_code.length) throw new Error("missing concept_code");
-    this._status = 'loading';
-    throw new Error("FIX")
-    /*
-    this.codeLookupStream = new AxxppState.ApiStream({
-      apiCall:'concept_info_from_code', params:{concept_code,}});
-    this.codeLookupStream.subscribe((results,stream)=>{
-      if (!results.length) {
-        this._status = 'failed';
-      } else {
-        this._items = results.map(
-          rec => new ConceptInfo({  rec,
-                                    depth: this.depth() + 1,
-                                    //cb:this.sendUpdate,
-                                    inRelTo: this,
-                                    role: 'inConceptSet',
-                                    relatedToFetch: this._relatedToFetch,
-                                }));
-        this.title = `Concept code ${concept_code} matches ${this._items.length} concepts`;
-        this._status = 'complete'; // partially complete
-        this.sendUpdate();
-        //return conceptSet;  //   ??? maybe not a good idea, or doesn't do anything...confused
-      }
-    });
-    * /
-  }
-}
-export class ConceptSetFromText extends ConceptSet {
-}
-export class ConceptInfo extends ConceptAbstract {
-  //based on data from http://localhost:3000/api/cdms/conceptInfo?cdmSchema=cdm2&concept_id=201820&resultsSchema=results2
-  constructor(props) {
-    super(props);
-    let { concept_id,
-          rec, // if creating from already (partially) fetched data
-          role='main',  // main, mapsto, etc
-      } = props;
-    this._validConceptId = false;
-    this._role = role;
-    this._amMain = this.inRelTo ? false : true;
-    this._fetchedRelated = false;
-    this._relatedRecs = {};
-    if (rec) {
-      this._crec = rec;
-      this._validConceptId = true; // assume rec/_crec is always a valid concept
-      this.concept_id = rec.concept_id;
-      this._status = 'loading';
-    } else {
-      this.concept_id = concept_id;
-      this._status = 'preloading';
-    }
-    this.fetchData();
-  }
-  fetchData() {
-    // at some point allow specifying what specifically needs fetching
-    //  (beyond conceptRecord and related)
-
-    //if (this._status !== 'preloading') return;
-    this._status = 'loading';
-    throw new Error("FIX")
-    /*
-    this.conceptStream = new AxxppState.ApiStream({ apiCall:'concept_info',
-                                                  params:{concept_id:this.concept_id}});
-    this.conceptStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-      this._status = 'loading';
-      if (_.isEmpty(results)) {
-        this._status = 'failed';
-      } else {
-        this._crec = results;
-        this._validConceptId = true;
-      }
-      this._status = 'loading related';
-      this.fetchRelated();
-      this.sendUpdate();
-    });
-    this.sendUpdate();
-    * /
-  }
-  fetchRelated() {
-    if (!this._relatedToFetch.length) {
-      this._status = 'complete';
-      this.sendUpdate();
-      return;
-    }
-    if (this.depth > 8) console.error("too deep");
-    if (!this._crec) debugger;
-    throw new Error("FIX")
-    /*
-    this.relatedStream = new AxxppState.ApiStream({ apiCall: 'related_concept_plus', params:{concept_id:this.concept_id}});
-    this.relatedStream.subscribe((results,stream)=>{ // stream usually === this.stream, but this.stream could change
-      if (_.isEmpty(results)) {
-        this._status = 'failed';
-        //throw new Error("impossible!");
-      } else {
-        this._relatedConcepts = results;
-        this._status = 'complete';
-        this._fetchedRelated = true;
-      }
-      this.sendUpdate();
-    });
-    return this._status;
-    * /
-  }
-  //processRelated() { }
-  getRelatedRecs(rel, dflt) { // as ConceptInfo -- right?
-    if (!this._fetchedRelated) return dflt;
-    if (this._relatedRecs[rel]) return this._relatedRecs[rel];
-    let recs;
-    if (_.includes(['mapsto','mappedfrom'], rel)) {
-      recs = this.get('relatedConcepts',[])
-                 .filter(rec=>rec.relationship_id === this.fieldTitle(rel))
-                 .filter(rec=>!this.inRelTo() || rec.concept_id !== this.inRelTo().get('concept_id'))
-    } else if (rel === 'relatedConcepts') { // except maps
-      recs = this.get('relatedConcepts',[])
-                 .filter(
-                   rec=>!_.some(['mapsto','mappedfrom'],
-                                rel => rec.relationship_id === this.fieldTitle(rel)));
-    } else {
-      recs = this.get(rel); // conceptAncestors, conceptDescendants, relatedConcepts,
-    }
-    this._relatedRecs[rel] =
-      recs.map(rec=>new ConceptInfo({rec, role: rel, inRelTo: this,
-                                      depth: this.depth() + 1, }));
-    return this._relatedRecs[rel];
-  }
-  get(field, dflt) { // this is getting too complicated
-    if (_.has(this._crec, field)) return this._crec[field];
-    if (typeof this[field] === 'function') return this[field]();
-    if (this._ci && this._ci[field]) return this._ci[field];
-    if (_.has(this, ['_'+field])) return this['_'+field];
-
-    if (this.isRole('conceptAncestors') && !field.match(/^a_/))
-      return this.get('a_'+field,dflt)
-    if (this.isRole('conceptDescendants') && !field.match(/^d_/))
-      return this.get('d_'+field,dflt);
-    if (dflt === 'fail') throw new Error(`can't find ${field}`);
-    return dflt;
-  }
-  sendUpdate(source) {
-    this.assembleInfo();
-    super.sendUpdate(this);
-  }
-  assembleInfo() {
-    /*
-    if (this.loading()) {
-      return [
-        {title:'Status', className:'ci-status', value: 'Loading'},
-        {title:'Concept Id', value: ci.concept_id},
-      ];
-    }
-    * /
-    this._bitIdx = 0;
-    if (this.failed()) {
-      this._bits.add({ci:this, title:'Status', className:'ci-status',
-                  value: `No concept id ${this.concept_id}`});
-      return;
-    }
-    this._bits.add({
-        context: 'main-desc',
-        name: 'header',
-        title: this.scTitle(),
-        value: this.get('concept_name'),
-        className: 'name',
-        //handlers: { 'onClick': },
-        //wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-        linkParams: this.isRole('main') ? {} : {concept_id: this.get('concept_id')},
-        data: {concept_id: this.concept_id},
-    });
-    this._bits.add({context:'main-desc', name: 'vocabulary_id', title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') });
-    this._bits.add({context:'main-desc', name: 'domain_id', title: this.fieldTitle('domain_id'), className: this.fieldClass('domain_id'), value: this.get('domain_id')});
-    this._bits.add({context:'main-desc', name: 'concept_class_id', title: this.fieldTitle('concept_class_id'), className: this.fieldClass('concept_class_id'), value: this.get('concept_class_id')});
-
-    ['C','S','X'].forEach(
-      sc => {
-        let cfld = ({S: 'rc', X: 'src', C: 'crc'})[sc];
-        let j = _.compact(this.get('rcs',[]))
-        // _.comapact is to fix temporary bug where rcs can equal [null] instead of []
-            .filter(d=>d[cfld])
-            .map(countRec => ({
-              context:`cdm-${cfld}`,
-              name: `${cfld}-${this.tblcol(countRec)}`,
-              className:this.scClassName('S'),
-              title: `${countRec.rc} CDM ${({S:'', X:'source ',C:'C (which is weird)'})[sc]} records in`,
-              value: this.tblcol(countRec),
-              data: {drill:{ci:this, countRec}, drillType:cfld},}));
-        console.log(j);
-        j.forEach(d => this._bits.add(d));
-      })
-
-    let relgrps = this.get('relgrps');
-    let rg = _.supergroup(relgrps, ['relationship','domain_id','vocabulary_id','concept_class_id']);
-
-    rg.sortBy(d=>d.toLowerCase()).map(rel => ({
-            context:`rel-${rel}`,
-            name: `${rel}-${rel.related_cgid}`,
-            title: <span>
-                      Related to {' '}
-                      <span style={{fontWeight:'bold'}}>
-                        {rel.aggregate(_.sum, 'relcidcnt')} {rel}
-                      </span> concepts</span>,
-            value: rel.leafNodes()
-                      .map((grp,i) => <p key={i}>{grp.aggregate(_.sum, 'relcidcnt')} {grp.namePath()} concepts</p>),
-            data: {drill:{ci:this, rel}, drillType:'relatedConcepts'},
-          }))
-      .forEach(d => this._bits.add(d));
-
-    /*
-    rg.leafNodes().map(grp => ({
-            wholeRow: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
-            /*
-            title: `${grp.aggregate(_.sum, 'relcidcnt')} ${grp.namePath()} concepts`,
-            value: `${grp.domain_id} ${grp.vocabulary_id}
-                      ${grp.concept_class_id}
-                      ${grp.defines_ancestry ? ' defines ancestry ' : ''}
-                      ${grp.is_hierarchical ? ' is hierarchical' : ''}
-                      `,
-            * /
-            data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},
-          }))
-      .forEach(d => this._bits.add(d));
-    * /
-    /*
-    let cgs = this.get('relgrps',[])
-                  .filter(
-                    rec=>!_.some(['mapsto','mappedfrom'],
-                                rel => rec.relationship_id === this.fieldTitle(rel)))
-
-    let cgcnt = _.sum(cgs.map(d=>d.cc));
-
-    let MAX_TO_SHOW = 4;
-    if (cgcnt <= MAX_TO_SHOW) {
-      let relatedRecs = this.getRelatedRecs('relatedConcepts',[]);
-      bits = bits.concat(relatedRecs.map(rec => ({
-        title: <span>
-                  <strong>{rec.get('relationship_id')}</strong>:{' '}
-                  {rec.get('domain_id')} {rec.get('vocabulary_id')} {' '}
-                  {rec.get('concept_class_id')}{' '}
-                  {rec.get('defines_ancestry') ? '(ancestry)' : ''}{' '}
-                  {rec.get('is_hierarchical') ? '(hierarchical)' : ''}
-               </span>,
-        value: rec.get('concept_name'), className: rec.scClassName(),
-        linkParams:{concept_id: rec.get('concept_id')},
-      })));
-    } else {
-      bits = bits.concat(cgs.map(grp => ({
-                        title: `${grp.cc} ${grp.relationship_id} concepts`,
-                        value: `${grp.domain_id} ${grp.vocabulary_id}
-                                  ${grp.concept_class_id}
-                                  ${grp.defines_ancestry ? ' defines ancestry ' : ''}
-                                  ${grp.is_hierarchical ? ' is hierarchical' : ''}
-                                  `,
-                        data: {drill:{ci:this, grp}, drillType:'relatedConcepts'},})));
-    }
-    * /
-    /*
-    let rcc = this.get('relatedConceptCount');
-    if (rcc) bits = bits.concat({
-                      //className:this.scClassName('X'),
-                      wholeRow: `${rcc} related concepts`,
-                      data: {drill:{ci:this, }, drillType:'relatedConcepts'},});
-    * /
-    /*
-    switch (this.role()) {
-      case 'mapsto':
-      case 'mappedfrom':
-      case 'relatedConcept':
-        return [      // same as this.valid() at the moment...should combine stuff
-          {title: this.scTitle(), className: 'name',
-              wholeRow: `${this.scTitle()} ${this.get('concept_name')}`,
-              linkParams:{concept_id: this.get('concept_id')}},
-          {title: this.get('vocabulary_id') + ' code', className: 'code', value: this.get('concept_code') },
-        ];
-    }
-    * /
-  }
-  scClassName(sc) {
-    let scVal = this.scMap('className', sc);
-    return scVal ? `sc-${scVal}` : 'invalid-concept';
-  }
-  scTitle() {
-    let scVal = this.scMap('title');
-    return scVal || `Can't find standard_concept`;
-  }
-  validConceptId() {
-    return this._validConceptId;
-  }
-  scMap(out, sc) { // out = title or className
-    sc = sc || this.get('standard_concept', false);
-    let strings;
-    switch (sc) {
-      case 'S':
-        strings = {title:'Standard Concept', className: 'standard-concept'};
-        break;
-      case 'C':
-        strings = {title:'Classification Concept', className: 'classification-concept'};
-        break;
-      default:
-        strings = {title:'Non-Standard Concept', className: 'non-standard-concept'};
-    }
-    return strings[out];
-  }
-  fieldTitle(field, val) { // maybe just a general lookup for nice names
-    //if (val) { }
-    let title = ({
-                    concept_id: 'Concept ID',
-                    concept_code: 'Concept Code',
-                    concept_name: 'Name',
-                    domain_id: 'Domain',
-                    concept_class_id: 'Class',
-                    vocabulary_id: 'Vocabulary',
-                    mapsto: 'Maps to',
-                    mappedfrom: 'Mapped from',
-                    conceptAncestors: 'Ancestor concepts',
-                    conceptDescendants: 'Descendant concepts',
-                    //relatedConcepts: 'Related concepts (non-mapping)',
-                    relatedConcepts: val,
-                    //otherRelationship: val,
-                  })[field];
-    if (!title) debugger;
-    return title || `no title for ${field}`;
-  }
-  fieldClass(field) {
-    return ({
-              concept_id: 'concept-id',
-              concept_name: 'concept-name',
-              concept_code: 'concept-code',
-              domain_id: 'domain-id',
-              concept_class_id: 'concept-class-id',
-              vocabulary_id: 'vocabulary-id',
-        })[field] || `no-class-for-${field}`;
-  }
-  tbl(crec) { if (crec) return crec.tbl; }
-  col(crec) { if (crec) return crec.col; }
-  tblcol(crec) { if (crec) return `${this.tbl(crec)}-->${this.col(crec)}`; }
-}
-export class InfoBit {
-  constructor(o) {
-    Object.assign(this, o);
-    this._id = InfoBit.id(o);
-  }
-  id() {
-    return this._id;
-  }
-  drillContent(c) {
-    if (typeof(c) !== 'undefined') {
-      this._drillContent = c;
-    }
-    return this._drillContent;
-  }
-  static id(o) {
-    if (!o.context) throw new Error("expected context");
-    if (!o.name) throw new Error("expected name");
-    return `${o.context}/${o.name}`;
-  }
-}
-export class InfoBitCollection {
-  constructor(o) {
-    Object.assign(this, o);
-    this._collection = {};
-  }
-  currentEvent(p) { // no idea what I'm doing yet
-  let {e, target, targetEl} = p;
-    this._currentEvent = p;
-  }
-  collection() {
-    return this._collection;
-  }
-  add(o) {
-    if (!o.ci) {
-      if (this.parent && this.parent instanceof ConceptAbstract) {
-        o.ci = this.parent;
-      } else {
-        throw new Error("expecting a ci");
-      }
-    }
-    let ib = this.findById(InfoBit.id(o)) || new InfoBit(o);
-    this._collection[ib.id()] = ib;
-    return ib;
-    /*
-    let {context='general', name} = o;
-    name = name || `${context}-${this._bitIdx++}`;
-    let cobj = this._bits[context] = this._bits[context] || {};
-    cobj[name] = o
-    * /
-  }
-  findById(id) {
-    return this._collection[id];
-  }
-  select(context, name, filt) {
-    let ret = _.values(this.collection());
-    if (context instanceof RegExp) {
-      ret = ret.filter(d => d.context && d.context.match(context));
-    } else if (context) {
-      ret = ret.filter(d => d.context === context);
-    }
-
-    if (name instanceof RegExp) {
-      ret = ret.filter(d => d.name && d.name.match(name));
-    } else if (name) {
-      ret = ret.filter(d => d.name === name);
-    }
-
-    if (filt) {
-      ret = ret.filter(filt);
-    }
-
-    return ret;
-  }
-}
-*/

@@ -364,7 +364,7 @@ class ConceptInfoGridList extends Component {
 
     viewCounts.ConceptInfoGridList++
 
-    let scCsets = cset.scCsets() //.filter(sc=>cncpt.rcsFromConcepts(sc.records))
+    let scCsets = cset.scCsets()
     if (scCsets.length < 1) {
       debugger
       return null
@@ -435,7 +435,7 @@ class ConceptViewContainer extends Component {
     }
   }
   componentDidUpdate(prevProps, prevState) {
-    let {concepts, depth, maxDepth, title, subtitle,
+    let {cset, depth, maxDepth, title, subtitle,
             initiallyExpanded=true,
             muitParams={}, linksWithCounts, invisible,
         } = this.props
@@ -497,10 +497,9 @@ class ConceptViewContainer extends Component {
 const sFmt = d3.format('.2s')
 export const Counts = props => {
   let {cset} = props
-  let cnts = cncpt.colCntsFromConcepts(cset.concepts())
   return  <span>
             {
-              cnts.map(cnt=>`${sFmt(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`)
+              cset.cdmCnts().map(cnt=>`${sFmt(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`)
                 .join(', ')
             }
           </span>
@@ -515,10 +514,9 @@ export const fmtCdmCnt = (fmt='short') => {
   throw new Error("confused")
 }
 export const cdmCnts = (cset, join=d=>d.join(', ')) => {
-  let cnts = cncpt.colCntsFromConcepts(cset.concepts())
   return {
-    short: join(cnts.map(fmtCdmCnt('short'))),
-    long: join(cnts.map(fmtCdmCnt('long'))),
+    short: join(cset.cdmCnts().map(fmtCdmCnt('short'))),
+    long: join(cset.cdmCnts().map(fmtCdmCnt('long'))),
   }
 }
 export const ConceptsSummary = props => {

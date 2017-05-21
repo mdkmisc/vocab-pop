@@ -45,13 +45,12 @@ class SourceTargetSourceForm extends Component {
   }
   render() {
     let { vocabulary_id, matchBy, matchStr, 
-          concepts=[],
+          cids=[], cSelector,
           conceptStatus,
         } = this.props
     let M = muit()
     //let formParams = {  vocabulary_id:'blah', matchBy, matchStr:'eek', }
     let form = <ConceptCodesLookupForm M={M}/>
-    //console.log(concepts)
     let content = null
     let invisible = false
     switch (conceptStatus) {
@@ -67,13 +66,13 @@ class SourceTargetSourceForm extends Component {
         content =
             <C.ConceptViewContainer 
 
-              cset={new cncpt.ConceptSet({concepts})}
+              cset={new cncpt.ConceptSet({cids, cSelector})}
 
               depth={0}
               maxDepth={2}
               invisible={invisible}
               //concepts={concepts}
-              title={`${concepts.length} ${vocabulary_id} concepts`}
+              title={`${cids.length} ${vocabulary_id} concepts`}
               sourceTitle="STS Report"
               linksWithCounts={true}
               //styleOverrides={{root:'card.root.top'}}
@@ -113,7 +112,9 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id, matchBy, matchStr,
       formRef: state.form.stsform,
-      concepts: cncpt.focalConcepts(state),
+      cids: cncpt.focal(state),
+      cSelector: () => cncpt.concepts(state),
+      //concepts: cncpt.focalConcepts(state),
       conceptStatus: state.concepts.requests.status,
     }
   }

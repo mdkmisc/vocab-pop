@@ -36,7 +36,14 @@ var $ = require('jquery');
 //if (DEBUG) window.d3 = d3;
 import _ from 'src/supergroup'; // in global space anyway...
 import {VocabMapByDomain, DomainMap} from 'src/components/VocabMap';
+
+
+// the ConceptSet... stuff in this file is old and has nothing to do with
+// the new ConceptSet stuff in src/ducks/concept -- these things don't even
+// exist anymore and I'm not sure when they were lost:
 import {ConceptInfo, ConceptSetFromCode, ConceptSetFromText} from 'src/ducks/concept';
+
+
 import {AgTable} from 'src/components/TableStuff';
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
 //require('sigma/plugins/sigma.layout.forceAtlas2/worker');
