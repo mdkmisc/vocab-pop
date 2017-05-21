@@ -304,35 +304,64 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       */
     },
     cardTitle: {
-      border: '20px solid blue',
-      backgroundColor: 'pink',
-      /* default
-      textColor: pal.textColor,
-      */
+      styleProps: {
+        style: {},
+        titleColor: pal.dark,
+        titleColor: pal.regular,
+      },
+      title: {
+        borderBottom: `solid 2px ${pal.regular}`,
+        fontSize: '1.6em',
+        fontWeight: typography.fontWeightMedium,
+        backgroundColor: pal.lighter,
+      },
+      subtitle: {
+        zoom: 0.8,
+        //backgroundColor: pal.regular,
+        boxShadow: `inset 0 0 .4em ${pal.dark}`,
+        padding: '.5em',
+        border: `1px solid ${pal.darker}`,
+        //border: '9px inset black',
+        //border: `9px inset ${pal.dark}`,
+        surround: {
+          //border: `9px inset ${pal.dark}`,
+        },
+      },
+    },
+    cardText: {
+      styleProps: {
+        color: pal.dark,
+      },
+      style: {
+        border: `1px solid ${pal.light}`,
+        backgroundColor: pal.lighter,
+      },
+      children: {
+        border: `1px solid ${pal.darker}`,
+        backgroundColor: pal.lighter,
+      }
     },
     card: {
-      // 
-      containerStyle: { // Override the inline-styles of the container element.
-          padding: 8,
-          borderRadius: '.8em',
-          //border: '20px solid red',
-          backgroundColor: pal.light,
-          boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
+      styleProps: {
+        style: { // Override the inline-styles of the root element.
+        },
+        containerStyle: { // Override the inline-styles of the container element.
+            padding: 8,
+            borderRadius: '.8em',
+            //border: '20px solid red',
+            backgroundColor: pal.lighter,
+            boxShadow: `${pal.light} 0 0 .9em .5em inset, ${pal.light} 0 0 .9em .5em`,
+        },
+        fontWeight: typography.fontWeightMedium,
+        /*
+        border: '20px solid blue',
+        titleColor: fade(pal.textColor, 0.87),
+        subtitleColor: fade(pal.textColor, 0.54),
+        fontWeight: typography.fontWeightMedium,
+        titleColor: 'pink',
+        subtitleColor: 'orange',
+        */
       },
-      style: { // Override the inline-styles of the root element.
-      },
-
-
-
-      /*
-      border: '20px solid blue',
-      titleColor: fade(pal.textColor, 0.87),
-      subtitleColor: fade(pal.textColor, 0.54),
-      fontWeight: typography.fontWeightMedium,
-      titleColor: 'pink',
-      subtitleColor: 'orange',
-      */
-      fontWeight: typography.fontWeightMedium,
       root: {
         top: { // just for ConceptViewContainers
           //margin: '3%',
@@ -348,41 +377,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
           //boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
         },
       },
-      cardTitle: {
-        border: '20px solid blue',
-        /* default
-        textColor: pal.textColor,
-        */
-      },
-      title: {
-        //backgroundColor: pal.lighter,
-        //borderBottom: `solid 2px ${pal.dark}`,
-        title: {
-          fontSize: '1.6em',
-          fontWeight: typography.fontWeightMedium,
-          color: pal.darker,
-          backgroundColor: pal.light,
-          //padding: 10,
-          //boxShadow: `.2em .2em .7em ${muit.getColor().darker}`,
-          //backgroundColor: muiTheme.palette.atlasDarkBg,
-          //color: muiTheme.palette.alternateTextColor,
-        },
-        subtitle: {
-          zoom: 0.8,
-          color: pal.regular,
-          //backgroundColor: pal.regular,
-          boxShadow: `inset 0 0 .4em ${pal.dark}`,
-          padding: '.5em',
-          //border: `9px inset ${pal.darker}`,
-          //border: '9px inset black',
-          //border: `9px inset ${pal.dark}`,
-          surround: {
-            //border: `9px inset ${pal.dark}`,
-          },
-        },
-      },
-      text: {
-      }
+      //title: { },
     },
     grid: {
       styleProps: {
@@ -479,11 +474,11 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
 export class Muit {
   constructor(props={}) {
     let { muiTheme,
-          sub, sc, // synonyms
+          sub, cset,
           themeProps={}, // for setting, haven't used yet
           invisible=false,
     } = props
-    sub = sc || sub || 'main'
+    sub = (cset && cset.sc()) || sub || 'main'
     themeProps.invisible = invisible
     let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
     theme = getMuiTheme(theme,{...getStyles(theme.palette)}, {...themeProps})

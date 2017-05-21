@@ -159,7 +159,7 @@ const checkCorrupted = props => {
           .difference(_.union(got,fetching,want))
           .value().length
   ){
-    debugger
+    //debugger
     throw new Error("corrupted request state")
   }
 }
@@ -624,55 +624,20 @@ export class ConceptSet {
     console.log("done with constructor", this)
   }
   props = () => this._props
-  //_prop = createSelector(this.props, props => prop => props[prop])
   prop = prop => this.props()[prop]
   hasProp = prop => _.has(this.props(), prop)
   // maybe fancier?:
     // prop = prop => _.get(this.props(), prop)
 
-  //cids = createSelector(this.prop, prop => prop('cids'))
   cids = () => this.prop('cids')
 
   csel = () => this.cSelector || (() => 'cSelector not available yet')
   concepts = (cids=this.cids()) => this.csel()().filter(c=>_.includes(cids,c.concept_id))
-  /*
-  myConcepts = createSelector(
-    this.csel,
-    this.cids, 
-    (csel,cids) => csel().filter(c=>_.includes(cids,c.concept_id))
-  )
-  myConcepts = () => this.csel()().filter(c=>_.includes(this.cids(),c.concept_id))
-  */
-  /*
-  someConcepts = createSelector(
-    this.csel,
-    this.myConcepts,
-    (csel, my) => cids => cids ? csel().filter(c=>_.includes(cids,c.concept_id)) : my
-  )
-  someConcepts = cids => 
-    cids ? this.csel()().filter(c=>_.includes(cids,c.concept_id)) 
-         : this.myConcepts()
-  concepts = cids => this.someConcepts(cids) // REMEMBER, if something else depends
-  */
-  //                                                on it, make it a selector, i think
-  //concepts = createSelector(this.someConcepts, some => cids => some(cids))
-  loaded = createSelector(this.cids, this.concepts,
-    (cids,concepts) => cids.length === concepts.length)
+  loaded = () => this.cids().length === this.concepts().length
 
-  //groups = (fld) => _.supergroup(this.concepts(), fld)
-  //scs = () => this.groups('standard_concept')
-  groups = createSelector(
-    this.concepts, 
-    concepts => {
-      debugger
-      return (fld) => {
-        debugger
-        return _.supergroup(concepts, groupings[fld])
-      }
-    }
-  )
-  // these return supergroups by grp prop
-  scs = createSelector(this.groups, groups => groups('sc'))
+  groups = fld => _.supergroup(this.concepts(), groupings[fld])
+  /*
+  scs = () => this.groups('sc')
   doms = createSelector(this.groups, groups => groups('dom'))
   vocs = createSelector(this.groups, groups => groups('voc'))
   clss = createSelector(this.groups, groups => groups('cls'))
@@ -680,18 +645,14 @@ export class ConceptSet {
     this.concepts, 
     concepts => _.supergroup(c=>!!(c.cnts && c.cnts.length),{dimName:'wcdm'})
   )
+  */
 
   // these return simple value (not obj) for csets having only one
   // member in a group... meaning that all their subsets will also have only that member
   singleMemberGroupLabel = dimName => { // dimName = sc, dom, voc, cls, wcdm
-    debugger
-    if (this.hasProp(dimName)) {
-      return this.prop(dimName)
-    } else {
-      let grps = this.groups()(dimName)
-      if (grps.length === 1) {
-        return grps[0].valueOf()
-      }
+    let grps = this.groups(dimName)
+    if (grps.length === 1) {
+      return grps[0].valueOf()
     }
   }
   sc = () => this.singleMemberGroupLabel('sc')
@@ -704,14 +665,10 @@ export class ConceptSet {
   scLongName = () => scLongName(this.sc())
 
   cCount = () => this.concepts().length
-  cdmCnts = createSelector(
-    this.concepts, 
-    concepts => colCnts(_.flatten(concepts.map(c=>c.cnts)))
-  )
+  cdmCnts = () => colCnts(_.flatten(this.concepts().map(c=>c.cnts)))
 
   scCsets = () => {
-    debugger
-    return this.scs().map(
+    return this.groups('sc').map(
             sc=>this.subset({
               cids:sc.records.map(d=>d.concept_id),
               sc:sc.toString(),
@@ -730,7 +687,7 @@ export class ConceptSet {
     if (!forceNew && 
         (props.cids.length === 1 || props.cids.length === this.cids().length)) {
       console.error('warning: not making subset! will this work?')
-      debugger
+      //debugger
       return this
     }
     if (_.difference(props.cids, this.cids()).length) {
@@ -742,6 +699,8 @@ export class ConceptSet {
     return new ConceptSet({...this.props(), ...props, 
                             parent: this, isSub: true, })
   }
+  depth = () => this.parent ? this.parent.depth() + 1 : 1
+  maxDepth = () => this.prop('maxDepth')
 }
 
 export const immutableConceptSet = (...args) => {

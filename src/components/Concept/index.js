@@ -191,7 +191,7 @@ export class RelButton extends Component {
   }
 }
 const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {cset,title='', depth, maxDepth, M, sourceTitle, ttid} = props
+  let {cset,title='', depth, maxDepth, M, ttid} = props
   viewCounts.RelsPeek++
   M = M.props({sc: cset.sc()})
   return (
@@ -201,7 +201,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
               Related to:
               { _.map(cncpt.concepts2relsMap(cset.concepts()), (relcids,relName) => (
                   <RelButton {...{relcids, relName, ttid, key:relName,
-                                  tip:sourceTitle, M,
+                                  tip:`tooltip for ${relName}`, M,
                                 }} />))
               }
             </div>
@@ -216,7 +216,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
                   (relcids,relName) => {
                     //if (!relName.match(/map/i)) return null
                     return <RelView key={relName} 
-                              {...{relName, relcids, title, sourceTitle,
+                              {...{relName, relcids, title,
                                   depth, maxDepth, M, }}
                             />
                   })
@@ -227,7 +227,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
 /*
                     */
 }
-const RelView = ({relName,relcids,depth,maxDepth,title,sourceTitle,M,}) => {
+const RelView = ({relName,relcids,depth,maxDepth,title,M,}) => {
   viewCounts.RelView++
   /* only called by RelsPeek (full rels) */
   //let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
@@ -245,7 +245,6 @@ const RelView = ({relName,relcids,depth,maxDepth,title,sourceTitle,M,}) => {
       maxDepth={maxDepth}
       concept_ids={relcids}
       title={title}
-      sourceTitle={sourceTitle}
     />
     if (concept_ids && concept_ids.length) {
       //wantConcepts(_.difference(concept_ids,cset.concepts().map(d=>d.concept_id)), {title,depth})
@@ -300,13 +299,15 @@ class WrapInCard extends Component {
           */
 
         } = this.props
-    let visibility = M('invisible') ? 'hidden' : 'visible'
-    let height = M('invisible') ? '0px' : 'auto'
+    //let visibility = M('invisible') ? 'hidden' : 'visible'
+    //let height = M('invisible') ? '0px' : 'auto'
+              //<div style={{visibility, height}}>
+              //</div>
     return  (
-              <div style={{visibility, height}}>
               <Card
-                  style={M('card.style')}
-                  containerStyle={M('card.containerStyle')}
+                  {...M('card.styleProps')}
+                  //style={M('card.style')}
+                  //containerStyle={M('card.containerStyle')}
                   initiallyExpanded={initiallyExpanded}
               >
                 {/*    from stsreport, top level
@@ -319,29 +320,24 @@ class WrapInCard extends Component {
                 />
                 */}
                 <CardTitle
+                  {...M('cardTitle.styleProps')}
                   title={title}
                   subtitle={subtitle}
-
-                  style={M('card.title')}
-
-                  titleStyle={_.isEmpty(title) ? {} : M('card.title.title')}
-                  titleColor={M('card.title.title').color}
-
-                  subtitleStyle={_.isEmpty(subtitle) ? {} : M('card.title.subtitle')}
-                  subtitleColor={M('card.title.subtitle').color}
-
+                  titleStyle={_.isEmpty(title) ? {} : M('cardTitle.title')}
+                  subtitleStyle={_.isEmpty(subtitle) ? {} : M('cardTitle.subtitle')}
                   showExpandableButton={true}
                   actAsExpander={true}
                   expandable={false}
                 />
-                <CardText expandable={true}
-                          style={M('card.text')}
-                          color={M('card.text').color}
-                >
-                  {children}
+                <CardText 
+                style={M('cardText.style')}
+                  expandable={true} 
+                  {...M('cardText.styleProps')} >
+                  <div style={M('cardText.children')}>
+                    {children}
+                  </div>
                 </CardText >
               </Card>
-              </div>
     )
   }
 }
@@ -351,17 +347,12 @@ class ConceptInfoGridList extends Component {
           // title, subtitle, // use in container, not here
           M,
           ttid,
-          depth,
-          maxDepth,
           initiallyExpanded,
           cset,
           linksWithCounts,
-          titleText,
-          sourceTitle,
         } = this.props
     if (cset.concepts().length < 1)
       return null
-
     viewCounts.ConceptInfoGridList++
 
     let scCsets = cset.scCsets()
@@ -379,7 +370,7 @@ class ConceptInfoGridList extends Component {
     }
     */
     let contents = scCsets.map((scCset,i) => {
-      M = M.props({sc: scCset.sc()})
+      M = M.props({cset:cset.scCset})
       let title = `${scCset.cCount()} ${scCset.scName()}`
       return  <div key={i} style={M('ciglDiv')}>
                 { linksWithCounts 
@@ -387,8 +378,6 @@ class ConceptInfoGridList extends Component {
                         ttid={ttid}
                         cset ={scCset}
                         M={M}
-                        depth={depth} 
-                        sourceTitle={sourceTitle}
                         //titleText={`${titleText} / ${title}`}
                       /> : '' }
                 {/* depth > maxDepth
@@ -400,10 +389,6 @@ class ConceptInfoGridList extends Component {
                                   cset ={scCset}
                                   M={M}
                                   ttid={ttid}
-                                  depth={depth} 
-                                  maxDepth={maxDepth} 
-                                  sourceTitle={sourceTitle}
-                                  //sourceTitle={`${titleText} / ${title}`}
                         />
                 { false &&
                   cset.concepts().length > 1
@@ -423,42 +408,30 @@ class ConceptInfoGridList extends Component {
 }
 class ConceptViewContainer extends Component {
   constructor(props) {
-    let {depth, maxDepth, title='CvcNoTitle', sourceTitle} = props
+    let {depth, maxDepth, title} = props
     if (typeof depth === 'undefined' || typeof maxDepth === 'undefined' || depth > maxDepth + 1) {
-      throw new Error(`tried to construct problem CVC: ${depth} / ${maxDepth}, ${sourceTitle} => ${title}`)
+      //throw new Error(`tried to construct problem CVC: ${depth} / ${maxDepth}, ${sourceTitle} => ${title}`)
     }
     viewCounts.ConceptViewContainer++
     super(props)
-    this.state = {
-      M: props.M || muit(),
-      ttid: 'cvc',
-    }
+    this.ttid = 'cvc'
   }
   componentDidUpdate(prevProps, prevState) {
-    let {cset, depth, maxDepth, title, subtitle,
-            initiallyExpanded=true,
-            muitParams={}, linksWithCounts, invisible,
-        } = this.props
+    let {cset, } = this.props
     if (!cset.concepts().length) {
       return
     }
-    let {M, ttid} = this.state
-    if (depth > maxDepth) {
-      return
-    }
-    invisible = M('invisible') || invisible
-    M = M.props({...muitParams, invisible})
-    let cnts = cdmCnts( cset, d=>d)
-    if (!cnts.short.length) {
+    if (cset.depth() > cset.maxDepth()) {
+      debugger
       return
     }
   }
   render() {
-    let {cset, depth, maxDepth, title, subtitle,
+    let {cset, title, subtitle,
             wantConcepts, initiallyExpanded=true,
-            muitParams={}, linksWithCounts,
+            muitParams={}, linksWithCounts, M=muit(),
         } = this.props
-    let {M, ttid} = this.state
+    M = M.props({cset})
     let cnts = cdmCnts(cset, d=>d)
     let ttText = cnts.long.join(', ')
     let ttFancy = <div>
@@ -466,30 +439,41 @@ class ConceptViewContainer extends Component {
                     cnts.long.map((c,i)=><div style={M('tooltip.div')} key={i}>{c}</div>)
                   }
                 </div>
+
+    title = title || 
+      <span>
+        {
+          cset.cCount() + ' ' +
+          ['dom','voc','cls']
+            .map(fld => cset.singleMemberGroupLabel(fld))
+            .filter(d=>d)
+            .join(', ')
+          + ' concepts'
+        }
+      </span>
+
+    /*
     title = <span>
-              {title}, Depth: {depth} / {maxDepth},
-              <span >
-                  <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
-                  <span style={{fontSize: '.6em',}} >
-                    ({cnts.short.join(', ')})
-                    ( <Counts cset={cset} /> )
-                  </span>
-                </TooltipWrapper>
-              </span>
+              {title}
+              <TooltipWrapper {...{ttid:this.ttid,ttText,ttFancy, M}} >
+                <span style={{fontSize: '.6em',}} >
+                  ( <Counts cset={cset} /> )
+                </span>
+              </TooltipWrapper>
             </span>
+    */
     subtitle= typeof subtitle === 'function' ? subtitle(this.props) : subtitle
     return  (
       <WrapInCard M={M}
                   initiallyExpanded={initiallyExpanded}
                   //muitParams={muitParams}
                   title={title}
-                  subtitle={subtitle}
+                  //subtitle={subtitle}
       >
-        <ConceptInfoGridList 
-          {...{
-            ...this.props, 
-            M, title:undefined, subtitle:undefined, ttid,
-          }} />
+        <Counts cset={cset} />
+        <div style={{zoom:.4}}>
+          <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} />
+        </div>
       </WrapInCard>
     )
   }
@@ -534,37 +518,7 @@ export const ConceptsSummary = props => {
 }
 ConceptViewContainer = connect(
   (state, props) => {
-    let { 
-          cset,
-          concepts=[],
-          depth=0, maxDepth=2,
-          title, 
-          sourceTitle, titleText, // confusingly named
-    } = props
-
-    //concepts
-
-
-
-    titleText = titleText || title
-    if (!_.isString(titleText)) {
-      debugger
-      throw new Error('string titleText required')
-    }
-    if (!_.isString(sourceTitle)) {
-      debugger
-      throw new Error('string sourceTitle required')
-    }
-    depth++
-    sourceTitle = `${sourceTitle}(${depth-1}) => ${titleText}(${depth})`
-    return {
-      depth,
-      maxDepth,
-      title,
-      cset,
-      titleText,
-      sourceTitle,
-    }
+    return {}
   },
   dispatch=>bindActionCreators(
     _.pick(cncpt,['wantConcepts']),

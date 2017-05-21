@@ -66,14 +66,16 @@ class SourceTargetSourceForm extends Component {
         content =
             <C.ConceptViewContainer 
 
-              cset={cncpt.immutableConceptSet({cids}, cSelector)}
+              cset={cncpt.immutableConceptSet(
+                {cids, maxDepth:2,
+                }, cSelector)}
 
               depth={0}
               maxDepth={2}
               invisible={invisible}
               //concepts={concepts}
-              title={`${cids.length} ${vocabulary_id} concepts`}
-              sourceTitle="STS Report"
+              //title={`${cids.length} ${vocabulary_id} concepts`}
+              //sourceTitle="STS Report"
               linksWithCounts={true}
               //styleOverrides={{root:'card.root.top'}}
             />
