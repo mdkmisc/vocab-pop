@@ -49,6 +49,7 @@
     "redux-thunk": "^2.2.0",
     "reselect": "^3.0.0",
     "rxjs": "^5.2.0",
+    "seamless-immutable": "^7.1.2",
     "sigma": "^1.2.0"
   },
   "config": {

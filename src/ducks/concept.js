@@ -7,6 +7,7 @@ import * as api from 'src/api'
 import * as cids from 'src/ducks/cids'
 import * as util from 'src/utils';
 
+const Immutable = require("seamless-immutable")
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
@@ -40,11 +41,11 @@ const loadedReducer = (state={}, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case conceptActions.NEW_CONCEPTS:
-      return { ...state, ...util.arr2map(payload, c=>c.concept_id)}
+      return Immutable({ ...state, ...util.arr2map(payload, c=>c.concept_id)})
     case cids.cidsActions.NEW_CIDS:
-      return _.pick(state, payload) // only keep the focal concepts, if there are any
+      return Immutable(_.pick(state, payload)) // only keep the focal concepts, if there are any
   }
-  return state
+  return Immutable(state)
 }
 const requestStore = () => (
   { // lists of cids
@@ -553,10 +554,7 @@ export const concepts2relsMap = clist => {
   return map
 }
 
-export const sc = concept => concept.standard_concept
-const scClass = createSelector(sc, sc=>`sc-${sc}`)
-//export const scClass = concept => `sc-${sc(concept)}`
-//
+//export const sc = concept => concept.standard_concept
 
 export const conceptTableAbbr = tbl => (
   ({
@@ -636,18 +634,26 @@ export class ConceptSet {
   cids = () => this.prop('cids')
 
   csel = () => this.cSelector || (() => 'cSelector not available yet')
-  allConcepts = createSelector(this.csel, csel => csel())
+  concepts = (cids=this.cids()) => this.csel()().filter(c=>_.includes(cids,c.concept_id))
+  /*
   myConcepts = createSelector(
-    this.allConcepts,
+    this.csel,
     this.cids, 
-    (all,cids) => all.filter(c=>_.includes(cids,c.concept_id))
+    (csel,cids) => csel().filter(c=>_.includes(cids,c.concept_id))
   )
+  myConcepts = () => this.csel()().filter(c=>_.includes(this.cids(),c.concept_id))
+  */
+  /*
   someConcepts = createSelector(
-    this.allConcepts,
+    this.csel,
     this.myConcepts,
-    (all, my) => cids => cids ? all.filter(c=>_.includes(cids,c.concept_id)) : my
+    (csel, my) => cids => cids ? csel().filter(c=>_.includes(cids,c.concept_id)) : my
   )
-  concepts = cids => this.someConcepts()(cids) // REMEMBER, if something else depends
+  someConcepts = cids => 
+    cids ? this.csel()().filter(c=>_.includes(cids,c.concept_id)) 
+         : this.myConcepts()
+  concepts = cids => this.someConcepts(cids) // REMEMBER, if something else depends
+  */
   //                                                on it, make it a selector, i think
   //concepts = createSelector(this.someConcepts, some => cids => some(cids))
   loaded = createSelector(this.cids, this.concepts,
@@ -738,3 +744,6 @@ export class ConceptSet {
   }
 }
 
+export const immutableConceptSet = (...args) => {
+  return Immutable(new ConceptSet(...args))
+}
