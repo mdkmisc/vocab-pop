@@ -602,7 +602,7 @@ export const plural = (str, cnt) => {
   return cnt === 1 ? str : `${str}s`
 }
 const groupings = {
-  sc: 'standanrd_concept',
+  sc: 'standard_concept',
   dom: 'domain_id',
   voc: 'vocabulary_id',
   cls: 'concept_class_id',
@@ -659,14 +659,17 @@ export class ConceptSet {
     this.concepts, 
     concepts => {
       debugger
-      return (fld) => _.supergroup(concepts, fld)
+      return (fld) => {
+        debugger
+        return _.supergroup(concepts, groupings[fld])
+      }
     }
   )
   // these return supergroups by grp prop
-  scs = createSelector(this.groups, groups => groups('standard_concept'))
-  doms = createSelector(this.groups, groups => groups('domain_id'))
-  vocs = createSelector(this.groups, groups => groups('vocabulary_id'))
-  clss = createSelector(this.groups, groups => groups('concept_class_id'))
+  scs = createSelector(this.groups, groups => groups('sc'))
+  doms = createSelector(this.groups, groups => groups('dom'))
+  vocs = createSelector(this.groups, groups => groups('voc'))
+  clss = createSelector(this.groups, groups => groups('cls'))
   wcdms = createSelector(
     this.concepts, 
     concepts => _.supergroup(c=>!!(c.cnts && c.cnts.length),{dimName:'wcdm'})
