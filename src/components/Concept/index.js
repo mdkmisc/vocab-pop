@@ -141,7 +141,7 @@ export class LinkWithCounts extends Component {
             href={href}
           >
             {contents}
-            <Counts cset={cset} />
+            <Counts cset={cset} M={M}/>
           </RaisedButton>
         </TooltipWrapper>
       </span>
@@ -169,7 +169,7 @@ const colname = cnt => {
 }
 export class RelButton extends Component {
   render() {
-    let {relcids, relName, ttid, tip, M,} = this.props
+    let {cset, relcids, relName, ttid, tip, M,} = this.props
     let href = '#' // should be link to concept focus
 
     let ttText = _.isString(tip) ? tip : ''
@@ -179,6 +179,7 @@ export class RelButton extends Component {
       <span>
         <TooltipWrapper {...{ttid,ttText,M}} >
           <RaisedButton
+            onClick={() => alert('hi')}
             style={M('raisedButton')}
             buttonStyle={M('raisedButton.styleProps.buttonStyle')}
             //href={href}
@@ -191,16 +192,16 @@ export class RelButton extends Component {
   }
 }
 const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {cset,title='', depth, maxDepth, M, ttid} = props
+  let {cset,title='', depth, maxDepth, ttid} = props
   viewCounts.RelsPeek++
-  M = M.props({sc: cset.sc()})
+  let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
   return (
             <div //style={M('raisedButton.container')}
                   //style={{ border: '4px solid green', }}
             >
               Related to:
               { _.map(cncpt.concepts2relsMap(cset.concepts()), (relcids,relName) => (
-                  <RelButton {...{relcids, relName, ttid, key:relName,
+                  <RelButton {...{cset, relcids, relName, ttid, key:relName,
                                   tip:`tooltip for ${relName}`, M,
                                 }} />))
               }
@@ -457,7 +458,7 @@ class ConceptViewContainer extends Component {
               {title}
               <TooltipWrapper {...{ttid:this.ttid,ttText,ttFancy, M}} >
                 <span style={{fontSize: '.6em',}} >
-                  ( <Counts cset={cset} /> )
+                  ( <Counts cset={cset} M={M}/> )
                 </span>
               </TooltipWrapper>
             </span>
@@ -470,8 +471,11 @@ class ConceptViewContainer extends Component {
                   title={title}
                   //subtitle={subtitle}
       >
-        <Counts cset={cset} />
-        <div style={{zoom:.4}}>
+        <RelsPeek cset={cset} ttid={this.ttid} />
+        <Counts cset={cset} M={M}/>
+
+        {/* not going to use this now... maybe come back to it */}
+        <div style={{zoom:.4, opacity: 0.4, backgroundColor:'orange'}}>
           <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} />
         </div>
       </WrapInCard>
@@ -480,13 +484,21 @@ class ConceptViewContainer extends Component {
 }
 const sFmt = d3.format('.2s')
 export const Counts = props => {
-  let {cset} = props
-  return  <span>
-            {
-              cset.cdmCnts().map(cnt=>`${sFmt(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`)
-                .join(', ')
-            }
-          </span>
+  let {cset, M} = props
+  return  (
+      <RaisedButton
+        style={M('raisedButton')}
+        buttonStyle={M('raisedButton.styleProps.buttonStyle')}
+        //href={href}
+      >
+        <span>
+          {
+            cset.cdmCnts().map(cnt=>`${sFmt(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`)
+              .join(', ')
+          }
+        </span>
+      </RaisedButton>
+  )
 }
 export const fmtCdmCnt = (fmt='short') => {
   switch(fmt) {
@@ -505,14 +517,16 @@ export const cdmCnts = (cset, join=d=>d.join(', ')) => {
 }
 export const ConceptsSummary = props => {
   let {cset, M} = props
+  M = M.props({cset})
   let cnts = cdmCnts( cset, d=>d)
   let sg = _.supergroup(cset.concepts(), ['domain_id','vocabulary_id','concept_class_id'])
-  return  <div style={M('randomDiv')}>
+  console.log(M.desc())
+  return  <div >
             Concepts Summary for {cset.concepts().length} concepts
             <pre style={M('randomDiv')}>
               {JSON.stringify(cnts)} {'\n\n'}
               {sg.leafNodes().namePaths().join('\n')}
-                    ( <Counts cset={cset} /> )
+                    ( <Counts cset={cset} M={M}/> )
             </pre>
           </div>
 }

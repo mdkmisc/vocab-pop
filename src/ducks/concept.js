@@ -699,7 +699,7 @@ export class ConceptSet {
     return new ConceptSet({...this.props(), ...props, 
                             parent: this, isSub: true, })
   }
-  depth = () => this.parent ? this.parent.depth() + 1 : 1
+  depth = () => this.parent ? this.parent.depth() + 1 : 0
   maxDepth = () => this.prop('maxDepth')
 }
 

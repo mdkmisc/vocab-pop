@@ -305,7 +305,11 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
     },
     cardTitle: {
       styleProps: {
-        style: {},
+        style: {
+          margin: 0,
+          //border: `14px solid green`,
+          padding: 0,
+        },
         titleColor: pal.dark,
         titleColor: pal.regular,
       },
@@ -314,6 +318,8 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         fontSize: '1.6em',
         fontWeight: typography.fontWeightMedium,
         backgroundColor: pal.lighter,
+        margin: 0,
+        padding: 0,
       },
       subtitle: {
         zoom: 0.8,
@@ -333,11 +339,15 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         color: pal.dark,
       },
       style: {
-        border: `1px solid ${pal.light}`,
+        //border: `4px solid green`,
         backgroundColor: pal.lighter,
+        margin: 0,
+        padding: 0,
       },
       children: {
-        border: `1px solid ${pal.darker}`,
+        margin: 0,
+        padding: 0,
+        //border: `4px solid purple`,
         backgroundColor: pal.lighter,
       }
     },
@@ -346,7 +356,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         style: { // Override the inline-styles of the root element.
         },
         containerStyle: { // Override the inline-styles of the container element.
-            padding: 8,
+            padding: 28,
             borderRadius: '.8em',
             //border: '20px solid red',
             backgroundColor: pal.lighter,
@@ -482,8 +492,9 @@ export class Muit {
     themeProps.invisible = invisible
     let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
     theme = getMuiTheme(theme,{...getStyles(theme.palette)}, {...themeProps})
-    let desc = { invisible, subTheme: sub, 
-                 cardTitle: JSON.stringify(theme.cardTitle) }
+    let desc = { invisible, subTheme: sub, props,
+                 cardTitle: JSON.stringify(theme.cardTitle),
+    }
 
     let reqFunc = req => {
       if (!req)
