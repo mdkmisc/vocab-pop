@@ -45,8 +45,8 @@ class SourceTargetSourceForm extends Component {
   }
   render() {
     let { vocabulary_id, matchBy, matchStr, 
-          cids=[], cSelector,
-          conceptStatus,
+          cids=[], csetSelectors,
+          conceptStatus, wantConcepts,
         } = this.props
     let M = muit()
     //let formParams = {  vocabulary_id:'blah', matchBy, matchStr:'eek', }
@@ -66,16 +66,12 @@ class SourceTargetSourceForm extends Component {
         content =
             <C.ConceptViewContainer 
 
-              cset={cncpt.immutableConceptSet(
-                {cids, maxDepth:2,
-                }, cSelector)}
-
-              depth={0}
-              maxDepth={2}
-              invisible={invisible}
-              //concepts={concepts}
-              //title={`${cids.length} ${vocabulary_id} concepts`}
-              //sourceTitle="STS Report"
+              cset={cncpt.immutableConceptSet({
+                      cids, 
+                      desc: `STS ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
+                      maxDepth:2,
+                      role: 'focal',
+                    }, csetSelectors, wantConcepts,)}
               linksWithCounts={true}
               //styleOverrides={{root:'card.root.top'}}
             />
@@ -115,10 +111,13 @@ SourceTargetSourceForm = connect(
       vocabulary_id, matchBy, matchStr,
       formRef: state.form.stsform,
       cids: cncpt.focal(state),
-      cSelector: () => cncpt.concepts(state),
-      //concepts: cncpt.focalConcepts(state),
+      csetSelectors: {
+        cSelector: cncpt.concepts(state),
+        conceptState: state.concepts,
+      },
       conceptStatus: state.concepts.requests.status,
     }
-  }
+  },
+  dispatch=>bindActionCreators(_.pick(cncpt,['wantConcepts']), dispatch)
 )(SourceTargetSourceForm)
 export default SourceTargetSourceForm

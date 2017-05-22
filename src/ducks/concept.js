@@ -531,27 +531,12 @@ export const conceptsFromCidsWStubs = createSelector(
 )
 */
 
-export const rels2map = rels => {
-  return rels.reduce((acc,{relationship,relcids}) => (
-                        { ...acc,
-                          [relationship]: _.uniq((acc[relationship]||[]).concat(relcids))
-                        }),
-                        {})
-}
 export const timeFunc = f => {
   let start = performance.now()
   let ret = f()
   let end = performance.now()
   console.log(end - start)
   return ret
-}
-export const concepts2relsMap = clist => {
-  //let flat = timeFunc(()=>_.flatten(clist.map(c=>c.rels)))
-  //let map = timeFunc(()=>rels2map(flat))
-  //let map2 = flat.reduce(util.gulp(rels2map),[])
-  let flat = _.flatten(clist.map(c=>c.rels))
-  let map = rels2map(flat)
-  return map
 }
 
 //export const sc = concept => concept.standard_concept
@@ -609,20 +594,26 @@ export class ConceptSet {
   /*  for use in Concept component for passing around concepts and
    *  meta data. not for use in store or selectors!
    */
-  constructor(props, cSelector) {  // still, try to make this never mutate
+  constructor(props, csetSelectors, wantConcepts) {  // still, try to make this never mutate
     this._props = props
-    this.cSelector = cSelector
+    this.csetSelectors = csetSelectors
+    this.cSelector = csetSelectors.cSelector
+    this.conceptState = csetSelectors.conceptState
+    this.wantConcepts = wantConcepts
 
-    /* expecting: let {cids, cSelector
-     *  for subsets: parent (subsetOf), cids, nature of subset (probably a group?), the group prop
+    /* expecting: props: {cids, desc
+     *
+     * cSelector
+     *  for subsets: parent, cids, nature of subset (probably a group?), the group prop
      *  for rels (which are not subsets -- but the only kind of descendants that aren't):
      *    parent (relFrom), relName, cids, any known props of parent
     * title, fancyTitle, ttText, ttFancy, } = props */
-    if (props.concepts || !props.cids || !cSelector ) { //|| !wantConcepts
-      throw new Error("just give me cids and a live concepts selector")
+    if (props.concepts || !props.cids || !this.cSelector || !wantConcepts) {
+      throw new Error("just give me cids and live cSelector and wantConcepts")
     }
     console.log("done with constructor", this)
   }
+  id = _.uniqueId('cset-')
   props = () => this._props
   prop = prop => this.props()[prop]
   hasProp = prop => _.has(this.props(), prop)
@@ -630,10 +621,16 @@ export class ConceptSet {
     // prop = prop => _.get(this.props(), prop)
 
   cids = () => this.prop('cids')
-
   csel = () => this.cSelector || (() => 'cSelector not available yet')
-  concepts = (cids=this.cids()) => this.csel()().filter(c=>_.includes(cids,c.concept_id))
-  loaded = () => this.cids().length === this.concepts().length
+  concepts = (cids=this.cids()) => this.csel().filter(c=>_.includes(cids,c.concept_id))
+  cidCnt = () => this.cids().length
+  conCnt = () => this.concepts().length
+  loaded = () => this.cidCnt() === this.conCnt()
+  loading = () => {throw new Error("not implemented")}
+  status = () => {
+    console.log(this.conceptState, this.cSelector)
+    debugger
+  }
 
   groups = fld => _.supergroup(this.concepts(), groupings[fld])
   /*
@@ -664,7 +661,6 @@ export class ConceptSet {
   scName = () => scName(this.sc())
   scLongName = () => scLongName(this.sc())
 
-  cCount = () => this.concepts().length
   cdmCnts = () => colCnts(_.flatten(this.concepts().map(c=>c.cnts)))
 
   scCsets = () => {
@@ -696,11 +692,52 @@ export class ConceptSet {
     if (props.cids.length !== this.concepts(props.cids).length) {
       throw new Error("can only subset loaded concepts")
     }
-    return new ConceptSet({...this.props(), ...props, 
-                            parent: this, isSub: true, })
+    return new ConceptSet({
+                ...props, 
+                parent: this, 
+                subtype, 
+                role: 'sub',
+              }, this.csetSelectors, this.wantConcepts)
   }
   depth = () => this.parent ? this.parent.depth() + 1 : 0
   maxDepth = () => this.prop('maxDepth')
+
+  rels = () => {
+    let rels = _.flatten(this.concepts().map(c=>c.rels))
+    let combined = rels.reduce(
+      (acc,{relationship,relcids}) => (
+        { ...acc, [relationship]: _.uniq((acc[relationship]||[]).concat(relcids)) }
+      ), {})
+    return _.map(combined, (v,k) => this.rel(k, v))
+  }
+  rel = (relationship, relcids) => {
+    return new ConceptSet({
+                //...this.props(),
+                cids: relcids,
+                parent: this, 
+                relationship, 
+                role: 'rel',
+              }, this.csetSelectors, this.wantConcepts)
+  }
+  shortDesc = () => {
+    if (this.hasProp('desc')) {
+      return this.prop('desc')
+    }
+    if (this.prop('role') === 'rel') {
+      return `${this.id}: ${this.cidCnt()} ${this.prop('relationship')} (${this.status()})`
+    }
+    if (this.prop('role') === 'sub') {
+      return `something...subset ${this.prop('subtype')}`
+    }
+  }
+  longDesc = () => this.prop('desc') + ' more stuff'
+
+  loadConcepts = () => {
+    if (this.loaded()) {
+      return
+    }
+    this.wantConcepts(this.cids(), {csetId:this.id})
+  }
 }
 
 export const immutableConceptSet = (...args) => {

@@ -169,17 +169,17 @@ const colname = cnt => {
 }
 export class RelButton extends Component {
   render() {
-    let {cset, relcids, relName, ttid, tip, M,} = this.props
-    let href = '#' // should be link to concept focus
+    let {cset, ttid, M,} = this.props // this is cset for the rel
+    //let {relName, relcids} = rel
+    //let href = '#' // should be link to concept focus
 
-    let ttText = _.isString(tip) ? tip : ''
-    ttText = `${ttText}${ttText ? ' ' : ''}${relcids.length} ${relName}`
-    let contents = `${relcids.length} ${relName}`
+    let ttText = cset.longDesc()
+    let contents = cset.shortDesc()
     return  (
       <span>
         <TooltipWrapper {...{ttid,ttText,M}} >
           <RaisedButton
-            onClick={() => alert('hi')}
+            onClick={() => cset.loadConcepts()}
             style={M('raisedButton')}
             buttonStyle={M('raisedButton.styleProps.buttonStyle')}
             //href={href}
@@ -200,11 +200,9 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
                   //style={{ border: '4px solid green', }}
             >
               Related to:
-              { _.map(cncpt.concepts2relsMap(cset.concepts()), (relcids,relName) => (
-                  <RelButton {...{cset, relcids, relName, ttid, key:relName,
-                                  tip:`tooltip for ${relName}`, M,
-                                }} />))
-              }
+              { _.map(cset.rels(), (rel,i) =>
+                  <RelButton cset={rel} ttid={ttid} M={M} key={i} />
+              )}
             </div>
   )
   if (depth > maxDepth) {
@@ -372,7 +370,7 @@ class ConceptInfoGridList extends Component {
     */
     let contents = scCsets.map((scCset,i) => {
       M = M.props({cset:cset.scCset})
-      let title = `${scCset.cCount()} ${scCset.scName()}`
+      let title = `${scCset.conCnt()} ${scCset.scName()}`
       return  <div key={i} style={M('ciglDiv')}>
                 { linksWithCounts 
                     ? <LinksWithCounts 
@@ -444,7 +442,7 @@ class ConceptViewContainer extends Component {
     title = title || 
       <span>
         {
-          cset.cCount() + ' ' +
+          cset.conCnt() + ' ' +
           ['dom','voc','cls']
             .map(fld => cset.singleMemberGroupLabel(fld))
             .filter(d=>d)
