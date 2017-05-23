@@ -59,16 +59,15 @@ class SourceTargetSourceForm extends Component {
         //content = <div>concept store is full</div>
         //break
       default:
-        content =
-            <C.ConceptViewContainer 
-              linksWithCounts={true}
-              cset={cset}
-              //styleOverrides={{root:'card.root.top'}}
-            />
+        content = 
+          (cset.cidCnt() && !cset.conCnt() && <CircularProgress />) ||
+          (cset.conCnt() && <C.ConceptViewContainer 
+                              linksWithCounts={true} cset={cset} />) ||
+          null
     }
     return  <div>
-              {form}
               {content}
+              {form}
             </div>
     content
   }
