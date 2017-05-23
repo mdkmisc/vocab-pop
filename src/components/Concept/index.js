@@ -36,11 +36,6 @@ import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
 import Spinner from 'react-spinner'
-import {Glyphicon, Row, Col,
-          Nav, Navbar, NavItem, Label,
-          Form, FormGroup, FormControl, ControlLabel, HelpBlock,
-          Button, ButtonToolbar, ButtonGroup,
-          } from 'react-bootstrap'
 //if (DEBUG) window.d3 = d3
 import SortableTree from 'react-sortable-tree'
 
@@ -90,7 +85,6 @@ import {
 
 window.viewCounts = {
   RelsView: 0,
-  RelView: 0,
   IndividualConceptViews: 0,
   WrapInCard: 0,
   ConceptInfoGridList: 0,
@@ -115,111 +109,6 @@ const colname = cnt => {
   //console.log(cn)
   return cn
 }
-export class RelButton extends Component {
-  render() {
-    let {cset, ttid, M, toggleShowRel, shouldShow} = this.props // this is cset for the rel
-    //let {relName, relcids} = rel
-    //let href = '#' // should be link to concept focus
-
-    let status = cset.status()
-    let ttText = status.msg
-    //let ttText = cset.longDesc()
-    let contents = cset.shortDesc()
-    return  (
-      <span>
-        <TooltipWrapper {...{ttid,ttText,M}} >
-          <RaisedButton
-            {...M('raisedButton.styleProps')}
-            style={M('raisedButton.style')}
-            onClick={() => {
-              cset.loadConcepts()
-              toggleShowRel(cset)
-            }}
-            label={`${cset.cidCnt()} ${contents}`}
-            labelPosition='before'
-            icon={
-              (status.status === 'not requested' && <FileDownload/>) ||
-              (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>))
-            }
-            secondary={true}
-            //href={href}
-          >
-            {status.status === 'not determined' || status.status === 'loading'
-                ? <CircularProgress size={20} 
-                    {...M('circularProgress.styleProps')}/> : null
-            }
-          </RaisedButton>
-        </TooltipWrapper>
-      </span>
-    )
-  }
-}
-const RelsView = props => { // assuming I just have cids, no concepts
-  let {cset,title='', depth, maxDepth, ttid, toggleShowRel, showRel} = props
-  viewCounts.RelsView++
-  let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
-  return (
-    <div>
-      <div style={M('raisedButton.parentDiv')} >
-        <div style={M('headerLight')}>Related Concepts</div>
-        { _.map(cset.rels(), (rel,i) => {
-            let shouldShow = !!showRel(rel)
-            return <RelButton cset={rel} ttid={ttid} M={M} key={i} 
-                      toggleShowRel={toggleShowRel} shouldShow={shouldShow} />
-        })}
-      </div>
-      { _.map(cset.rels(), (rel,i) => {
-        let shouldShow = !!showRel(rel)
-        return shouldShow ? <ConceptViewContainer key={i} cset={rel} /> : null
-      })}
-    </div>
-  )
-  //if (depth > maxDepth) { }
-  return <div>
-          full rels instead of peek, depth: {depth} &lt; {maxDepth}
-          {
-            //Rels:
-            _.map(cncpt.concepts2relsMap(cset.concepts()),
-                  (relcids,relName) => {
-                    //if (!relName.match(/map/i)) return null
-                    return <RelView key={relName} 
-                              {...{relName, relcids, title,
-                                  depth, maxDepth, M, }}
-                            />
-                  })
-          }
-        </div>
-  /*
-  */
-/*
-                    */
-}
-const RelView = ({relName,relcids,depth,maxDepth,title,M,}) => {
-  viewCounts.RelView++
-  /* only called by RelsView (full rels) */
-  //let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
-  title = `${title}-->RelView ${relcids.length} ${relName}`
-  if (depth > maxDepth) {
-    //console.error('bailing from RelView to avoid max stack')
-    return <h5>too deep to display {title}</h5>
-  }
-  throw new Error("broken")
-  /*
-  return (
-    <ConceptViewContainer key={relName} M={M}
-      linksWithCounts={true}
-      depth={depth}
-      maxDepth={maxDepth}
-      concept_ids={relcids}
-      title={title}
-    />
-    if (concept_ids && concept_ids.length) {
-      //wantConcepts(_.difference(concept_ids,cset.concepts().map(d=>d.concept_id)), {title,depth})
-      wantConcepts(concept_ids, {title,depth})
-    }
-  )
-  */
-}
 class IndividualConceptViews extends Component {
   render() {
     let {cset, depth, maxDepth, Wrapper='div', M,} = this.props
@@ -242,10 +131,6 @@ class IndividualConceptViews extends Component {
   }
 }
 class WrapInCard extends Component {
-  /*
-   * things that call this: 
-   *    - SplitIntoScs: <WrapInCard ... />
-   */
   render() {
     viewCounts.WrapInCard++
     let { children,
@@ -253,39 +138,12 @@ class WrapInCard extends Component {
           subtitle,
           initiallyExpanded=false,
           M,
-          /*
-          containerStyle,
-          rootStyle,
-          titleStyle,
-          titleTitleStyle,
-          titleSubtitleStyle,
-          textStyle,
-                rootStyle = rootStyle || 'plainRoot'
-                titleStyle = titleStyle || M('card.title')
-                subtitleStyle = subtitleStyle || M('card.subtitle')
-          */
-
         } = this.props
-    //let visibility = M('invisible') ? 'hidden' : 'visible'
-    //let height = M('invisible') ? '0px' : 'auto'
-              //<div style={{visibility, height}}>
-              //</div>
     return  (
               <Card
                   {...M('card.styleProps')}
-                  //style={M('card.style')}
-                  //containerStyle={M('card.containerStyle')}
                   initiallyExpanded={initiallyExpanded}
               >
-                {/*    from stsreport, top level
-                <CardHeader style={{
-                    padding:'10px 8px 0px 8px'
-                  }}
-                  actAsExpander={true}
-                  showExpandableButton={true}
-                  title={<h4>Source Target Source Report</h4>}
-                />
-                */}
                 <CardTitle
                   {...M('cardTitle.styleProps')}
                   title={title}
@@ -293,7 +151,7 @@ class WrapInCard extends Component {
                   titleStyle={_.isEmpty(title) ? {} : M('cardTitle.title')}
                   subtitleStyle={_.isEmpty(subtitle) ? {} : M('cardTitle.subtitle')}
                   showExpandableButton={true}
-                  actAsExpander={true}
+                  //actAsExpander={true}
                   expandable={false}
                 />
                 <CardText 
@@ -316,7 +174,6 @@ class ConceptViewContainer extends Component {
     }
     viewCounts.ConceptViewContainer++
     super(props)
-    this.ttid = 'cvc'
     let {cset} = props
     let showRel = cset.showRelFunc()
     this.state = {
@@ -328,34 +185,21 @@ class ConceptViewContainer extends Component {
       },
     }
   }
-  componentDidUpdate(prevProps, prevState) {
-    let {cset, } = this.props
-    if (!cset.concepts().length) {
-      return
-    }
-    if (cset.depth() > cset.maxDepth()) {
-      debugger
-      return
-    }
+  componentDidMount() {
+    this.setState({
+      ttid: 'cvc',
+    })
   }
   render() {
     let {cset, title, subtitle,
             wantConcepts, initiallyExpanded=true,
             muitParams={}, M=muit(),
         } = this.props
-    let {toggleShowRel, showRel} = this.state
+    let {toggleShowRel, showRel, ttid} = this.state
     M = M.props({cset})
-    let cnts = cdmCnts(cset, d=>d)
-    let ttText = cnts.long.join(', ')
-    let ttFancy = <div>
-                  {
-                    cnts.long.map((c,i)=><div style={M('tooltip.div')} key={i}>{c}</div>)
-                  }
-                </div>
-
     let countsM = M.props({cset})
       //,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}
-    title = title || cset.shortDesc()
+    title = title || cset.fancyDesc()
     subtitle = 
       typeof subtitle === 'function' 
         ? subtitle(this.props) 
@@ -368,18 +212,19 @@ class ConceptViewContainer extends Component {
                             .join(', ')
                           + ' concepts'
                         }
-                        <div style={{leftMargin: 20}} >
-                          <Counts cset={cset} M={countsM} />
-                        </div>
+                        <span style={{
+                          marginLeft: 20, zoom:.8,
+                        }} >
+                          <Counts cset={cset} M={countsM} ttid={ttid} />
+                        </span>
                       </span>
     return  (
       <WrapInCard M={M}
                   initiallyExpanded={initiallyExpanded}
-                  //muitParams={muitParams}
                   title={title}
                   subtitle={subtitle}
       >
-        <RelsView cset={cset} ttid={this.ttid} 
+        <RelsView cset={cset} ttid={ttid} 
             toggleShowRel={toggleShowRel}
             showRel={showRel}
         />
@@ -395,20 +240,85 @@ class ConceptViewContainer extends Component {
 }
 const sFmt = d3.format('.2s')
 export const Counts = props => {
-  let {cset, M} = props
-  return  (
-      <RaisedButton
-        style={M('raisedButton')}
-        buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-        //href={href}
-      >
-        <span>
-          {
-            cset.cdmCnts().map(cnt=>`${sFmt(cnt.cnt)} ${cncpt.conceptTableAbbr(cnt.tbl)}`)
-              .join(', ')
-          }
-        </span>
-      </RaisedButton>
+  let {cset, M, ttid, } = props
+  let cnts = cset.cdmCnts()
+  let ttText = cnts.map(fmtCdmCnt('long')).join(', ')
+  let ttFancy = <div>{
+                  cnts
+                    .map(fmtCdmCnt('long'))
+                    .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
+                }</div>
+  let buttonContent = cnts.map(fmtCdmCnt('short')).join(', ')
+  return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
+}
+export const TipButton = props => {
+  let {ttid, ttText, ttFancy, buttonContent, M, href, buttonProps} = props
+  return  <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
+            <RaisedButton
+              {...M('raisedButton.styleProps')}
+              style={M('raisedButton.style')}
+              //href={href}
+              {...buttonProps}
+            >
+              <span>
+                {buttonContent}
+              </span>
+            </RaisedButton>
+          </TooltipWrapper>
+
+}
+export class RelButton extends Component {
+  render() {
+    let {cset, ttid, M, toggleShowRel, shouldShow} = this.props // this is cset for the rel
+    //let {relName, relcids} = rel
+    //let href = '#' // should be link to concept focus
+
+    let status = cset.status()
+    let ttText = status.msg
+    let buttonContent = status.status === 'not determined' || status.status === 'loading'
+        ? <CircularProgress size={20} 
+            {...M('circularProgress.styleProps')}
+          /> 
+        : null
+    let buttonProps = {
+      onClick:() => {
+        cset.loadConcepts()
+        toggleShowRel(cset)
+      },
+      //label: cset.fancyDesc(),
+      label: `${cset.cidCnt()} ${cset.shortDesc()}`,
+      /*/
+      label: <span>{cset.cidCnt()} {cset.shortDesc()}
+      <span aria-hidden="true" data-icon="&#xe90a;" className="icon-link"></span>
+                </span>,
+      */
+      labelPosition: 'before',
+      icon: (status.status === 'not requested' && <FileDownload/>) ||
+            (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
+      secondary: true,
+    }
+    return <TipButton {...{ttid,ttText,M, buttonContent, buttonProps}} />
+  }
+}
+const RelsView = props => { // assuming I just have cids, no concepts
+  let {cset,title='', depth, maxDepth, ttid, toggleShowRel, showRel} = props
+  viewCounts.RelsView++
+  let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
+  return (
+    <div>
+      <div style={M('raisedButton.parentDiv')} >
+        <div style={M('headerLight')}>Related Concepts</div>
+        { _.map(cset.rels(), (rel,i) => {
+            let shouldShow = !!showRel(rel)
+            return <RelButton cset={rel} ttid={ttid} M={M} key={i} 
+                      toggleShowRel={toggleShowRel} shouldShow={shouldShow} />
+        })}
+      </div>
+      { _.map(cset.rels(), (rel,i) => {
+        let shouldShow = !!showRel(rel)
+        return shouldShow ? <ConceptViewContainer key={i} cset={rel} /> : null
+      })}
+    </div>
   )
 }
 export const fmtCdmCnt = (fmt='short') => {
@@ -420,19 +330,16 @@ export const fmtCdmCnt = (fmt='short') => {
   }
   throw new Error("confused")
 }
-export const cdmCnts = (cset, join=d=>d.join(', ')) => {
-  return {
-    short: join(cset.cdmCnts().map(fmtCdmCnt('short'))),
-    long: join(cset.cdmCnts().map(fmtCdmCnt('long'))),
-  }
-}
 export const ConceptsSummary = props => {
   let {cset, M} = props
   M = M.props({cset})
-  let cnts = cdmCnts( cset, d=>d)
+  let cnts = cset.cdmCnts()
   let sg = _.supergroup(cset.concepts(), ['domain_id','vocabulary_id','concept_class_id'])
-  let countsM = M.props({cset,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}})
-  return  <div >
+  let countsM = M.props({cset,
+                            //global:{zoom:.6}, 
+                            //override:{raisedButton:{style:{marginLeft:30}}}
+                        })
+  return  <div style={{zoom:.4}}>
             Concepts Summary for {cset.concepts().length} concepts
             <pre style={M('randomDiv')}>
               {JSON.stringify(cnts)} {'\n\n'}

@@ -3,19 +3,27 @@
 body {
   font-family: 'Roboto', sans-serif;
 }
+    src:url('fonts/icomoon.eot');
+    url('fonts/icomoon.eot?#iefix') format('embedded-opentype'),
 */
-/* line 9, Vocab.scss */
+@font-face {
+  font-family: 'icomoon';
+  src: url("fonts/icomoon.woff") format("woff"), url("fonts/icomoon.ttf") format("truetype"), url("fonts/icomoon.svg#icomoon") format("svg");
+  font-weight: normal;
+  font-style: normal;
+}
+/* line 19, Vocab.scss */
 body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
   font-size: 12px;
 }
 
-/* line 13, Vocab.scss */
+/* line 23, Vocab.scss */
 html, body, .height-100 {
   height: 100%;
 }
 
-/* line 16, Vocab.scss */
+/* line 26, Vocab.scss */
 .heading {
   font-size: 14px;
   color: #000;
@@ -24,74 +32,74 @@ html, body, .height-100 {
   border-bottom: solid 1px #ccc;
 }
 
-/* line 80, Vocab.scss */
+/* line 90, Vocab.scss */
 div.dialog-body {
   max-height: none !important;
 }
 
 /*
 */
-/* line 87, Vocab.scss */
+/* line 97, Vocab.scss */
 .sc-standard-concept, .rc, .sc-S {
   background-color: rgba(144, 238, 144, 0.6);
 }
-/* line 90, Vocab.scss */
+/* line 100, Vocab.scss */
 .strong .sc-standard-concept, .strong .rc, .strong .sc-S {
   background-color: lightgreen;
 }
 
-/* line 94, Vocab.scss */
+/* line 104, Vocab.scss */
 .sc-classification-concept, .drc, .sc-C {
   background-color: #c896ff;
 }
 
-/* line 98, Vocab.scss */
+/* line 108, Vocab.scss */
 .sc-non-standard-concept, .src, .sc-X {
   background-color: #ffd3dc;
 }
-/* line 100, Vocab.scss */
+/* line 110, Vocab.scss */
 .strong .sc-non-standard-concept, .strong .src, .strong .sc-X {
   border: 2px solid red;
 }
 
-/* line 104, Vocab.scss */
+/* line 114, Vocab.scss */
 .invalid-concept {
   background-color: rgba(220, 20, 60, 0.3);
 }
 
-/* line 108, Vocab.scss */
+/* line 118, Vocab.scss */
 .dsrc {
   background-color: rgba(120, 20, 60, 0.3);
 }
 
-/* line 111, Vocab.scss */
+/* line 121, Vocab.scss */
 .norecs {
   background-color: rgba(0, 0, 0, 0.1);
 }
 
-/* line 117, Vocab.scss */
+/* line 127, Vocab.scss */
 .is-pending {
   background-color: yellow;
 }
 
 @media (min-width: 450px) {
-  /* line 122, Vocab.scss */
+  /* line 132, Vocab.scss */
   .nav-bar {
     max-width: 450px;
   }
 
-  /* line 125, Vocab.scss */
+  /* line 135, Vocab.scss */
   .short-input {
     max-width: 250px;
   }
 }
-/* line 132, Vocab.scss */
+/* line 142, Vocab.scss */
 .flex-box {
   display: flex;
   flex-flow: column;
   height: 100%;
 }
-/* line 137, Vocab.scss */
+/* line 147, Vocab.scss */
 .flex-box .flex-content-height {
   flex: 0 1 auto;
   /* The above is shorthand for:
@@ -100,16 +108,16 @@ div.dialog-body {
   flex-basis: auto
   */
 }
-/* line 145, Vocab.scss */
+/* line 155, Vocab.scss */
 .flex-box .flex-remaining-height {
   flex: 1 1 auto;
 }
-/* line 148, Vocab.scss */
+/* line 158, Vocab.scss */
 .flex-box .flex-fixed-height-40 {
   flex: 0 1 40px;
 }
 
-/* line 152, Vocab.scss */
+/* line 162, Vocab.scss */
 .main-content {
   margin: 10px;
   width: 100%;
@@ -120,7 +128,7 @@ div.concept-browse {
   height: 100vh;
 }
 */
-/* line 162, Vocab.scss */
+/* line 172, Vocab.scss */
 .react-spinner {
   position: relative;
   width: 32px;
@@ -129,12 +137,12 @@ div.concept-browse {
   left: 50%;
 }
 
-/* line 170, Vocab.scss */
+/* line 180, Vocab.scss */
 .react-spinner.hide {
   display: none;
 }
 
-/* line 174, Vocab.scss */
+/* line 184, Vocab.scss */
 .react-spinner_bar {
   animation: react-spinner_spin 1.2s linear infinite;
   border-radius: 5px;
@@ -170,16 +178,16 @@ div.concept-browse {
     opacity: 0.15;
   }
 }
-/* line 214, Vocab.scss */
+/* line 224, Vocab.scss */
 .ag-row {
   border-bottom: 1px solid lightgray;
 }
 
-/* line 219, Vocab.scss */
+/* line 229, Vocab.scss */
 .react-draggable {
   cursor: move;
 }
-/* line 221, Vocab.scss */
+/* line 231, Vocab.scss */
 .react-draggable .handle {
   background: #ddd;
   border: 1px solid #999;
@@ -190,43 +198,43 @@ div.concept-browse {
   text-align: center;
 }
 
-/* line 232, Vocab.scss */
+/* line 242, Vocab.scss */
 .cursor {
   cursor: move;
 }
 
-/* line 235, Vocab.scss */
+/* line 245, Vocab.scss */
 .no-cursor {
   cursor: auto;
 }
 
-/* line 238, Vocab.scss */
+/* line 248, Vocab.scss */
 .cursor-y {
   cursor: ns-resize;
 }
 
-/* line 241, Vocab.scss */
+/* line 251, Vocab.scss */
 .cursor-x {
   cursor: ew-resize;
 }
 
-/* line 245, Vocab.scss */
+/* line 255, Vocab.scss */
 div.vocab-map, div.domain-map, div.concept-view-container {
   width: 100%;
   margin: 5;
   position: relative;
 }
-/* line 251, Vocab.scss */
+/* line 261, Vocab.scss */
 div.vocab-map div.vocab-map-msg-div, div.domain-map div.vocab-map-msg-div, div.concept-view-container div.vocab-map-msg-div {
   float: right;
   z-index: 100;
 }
-/* line 255, Vocab.scss */
+/* line 265, Vocab.scss */
 div.vocab-map svg.sigma-svg, div.domain-map svg.sigma-svg, div.concept-view-container svg.sigma-svg {
   background-color: rgba(20, 255, 50, 0.3) rect;
   background-color-fill: rgba(20, 255, 50, 0.3);
 }
-/* line 260, Vocab.scss */
+/* line 270, Vocab.scss */
 div.vocab-map svg.sigma-svg .sigma-fo-div, div.domain-map svg.sigma-svg .sigma-fo-div, div.concept-view-container svg.sigma-svg .sigma-fo-div {
   display: inline-block;
   border: 1px solid gray;
@@ -234,7 +242,7 @@ div.vocab-map svg.sigma-svg .sigma-fo-div, div.domain-map svg.sigma-svg .sigma-f
   border-radius: 8px;
   background-color: #fff;
 }
-/* line 267, Vocab.scss */
+/* line 277, Vocab.scss */
 div.vocab-map svg.sigma-svg .sigma-fo-div div.info, div.domain-map svg.sigma-svg .sigma-fo-div div.info, div.concept-view-container svg.sigma-svg .sigma-fo-div div.info {
   display: flex;
   flex-direction: row;
@@ -242,32 +250,32 @@ div.vocab-map svg.sigma-svg .sigma-fo-div div.info, div.domain-map svg.sigma-svg
   justify-content: space-between;
   margin: 2px 0px 1px 0px;
 }
-/* line 273, Vocab.scss */
+/* line 283, Vocab.scss */
 div.vocab-map svg.sigma-svg .sigma-fo-div div.info.info-hover, div.domain-map svg.sigma-svg .sigma-fo-div div.info.info-hover, div.concept-view-container svg.sigma-svg .sigma-fo-div div.info.info-hover {
   border: 1px solid green;
 }
-/* line 277, Vocab.scss */
+/* line 287, Vocab.scss */
 div.vocab-map svg.sigma-svg .sigma-fo-div div.info span.key, div.domain-map svg.sigma-svg .sigma-fo-div div.info span.key, div.concept-view-container svg.sigma-svg .sigma-fo-div div.info span.key {
   margin-right: 4px;
   font-weight: bold;
   padding-left: 3px;
 }
-/* line 282, Vocab.scss */
+/* line 292, Vocab.scss */
 div.vocab-map svg.sigma-svg .sigma-fo-div div.info span.val, div.domain-map svg.sigma-svg .sigma-fo-div div.info span.val, div.concept-view-container svg.sigma-svg .sigma-fo-div div.info span.val {
   padding-right: 3px;
   text-align: right;
 }
-/* line 289, Vocab.scss */
+/* line 299, Vocab.scss */
 div.vocab-map svg.sigma-svg span.icons > span.glyphicon, div.domain-map svg.sigma-svg span.icons > span.glyphicon, div.concept-view-container svg.sigma-svg span.icons > span.glyphicon {
   margin-left: 5px;
   position: static;
   display: none;
 }
-/* line 294, Vocab.scss */
+/* line 304, Vocab.scss */
 div.vocab-map svg.sigma-svg.hover span.icons > span.glyphicon, div.domain-map svg.sigma-svg.hover span.icons > span.glyphicon, div.concept-view-container svg.sigma-svg.hover span.icons > span.glyphicon {
   display: inline;
 }
-/* line 298, Vocab.scss */
+/* line 308, Vocab.scss */
 div.vocab-map svg.sigma-svg, div.domain-map svg.sigma-svg, div.concept-view-container svg.sigma-svg {
   /*
       top: 0;
@@ -278,57 +286,57 @@ div.vocab-map svg.sigma-svg, div.domain-map svg.sigma-svg, div.concept-view-cont
       background-color: $white;
   */
 }
-/* line 309, Vocab.scss */
+/* line 319, Vocab.scss */
 div.vocab-map svg.sigma-svg g.sigma-edge path, div.domain-map svg.sigma-svg g.sigma-edge path, div.concept-view-container svg.sigma-svg g.sigma-edge path {
   stroke: steelblue;
 }
-/* line 311, Vocab.scss */
+/* line 321, Vocab.scss */
 div.vocab-map svg.sigma-svg g.sigma-edge path.muted, div.domain-map svg.sigma-svg g.sigma-edge path.muted, div.concept-view-container svg.sigma-svg g.sigma-edge path.muted {
   opacity: 0.3;
 }
-/* line 318, Vocab.scss */
+/* line 328, Vocab.scss */
 div.vocab-map svg.sigma-svg g.sigma-node g.voc-node-container, div.domain-map svg.sigma-svg g.sigma-node g.voc-node-container, div.concept-view-container svg.sigma-svg g.sigma-node g.voc-node-container {
   cursor: pointer;
   font-size: small;
 }
-/* line 319, Vocab.scss */
+/* line 329, Vocab.scss */
 div.vocab-map svg.sigma-svg g.sigma-node g.voc-node-container.muted, div.domain-map svg.sigma-svg g.sigma-node g.voc-node-container.muted, div.concept-view-container svg.sigma-svg g.sigma-node g.voc-node-container.muted {
   opacity: 0.3;
 }
-/* line 322, Vocab.scss */
+/* line 332, Vocab.scss */
 div.vocab-map svg.sigma-svg g.sigma-node g.voc-node-container rect, div.domain-map svg.sigma-svg g.sigma-node g.voc-node-container rect, div.concept-view-container svg.sigma-svg g.sigma-node g.voc-node-container rect {
   fill: blue;
 }
-/* line 327, Vocab.scss */
+/* line 337, Vocab.scss */
 div.vocab-map svg.sigma-svg g.sigma-node g.voc-node-container.parent, div.domain-map svg.sigma-svg g.sigma-node g.voc-node-container.parent, div.concept-view-container svg.sigma-svg g.sigma-node g.voc-node-container.parent {
   font-size: large;
   background-color: aliceblue;
   pointer-events: none;
   border: 1px solid steelblue;
 }
-/* line 337, Vocab.scss */
+/* line 347, Vocab.scss */
 div.vocab-map svg.sigma-svg span.aside, div.domain-map svg.sigma-svg span.aside, div.concept-view-container svg.sigma-svg span.aside {
   font-weight: lighter;
   font-size: 90%;
   font-style: italic;
   padding-left: 10px;
 }
-/* line 344, Vocab.scss */
+/* line 354, Vocab.scss */
 div.vocab-map svg.sigma-svg .field.nest-level-1 .form-group, div.domain-map svg.sigma-svg .field.nest-level-1 .form-group, div.concept-view-container svg.sigma-svg .field.nest-level-1 .form-group {
   padding-left: 20px;
 }
-/* line 347, Vocab.scss */
+/* line 357, Vocab.scss */
 div.vocab-map svg.sigma-svg .field.nest-level-1 legend, div.domain-map svg.sigma-svg .field.nest-level-1 legend, div.concept-view-container svg.sigma-svg .field.nest-level-1 legend {
   font-size: 16px;
 }
-/* line 352, Vocab.scss */
+/* line 362, Vocab.scss */
 div.vocab-map .tblcol, div.domain-map .tblcol, div.concept-view-container .tblcol {
   background-color: rgba(20, 255, 50, 0.3);
   font-size: small;
   font-style: small-caps;
 }
 
-/* line 362, Vocab.scss */
+/* line 372, Vocab.scss */
 .concept-desc {
   padding: 20px;
   border: 1px solid gray;
@@ -347,38 +355,38 @@ div.vocab-map .tblcol, div.domain-map .tblcol, div.concept-view-container .tblco
     }
   */
 }
-/* line 363, Vocab.scss */
+/* line 373, Vocab.scss */
 .concept-desc .nav > li > a {
   padding: 0px;
 }
-/* line 368, Vocab.scss */
+/* line 378, Vocab.scss */
 .concept-desc .main-desc {
   padding: 20px;
   border: 2px solid darkgray;
 }
 
-/* line 390, Vocab.scss */
+/* line 400, Vocab.scss */
 .drillable-on-hover:hover {
   box-shadow: inset 0 0 1em gold, 0 0 1em red;
 }
 
-/* line 394, Vocab.scss */
+/* line 404, Vocab.scss */
 .infobit {
   word-break: break-word;
   border: 1px solid white;
 }
-/* line 397, Vocab.scss */
+/* line 407, Vocab.scss */
 .infobit.sc {
   font-weight: bold;
   padding: 8px;
 }
-/* line 401, Vocab.scss */
+/* line 411, Vocab.scss */
 .infobit .title {
   font-style: italic;
   text-align: right;
 }
 
-/* line 408, Vocab.scss */
+/* line 418, Vocab.scss */
 .concept-info-menu {
   /*
     .domain {
@@ -390,15 +398,15 @@ div.vocab-map .tblcol, div.domain-map .tblcol, div.concept-view-container .tblco
     }
   */
 }
-/* line 409, Vocab.scss */
+/* line 419, Vocab.scss */
 .concept-info-menu > span {
   margin: 2px 3px 2px 3px;
 }
-/* line 412, Vocab.scss */
+/* line 422, Vocab.scss */
 .concept-info-menu .class {
   font-style: italic;
 }
-/* line 424, Vocab.scss */
+/* line 434, Vocab.scss */
 .concept-info-menu .name {
   text-decoration: underline;
   font-weight: bold;

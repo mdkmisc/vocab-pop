@@ -241,8 +241,8 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
         buttonStyle: {
           backgroundColor: pal.light,
           color: pal.alternateTextColor,
+          //border: `4px solid green`,
           //padding: 4,
-          //margin: 4,
           //width:'auto',
           //minWidth:'auto',
           //color:'darkgray'
@@ -258,15 +258,20 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
       }
       */
       style: {
+        margin: 4,
+        //padding: 4,
+        backgroundColor: pal.light,
+        color: pal.alternateTextColor,
         width:'auto',
         minWidth:'auto',
         lineHeight:'auto',
         height:'auto',
         minHeight:'auto',
-        padding: '1px 3px 1px 3px',
-        margin: '5px 2px 8px 2px',
-        color: pal.alternateTextColor,
-        backgroundColor: pal.light,
+        //padding: '1px 3px 1px 3px',
+        //margin: '5px 2px 8px 2px',
+        //border: `4px solid yellow`,
+        //backgroundColor: pal.light,
+        //color: pal.alternateTextColor,
       },
       parentDiv: {
         width:'auto',
@@ -274,9 +279,11 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
         lineHeight:'auto',
         height:'auto',
         minHeight:'auto',
-        padding: '1px 3px 1px 3px',
-        margin: '5px 2px 8px 2px',
+        padding: 4,
+        //padding: '1px 3px 1px 3px',
+        margin: '5px 2px 6px 2px',
         backgroundColor: pal.lighter,
+        border:`1px solid ${pal.light}`,
       },
     },
     /* not working right
@@ -328,7 +335,6 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
         titleColor: pal.regular,
       },
       title: {
-        borderBottom: `solid 2px ${pal.regular}`,
         fontSize: '1.6em',
         fontWeight: typography.fontWeightMedium,
         backgroundColor: pal.lighter,
@@ -336,15 +342,10 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
         padding: 0,
       },
       subtitle: {
-        zoom: 0.8,
-        //backgroundColor: pal.regular,
-        //boxShadow: `inset 0 0 .4em ${pal.dark}`,
-        padding: '.5em',
-        //border: `1px solid ${pal.darker}`,
-        //border: '9px inset black',
-        //border: `9px inset ${pal.dark}`,
+        borderBottom: `solid 2px ${pal.regular}`,
+        //zoom: 0.8,
+        //padding: '.5em',
         surround: {
-          //border: `9px inset ${pal.dark}`,
         },
       },
     },
@@ -368,6 +369,7 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
     card: {
       styleProps: {
         style: { // Override the inline-styles of the root element.
+          zoom: 0.9,
         },
         containerStyle: { // Override the inline-styles of the container element.
             padding: 28,
@@ -392,12 +394,12 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
           //zoom: 1.2,
           //boxShadow: `rgb(86, 121, 149) 0px 0px 0.9em 0.5em inset, rgb(86, 121, 149) 0px 0px 0.9em 0.5em`,
           //border: '2px solid red',
-          backgroundColor: pal.regular,
+          //backgroundColor: pal.regular,
         },
         plain: {
-          zoom: 0.8,
-          borderRadius: '.8em',
-          backgroundColor: pal.regular,
+          //zoom: 0.8,
+          //borderRadius: '.8em',
+          //backgroundColor: pal.regular,
           //boxShadow: `${pal.darker} 0 0 .9em .5em inset, ${pal.darker} 0 0 .9em .5em`,
         },
       },

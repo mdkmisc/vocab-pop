@@ -6,6 +6,7 @@ import _ from 'src/supergroup'; // in global space anyway...
 import * as api from 'src/api'
 import * as cids from 'src/ducks/cids'
 import * as util from 'src/utils';
+import React, { Component } from 'react'
 
 const Immutable = require("seamless-immutable")
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
@@ -719,9 +720,53 @@ export class ConceptSet {
                 cids: relcids,
                 parent: this, 
                 relationship, 
+                longDesc: `${this.shortDesc()} ${relationship}`,
+                fancyDesc: 
+                  <span>
+                    <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
+                                    marginRight: 8,}}>
+                      {this.fancyDesc()} 
+                    </span>
+                    <span style={{marginLeft: 8,}}
+                        aria-hidden="true" 
+                        data-icon="&#xe90a;" 
+                        className="icon-link"></span>
+                    {relationship}
+                  </span>,
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
+  shortDesc = () => {
+    //let {status, msg} = this.status()
+    return (
+      (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.role('rel') && this.prop('relationship')) ||
+      (this.role('sub') && `shortDesc for ${this.prop('subtype')}`) ||
+      "what kind of shortDesc do you want?"
+    )
+  }
+  longDesc = () => {
+    //let {status, msg} = this.status()
+    return (
+      (this.hasProp('longDesc') && this.prop('longDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.role('rel') && this.prop('relationship')) ||
+      (this.role('sub') && `longDesc for ${this.prop('subtype')}`) ||
+      "what kind of longDesc do you want?"
+    )
+  }
+  fancyDesc = () => {
+    return (
+      (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
+      (this.hasProp('longDesc') && this.prop('longDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.role('rel') && this.prop('relationship')) ||
+      (this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
+      "what kind of fancyDesc do you want?"
+    )
+  }
+
 
   showRelFunc = () => {
     let relsToShow = {}
@@ -751,20 +796,6 @@ export class ConceptSet {
       }
     }
   }
-
-  shortDesc = () => {
-    let {status, msg} = this.status()
-    if (this.hasProp('desc')) {
-      return this.prop('desc')
-    }
-    if (this.prop('role') === 'rel') {
-      return this.prop('relationship')
-    }
-    if (this.prop('role') === 'sub') {
-      return `something...subset ${this.prop('subtype')}`
-    }
-  }
-  longDesc = () => this.prop('desc') + ' more stuff'
 
   loadConcepts = () => {
     if (this.loaded()) {

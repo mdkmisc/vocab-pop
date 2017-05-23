@@ -118,8 +118,7 @@ class ConceptCodesLookupForm extends Component {
             actionsContainerStyle={M('dialog.actionsContainerStyle')}
             title={
               <div className="myDialogTitle">
-              fsdfgfsg  adfadfasdf <i>hi</i>  
-              <span className="icon-balance-scale"/>
+              <span className="icon-balance-scale"/>
                 Choose focal concepts<br/>
                 <div style={M('dialog.titleStyle.subtitle')}>
                   {cset.cidCnt()} selected

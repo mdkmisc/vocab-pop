@@ -64,7 +64,7 @@ class SourceTargetSourceForm extends Component {
           (cset.conCnt() && <C.ConceptViewContainer cset={cset} />) ||
           null
     }
-    return  <div>
+    return  <div style={{zoom:1.2}}>
               {content}
               {form}
             </div>
@@ -100,7 +100,7 @@ SourceTargetSourceForm = connect(
       conceptStatus,
       cset: new cncpt.ConceptSet({
               cids,
-              desc: `${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '}
+              desc: `${vocabulary_id} ${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '}
                       ${matchStr}`,
               maxDepth:2,
               role: 'focal',
