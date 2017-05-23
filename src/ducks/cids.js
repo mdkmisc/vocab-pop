@@ -35,10 +35,11 @@ export default reducer
 /**** end reducers *********************************************************/
 
 /**** start action creators *********************************************************/
-export const getNewCids = (payload) => ({
-                                type: cidsActions.GET_NEW_CIDS,
-                                payload,
-                              })
+export const getNewCids = 
+  (payload) => ({
+    type: cidsActions.GET_NEW_CIDS,
+    payload,
+  })
 /**** end action creators *********************************************************/
 
 /**** start selectors *****************************************************************/
@@ -56,7 +57,7 @@ const getCidsTrigger = (action$, store) => (
       let formState = store.getState().form[form]
       let {values} = formState
       let {vocabulary_id, matchBy, matchStr} = values
-      myrouter.addParams(values)
+      //myrouter.addParams(values)
       if (vocabulary_id && matchBy && matchStr) {
         return Rx.Observable.of(getNewCids(values))
       }

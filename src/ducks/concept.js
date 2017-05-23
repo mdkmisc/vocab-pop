@@ -47,7 +47,7 @@ const loadedReducer = (state={}, action) => {
   }
   return Immutable(state)
 }
-const requestStore = () => (
+const emptyRequestStore = () => (
   { // lists of cids
     status: conceptActions.IDLE,
     want: [],
@@ -58,7 +58,7 @@ const requestStore = () => (
     requests: [],
     staleRequests: [],
   })
-const requestsReducer = (state=_.cloneDeep(requestStore()), action) => {
+const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
   let {status, want, fetching, got, focal, requests, staleRequests} = state
   let {type, payload, meta, error} = action
   let new_cids
@@ -253,43 +253,12 @@ const newConcepts = (payload=[],loadedAlready={}) => {
     })
     .filter(r => r && r.cnt)
 
-
-    // from previous repairRcs -- deals with double counting when same
-    // concept is source and target
-    let tbct = _.supergroup(c.cnts, ['tbl','coltype'])
-    let fixedCnts = []
-    tbct.forEach(
-      tbl => {
-        let cts = tbl.getChildren()
-        if (cts.length > 2) {
-          debugger
-          throw new Error("pretty weird")
-        }
-        if (cts.length === 2) {
-          debugger
-          if (cts.lookup('target') &&
-              cts.lookup('source'))
-          {
-            if (cts.records.length !== 2 ||
-                cts.records[0].cntType !== 'rc' ||
-                cts.records[1].cntType !== 'rc' ||
-                cts.records[0].cnt !== cts.records[1].cnt
-                ) {
-              throw new Error("pretty weird")
-            }
-            fixedCnts.push(cts.records.find(d=>d.coltype==='target'))
-          }
-          //c._origRcs = c.rcs
-          //c.rcs = fixedCnts
-              throw new Error("fix")
-        } else {
-          // do nothing
-              //throw new Error("fix")
-          //c._origRcs = c.rcs
-          //c.rcs = rcss
-        }
-      }
-    )
+    let tbct = _.supergroup(c.cnts, ['tbl','col'])
+    if (tbct.filter(tbl=>tbl.getChildren().length !== 1)) {
+      c.PROBLEM = 'same concept appearing in more than one col of same table, check for double counting'
+      console.error('possible double counting, last copy of code for handling source/target prob:',
+                    'https://github.com/Sigfried/vocab-pop/blob/f264c39df76425bf88e8b4ce789c20ce1508b56f/src/ducks/concept.js#L259')
+    }
     return c
   })
   return {type: conceptActions.NEW_CONCEPTS, payload: concepts}
@@ -414,28 +383,8 @@ export {epics}
 
 /**** start selectors *****************************************************************/
 
-/*
-const conceptStub = (id,status) => {
-  let stub = {
-    concept_id: id,
-    stub_id: _.uniqueId(),
-    status,
-    concept_code: status,
-    concept_name: status,
-    domain_id: status,
-    standard_concept: status,
-    vocabulary_id: status,
-    concept_class_id: status,
-    rcs: [],
-    rels: []
-  }
-  if (stub.stub_id > 1000)
-    debugger
-  return stub
-}
-*/
-
 export const conceptStub = (id,status) => ({
+  // comes in handy for debugging once in a while, otherwise not used
   concept_id: id,
   status,
   concept_code: status,
@@ -492,7 +441,7 @@ export const conceptsFromCids = createSelector(
     return concepts
   })
 
-export const requests = state => state.concepts.requests || requestStore()
+export const requests = state => state.concepts.requests || emptyRequestStore()
 export const want = createSelector(requests, r => r.want)
 export const fetching = createSelector(requests, r => r.fetching)
 export const focal = createSelector(requests, r => r.focal)
@@ -517,19 +466,6 @@ export const csReport = (concepts, requests, focalConcepts) => {
     ]
     return lines
 }
-
-/*
-export const conceptsFromCidsWStubs = createSelector(
-  conceptMap, want, fetching,
-  (cmap, want, fetching) =>
-    (cids=[]) =>
-      cids.map(cid => cmap[cid] ||
-                      (_.includes(want, cid) && conceptStub(cid, 'want')) ||
-                      (_.includes(fetching, cid) && conceptStub(cid, 'fetching')) ||
-                      conceptStub(cid, 'mystery')
-              )
-)
-*/
 
 export const timeFunc = f => {
   let start = performance.now()
@@ -595,41 +531,108 @@ export class ConceptSet {
    *  meta data. not for use in store or selectors!
    */
   constructor(props, csetSelectors, wantConcepts) {  // still, try to make this never mutate
-    this._props = props
+    this._props = Immutable(props)
     this.csetSelectors = csetSelectors
-    this.cSelector = csetSelectors.cSelector
     this.conceptState = csetSelectors.conceptState
     this.wantConcepts = wantConcepts
 
     /* expecting: props: {cids, desc
      *
-     * cSelector
+     * csetSelectors with conceptState
      *  for subsets: parent, cids, nature of subset (probably a group?), the group prop
      *  for rels (which are not subsets -- but the only kind of descendants that aren't):
      *    parent (relFrom), relName, cids, any known props of parent
     * title, fancyTitle, ttText, ttFancy, } = props */
-    if (props.concepts || !props.cids || !this.cSelector || !wantConcepts) {
-      throw new Error("just give me cids and live cSelector and wantConcepts")
+    if (props.concepts || !props.cids || !this.conceptState || !wantConcepts) {
+      throw new Error("just give me cids and current conceptState and live wantConcepts")
     }
-    console.log("done with constructor", this)
   }
-  id = _.uniqueId('cset-')
   props = () => this._props
   prop = prop => this.props()[prop]
   hasProp = prop => _.has(this.props(), prop)
-  // maybe fancier?:
-    // prop = prop => _.get(this.props(), prop)
+  // maybe fancier?: // prop = prop => _.get(this.props(), prop)
+
+
+  setProps = newProps => {
+    console.warn("this returns a new ConceptSet, doesn't change existing one, which is immutable")
+    return new ConceptSet({
+                ...this.props(), 
+                ...newProps,
+              }, this.csetSelectors, this.wantConcepts)
+  }
+  serialize= () => {
+    return JSON.stringify(this.props())
+  }
 
   cids = () => this.prop('cids')
-  csel = () => this.cSelector || (() => 'cSelector not available yet')
-  concepts = (cids=this.cids()) => this.csel().filter(c=>_.includes(cids,c.concept_id))
+  concepts = (cids=this.cids()) => concepts(this.conceptState.loaded).filter(c=>_.includes(cids,c.concept_id))
+  concept_ids = (cids) => this.concepts(cids).map(d=>d.concept_id)
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
   loaded = () => this.cidCnt() === this.conCnt()
   loading = () => {throw new Error("not implemented")}
   status = () => {
-    console.log(this.conceptState, this.cSelector)
-    debugger
+    let {status:reqStatus, want, fetching, got, focal, requests, staleRequests} = this.conceptState.requests
+    let notLoaded = _.difference(this.cids(), this.concept_ids())
+    let status = {
+      loaded: this.conCnt(),
+      notLoaded: notLoaded.length,
+      loading: _.intersection(notLoaded, fetching).length,
+      requested: _.intersection(_.flatten(requests.map(r=>r.cids)),this.cids()).length,
+      cantLoad: 0,
+      status: 'not determined',
+      msg: '',
+    }
+    if (want.length && status === conceptActions.FULL) {
+      status.cantLoad = want.length // not sure about this
+    }
+    if (this.loaded()) {
+      // totally loaded
+      status.status = 'loaded'
+      status.msg = `${status.loaded} loaded`
+    } else {
+      if (status.loading) {
+        status.status = 'loading'
+        if (status.loading === status.notLoaded) {
+          status.msg = `loading ${status.loading}`
+        } else {
+          status.msg = `loaded ${status.loaded} of ${this.cidCnt()}`
+        }
+      } else {
+        // not fully loaded, not loading, why?
+        if (status.requested) {
+          if (status.requested > status.loaded) {
+            // requested some that aren't loaded or loading...presumably store is full
+            if (status.cantLoad) {
+              if (status.requested - status.loaded === status.cantLoad) {
+                status.status = "can't load"
+                status.msg = `can't load ${status.cantLoad} of ${this.cidCnt()}`
+              } else {
+                status.status = "weird"
+                debugger
+              }
+            }
+          } else {
+            // requested cids are loaded
+            // presumably some cids in this cset loaded by another cset's request
+            status.status = 'not requested'
+            status.msg = `loaded ${status.loaded} of ${this.cidCnt()}`
+          }
+        } else {
+          // none requested
+          status.status = 'not requested'
+          if (status.loaded) {
+            status.msg = `loaded ${status.loaded} of ${this.cidCnt()}`
+          } else {
+            status.msg = `${this.cidCnt()} concepts`
+          }
+        }
+      }
+    }
+    if (status.msg === 'not sure') {
+      debugger
+    }
+    return status
   }
 
   groups = fld => _.supergroup(this.concepts(), groupings[fld])
@@ -719,12 +722,43 @@ export class ConceptSet {
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
+
+  showRelFunc = () => {
+    let relsToShow = {}
+    return (rel,bool) => {
+      if (typeof rel !== 'undefined') {
+        if (typeof bool !== 'undefined') {
+          relsToShow = {...relsToShow, [rel]: bool}
+        } else {
+          return relsToShow[rel]
+        }
+      }
+      return relsToShow
+    }
+  }
+  role = r => r ? (this.prop('role') === r) : this.prop('role')
+  shouldThisShow = (showRel) => {
+    if (this.role('rel')) {
+      if (showRel(this.prop('relationship'))) {
+        return this.prop('parent').shouldThisShow()
+      }
+      return false
+    } else {
+      if (this.role('focal')) {
+        return true
+      } else {
+        debugger
+      }
+    }
+  }
+
   shortDesc = () => {
+    let {status, msg} = this.status()
     if (this.hasProp('desc')) {
       return this.prop('desc')
     }
     if (this.prop('role') === 'rel') {
-      return `${this.id}: ${this.cidCnt()} ${this.prop('relationship')} (${this.status()})`
+      return this.prop('relationship')
     }
     if (this.prop('role') === 'sub') {
       return `something...subset ${this.prop('subtype')}`
@@ -736,7 +770,7 @@ export class ConceptSet {
     if (this.loaded()) {
       return
     }
-    this.wantConcepts(this.cids(), {csetId:this.id})
+    this.wantConcepts(this.cids())
   }
 }
 

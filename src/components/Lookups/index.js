@@ -44,13 +44,13 @@ class ConceptCodesLookupForm extends Component {
   open(do_it=false) {
     if (this.state.open)
       return
-    this.props.conceptPause()
+    this.props.pause()
     this.setState({open:true})
   }
   close() {
     if (!this.state.open)
       return
-    this.props.conceptResume()
+    this.props.resume()
     this.setState({open:false})
   }
   componentDidMount() {
@@ -63,7 +63,7 @@ class ConceptCodesLookupForm extends Component {
             handleSubmit, pristine, reset, submitting,
               errMsg, vocabularies,
               matchBy, matchStr, vocabulary_id,
-              concepts=[], 
+              cset,
           } = this.props
     let vocabulary = vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
     let open = this.open.bind(this)
@@ -72,8 +72,8 @@ class ConceptCodesLookupForm extends Component {
           <FlatButton
             label="Close"
             primary={true}
-            keyboardFocused={!!concepts}
-            disabled={!concepts}
+            keyboardFocused={!!cset.cidCnt()}
+            disabled={!cset.cidCnt()}
             onTouchTap={close}
           />,
         ];
@@ -83,7 +83,7 @@ class ConceptCodesLookupForm extends Component {
         <form style={{marginLeft:20}}>
           <RaisedButton
               onTouchTap={open}
-              label={`${concepts.length}
+              label={`${cset.cidCnt()}
                       ${vocabulary_id}
                       ${matchBy === 'codes' 
                           ? ' codes matching '
@@ -105,13 +105,10 @@ class ConceptCodesLookupForm extends Component {
               <span className="icon-balance-scale"/>
                 Choose focal concepts<br/>
                 <div style={M('dialog.titleStyle.subtitle')}>
-                  {concepts.length 
-                    ? concepts.length 
-                    : 'None' 
-                  } selected
+                  {cset.cidCnt()} selected
                   <hr/>
                   { matchBy==='codes' 
-                      ? concepts.map(d=>d.concept_code).join(', ') 
+                      ? cset.concepts().map(d=>d.concept_code).join(', ') 
                       : ''
                   }
                 </div>
@@ -128,16 +125,6 @@ class ConceptCodesLookupForm extends Component {
                   component={SelectField}
                   fullWidth={true}
                   floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
-                  /*
-                  onChange={
-                    (evt,newVal,oldVal) => {
-                      myrouter.addParams({
-                        vocabulary_id:newVal,
-                        matchBy, matchStr
-                      })
-                    }
-                  }
-                  */
             >
               {
                 (vocabularies||[]).map(
@@ -164,16 +151,7 @@ class ConceptCodesLookupForm extends Component {
                   icon={<LinkIcon />}
                 /> : undefined
             }
-            <Field  name="matchBy" 
-                  /*
-                    onChange={
-                      (evt,newVal,oldVal) => 
-                        myrouter.addParams({
-                          matchBy:newVal,
-                          matchStr:'',
-                      })}
-                  */
-                    component={RadioButtonGroup}>
+            <Field  name="matchBy" component={RadioButtonGroup}>
               <RadioButton value="codes" label="Concept Codes" />
               <RadioButton value="text" label="Concept Name" />
               <RadioButton disabled={true} value="concept_id" label="Concept ID" />
@@ -193,20 +171,11 @@ class ConceptCodesLookupForm extends Component {
                   }
                   fullWidth={true}
                   errorText={errMsg}
-                  /*
-                  onChange={
-                    (evt,newVal,oldVal) => 
-                      myrouter.addParams({
-                        matchStr:newVal,
-                        matchBy,
-                      })
-                  }
-                  */
                   style={{padding:'0px 8px 0px 8px'}}
             />
 
             <hr/>
-            <AgTable data={concepts||[]}
+            <AgTable data={cset.concepts()||[]}
                   width={"100%"} height={250}
                   id="src_target_recs" />
           </Dialog>
@@ -217,29 +186,76 @@ class ConceptCodesLookupForm extends Component {
 // Decorate with reduxForm(). It will read the initialValues prop provided by connect()
 ConceptCodesLookupForm = reduxForm({
   form: 'concept_codes_form',  // a unique identifier for this form
+  onChange: values => {
+    myrouter.addParams(values)
+  },
 })(ConceptCodesLookupForm)
+                  /*
+                  onChange={
+                    (evt,newVal,oldVal) => 
+                      myrouter.addParams({
+                        matchStr:newVal,
+                        matchBy,
+                      })
+                  }
+                  */
+                  /*
+                  onChange={
+                    (evt,newVal,oldVal) => {
+                      myrouter.addParams({
+                        vocabulary_id:newVal,
+                        matchBy, matchStr
+                      })
+                    }
+                  }
+                  */
+                  /*
+                    onChange={
+                      (evt,newVal,oldVal) => 
+                        myrouter.addParams({
+                          matchBy:newVal,
+                          matchStr:'',
+                      })}
+                  */
 
 ConceptCodesLookupForm = connect(
   (state, props) => { // mapStateToProps
     let { vocabulary_id, 
           matchBy='codes', matchStr, } = myrouter.getQuery()
-    let concepts = cncpt.focalConcepts(state)
-    let addProps = {
+    return {
       vocabularies: state.vocabularies||[],
-      initialValues: {  vocabulary_id, 
-                        matchBy, matchStr, },
+      initialValues: {  vocabulary_id, matchBy, matchStr, },
       vocabulary_id, 
       matchBy, matchStr,
-      concepts,
+      cids: cncpt.focal(state),
       errMsg: undefined,
+      conceptState: state.concepts,
     }
-    return addProps
   },
-  dispatch => {
-    return bindActionCreators({ 
-      conceptPause:cncpt.pause, 
-      conceptResume:cncpt.resume, 
-    },dispatch)
+  dispatch=>bindActionCreators(
+    _.pick(cncpt,
+           ['wantConcepts','pause','resume']
+          ), dispatch),
+  (stateProps, dispatchProps, ownProps) => {
+    const {vocabulary_id, matchBy, matchStr,
+            conceptState, 
+            cids,
+          } = stateProps
+    const {wantConcepts, } = dispatchProps
+    return {
+      ...ownProps,
+      ...stateProps,
+      ...dispatchProps,
+      cset: cncpt.immutableConceptSet({
+              cids,
+              desc: `Lookup ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
+              maxDepth:2,
+              role: 'focal',
+            }, 
+            { conceptState, },
+            dispatchProps,wantConcepts,
+      ),
+    }
   }
 )(ConceptCodesLookupForm)
 

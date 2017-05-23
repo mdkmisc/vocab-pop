@@ -128,8 +128,8 @@ const getPalette =
   (theme=LT, subTheme='main') => getMuiTheme(
     theme, {palette:getColors(subTheme)}).palette
 
-const getStyles = pal => {   //subThemeStyles[subTheme]
-  return {
+const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
+  let styles = {
     tooltip: {
       div: {
         backgroundColor: pal.dark,
@@ -231,23 +231,15 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
         */
       }
     },
+    circularProgress: {
+      styleProps: {
+        color: pal.alternateTextColor,
+      },
+    },
     raisedButton: {
-      //padding: 8,
-      //margin: 4,
-      width:'auto',
-      minWidth:'auto',
-      //border:'1px solid pink',
-      //color: 'white',
-      lineHeight:'auto',
-      height:'auto',
-      minHeight:'auto',
-          padding: '1px 3px 1px 3px',
-          margin: '5px 2px 1px 2px',
-          backgroundColor: pal.regular,
-          color: pal.alternateTextColor,
       styleProps: {
         buttonStyle: {
-          backgroundColor: pal.regular,
+          backgroundColor: pal.light,
           color: pal.alternateTextColor,
           //padding: 4,
           //margin: 4,
@@ -255,14 +247,36 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
           //minWidth:'auto',
           //color:'darkgray'
         },
+        //labelColor: pal.alternateTextColor,
+        //labelPosition: 'before',
+        labelStyle: { },
       },
-      container: {
-        //padding: 20,
-        //margin: 20,
-        //backgroundColor: pal.lighter,
-        //textColor: pal.textColor,
-        //border: `1px solid ${pal.darker}`,
-        //width:'auto',
+      /*
+      span: {
+        small: {
+        },
+      }
+      */
+      style: {
+        width:'auto',
+        minWidth:'auto',
+        lineHeight:'auto',
+        height:'auto',
+        minHeight:'auto',
+        padding: '1px 3px 1px 3px',
+        margin: '5px 2px 8px 2px',
+        color: pal.alternateTextColor,
+        backgroundColor: pal.light,
+      },
+      parentDiv: {
+        width:'auto',
+        minWidth:'auto',
+        lineHeight:'auto',
+        height:'auto',
+        minHeight:'auto',
+        padding: '1px 3px 1px 3px',
+        margin: '5px 2px 8px 2px',
+        backgroundColor: pal.lighter,
       },
     },
     /* not working right
@@ -464,7 +478,7 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
     headerLight: {
       fontSize: '1.6em',
       color: pal.darker,
-      backgroundColor: pal.light,
+      //backgroundColor: pal.light,
       //margin: '7px 0px 3px 0px',
       //padding: '0px 5px 0px 5px',
       borderBottom: `solid 1px ${pal.darker}`,
@@ -479,37 +493,44 @@ const getStyles = pal => {   //subThemeStyles[subTheme]
       
     },
   }
+  // not working---fix
+  return _.merge({},styles,override)
 }
 
 export class Muit {
   constructor(props={}) {
     let { muiTheme,
           sub, cset,
-          themeProps={}, // for setting, haven't used yet
-          invisible=false,
+          getMuiThemeProps={}, // for sending to getMuiTheme
+          override, global,
     } = props
     sub = (cset && cset.sc()) || sub || 'main'
-    themeProps.invisible = invisible
     let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
-    theme = getMuiTheme(theme,{...getStyles(theme.palette)}, {...themeProps})
-    let desc = { invisible, subTheme: sub, props,
+    theme = getMuiTheme(
+              theme,
+              {...getStyles(theme.palette, override, global)},
+              {...getMuiThemeProps}
+    )
+    let desc = { subTheme: sub, props,
                  cardTitle: JSON.stringify(theme.cardTitle),
     }
 
     let reqFunc = req => {
       if (!req)
         return theme
-      return _.has(theme, req) ? _.get(theme, req) : {}
+      return {...(_.has(theme, req) ? _.get(theme, req) : {}), ...global}
     }
 
     reqFunc.props = newProps => {
       if (!_.isEmpty(newProps) || !theme) {
         return muit({muiTheme:theme, ...newProps})
       }
-      throw new Error("not sure what return is expected")
+      console.error("use M.showProps() or M.desc()")
     }
+    reqFunc.showProps = () => props
 
     reqFunc.desc = () => {
+      return desc
       return _.map(desc, (v,k)=>`${k}: ${v}`).join(', ')
     }
     reqFunc.palette = () => {

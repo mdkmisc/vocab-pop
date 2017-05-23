@@ -45,11 +45,16 @@ import {Glyphicon, Row, Col,
 import SortableTree from 'react-sortable-tree'
 
 import Badge from 'material-ui/Badge'
-import {GridList, GridTile} from 'material-ui/GridList';
-import IconButton from 'material-ui/IconButton';
-import Subheader from 'material-ui/Subheader';
-import CircularProgress from 'material-ui/CircularProgress';
-import StarBorder from 'material-ui/svg-icons/toggle/star-border';
+import {GridList, GridTile} from 'material-ui/GridList'
+import IconButton from 'material-ui/IconButton'
+import Subheader from 'material-ui/Subheader'
+import CircularProgress from 'material-ui/CircularProgress'
+import StarBorder from 'material-ui/svg-icons/toggle/star-border'
+import ExpandMore from 'material-ui/svg-icons/navigation/expand-more'
+import ExpandLess from 'material-ui/svg-icons/navigation/expand-less'
+import FileDownload from 'material-ui/svg-icons/file/file-download'
+
+
 import Chip from 'material-ui/Chip'
 import muit from 'src/muitheme'
 import MenuItem from 'material-ui/MenuItem'
@@ -84,69 +89,12 @@ import {
 } from 'redux-form-material-ui'
 
 window.viewCounts = {
-  LinksWithCounts: 0,
-  RelsPeek: 0,
+  RelsView: 0,
   RelView: 0,
   IndividualConceptViews: 0,
   WrapInCard: 0,
   ConceptInfoGridList: 0,
   ConceptViewContainer: 0,
-}
-export const LinksWithCounts = props => {
-  let {cset, depth, M, ttid} = props
-  if (M('invisible'))
-    return null
-  viewCounts.LinksWithCounts++
-  let visibility = M('invisible') ? 'hidden' : 'visible'
-  let height = M('invisible') ? '0px' : 'auto'
-  if (cset.concepts().length > 50) {
-    return <ConceptsSummary M={M} cset={cset} />
-  }
-  return  <div style={{visibility, height}}>
-            {
-              cset.concepts().map(
-                (c,i) => {
-                  return <LinkWithCounts key={i}
-                            ttid={ttid}
-                            M={M}
-                            cset={cset.subset([c])}
-                            title={c.concept_code}
-                            tip={`${c.vocabulary_id}: ${c.concept_name}`}
-                        />
-                })
-            }
-          </div>
-}
-export class LinkWithCounts extends Component {
-  render() {
-    let {cset, ttid, title, tip, muitParams, M} = this.props
-    //let M = muit(muitParams)
-    let cnts = cdmCnts(cset, d=>d)
-    let href = '#' // should be link to concept focus
-
-    let ttText = _.isString(tip) ? tip : ''
-    let ttFancy = tip
-    let contents = title
-    if (cnts.short.length) {
-      contents += ` (${cnts.short.join(', ')})`
-      ttText += ` (${cnts.long.join(', ')})`
-      ttFancy = <div><div>{tip}</div>{cnts.long.map((c,i)=><div key={i}>{c}</div>)}</div>
-    }
-    return  (
-      <span>
-        <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
-          <RaisedButton
-            style={M('raisedButton')}
-            buttonStyle={M('raisedButton.styleProps.buttonStyle')}
-            href={href}
-          >
-            {contents}
-            <Counts cset={cset} M={M}/>
-          </RaisedButton>
-        </TooltipWrapper>
-      </span>
-    )
-  }
 }
 export const CdmCountView = props => {
   let {cnt, badgeStyle, rootStyle, ...rest} = props
@@ -169,44 +117,64 @@ const colname = cnt => {
 }
 export class RelButton extends Component {
   render() {
-    let {cset, ttid, M,} = this.props // this is cset for the rel
+    let {cset, ttid, M, toggleShowRel, shouldShow} = this.props // this is cset for the rel
     //let {relName, relcids} = rel
     //let href = '#' // should be link to concept focus
 
-    let ttText = cset.longDesc()
+    let status = cset.status()
+    let ttText = status.msg
+    //let ttText = cset.longDesc()
     let contents = cset.shortDesc()
     return  (
       <span>
         <TooltipWrapper {...{ttid,ttText,M}} >
           <RaisedButton
-            onClick={() => cset.loadConcepts()}
-            style={M('raisedButton')}
-            buttonStyle={M('raisedButton.styleProps.buttonStyle')}
+            {...M('raisedButton.styleProps')}
+            style={M('raisedButton.style')}
+            onClick={() => {
+              cset.loadConcepts()
+              toggleShowRel(cset)
+            }}
+            label={`${cset.cidCnt()} ${contents} ${shouldShow}`}
+            labelPosition='before'
+            icon={
+              (status.status === 'not requested' && <FileDownload/>) ||
+              (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>))
+            }
+            secondary={true}
             //href={href}
           >
-            {contents}
+            {status.status === 'not determined' || status.status === 'loading'
+                ? <CircularProgress size={20} 
+                    {...M('circularProgress.styleProps')}/> : null
+            }
           </RaisedButton>
         </TooltipWrapper>
       </span>
     )
   }
 }
-const RelsPeek = props => { // assuming I just have cids, no concepts
-  let {cset,title='', depth, maxDepth, ttid} = props
-  viewCounts.RelsPeek++
+const RelsView = props => { // assuming I just have cids, no concepts
+  let {cset,title='', depth, maxDepth, ttid, toggleShowRel, showRel} = props
+  viewCounts.RelsView++
   let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
   return (
-            <div //style={M('raisedButton.container')}
-                  //style={{ border: '4px solid green', }}
-            >
-              Related to:
-              { _.map(cset.rels(), (rel,i) =>
-                  <RelButton cset={rel} ttid={ttid} M={M} key={i} />
-              )}
-            </div>
+    <div>
+      <div style={M('raisedButton.parentDiv')} >
+        <div style={M('headerLight')}>Related Concepts</div>
+        { _.map(cset.rels(), (rel,i) => {
+            let shouldShow = !!showRel(rel)
+            return <RelButton cset={rel} ttid={ttid} M={M} key={i} 
+                      toggleShowRel={toggleShowRel} shouldShow={shouldShow} />
+        })}
+      </div>
+      { _.map(cset.rels(), (rel,i) => {
+        let shouldShow = !!showRel(rel)
+        return shouldShow ? <ConceptViewContainer key={i} cset={rel} /> : null
+      })}
+    </div>
   )
-  if (depth > maxDepth) {
-  }
+  //if (depth > maxDepth) { }
   return <div>
           full rels instead of peek, depth: {depth} &lt; {maxDepth}
           {
@@ -228,7 +196,7 @@ const RelsPeek = props => { // assuming I just have cids, no concepts
 }
 const RelView = ({relName,relcids,depth,maxDepth,title,M,}) => {
   viewCounts.RelView++
-  /* only called by RelsPeek (full rels) */
+  /* only called by RelsView (full rels) */
   //let title = `RelView: ${relcids.length} ${relName} concepts: ${relcids.toString()}`
   title = `${title}-->RelView ${relcids.length} ${relName}`
   if (depth > maxDepth) {
@@ -340,71 +308,6 @@ class WrapInCard extends Component {
     )
   }
 }
-class ConceptInfoGridList extends Component {
-  render() {
-    let {
-          // title, subtitle, // use in container, not here
-          M,
-          ttid,
-          initiallyExpanded,
-          cset,
-          linksWithCounts,
-        } = this.props
-    if (cset.concepts().length < 1)
-      return null
-    viewCounts.ConceptInfoGridList++
-
-    let scCsets = cset.scCsets()
-    if (scCsets.length < 1) {
-      debugger
-      return null
-    }
-    /*
-    if (bySc.length === 1) {
-      //return <div>{children}</div>
-      let sc = bySc[0]
-      let muitParams = {sc}
-      let M = muit(muitParams)
-      return  enhanceChildren(children, { concepts, muitParams, sc, depth }, M)
-    }
-    */
-    let contents = scCsets.map((scCset,i) => {
-      M = M.props({cset:cset.scCset})
-      let title = `${scCset.conCnt()} ${scCset.scName()}`
-      return  <div key={i} style={M('ciglDiv')}>
-                { linksWithCounts 
-                    ? <LinksWithCounts 
-                        ttid={ttid}
-                        cset ={scCset}
-                        M={M}
-                        //titleText={`${titleText} / ${title}`}
-                      /> : '' }
-                {/* depth > maxDepth
-                    ? <div>no RelsPeek: {depth} > {maxDepth}</div>
-                    : <div>yes RelsPeek: {depth} &lte; {maxDepth}
-                      </div>
-                */}
-                        <RelsPeek
-                                  cset ={scCset}
-                                  M={M}
-                                  ttid={ttid}
-                        />
-                { false &&
-                  cset.concepts().length > 1
-                  ? <WrapInCard initiallyExpanded={false} M={M}
-                                title={'Individual Concepts'} >
-                      <IndividualConceptViews cset ={scCset} />
-                    </WrapInCard>
-                  : null
-                }
-              </div>
-    })
-    let visibility = M('invisible') ? 'hidden' : 'visible'
-    return  <div style={{visibility}}>
-              {contents}
-            </div>
-  }
-}
 class ConceptViewContainer extends Component {
   constructor(props) {
     let {depth, maxDepth, title} = props
@@ -414,6 +317,16 @@ class ConceptViewContainer extends Component {
     viewCounts.ConceptViewContainer++
     super(props)
     this.ttid = 'cvc'
+    let {cset} = props
+    let showRel = cset.showRelFunc()
+    this.state = {
+      showRel: rel => showRel(rel.prop('relationship')),
+      showRels: showRel(),
+      toggleShowRel: (rel) => {
+        showRel(rel.prop('relationship'), !rel.shouldThisShow(showRel))
+        this.setState({showRels:showRel()}) // just to force update
+      },
+    }
   }
   componentDidUpdate(prevProps, prevState) {
     let {cset, } = this.props
@@ -428,8 +341,9 @@ class ConceptViewContainer extends Component {
   render() {
     let {cset, title, subtitle,
             wantConcepts, initiallyExpanded=true,
-            muitParams={}, linksWithCounts, M=muit(),
+            muitParams={}, M=muit(),
         } = this.props
+    let {toggleShowRel, showRel} = this.state
     M = M.props({cset})
     let cnts = cdmCnts(cset, d=>d)
     let ttText = cnts.long.join(', ')
@@ -439,6 +353,7 @@ class ConceptViewContainer extends Component {
                   }
                 </div>
 
+    let countsM = M.props({cset,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}})
     title = title || 
       <span>
         {
@@ -449,18 +364,8 @@ class ConceptViewContainer extends Component {
             .join(', ')
           + ' concepts'
         }
+        <Counts cset={cset} M={countsM} />
       </span>
-
-    /*
-    title = <span>
-              {title}
-              <TooltipWrapper {...{ttid:this.ttid,ttText,ttFancy, M}} >
-                <span style={{fontSize: '.6em',}} >
-                  ( <Counts cset={cset} M={M}/> )
-                </span>
-              </TooltipWrapper>
-            </span>
-    */
     subtitle= typeof subtitle === 'function' ? subtitle(this.props) : subtitle
     return  (
       <WrapInCard M={M}
@@ -469,12 +374,15 @@ class ConceptViewContainer extends Component {
                   title={title}
                   //subtitle={subtitle}
       >
-        <RelsPeek cset={cset} ttid={this.ttid} />
-        <Counts cset={cset} M={M}/>
-
-        {/* not going to use this now... maybe come back to it */}
-        <div style={{zoom:.4, opacity: 0.4, backgroundColor:'orange'}}>
-          <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} />
+        <RelsView cset={cset} ttid={this.ttid} 
+            toggleShowRel={toggleShowRel}
+            showRel={showRel}
+        />
+        <div style={{zoom:.3, opacity: 0.4, backgroundColor:'orange'}}>
+          <br/> <br/>
+          <ConceptsSummary M={M} cset={cset} />
+          {/* not going to use this now... maybe come back to it 
+          <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} /> */}
         </div>
       </WrapInCard>
     )
@@ -518,13 +426,14 @@ export const ConceptsSummary = props => {
   M = M.props({cset})
   let cnts = cdmCnts( cset, d=>d)
   let sg = _.supergroup(cset.concepts(), ['domain_id','vocabulary_id','concept_class_id'])
-  console.log(M.desc())
+  let countsM = M.props({cset,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}})
   return  <div >
             Concepts Summary for {cset.concepts().length} concepts
             <pre style={M('randomDiv')}>
               {JSON.stringify(cnts)} {'\n\n'}
               {sg.leafNodes().namePaths().join('\n')}
                     ( <Counts cset={cset} M={M}/> )
+                  (<Counts cset={cset} M={countsM} />)
             </pre>
           </div>
 }

@@ -44,35 +44,25 @@ class SourceTargetSourceForm extends Component {
     ReactTooltip.rebuild()
   }
   render() {
-    let { vocabulary_id, matchBy, matchStr, 
-          cids=[], csetSelectors,
-          conceptStatus, wantConcepts,
-        } = this.props
+    let { vocabulary_id, conceptStatus, cset, } = this.props
     let M = muit()
-    //let formParams = {  vocabulary_id:'blah', matchBy, matchStr:'eek', }
     let form = <ConceptCodesLookupForm M={M}/>
     let content = null
-    let invisible = false
+    //let invisible = false
     switch (conceptStatus) {
       case cncpt.conceptActions.PAUSE:
         content = <div />
         break
       case cncpt.conceptActions.BUSY:
-        invisible = true
+        //invisible = true
       case cncpt.conceptActions.FULL:
         //content = <div>concept store is full</div>
         //break
       default:
         content =
             <C.ConceptViewContainer 
-
-              cset={cncpt.immutableConceptSet({
-                      cids, 
-                      desc: `STS ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
-                      maxDepth:2,
-                      role: 'focal',
-                    }, csetSelectors, wantConcepts,)}
               linksWithCounts={true}
+              cset={cset}
               //styleOverrides={{root:'card.root.top'}}
             />
     }
@@ -103,21 +93,38 @@ SourceTargetSourceForm = reduxForm({
 })(SourceTargetSourceForm)
 
 SourceTargetSourceForm = connect(
-  (state, props) => { // mapStateToProps
-    //const selector = formValueSelector('concept_codes_form')
-    const {vocabulary_id, matchBy, matchStr, } 
-          = myrouter.getQuery()
+  (state, props) => {
+    const {vocabulary_id, } = myrouter.getQuery()
     return {
-      vocabulary_id, matchBy, matchStr,
-      formRef: state.form.stsform,
-      cids: cncpt.focal(state),
-      csetSelectors: {
-        cSelector: cncpt.concepts(state),
-        conceptState: state.concepts,
-      },
+      vocabulary_id,
+      conceptState: state.concepts,
       conceptStatus: state.concepts.requests.status,
+      cids: cncpt.focal(state),
     }
   },
-  dispatch=>bindActionCreators(_.pick(cncpt,['wantConcepts']), dispatch)
+  dispatch=>bindActionCreators(_.pick(cncpt,['wantConcepts']), dispatch),
+  (stateProps, dispatchProps, ownProps) => {
+    const {vocabulary_id, conceptState, conceptStatus, cids,
+
+              } = stateProps
+    const {wantConcepts, } = dispatchProps
+    const {matchBy, matchStr, } = myrouter.getQuery()
+
+    return {
+      vocabulary_id,
+      conceptStatus,
+      cset: new cncpt.ConceptSet({
+              cids,
+              desc: `STS ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
+              maxDepth:2,
+              role: 'focal',
+            }, 
+            {
+              conceptState,
+            },
+            wantConcepts,
+      ),
+    }
+  }
 )(SourceTargetSourceForm)
 export default SourceTargetSourceForm
