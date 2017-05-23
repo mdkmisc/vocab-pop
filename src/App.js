@@ -19,10 +19,11 @@ Copyright 2016 Sigfried Gold
 import {ApiWatch, ApiSnackbar} from 'src/api'
 import config from 'src/config'
 import 'src/sass/Vocab.css'
+import {ConceptCodesLookupForm} from 'src/components/Lookups'
+import SourceTargetSource from 'src/components/SourceTargetSource'
 import _ from 'src/supergroup'
 import {Tooltips, } from 'src/tooltip'
 import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'
-import SourceTargetSource from 'src/components/SourceTargetSource'
 import VocabPop from 'src/components/VocabPop'
 
 import React, { Component, PropTypes } from 'react'
@@ -70,10 +71,12 @@ const routes = [
     main: ()=><VocabPop/>,
   },
   { path: '/sourcetargetsource',
-    main: (a,b,c,d,e,f) => {
-      //console.log("did i get anything in sts main?", {a,b,c,d,e,f});
+    main: () => {
       return <SourceTargetSource/>
     },
+  },
+  { path: '/lookup',
+    main: () => <ConceptCodesLookupForm noDialog={true}/>
   },
 ]
 
@@ -258,6 +261,12 @@ class AppTabs extends React.Component {
       >
         <Tab  label="STS Report" value="ststreport"
             data-route="/sourcetargetsource"
+            onActive={tab=>nav(tab.props['data-route'])} 
+        >
+          {main}
+        </Tab>
+        <Tab  label="Lookup Form" value="lookup"
+            data-route="/lookup"
             onActive={tab=>nav(tab.props['data-route'])} 
         >
           {main}

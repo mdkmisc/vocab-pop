@@ -135,7 +135,7 @@ export class RelButton extends Component {
               cset.loadConcepts()
               toggleShowRel(cset)
             }}
-            label={`${cset.cidCnt()} ${contents} ${shouldShow}`}
+            label={`${cset.cidCnt()} ${contents}`}
             labelPosition='before'
             icon={
               (status.status === 'not requested' && <FileDownload/>) ||

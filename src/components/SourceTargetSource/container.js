@@ -66,24 +66,11 @@ class SourceTargetSourceForm extends Component {
               //styleOverrides={{root:'card.root.top'}}
             />
     }
-    return (
-      <div ref={d=>this.divRef=d} id="sts-div" >
-        <h4>Source Target Source Report</h4>
-        <Card initiallyExpanded={true} containerStyle={{padding:0}} style={{padding:0}}>
-          <CardHeader style={{
-              padding:'10px 8px 0px 8px'
-            }}
-            actAsExpander={true}
-            showExpandableButton={true}
-            title={<h4>Source Target Source Report</h4>}
-          />
-          {form}
-          <CardText style={{leftMargin:15}} >
-            {content}
-          </CardText>
-        </Card>
-      </div>
-    )
+    return  <div>
+              {form}
+              {content}
+            </div>
+    content
   }
 }
 
