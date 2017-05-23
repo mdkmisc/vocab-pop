@@ -23,6 +23,7 @@ export default function configureStore(initialState = {}) {
   const rootReducer = combineReducers({
     api:apiReducer,
     vocabularies,
+    relationships: vocabs.relationshipsReducer,
     cids: cidsReducer,
     concepts: conceptReducer,
     //calls,

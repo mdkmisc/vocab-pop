@@ -220,6 +220,7 @@ ConceptCodesLookupForm = connect(
       cids: cncpt.focal(state),
       errMsg: undefined,
       conceptState: state.concepts,
+      relmetaState: state.relationships,
     }
   },
   dispatch=>bindActionCreators(
@@ -229,20 +230,19 @@ ConceptCodesLookupForm = connect(
   (stateProps, dispatchProps, ownProps) => {
     const {vocabulary_id, matchBy, matchStr,
             conceptState, 
-            cids,
-          } = stateProps
+            cids, relmetaState, } = stateProps
     const {wantConcepts, } = dispatchProps
     return {
       ...ownProps,
       ...stateProps,
       ...dispatchProps,
-      cset: cncpt.immutableConceptSet({
+      cset: new cncpt.ConceptSet({
               cids,
               desc: `Lookup ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
               maxDepth:2,
               role: 'focal',
             }, 
-            { conceptState, },
+            { conceptState, relmetaState, },
             dispatchProps,wantConcepts,
       ),
     }

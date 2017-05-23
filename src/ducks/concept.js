@@ -535,6 +535,7 @@ export class ConceptSet {
     this._props = Immutable(props)
     this.csetSelectors = csetSelectors
     this.conceptState = csetSelectors.conceptState
+    //this.relmetaState = csetSelectors.relmetaState
     this.wantConcepts = wantConcepts
 
     /* expecting: props: {cids, desc
@@ -544,7 +545,8 @@ export class ConceptSet {
      *  for rels (which are not subsets -- but the only kind of descendants that aren't):
      *    parent (relFrom), relName, cids, any known props of parent
     * title, fancyTitle, ttText, ttFancy, } = props */
-    if (props.concepts || !props.cids || !this.conceptState || !wantConcepts) {
+    if (props.concepts || !props.cids || !this.conceptState 
+          || !this.csetSelectors.relmetaState || !wantConcepts) {
       throw new Error("just give me cids and current conceptState and live wantConcepts")
     }
   }
@@ -567,6 +569,7 @@ export class ConceptSet {
 
   cids = () => this.prop('cids')
   concepts = (cids=this.cids()) => concepts(this.conceptState.loaded).filter(c=>_.includes(cids,c.concept_id))
+  reverseRelId = relId => this.csetSelectors.reverseRel(relId)
   concept_ids = (cids) => this.concepts(cids).map(d=>d.concept_id)
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
@@ -736,12 +739,13 @@ export class ConceptSet {
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
+  relName = () => this.prop('relationship')
   shortDesc = () => {
     //let {status, msg} = this.status()
     return (
       (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
       (this.hasProp('desc') && this.prop('desc')) ||
-      (this.role('rel') && this.prop('relationship')) ||
+      (this.role('rel') && this.relDesc('short')) ||
       (this.role('sub') && `shortDesc for ${this.prop('subtype')}`) ||
       "what kind of shortDesc do you want?"
     )
@@ -751,7 +755,7 @@ export class ConceptSet {
     return (
       (this.hasProp('longDesc') && this.prop('longDesc')) ||
       (this.hasProp('desc') && this.prop('desc')) ||
-      (this.role('rel') && this.prop('relationship')) ||
+      (this.role('rel') && this.relDesc('long')) ||
       (this.role('sub') && `longDesc for ${this.prop('subtype')}`) ||
       "what kind of longDesc do you want?"
     )
@@ -761,10 +765,20 @@ export class ConceptSet {
       (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
       (this.hasProp('longDesc') && this.prop('longDesc')) ||
       (this.hasProp('desc') && this.prop('desc')) ||
-      (this.role('rel') && this.prop('relationship')) ||
+      (this.role('rel') && this.relDesc('fancy')) ||
       (this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
       "what kind of fancyDesc do you want?"
     )
+  }
+  relDesc = (type) => {
+    let rel = this.relName()
+    switch (type) {
+      case 'short':
+      case 'long':
+      case 'fancy':
+      default:
+        return `${rel}/${this.reverseRelId(rel)}`
+    }
   }
 
 
@@ -803,8 +817,4 @@ export class ConceptSet {
     }
     this.wantConcepts(this.cids())
   }
-}
-
-export const immutableConceptSet = (...args) => {
-  return Immutable(new ConceptSet(...args))
 }

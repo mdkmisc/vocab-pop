@@ -5,6 +5,7 @@ import _ from 'src/supergroup'; // in global space anyway...
 import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
+import * as relmeta from 'src/ducks/vocabularies' // the rel reducer is in there right now
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 import {ApiWatch, ApiSnackbar} from 'src/api'
 //import * as sts from 'src/STSReport'
@@ -85,30 +86,31 @@ SourceTargetSourceForm = connect(
       conceptState: state.concepts,
       conceptStatus: state.concepts.requests.status,
       cids: cncpt.focal(state),
+      relmetaState: state.relationships,
+      reverseRel: relmeta.reverseRel(state),
+      
+
     }
   },
   dispatch=>bindActionCreators(_.pick(cncpt,['wantConcepts']), dispatch),
   (stateProps, dispatchProps, ownProps) => {
-    const {vocabulary_id, conceptState, conceptStatus, cids,
-
-              } = stateProps
+    const {vocabulary_id, conceptState, conceptStatus, 
+            cids, relmetaState, reverseRel, } = stateProps
     const {wantConcepts, } = dispatchProps
     const {matchBy, matchStr, } = myrouter.getQuery()
-
     return {
       vocabulary_id,
       conceptStatus,
-      cset: new cncpt.ConceptSet({
-              cids,
-              desc: `${vocabulary_id} ${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '}
-                      ${matchStr}`,
-              maxDepth:2,
-              role: 'focal',
-            }, 
-            {
-              conceptState,
-            },
-            wantConcepts,
+      cset: new cncpt.ConceptSet(
+        {
+          cids,
+          maxDepth:2,
+          role: 'focal',
+          desc: `${vocabulary_id} ${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '}
+                  ${matchStr}`,
+        }, 
+        { conceptState, relmetaState, reverseRel, },
+        wantConcepts,
       ),
     }
   }

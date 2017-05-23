@@ -307,7 +307,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
   return (
     <div>
       <div style={M('raisedButton.parentDiv')} >
-        <div style={M('headerLight')}>Related Concepts</div>
+        <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
         { _.map(cset.rels(), (rel,i) => {
             let shouldShow = !!showRel(rel)
             return <RelButton cset={rel} ttid={ttid} M={M} key={i} 

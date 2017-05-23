@@ -146,8 +146,7 @@ export const cachedAjax = props => {
   })
   return rxAjax
 }
-export const apiCall = 
-  (props, store) => {
+export const apiCall = (props, store) => {
   let { apiPathname, 
         params, 
         url,
@@ -177,29 +176,6 @@ export const apiCall =
               //.map(successMap)
               .catch(catchFunc)
 }
-
-/**** start epics ******************************************/
-
-/*
-const apiCallEpic = (action$, store) => (
-  action$.ofType(apiActions.API_CALL)
-    .mergeMap(()=>{
-      let successMap = results=>{ return {type:vocabActions.GOT_DATA, payload:results} }
-      return apiCall({apiPathname, successMap, store})
-    })
-    .catch(err => {
-      console.error('error in loadVocabularies', err)
-      return Rx.Observable.of({
-        type: 'vocab-pop/vocabularies/FAILURE',
-        meta: {apiPathname},
-        error: true
-      })
-    })
-)
-export const epics = [ apiCallEpic ]
-*/
-
-/**** end epics ******************************************/
 function handleErrors(p) {
     let {jsonPromise,response} = p
     if (!response.ok) {
