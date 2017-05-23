@@ -338,9 +338,9 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
       subtitle: {
         zoom: 0.8,
         //backgroundColor: pal.regular,
-        boxShadow: `inset 0 0 .4em ${pal.dark}`,
+        //boxShadow: `inset 0 0 .4em ${pal.dark}`,
         padding: '.5em',
-        border: `1px solid ${pal.darker}`,
+        //border: `1px solid ${pal.darker}`,
         //border: '9px inset black',
         //border: `9px inset ${pal.dark}`,
         surround: {

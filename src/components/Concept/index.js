@@ -353,26 +353,31 @@ class ConceptViewContainer extends Component {
                   }
                 </div>
 
-    let countsM = M.props({cset,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}})
-    title = title || 
-      <span>
-        {
-          cset.conCnt() + ' ' +
-          ['dom','voc','cls']
-            .map(fld => cset.singleMemberGroupLabel(fld))
-            .filter(d=>d)
-            .join(', ')
-          + ' concepts'
-        }
-        <Counts cset={cset} M={countsM} />
-      </span>
-    subtitle= typeof subtitle === 'function' ? subtitle(this.props) : subtitle
+    let countsM = M.props({cset})
+      //,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}
+    title = title || cset.shortDesc()
+    subtitle = 
+      typeof subtitle === 'function' 
+        ? subtitle(this.props) 
+        : subtitle || <span>
+                        {
+                          cset.conCnt() + ' ' + 
+                          ['dom','voc','cls']
+                            .map(fld => cset.singleMemberGroupLabel(fld))
+                            .filter(d=>d)
+                            .join(', ')
+                          + ' concepts'
+                        }
+                        <div style={{leftMargin: 20}} >
+                          <Counts cset={cset} M={countsM} />
+                        </div>
+                      </span>
     return  (
       <WrapInCard M={M}
                   initiallyExpanded={initiallyExpanded}
                   //muitParams={muitParams}
                   title={title}
-                  //subtitle={subtitle}
+                  subtitle={subtitle}
       >
         <RelsView cset={cset} ttid={this.ttid} 
             toggleShowRel={toggleShowRel}

@@ -61,8 +61,7 @@ class SourceTargetSourceForm extends Component {
       default:
         content = 
           (cset.cidCnt() && !cset.conCnt() && <CircularProgress />) ||
-          (cset.conCnt() && <C.ConceptViewContainer 
-                              linksWithCounts={true} cset={cset} />) ||
+          (cset.conCnt() && <C.ConceptViewContainer cset={cset} />) ||
           null
     }
     return  <div>
@@ -101,7 +100,8 @@ SourceTargetSourceForm = connect(
       conceptStatus,
       cset: new cncpt.ConceptSet({
               cids,
-              desc: `STS ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
+              desc: `${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '}
+                      ${matchStr}`,
               maxDepth:2,
               role: 'focal',
             }, 
