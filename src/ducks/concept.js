@@ -532,6 +532,10 @@ export class ConceptSet {
    *  meta data. not for use in store or selectors!
    */
   constructor(props, csetSelectors, wantConcepts) {  // still, try to make this never mutate
+    if (props.role === 'rel') {
+      //debugger
+      //console.log(new.target.name)
+    }
     this._props = Immutable(props)
     this.csetSelectors = csetSelectors
     this.conceptState = csetSelectors.conceptState
@@ -548,6 +552,9 @@ export class ConceptSet {
     if (props.concepts || !props.cids || !this.conceptState 
           || !this.csetSelectors.relmetaState || !wantConcepts) {
       throw new Error("just give me cids and current conceptState and live wantConcepts")
+    }
+    if (!props.role) {
+      throw new Error("need a role")
     }
   }
   props = () => this._props
@@ -569,7 +576,6 @@ export class ConceptSet {
 
   cids = () => this.prop('cids')
   concepts = (cids=this.cids()) => concepts(this.conceptState.loaded).filter(c=>_.includes(cids,c.concept_id))
-  reverseRelId = relId => this.csetSelectors.reverseRel(relId)
   concept_ids = (cids) => this.concepts(cids).map(d=>d.concept_id)
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
@@ -709,6 +715,34 @@ export class ConceptSet {
   depth = () => this.parent ? this.parent.depth() + 1 : 0
   maxDepth = () => this.prop('maxDepth')
 
+  shortDesc = () => {
+    //let {status, msg} = this.status()
+    return (
+      (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.role('sub') && `shortDesc for ${this.prop('subtype')}`) ||
+      `I'm a ${this.role()}, what kind of shortDesc do you want?`
+    )
+  }
+  longDesc = () => {
+    //let {status, msg} = this.status()
+    return (
+      (this.hasProp('longDesc') && this.prop('longDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.role('sub') && `longDesc for ${this.prop('subtype')}`) ||
+      `I'm a ${this.role()}, what kind of longDesc do you want?`
+    )
+  }
+  fancyDesc = () => {
+    return (
+      (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
+      (this.hasProp('longDesc') && this.prop('longDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
+      `I'm a ${this.role()}, what kind of fancyDesc do you want?`
+    )
+  }
+
   rels = () => {
     let rels = _.flatten(this.concepts().map(c=>c.rels))
     let combined = rels.reduce(
@@ -717,12 +751,14 @@ export class ConceptSet {
       ), {})
     return _.map(combined, (v,k) => this.rel(k, v))
   }
+
   rel = (relationship, relcids) => {
-    return new ConceptSet({
+    return new RelConceptSet({
                 //...this.props(),
                 cids: relcids,
                 parent: this, 
                 relationship, 
+                desc: relationship,
                 longDesc: `${this.shortDesc()} ${relationship}`,
                 fancyDesc: 
                   <span>
@@ -739,77 +775,7 @@ export class ConceptSet {
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
-  relName = () => this.prop('relationship')
-  shortDesc = () => {
-    //let {status, msg} = this.status()
-    return (
-      (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
-      (this.role('rel') && this.relDesc('short')) ||
-      (this.role('sub') && `shortDesc for ${this.prop('subtype')}`) ||
-      "what kind of shortDesc do you want?"
-    )
-  }
-  longDesc = () => {
-    //let {status, msg} = this.status()
-    return (
-      (this.hasProp('longDesc') && this.prop('longDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
-      (this.role('rel') && this.relDesc('long')) ||
-      (this.role('sub') && `longDesc for ${this.prop('subtype')}`) ||
-      "what kind of longDesc do you want?"
-    )
-  }
-  fancyDesc = () => {
-    return (
-      (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
-      (this.hasProp('longDesc') && this.prop('longDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
-      (this.role('rel') && this.relDesc('fancy')) ||
-      (this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
-      "what kind of fancyDesc do you want?"
-    )
-  }
-  relDesc = (type) => {
-    let rel = this.relName()
-    switch (type) {
-      case 'short':
-      case 'long':
-      case 'fancy':
-      default:
-        return `${rel}/${this.reverseRelId(rel)}`
-    }
-  }
-
-
-  showRelFunc = () => {
-    let relsToShow = {}
-    return (rel,bool) => {
-      if (typeof rel !== 'undefined') {
-        if (typeof bool !== 'undefined') {
-          relsToShow = {...relsToShow, [rel]: bool}
-        } else {
-          return relsToShow[rel]
-        }
-      }
-      return relsToShow
-    }
-  }
   role = r => r ? (this.prop('role') === r) : this.prop('role')
-  shouldThisShow = (showRel) => {
-    if (this.role('rel')) {
-      if (showRel(this.prop('relationship'))) {
-        return this.prop('parent').shouldThisShow()
-      }
-      return false
-    } else {
-      if (this.role('focal')) {
-        return true
-      } else {
-        debugger
-      }
-    }
-  }
 
   loadConcepts = () => {
     if (this.loaded()) {
@@ -818,3 +784,137 @@ export class ConceptSet {
     this.wantConcepts(this.cids())
   }
 }
+
+
+
+class RelConceptSet extends ConceptSet {
+  constructor(...rest) {
+    //debugger
+    //console.log(new.target.name)
+    super(...rest)
+  }
+  /*
+  rels = () => {
+    let rels = _.flatten(this.concepts().map(c=>c.rels))
+    let combined = rels.reduce(
+      (acc,{relationship,relcids}) => (
+        { ...acc, [relationship]: _.uniq((acc[relationship]||[]).concat(relcids)) }
+      ), {})
+    return _.map(combined, (v,k) => this.reverseRelConceptSet(k, v)).filter(d=>d)
+  }
+  rels = (fixthisfunc=d=>false) => {
+    let rels = _.flatten(this.concepts().map(c=>c.rels))
+    let combined = rels.reduce(
+      (acc,{relationship,relcids}) => (
+        { ...acc, [relationship]: _.uniq((acc[relationship]||[]).concat(relcids)) }
+      ), {})
+    return (
+              _.map(combined, (v,k) => 
+                  fixthisfunc(k) ? this.reverseRelConceptSet(k,v)
+                                 : this.rel(k, v))
+    )
+  }
+  */
+  reverseRelConceptSet = (relationship, relcids) => {
+    /*
+    if (relationship !== this.reverseRelId(this.relName())) {
+      return null
+    }
+    */
+    return new RevRelConceptSet({
+                //...this.props(),
+                cids: relcids,
+                parent: this, 
+                relationship, 
+                desc: `revrel of ${this.shortDesc()} ${relationship}`,
+                longDesc: `${this.shortDesc()} ${relationship}`,
+                fancyDesc: 
+                  <span>
+                    <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
+                                    marginRight: 8,}}>
+                      {this.fancyDesc()} 
+                    </span>
+                    <span style={{marginLeft: 8,}}
+                        aria-hidden="true" 
+                        data-icon="&#xe90a;" 
+                        className="icon-link"></span>
+                    {relationship}
+                  </span>,
+                role: 'rel',
+              }, this.csetSelectors, this.wantConcepts)
+  }
+  shortDesc = () => {
+    //let {status, msg} = this.status()
+    return (
+      (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      `I'm a ${this.role()}, what kind of shortDesc do you want?`
+    )
+  }
+  longDesc = () => {
+    //let {status, msg} = this.status()
+    return (
+      (this.hasProp('longDesc') && this.prop('longDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      `I'm a ${this.role()}, what kind of longDesc do you want?`
+    )
+  }
+  fancyDesc = () => {
+    return (
+      (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
+      (this.hasProp('longDesc') && this.prop('longDesc')) ||
+      (this.hasProp('desc') && this.prop('desc')) ||
+      `I'm a ${this.role()}, what kind of fancyDesc do you want?`
+    )
+  }
+  reverseRelId = relId => this.csetSelectors.reverseRel(relId)
+  relName = () => this.prop('relationship')
+  revrel = false
+}
+class RevRelConceptSet extends RelConceptSet {
+  constructor(...rest) {
+  let {props, csetSelectors, wantConcepts} = rest
+    super(...rest)
+    this.loadConcepts(props)
+    this.parent
+  }
+  revrel = true
+  rels = () => []
+}
+
+import {GridList, GridTile} from 'material-ui/GridList'
+export const ConceptStatusReport = ({lines=[], M}) => {
+  M = M || muit()
+  if (!lines.length)
+    return <div>GOT NO STATUS!!</div>
+  lines = lines.concat(_.map(viewCounts, (v,k)=>`${k}: ${v}`))
+  let cols = 3
+  let linesPerCol = Math.ceil(lines.length / cols)
+  return (<div style={{
+                  ...M('grid.parent'),
+                  backgroundColor:'white',
+                  justifyContent: 'auto',
+                  padding: 10,
+                }}>
+            Concept fetch status
+            <GridList 
+              {...M('grid.styleProps')}
+              style={{...M('grid.gridList.horizontal'),
+                        padding:0, margin: 0,
+                      }} cols={3}
+            >
+              {_.range(cols).map(col => {
+                col = parseInt(col)
+                return (<GridTile style={{
+                                ...M('grid.tile.plain'),
+                                padding:0, margin: 0,
+                              }} key={col} >
+                          <pre style={{border: 'none',}} >
+                            {lines.slice(col * linesPerCol, (col+1) * linesPerCol).join('\n')}
+                          </pre>
+                        </GridTile>)})}
+            </GridList>
+          </div>
+  )
+}
+

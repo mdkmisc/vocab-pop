@@ -270,31 +270,29 @@ create index rcgrpidx on :results.concept_record (domain_id, standard_concept, v
 
 drop table if exists :results.related_concept;
 create table :results.related_concept as
-select          cr.concept_id_1 as concept_id,
+    select      cr.concept_id_1 as concept_id,
                 crec.cgid,
                 'cr'::varchar(10) as source,
                 r.relationship_id relationship,
+                r.reverse_relationship_id reverse_relationship,
                 r.defines_ancestry as da,
                 r.is_hierarchical as ih,
                 null::integer as minlev,
                 null::integer as maxlev,
                 cr.concept_id_2 as related_concept_id,
                 crecrel.cgid as related_cgid
-                from :cdm.concept_relationship cr
-                join :cdm.relationship r
-                      on cr.relationship_id=r.relationship_id
-                join :results.concept_record crec
-                      on cr.concept_id_1 = crec.concept_id
-                join :results.concept_record crecrel
-                      on cr.concept_id_2 = crecrel.concept_id
-                where cr.invalid_reason is null
-                  and cr.concept_id_2 != cr.concept_id_1;
+    from :cdm.concept_relationship cr
+    join :cdm.relationship r on cr.relationship_id=r.relationship_id
+    join :results.concept_record crec on cr.concept_id_1 = crec.concept_id
+    join :results.concept_record crecrel on cr.concept_id_2 = crecrel.concept_id
+    where cr.invalid_reason is null and cr.concept_id_2 != cr.concept_id_1;
 
 insert into :results.related_concept
 select          ca.ancestor_concept_id as concept_id,
                 crec.cgid,
                 'caa' as source,
                 'ancestor' as relationship,
+                'descendant' as reverse_relationship,
                 null as da,
                 null as ih,
                 ca.min_levels_of_separation as minlev,
@@ -313,6 +311,7 @@ select          cd.descendant_concept_id as concept_id,
                 crec.cgid,
                 'cad' as source,
                 'descendant' as relationship,
+                'ancestor' as reverse_relationship,
                 null as da,
                 null as ih,
                 cd.min_levels_of_separation as minlev,
@@ -343,34 +342,38 @@ create table :results.relcnts as
               rc.cgid,
               rc.source,
               rc.relationship,
+              rc.reverse_relationship,
               rc.da,
               rc.ih,
               rc.related_cgid, cg.domain_id, cg.standard_concept, cg.vocabulary_id, cg.concept_class_id,
               min(rc.minlev) minlev,
               max(rc.maxlev) maxlev,
-              count(distinct related_concept_id) relcidcnt
+              count(distinct related_concept_id) relcidcnt -- == count(*), i think
           from :results.related_concept rc
           join concept_group cg on rc.related_cgid = cg.cgid
-          --where concept_id = 138225
-          group by 1,2,3,4,5,6,7,8,9,10,11
-          order by 1,2,3,4,5,6,7,8,9,10,11
+          --where concept_id = 4274037
+          group by 1,2,3,4,5,6,7,8,9,10,11,12
+          order by 1,2,3,4,5,6,7,8,9,10,11,12
   )
   select  concept_id, cgid,
           json_agg((
             select row_to_json(_)
             from (
-              select  related_cgid,
+              select  
+                      relationship,
+                      reverse_relationship,
+                      related_cgid,
                       domain_id, 
                       standard_concept, 
                       vocabulary_id, 
                       concept_class_id,
                       source,
-                      relationship,
                       da,
                       ih,
                       minlev,
                       maxlev,
                       relcidcnt
+              order by 1,2
             ) as _
           )) relgrps
   from percid

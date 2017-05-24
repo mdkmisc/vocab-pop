@@ -119,7 +119,6 @@ const defaultRoute = routes[0];
 
 
 import * as cncpt from 'src/ducks/concept'
-import * as C from 'src/components/Concept'
 class App extends Component {
   constructor(props: any) {
     super(props);
@@ -134,7 +133,7 @@ class App extends Component {
     let main = <Route {...route} component={route.main} />;
     return (
       <div>
-                <C.ConceptStatusReport lines={ this.props.conceptStatusReport } />
+                <cncpt.ConceptStatusReport lines={ this.props.conceptStatusReport } />
 
         <AppBar
           iconElementLeft={ 

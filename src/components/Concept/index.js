@@ -86,7 +86,6 @@ import {
 window.viewCounts = {
   RelsView: 0,
   IndividualConceptViews: 0,
-  WrapInCard: 0,
   ConceptInfoGridList: 0,
   ConceptViewContainer: 0,
 }
@@ -104,20 +103,14 @@ export const CdmCountView = props => {
             */}
           </Badge>
 }
-const colname = cnt => {
-  let cn = `${cnt.tbl}.${cnt.col}`
-  //console.log(cn)
-  return cn
-}
 class IndividualConceptViews extends Component {
   render() {
-    let {cset, depth, maxDepth, Wrapper='div', M,} = this.props
+    throw new Error("component needs updating")
+    let {cset, M,} = this.props
     viewCounts.IndividualConceptViews++
     return  <div>
             { cset.concepts().map((c,i) =>
                 <ConceptViewContainer key={i} M={M}
-                  depth={depth}
-                  maxDepth={maxDepth}
                   {...{
                     initiallyExpanded: false,
                     ...this.props,
@@ -130,61 +123,41 @@ class IndividualConceptViews extends Component {
             </div>
   }
 }
-class WrapInCard extends Component {
-  render() {
-    viewCounts.WrapInCard++
-    let { children,
-          title,
-          subtitle,
-          initiallyExpanded=false,
-          M,
-        } = this.props
-    return  (
-              <Card
-                  {...M('card.styleProps')}
-                  initiallyExpanded={initiallyExpanded}
-              >
-                <CardTitle
-                  {...M('cardTitle.styleProps')}
-                  title={title}
-                  subtitle={subtitle}
-                  titleStyle={_.isEmpty(title) ? {} : M('cardTitle.title')}
-                  subtitleStyle={_.isEmpty(subtitle) ? {} : M('cardTitle.subtitle')}
-                  showExpandableButton={true}
-                  //actAsExpander={true}
-                  expandable={false}
-                />
-                <CardText 
-                style={M('cardText.style')}
-                  expandable={true} 
-                  {...M('cardText.styleProps')} >
-                  <div style={M('cardText.children')}>
-                    {children}
-                  </div>
-                </CardText >
-              </Card>
-    )
-  }
+const groupLabel = props => {
+  let {cset, M, ttid} = props
+  return (<span>
+            {
+              cset.conCnt() + ' ' + 
+              ['dom','voc','cls']
+                .map(fld => cset.singleMemberGroupLabel(fld))
+                .filter(d=>d)
+                .join(', ')
+              + ' concepts'
+            }
+            <span style={{
+              marginLeft: 20, zoom:.8,
+            }} >
+              <Counts cset={cset} M={M.props({cset})} ttid={ttid} />
+            </span>
+          </span>
+  )
+  //,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}
 }
-class ConceptViewContainer extends Component {
+export class ConceptViewContainer extends Component {
   constructor(props) {
-    let {depth, maxDepth, title} = props
-    if (typeof depth === 'undefined' || typeof maxDepth === 'undefined' || depth > maxDepth + 1) {
-      //throw new Error(`tried to construct problem CVC: ${depth} / ${maxDepth}, ${sourceTitle} => ${title}`)
-    }
     viewCounts.ConceptViewContainer++
     super(props)
     let {cset} = props
-    let showRel = cset.showRelFunc()
     this.state = {
-      showRel: rel => showRel(rel.prop('relationship')),
-      showRels: showRel(),
-      toggleShowRel: (rel) => {
-        showRel(rel.prop('relationship'), !rel.shouldThisShow(showRel))
-        this.setState({showRels:showRel()}) // just to force update
-      },
+      relsExpanded: {}
     }
   }
+  isExpanded = rel => !!this.state.relsExpanded[rel.relName()]
+  expandRel = rel => this.setState({relsExpanded: {...this.state.relsExpanded, [rel.relName()]: true}})
+  collapseRel = rel => this.setState({relsExpanded: {...this.state.relsExpanded, [rel.relName()]: false}})
+  toggleRelExpanded = rel => this.setState({relsExpanded: {...this.state.relsExpanded, [rel.relName()]: !this.state.relsExpanded[rel.relName()]}})
+
+
   componentDidMount() {
     this.setState({
       ttid: 'cvc',
@@ -195,46 +168,47 @@ class ConceptViewContainer extends Component {
             wantConcepts, initiallyExpanded=true,
             muitParams={}, M=muit(),
         } = this.props
-    let {toggleShowRel, showRel, ttid} = this.state
+    let {ttid} = this.state
     M = M.props({cset})
-    let countsM = M.props({cset})
-      //,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}
     title = title || cset.fancyDesc()
-    subtitle = 
-      typeof subtitle === 'function' 
-        ? subtitle(this.props) 
-        : subtitle || <span>
-                        {
-                          cset.conCnt() + ' ' + 
-                          ['dom','voc','cls']
-                            .map(fld => cset.singleMemberGroupLabel(fld))
-                            .filter(d=>d)
-                            .join(', ')
-                          + ' concepts'
-                        }
-                        <span style={{
-                          marginLeft: 20, zoom:.8,
-                        }} >
-                          <Counts cset={cset} M={countsM} ttid={ttid} />
-                        </span>
-                      </span>
+    subtitle = groupLabel({cset, M, ttid})
+          
     return  (
-      <WrapInCard M={M}
-                  initiallyExpanded={initiallyExpanded}
-                  title={title}
-                  subtitle={subtitle}
+      <Card
+          {...M('card.styleProps')}
+          initiallyExpanded={initiallyExpanded}
       >
-        <RelsView cset={cset} ttid={ttid} 
-            toggleShowRel={toggleShowRel}
-            showRel={showRel}
+        <CardTitle
+          {...M('cardTitle.styleProps')}
+          title={title}
+          subtitle={subtitle}
+          titleStyle={M('cardTitle.title')}
+          subtitleStyle={M('cardTitle.subtitle')}
+          showExpandableButton={true}
+          //actAsExpander={true}
+          expandable={false}
         />
-        <div style={{zoom:.3, opacity: 0.4, backgroundColor:'orange'}}>
-          <br/> <br/>
-          <ConceptsSummary M={M} cset={cset} />
-          {/* not going to use this now... maybe come back to it 
-          <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} /> */}
-        </div>
-      </WrapInCard>
+        <CardText style={M('cardText.style')}
+          expandable={true} {...M('cardText.styleProps')} >
+          <div style={M('cardText.children')}>
+
+
+            <RelsView cset={cset} ttid={ttid} 
+                toggleRelExpanded={this.toggleRelExpanded}
+                isExpanded={this.isExpanded}
+            />
+
+            <div style={{zoom:.3, opacity: 0.4, backgroundColor:'orange'}}>
+              <br/> <br/>
+              <ConceptsSummary M={M} cset={cset} />
+              {/* not going to use this now... maybe come back to it 
+              <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} /> */}
+            </div>
+
+
+          </div>
+        </CardText >
+      </Card>
     )
   }
 }
@@ -269,7 +243,7 @@ export const TipButton = props => {
 }
 export class RelButton extends Component {
   render() {
-    let {cset, ttid, M, toggleShowRel, shouldShow} = this.props // this is cset for the rel
+    let {cset, ttid, M, toggleRelExpanded, shouldShow} = this.props // this is cset for the rel
     //let {relName, relcids} = rel
     //let href = '#' // should be link to concept focus
 
@@ -283,7 +257,7 @@ export class RelButton extends Component {
     let buttonProps = {
       onClick:() => {
         cset.loadConcepts()
-        toggleShowRel(cset)
+        toggleRelExpanded(cset)
       },
       //label: cset.fancyDesc(),
       label: `${cset.cidCnt()} ${cset.shortDesc()}`,
@@ -301,21 +275,29 @@ export class RelButton extends Component {
   }
 }
 const RelsView = props => { // assuming I just have cids, no concepts
-  let {cset,title='', depth, maxDepth, ttid, toggleShowRel, showRel} = props
+  let {cset,title='', ttid, toggleRelExpanded, isExpanded} = props
   viewCounts.RelsView++
   let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
   return (
     <div>
+    {/*
+      { cset.role('rel') && !cset.revrel
+        ?  _.map(cset.rels(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
+            return <ConceptViewContainer key={i} cset={rel} />
+          })
+        : null
+      }
+      */}
       <div style={M('raisedButton.parentDiv')} >
         <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
         { _.map(cset.rels(), (rel,i) => {
-            let shouldShow = !!showRel(rel)
+            let shouldShow = isExpanded(rel)
             return <RelButton cset={rel} ttid={ttid} M={M} key={i} 
-                      toggleShowRel={toggleShowRel} shouldShow={shouldShow} />
+                      toggleRelExpanded={toggleRelExpanded} shouldShow={shouldShow} />
         })}
       </div>
       { _.map(cset.rels(), (rel,i) => {
-        let shouldShow = !!showRel(rel)
+        let shouldShow = isExpanded(rel)
         return shouldShow ? <ConceptViewContainer key={i} cset={rel} /> : null
       })}
     </div>
@@ -335,83 +317,14 @@ export const ConceptsSummary = props => {
   M = M.props({cset})
   let cnts = cset.cdmCnts()
   let sg = _.supergroup(cset.concepts(), ['domain_id','vocabulary_id','concept_class_id'])
-  let countsM = M.props({cset,
-                            //global:{zoom:.6}, 
-                            //override:{raisedButton:{style:{marginLeft:30}}}
-                        })
   return  <div style={{zoom:.4}}>
             Concepts Summary for {cset.concepts().length} concepts
             <pre style={M('randomDiv')}>
               {JSON.stringify(cnts)} {'\n\n'}
               {sg.leafNodes().namePaths().join('\n')}
                     ( <Counts cset={cset} M={M}/> )
-                  (<Counts cset={cset} M={countsM} />)
+                  (<Counts cset={cset} M={M.props({cset})} />)
             </pre>
           </div>
 }
-ConceptViewContainer = connect(
-  (state, props) => {
-    return {}
-  },
-  dispatch=>bindActionCreators(
-    _.pick(cncpt,['wantConcepts']),
-    //..._.pick(tooltip,['showTooltip','hideTooltip']),
-  dispatch)
-)(ConceptViewContainer)
 
-export {ConceptViewContainer}
-
-export const ConceptStatusReport = ({lines=[], M}) => {
-  M = M || muit()
-  if (!lines.length)
-    return <div>GOT NO STATUS!!</div>
-  lines = lines.concat(_.map(viewCounts, (v,k)=>`${k}: ${v}`))
-  let cols = 3
-  let linesPerCol = Math.ceil(lines.length / cols)
-  return (<div style={{
-                  ...M('grid.parent'),
-                  backgroundColor:'white',
-                  justifyContent: 'auto',
-                  padding: 10,
-                }}>
-            Concept fetch status
-            <GridList 
-              {...M('grid.styleProps')}
-              style={{...M('grid.gridList.horizontal'),
-                        padding:0, margin: 0,
-                      }} cols={3}
-            >
-              {_.range(cols).map(col => {
-                col = parseInt(col)
-                return (<GridTile style={{
-                                ...M('grid.tile.plain'),
-                                padding:0, margin: 0,
-                              }} key={col} >
-                          <pre style={{border: 'none',}} >
-                            {lines.slice(col * linesPerCol, (col+1) * linesPerCol).join('\n')}
-                          </pre>
-                        </GridTile>)})}
-            </GridList>
-          </div>
-  )
-}
-/*
-const conceptViewAbstract = (conceptSet=[], opts={}) => {
-  let view = {
-    conceptSet,
-  }
-  _.map(opts, (val,o) => {
-    view = optHandlers[o](val, view)
-  })
-}
-let optHandlers = {}
-optHandlers.showIndividual = (bool, view) => {
-  if (bool) {
-    view = {...view}
-    let {conceptSet} = view
-    if (conceptSet.length > 1) {
-      view.individualConcepts = conceptSet.map(cs=>conceptViewAbstract([cs]))
-    }
-  }
-}
-*/
