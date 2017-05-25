@@ -8,7 +8,12 @@ import * as cids from 'src/ducks/cids'
 import * as util from 'src/utils';
 import React, { Component } from 'react'
 
+/*
 const Immutable = require("seamless-immutable")
+window.Immutable = Immutable
+*/
+console.error("Immutable turned off!")
+const Immutable=d=>d // i don't think this works for everything
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
@@ -42,11 +47,14 @@ const loadedReducer = (state={}, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case conceptActions.NEW_CONCEPTS:
-      return Immutable({ ...state, ...util.arr2map(payload, c=>c.concept_id)})
+      return ({ ...state, ...util.arr2map(payload, c=>c.concept_id)})
+      //return Immutable({ ...state, ...util.arr2map(payload, c=>c.concept_id)})
     case cids.cidsActions.NEW_CIDS:
-      return Immutable(_.pick(state, payload)) // only keep the focal concepts, if there are any
+      return (_.pick(state, payload)) // only keep the focal concepts, if there are any
+      //return Immutable(_.pick(state, payload)) // only keep the focal concepts, if there are any
   }
-  return Immutable(state)
+  return (state)
+  //return Immutable(state)
 }
 const emptyRequestStore = () => (
   { // lists of cids
@@ -262,7 +270,8 @@ const newConcepts = (payload=[],loadedAlready={}) => {
     }
     return c
   })
-  return {type: conceptActions.NEW_CONCEPTS, payload: concepts}
+  return {type: conceptActions.NEW_CONCEPTS, payload: (concepts)}
+  //return {type: conceptActions.NEW_CONCEPTS, payload: Immutable(concepts)}
 }
 export const wantConcepts = (concept_ids,meta) => ({
                                 type: conceptActions.WANT_CONCEPTS,
@@ -422,9 +431,10 @@ export const conceptMapFromList = clist => clist && util.arr2map(verifyConceptLi
 export const conceptListFromMapOrList = mol => verifyConceptList(mol) || conceptListFromMap(mol)
 export const conceptMapFromMapOrList = mol => verifyConceptMap(mol) || conceptMapFromList(mol)
 
-export const concepts = state =>
-        conceptListFromMapOrList(state) ||
-        conceptListFromMapOrList(_.get(state,'concepts.loaded')) || []
+export const concepts = state => (
+//export const concepts = state => Immutable()
+  conceptListFromMapOrList(state) ||
+  conceptListFromMapOrList(_.get(state,'concepts.loaded')) || [])
 
 export const conceptMap = state =>
         conceptMapFromMapOrList(state) ||
@@ -536,7 +546,8 @@ export class ConceptSet {
       //debugger
       //console.log(new.target.name)
     }
-    this._props = Immutable(props)
+    this._props = (props)
+    //this._props = Immutable(props)
     this.csetSelectors = csetSelectors
     this.conceptState = csetSelectors.conceptState
     //this.relmetaState = csetSelectors.relmetaState
@@ -561,6 +572,7 @@ export class ConceptSet {
   prop = prop => this.props()[prop]
   hasProp = prop => _.has(this.props(), prop)
   // maybe fancier?: // prop = prop => _.get(this.props(), prop)
+  parent = () => this.prop('parent')
 
 
   setProps = newProps => {
@@ -743,23 +755,44 @@ export class ConceptSet {
     )
   }
 
-  rels = () => {
-    let rels = _.flatten(this.concepts().map(c=>c.rels))
-    let combined = rels.reduce(
-      (acc,{relationship,relcids}) => (
-        { ...acc, [relationship]: _.uniq((acc[relationship]||[]).concat(relcids)) }
-      ), {})
-    return _.map(combined, (v,k) => this.rel(k, v))
+  byRelName = () => {
+
+    let byRelName = _.supergroup(
+                        this.concepts(),
+                        c=>c.relgrps.map(r=>r.relationship),
+                        {multiValuedGroup:true,dimName:'relationship'}
+                      )
+    byRelName.forEach(relSg => {
+
+      relSg.relgrps = _.flatten(relSg.records.map(
+          c=>c.relgrps.filter(grp=>grp.relationship===relSg.toString())))
+
+      relSg.relationship = relSg.toString()
+      relSg.reverse_relationship = relSg.relgrps[0].reverse_relationship
+
+      relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(d=>d.relcids)))
+
+      relSg.parentCset = this
+
+      relSg[relSg.relationship] = relSg.records.length
+      relSg[relSg.reverse_relationship] = relSg.relcids.length
+
+    })
+    return byRelName
+    //let map = byRelName.getLookupMap()
+    //return _.mapKeys(map, (v,k) => v.relationship)
   }
 
-  rel = (relationship, relcids) => {
+  csetFromRelSg = (relSg) => {
     return new RelConceptSet({
                 //...this.props(),
-                cids: relcids,
+                cids: relSg.relcids,
+                relSg,
                 parent: this, 
-                relationship, 
-                desc: relationship,
-                longDesc: `${this.shortDesc()} ${relationship}`,
+                relationship: relSg.reverse_relationship,
+                reverse_relationship: relSg.relationship,
+                shortDesc: relSg.relationship,
+                longDesc: `${this.shortDesc()} ${relSg.relationship}`,
                 fancyDesc: 
                   <span>
                     <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
@@ -770,12 +803,14 @@ export class ConceptSet {
                         aria-hidden="true" 
                         data-icon="&#xe90a;" 
                         className="icon-link"></span>
-                    {relationship}
+                    {relSg.relationship}
                   </span>,
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
   role = r => r ? (this.prop('role') === r) : this.prop('role')
+  relationship = () => this.prop('relationship')
+  reverse_relationship = () => this.prop('reverse_relationship')
 
   loadConcepts = () => {
     if (this.loaded()) {
@@ -792,35 +827,9 @@ class RelConceptSet extends ConceptSet {
     //debugger
     //console.log(new.target.name)
     super(...rest)
+    this.relSg = this.prop('relSg')
   }
-  /*
-  rels = () => {
-    let rels = _.flatten(this.concepts().map(c=>c.rels))
-    let combined = rels.reduce(
-      (acc,{relationship,relcids}) => (
-        { ...acc, [relationship]: _.uniq((acc[relationship]||[]).concat(relcids)) }
-      ), {})
-    return _.map(combined, (v,k) => this.reverseRelConceptSet(k, v)).filter(d=>d)
-  }
-  rels = (fixthisfunc=d=>false) => {
-    let rels = _.flatten(this.concepts().map(c=>c.rels))
-    let combined = rels.reduce(
-      (acc,{relationship,relcids}) => (
-        { ...acc, [relationship]: _.uniq((acc[relationship]||[]).concat(relcids)) }
-      ), {})
-    return (
-              _.map(combined, (v,k) => 
-                  fixthisfunc(k) ? this.reverseRelConceptSet(k,v)
-                                 : this.rel(k, v))
-    )
-  }
-  */
   reverseRelConceptSet = (relationship, relcids) => {
-    /*
-    if (relationship !== this.reverseRelId(this.relName())) {
-      return null
-    }
-    */
     return new RevRelConceptSet({
                 //...this.props(),
                 cids: relcids,
@@ -843,6 +852,14 @@ class RelConceptSet extends ConceptSet {
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
+  /*
+  fromDesc = () => {
+    return `${this.relSg[this.relSg.relationship]} ${this.relSg.relationship}`
+  }
+  toDesc = () => {
+    return `${this.relSg[this.relSg.reverse_relationship]} ${this.relSg.reverse_relationship}`
+  }
+  */
   shortDesc = () => {
     //let {status, msg} = this.status()
     return (
@@ -852,12 +869,13 @@ class RelConceptSet extends ConceptSet {
     )
   }
   longDesc = () => {
-    //let {status, msg} = this.status()
-    return (
-      (this.hasProp('longDesc') && this.prop('longDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
-      `I'm a ${this.role()}, what kind of longDesc do you want?`
-    )
+    let relSg = this.relSg
+    return [
+      _.supergroup(relSg.relgrps, 'standard_concept').map(o=>`${o.records.length} ${o}`),
+      _.supergroup(relSg.relgrps, 'vocabulary_id').map(o=>`${o.records.length} ${o}`),
+      _.supergroup(relSg.relgrps, 'domain_id').map(o=>`${o.records.length} ${o}`),
+      _.supergroup(relSg.relgrps, 'concept_class_id').map(o=>`${o.records.length} ${o}`),
+    ].join('\n')
   }
   fancyDesc = () => {
     return (
@@ -879,7 +897,7 @@ class RevRelConceptSet extends RelConceptSet {
     this.parent
   }
   revrel = true
-  rels = () => []
+  byRelName = () => []
 }
 
 import {GridList, GridTile} from 'material-ui/GridList'

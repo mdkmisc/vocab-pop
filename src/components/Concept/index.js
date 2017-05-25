@@ -152,10 +152,10 @@ export class ConceptViewContainer extends Component {
       relsExpanded: {}
     }
   }
-  isExpanded = rel => !!this.state.relsExpanded[rel.relName()]
-  expandRel = rel => this.setState({relsExpanded: {...this.state.relsExpanded, [rel.relName()]: true}})
-  collapseRel = rel => this.setState({relsExpanded: {...this.state.relsExpanded, [rel.relName()]: false}})
-  toggleRelExpanded = rel => this.setState({relsExpanded: {...this.state.relsExpanded, [rel.relName()]: !this.state.relsExpanded[rel.relName()]}})
+  isExpanded = relName => !!this.state.relsExpanded[relName]
+  expandRel = relName => this.setState({relsExpanded: {...this.state.relsExpanded, [relName]: true}})
+  collapseRel = relName => this.setState({relsExpanded: {...this.state.relsExpanded, [relName]: false}})
+  toggleRelExpanded = relName => this.setState({relsExpanded: {...this.state.relsExpanded, [relName]: !this.state.relsExpanded[relName]}})
 
 
   componentDidMount() {
@@ -243,12 +243,24 @@ export const TipButton = props => {
 }
 export class RelButton extends Component {
   render() {
-    let {cset, ttid, M, toggleRelExpanded, shouldShow} = this.props // this is cset for the rel
+    let {cset, ttid, M, toggleRelExpanded, shouldShow} = this.props
     //let {relName, relcids} = rel
     //let href = '#' // should be link to concept focus
 
+    let relSg = cset.relSg
+
     let status = cset.status()
-    let ttText = status.msg
+    let ttFancy= 
+      <pre>
+        {
+          cset.longDesc()
+          + '\n' +
+          status.loaded + ' loaded'
+        }
+      </pre>
+    let ttText = cset.longDesc()
+
+
     let buttonContent = status.status === 'not determined' || status.status === 'loading'
         ? <CircularProgress size={20} 
             {...M('circularProgress.styleProps')}
@@ -260,18 +272,18 @@ export class RelButton extends Component {
         toggleRelExpanded(cset)
       },
       //label: cset.fancyDesc(),
-      label: `${cset.cidCnt()} ${cset.shortDesc()}`,
-      /*/
-      label: <span>{cset.cidCnt()} {cset.shortDesc()}
-      <span aria-hidden="true" data-icon="&#xe90a;" className="icon-link"></span>
-                </span>,
-      */
+      //label: `${cset.fromDesc()} ${cset.toDesc()}`,
+      label:  <span>
+                {relSg[relSg.relationship]}
+                <span aria-hidden="true" data-icon="&#xe90a;" className="icon-link"></span>
+                {relSg[relSg.reverse_relationship]} {relSg.reverse_relationship}
+              </span>,
       labelPosition: 'before',
       icon: (status.status === 'not requested' && <FileDownload/>) ||
             (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
       secondary: true,
     }
-    return <TipButton {...{ttid,ttText,M, buttonContent, buttonProps}} />
+    return <TipButton {...{ttid,ttText,ttFancy,M, buttonContent, buttonProps}} />
   }
 }
 const RelsView = props => { // assuming I just have cids, no concepts
@@ -282,7 +294,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
     <div>
     {/*
       { cset.role('rel') && !cset.revrel
-        ?  _.map(cset.rels(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
+        ?  _.map(cset.relCSets(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
             return <ConceptViewContainer key={i} cset={rel} />
           })
         : null
@@ -290,15 +302,16 @@ const RelsView = props => { // assuming I just have cids, no concepts
       */}
       <div style={M('raisedButton.parentDiv')} >
         <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
-        { _.map(cset.rels(), (rel,i) => {
-            let shouldShow = isExpanded(rel)
-            return <RelButton cset={rel} ttid={ttid} M={M} key={i} 
+        { _.map(cset.byRelName(), (relSg,i) => {
+            let shouldShow = isExpanded(relSg.relationship)
+            return <RelButton cset={cset.csetFromRelSg(relSg)} ttid={ttid} M={M} key={i} 
                       toggleRelExpanded={toggleRelExpanded} shouldShow={shouldShow} />
         })}
       </div>
-      { _.map(cset.rels(), (rel,i) => {
-        let shouldShow = isExpanded(rel)
-        return shouldShow ? <ConceptViewContainer key={i} cset={rel} /> : null
+      { _.map(cset.byRelName(), (relSg,i) => {
+        let shouldShow = isExpanded(relSg.relationship)
+        return shouldShow ? 
+          <ConceptViewContainer key={i} cset={cset.csetFromRelSg(relSg)} /> : null
       })}
     </div>
   )
