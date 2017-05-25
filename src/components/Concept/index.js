@@ -149,19 +149,18 @@ export class ConceptViewContainer extends Component {
     super(props)
     let {cset} = props
     this.state = {
-      relsExpanded: {}
+      relsExpanded: {},
+      ttid: 'cvc' || props.ttid,
     }
   }
   isExpanded = relName => !!this.state.relsExpanded[relName]
-  expandRel = relName => this.setState({relsExpanded: {...this.state.relsExpanded, [relName]: true}})
-  collapseRel = relName => this.setState({relsExpanded: {...this.state.relsExpanded, [relName]: false}})
-  toggleRelExpanded = relName => this.setState({relsExpanded: {...this.state.relsExpanded, [relName]: !this.state.relsExpanded[relName]}})
+  expandRel = relName => this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: true}})
+  collapseRel = relName => this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: false}})
+  toggleRelExpanded = relName => this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: !this.state.relsExpanded[relName]}})
 
 
   componentDidMount() {
-    this.setState({
-      ttid: 'cvc',
-    })
+    //this.setState({ ttid: 'cvc', })
   }
   render() {
     let {cset, title, subtitle,
@@ -169,6 +168,7 @@ export class ConceptViewContainer extends Component {
             muitParams={}, M=muit(),
         } = this.props
     let {ttid} = this.state
+    if (!ttid) debugger
     M = M.props({cset})
     title = title || cset.fancyDesc()
     subtitle = groupLabel({cset, M, ttid})
@@ -200,7 +200,7 @@ export class ConceptViewContainer extends Component {
 
             <div style={{zoom:.3, opacity: 0.4, backgroundColor:'orange'}}>
               <br/> <br/>
-              <ConceptsSummary M={M} cset={cset} />
+              <ConceptsSummary M={M} cset={cset} ttid={ttid}/>
               {/* not going to use this now... maybe come back to it 
               <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} /> */}
             </div>
@@ -223,10 +223,12 @@ export const Counts = props => {
                     .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
                 }</div>
   let buttonContent = cnts.map(fmtCdmCnt('short')).join(', ')
+  if (!ttid) debugger
   return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
 }
 export const TipButton = props => {
   let {ttid, ttText, ttFancy, buttonContent, M, href, buttonProps} = props
+  if (!ttid) debugger
   return  <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
             <RaisedButton
               {...M('raisedButton.styleProps')}
@@ -258,7 +260,7 @@ export class RelButton extends Component {
           status.loaded + ' loaded'
         }
       </pre>
-    let ttText = cset.longDesc()
+    let ttText = cset.longDesc() + status.loaded // ttText needs be at least as unique as fancy
 
 
     let buttonContent = status.status === 'not determined' || status.status === 'loading'
@@ -283,11 +285,13 @@ export class RelButton extends Component {
             (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
       secondary: true,
     }
+    if (!ttid) debugger
     return <TipButton {...{ttid,ttText,ttFancy,M, buttonContent, buttonProps}} />
   }
 }
 const RelsView = props => { // assuming I just have cids, no concepts
   let {cset,title='', ttid, toggleRelExpanded, isExpanded} = props
+    if (!ttid) debugger
   viewCounts.RelsView++
   let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
   return (
@@ -326,7 +330,7 @@ export const fmtCdmCnt = (fmt='short') => {
   throw new Error("confused")
 }
 export const ConceptsSummary = props => {
-  let {cset, M} = props
+  let {cset, M, ttid} = props
   M = M.props({cset})
   let cnts = cset.cdmCnts()
   let sg = _.supergroup(cset.concepts(), ['domain_id','vocabulary_id','concept_class_id'])
@@ -335,8 +339,7 @@ export const ConceptsSummary = props => {
             <pre style={M('randomDiv')}>
               {JSON.stringify(cnts)} {'\n\n'}
               {sg.leafNodes().namePaths().join('\n')}
-                    ( <Counts cset={cset} M={M}/> )
-                  (<Counts cset={cset} M={M.props({cset})} />)
+                      (<Counts cset={cset} M={M.props({cset})} ttid={ttid} />)
             </pre>
           </div>
 }

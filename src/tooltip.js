@@ -112,6 +112,7 @@ export const registerTooltip = ttid => ({type: ttConsts.NEW_TT, payload:ttid})
 export const unregisterTooltip = ttid => ({type: ttConsts.TRASH_TT, payload:ttid})
 export const makeTtContent = props => {
   let {ttid, ttText, ttFancy} = props
+  if (!ttid) debugger
   ttFancy = ttFancy || ttText
   if (!_.isString(ttText)) {
     throw new Error("ttText must be string. use ttFancy for react components")
