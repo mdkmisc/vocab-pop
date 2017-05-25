@@ -537,6 +537,13 @@ const groupings = {
   voc: 'vocabulary_id',
   cls: 'concept_class_id',
 }
+
+export const flatUniq = (arr, accessor=d=>d) => {
+  return _.uniq(_.flatten(arr.map(accessor)))
+}
+export const map2cids = concepts => flatUniq(concepts, c=>c.concept_id)
+export const sgCidCnt = sgVal => map2cids(sgVal.records).length
+
 export class ConceptSet {
   /*  for use in Concept component for passing around concepts and
    *  meta data. not for use in store or selectors!
@@ -764,17 +771,21 @@ export class ConceptSet {
                       )
     byRelName.forEach(relSg => {
 
-      relSg.relgrps = _.flatten(relSg.records.map(
-          c=>c.relgrps.filter(grp=>grp.relationship===relSg.toString())))
+      relSg.relgrps = _.flatten(
+        relSg.records
+             .map(c=>c.relgrps
+                      .filter(grp=>grp.relationship===relSg.toString())
+                      .map(grp=>({...grp,concept_id:c.concept_id}))
+      ))
 
       relSg.relationship = relSg.toString()
       relSg.reverse_relationship = relSg.relgrps[0].reverse_relationship
 
-      relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(d=>d.relcids)))
+      relSg.relcids = flatUniq(relSg.relgrps, d=>d.relcids)
 
       relSg.parentCset = this
 
-      relSg[relSg.relationship] = relSg.records.length
+      relSg[relSg.relationship] = sgCidCnt(relSg)
       relSg[relSg.reverse_relationship] = relSg.relcids.length
 
     })
@@ -871,10 +882,10 @@ class RelConceptSet extends ConceptSet {
   longDesc = () => {
     let relSg = this.relSg
     return [
-      _.supergroup(relSg.relgrps, 'standard_concept').map(o=>`${o.records.length} ${o}`),
-      _.supergroup(relSg.relgrps, 'vocabulary_id').map(o=>`${o.records.length} ${o}`),
-      _.supergroup(relSg.relgrps, 'domain_id').map(o=>`${o.records.length} ${o}`),
-      _.supergroup(relSg.relgrps, 'concept_class_id').map(o=>`${o.records.length} ${o}`),
+      _.supergroup(relSg.relgrps, 'standard_concept').map(o=>`${sgCidCnt(o)} ${o}`),
+      _.supergroup(relSg.relgrps, 'vocabulary_id').map(o=>`${sgCidCnt(o)} ${o}`),
+      _.supergroup(relSg.relgrps, 'domain_id').map(o=>`${sgCidCnt(o)} ${o}`),
+      _.supergroup(relSg.relgrps, 'concept_class_id').map(o=>`${sgCidCnt(o)} ${o}`),
     ].join('\n')
   }
   fancyDesc = () => {

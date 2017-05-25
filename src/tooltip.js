@@ -54,8 +54,14 @@ class Tooltips extends Component {
                             let ttText = event.target.getAttribute('data-tttext')
                             let id = storeId(ttid, ttText)
                             let ttFancy = globalTtStore[id]
+                            //debugger
                             //console.log({tooltips, tt,ttid, id, globalTtStore, ttFancy})
                             return ttFancy
+                          }}
+                          afterShow={x=>{
+                            let ttText = event.target.getAttribute('data-tttext')
+                            console.log('showed', ttText)
+                            //debugger
                           }}
                         />
                 })

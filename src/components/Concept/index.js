@@ -156,7 +156,11 @@ export class ConceptViewContainer extends Component {
   isExpanded = relName => !!this.state.relsExpanded[relName]
   expandRel = relName => this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: true}})
   collapseRel = relName => this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: false}})
-  toggleRelExpanded = relName => this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: !this.state.relsExpanded[relName]}})
+  toggleRelExpanded = relName => {
+    //debugger
+    this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [relName]: !this.state.relsExpanded[relName]}})
+  }
+  
 
 
   componentDidMount() {
@@ -271,7 +275,7 @@ export class RelButton extends Component {
     let buttonProps = {
       onClick:() => {
         cset.loadConcepts()
-        toggleRelExpanded(cset)
+        toggleRelExpanded(relSg.relationship)
       },
       //label: cset.fancyDesc(),
       //label: `${cset.fromDesc()} ${cset.toDesc()}`,
