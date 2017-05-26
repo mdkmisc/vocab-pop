@@ -759,11 +759,14 @@ if (createAggregator) {
           throw new Error("not array")
         }
         _.each(keys, function(key) {
+          result[key] = _.uniq([...(result[key]||[]), value])
+          /*
             if (hasOwnProperty.call(result, key)) {
                 result[key].push(value);
             } else {
                 result[key] = [value];
             }
+            */
         });
     }, null, preventScalarInMultiValuedGroup = false);
 } else {

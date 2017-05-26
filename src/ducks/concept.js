@@ -181,63 +181,6 @@ export default combineReducers({
 /**** end reducers *********************************************************/
 
 /**** start action creators *********************************************************/
-export const colCnts = rcs => {
-  // converts a list of rcs's as processed by rcsFromConcepts
-  // into a list of { col, tbl, cnt }
-  let byTblCol = _.supergroup(rcs,['tbl','col'])
-  return (byTblCol.leafNodes()
-            .map(
-              col => {
-                let cnt = {
-                  tbl: col.parent.toString(),
-                  col: col.toString(),
-                  cnt: col.aggregate(_.sum,'cnt'),
-                }
-                return cnt
-              }
-            )
-         )
-}
-export const rcsFromConcepts = concepts => {
-  /* rcs look like this:  { col : "condition_source_concept_id",
-                            coltype : "source",
-                            crc : 0,
-                            rc : 0,
-                            src : 1,
-                            tbl : "condition_occurrence"
-                          }
-      i.e., a tbl/col/coltyp and three counts
-      but only only of the counts will have numbers
-      so rcsFromConcepts adds, e.g., { cnt : 1, cntType : "src"}
-      the cntType and count from whichever field has it
-
-      rcsFromConcepts also flattens all the rcs's from all the concepts
-      into a single list
-
-
-      THIS NOW HAPPENS ON CONCEPT LOADING, SO rcs FROM HERE OUT
-      REFERS TO THE OUTPUT
-  */
-  return (
-    _.flatten(
-      concepts.map(c=>c.rcs)
-    )
-    .filter(d=>d)
-    .map(rcs=>{
-      let {rc,src,crc,tbl,col,coltype} = rcs
-      if (!!rc + !!src + !!crc > 1) {
-        throw new Error("this should not happen")
-      }
-      if (rc) {
-        return {tbl, col, coltype, cntType:'rc', cnt:rc}
-      } else if (src) {
-        return {tbl, col, coltype, cntType:'src', cnt:src}
-      } else if (crc) {
-        return {tbl, col, coltype, cntType:'crc', cnt:crc}
-      }
-    })
-    .filter(r => r && r.cnt)
-)}
 const newConcepts = (payload=[],loadedAlready={}) => {  
   // does this need to be pure function(no side effects)? probably not
   // it's the only entry point for concept records
@@ -404,7 +347,6 @@ export const conceptStub = (id,status) => ({
   vocabulary_id: status,
   concept_class_id: status,
   rcs: [],
-  rels: []
 })
 const expectedConceptFields = [
   'concept_id',
@@ -415,7 +357,6 @@ const expectedConceptFields = [
   'vocabulary_id',
   'concept_class_id',
   'rcs',
-  'rels',
 ]
 export const isConcept = c => _.intersection(_.keys(c), expectedConceptFields).length
                           === expectedConceptFields.length
@@ -543,6 +484,153 @@ export const flatUniq = (arr, accessor=d=>d) => {
 }
 export const map2cids = concepts => flatUniq(concepts, c=>c.concept_id)
 export const sgCidCnt = sgVal => map2cids(sgVal.records).length
+
+//export const byCdm = (concepts, valFunc) _.supergroup(relSg.records, d=>d.cnts.length ? 'CDM Recs' : 'Not in CDM', {dimName: 'inCdm'})
+
+export const map2cnts = concepts => _.flatten(concepts.map(c=>c.cnts))
+export const sgCdmCnt = sgVal => map2cnts(sgVal.records)
+
+export const colCnts = rcs => {
+  // converts a list of rcs's as processed by rcsFromConcepts
+  // into a list of { col, tbl, cnt }
+  let byTblCol = _.supergroup(rcs,['tbl','col'])
+  return (byTblCol.leafNodes()
+            .map(
+              col => {
+                let cnt = {
+                  tbl: col.parent.toString(),
+                  col: col.toString(),
+                  cnt: col.aggregate(_.sum,'cnt'),
+                }
+                return cnt
+              }
+            )
+         )
+}
+export const byTbl = (concepts) => {
+  let byTbl = () => _.supergroup(
+                        concepts,
+                        c=>c.cnts.map(r=>r.tbl),
+                        {multiValuedGroup:true,dimName:'tbl'}
+                      )
+}
+export const toSg = props => {
+  let { concepts=[],          // first arg to _.supergroup
+        dim, opts={},         // second and third args
+        postGroupFunc=d=>d,   // func to perform with result like:
+                              //    sg=>sg.forEach(val=>val.parentCset=this)
+        addLevelProps=[],     // array of {dim,opts,postGroupFunc} for sg.addLevel calls
+  } = props
+  let sg = _.supergroup(concepts, dim, opts)
+  postGroupFunc(sg)
+  addLevelProps.forEach(({dim, opts, postGroupFunc}) => {
+    sg.addLevel(dim, opts)
+    postGroupFunc(sg)
+  })
+  return sg
+}
+export const subgrpCnts = ({concepts, cset}) => {
+  concepts = concepts || cset.concepts()
+
+  let cnts = {}
+
+  let relSg = cset ? csetByRelName(cset) : byRelName(concepts)
+  cnts.byRelName = relSg.aggregates(_.sum, d=>1, 'dict')
+  cnts.withCdm = toSg({
+    concepts:relSg.records, 
+    dim: d=>d.cnts.length ? 'CDM Recs' : 'Not in CDM',
+    opts: {dimName: 'inCdm'},
+  }).aggregates(_.sum,d=>1,'dict')
+  _.values(groupings).forEach(
+    fld => {
+      cnts[fld] = _.supergroup(concepts, fld).aggregates(_.sum,d=>1,'dict')
+    }
+  )
+  let msgs = _.map(cnts, (v,k) => _.keys(v).length === 1 && {[k]:_.keys(v)[0]})
+                .filter(d=>d)
+
+  return {msgs,cnts}
+  return <pre>{JSON.stringify({msgs,cnts},null,2)}</pre>
+
+
+  return cnts
+}
+export const relgrps = 
+  // flat list of all concept.relgrps records for concept list
+  // optionally filtered by reldim
+  (concepts,reldim) => 
+    _.flatten(concepts.map(
+      c=>c.relgrps
+          .filter(grp=>reldim ? grp.reldim===reldim : true)
+          .map(grp=>({...grp,concept_id:c.concept_id}))
+))
+
+const reldim = r => 
+  typeof r.relationship === 'function'
+    ?  `${r.relationship()} --> ${r.reverse_relationship()}`
+    :  `${r.relationship} --> ${r.reverse_relationship}`
+const rreldim = r => 
+  typeof r.relationship === 'function'
+    ?  `${r.reverse_relationship()} --> ${r.relationship()}`
+    :  `${r.reverse_relationship} --> ${r.relationship}`
+
+
+export const byRelName = concepts => {
+  const dim = c=>c.relgrps.map(reldim)
+  const opts = {multiValuedGroup:true,dimName:'reldim'}
+  let sg = _.supergroup(concepts, dim, opts)
+  sg.forEach(relSg => {
+    let [r,rr] = relSg.split(/ --> /)
+    relSg.relationship = r
+    relSg.reverse_relationship = rr
+    relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
+                    .filter(r=>reldim(r)==relSg)
+    relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
+    relSg[relSg.relationship] = sgCidCnt(relSg)
+    relSg[relSg.reverse_relationship] = relSg.relcids.length
+  })
+  return sg
+}
+export const csetByRelName = cset => {
+  //if (cset.role('rel') && cset.concepts().length) debugger
+  let sg = byRelName(cset.concepts())
+  let rd = reldim(cset)
+
+  sg.forEach(relSg => {
+    if (cset.role('rel') && relSg==reldim(cset)) {
+      relSg.showAsRoundTrip = true
+    }
+    if (cset.role('rel') && relSg==rreldim(cset)) {
+      relSg.showAsRoundTrip = true
+    }
+  })
+  return sg
+}
+/*
+export const byRelName = ({concepts, parentCset, cset}) => {
+  concepts = concepts || cset.concepts()
+  const postGroupFunc = 
+    sg => sg.forEach(relSg => {
+      relSg.relgrps = relgrps(relSg.records, relSg.toString())
+      if (parentCset) {
+        relSg.parentCset = parentCset
+      } else if (cset) {
+        relSg.parentCset = cset
+      }
+      relSg.relationship = relSg.toString()
+      relSg.reverse_relationship = relSg.relgrps[0].reverse_relationship
+      relSg.relcids = flatUniq(relSg.relgrps, d=>d.relcids)
+      relSg[relSg.relationship] = sgCidCnt(relSg)
+      relSg[relSg.reverse_relationship] = relSg.relcids.length
+    })
+
+  // group concepts, multivalued, by relationship names they contain to other concepts
+  const dim = c=>c.relgrps.map(r=>r.relationship) 
+  const opts = {multiValuedGroup:true,dimName:'relationship'}
+
+  return toSg({concepts, dim, opts, postGroupFunc})
+}
+*/
 
 export class ConceptSet {
   /*  for use in Concept component for passing around concepts and
@@ -703,6 +791,9 @@ export class ConceptSet {
               subtype: 'sc',
             }))
   }
+  relgrps = (reldim) => relgrps(this.concepts(),reldim) // reldim optional
+  byRelName = () => csetByRelName(this)
+  subgrpCnts = () => subgrpCnts({cset:this})
 
   subset = (props, forceNew=false) => {
     // expects props with cids, subtype (sc,dom,voc,cls,wcdm)
@@ -743,6 +834,9 @@ export class ConceptSet {
       `I'm a ${this.role()}, what kind of shortDesc do you want?`
     )
   }
+  subgrgCnts = () => {
+    return subgrpCnts(this.concepts())
+  }
   longDesc = () => {
     //let {status, msg} = this.status()
     return (
@@ -761,38 +855,11 @@ export class ConceptSet {
       `I'm a ${this.role()}, what kind of fancyDesc do you want?`
     )
   }
-
-  byRelName = () => {
-
-    let byRelName = _.supergroup(
-                        this.concepts(),
-                        c=>c.relgrps.map(r=>r.relationship),
-                        {multiValuedGroup:true,dimName:'relationship'}
+  byTbl = () => _.supergroup(
+                        relSg.records,
+                        c=>c.cnts.map(r=>r.tbl),
+                        {multiValuedGroup:true,dimName:'tbl'}
                       )
-    byRelName.forEach(relSg => {
-
-      relSg.relgrps = _.flatten(
-        relSg.records
-             .map(c=>c.relgrps
-                      .filter(grp=>grp.relationship===relSg.toString())
-                      .map(grp=>({...grp,concept_id:c.concept_id}))
-      ))
-
-      relSg.relationship = relSg.toString()
-      relSg.reverse_relationship = relSg.relgrps[0].reverse_relationship
-
-      relSg.relcids = flatUniq(relSg.relgrps, d=>d.relcids)
-
-      relSg.parentCset = this
-
-      relSg[relSg.relationship] = sgCidCnt(relSg)
-      relSg[relSg.reverse_relationship] = relSg.relcids.length
-
-    })
-    return byRelName
-    //let map = byRelName.getLookupMap()
-    //return _.mapKeys(map, (v,k) => v.relationship)
-  }
 
   csetFromRelSg = (relSg) => {
     return new RelConceptSet({
@@ -802,8 +869,8 @@ export class ConceptSet {
                 parent: this, 
                 relationship: relSg.reverse_relationship,
                 reverse_relationship: relSg.relationship,
-                shortDesc: relSg.relationship,
-                longDesc: `${this.shortDesc()} ${relSg.relationship}`,
+                shortDesc: relSg.reldim,
+                longDesc: `${this.shortDesc()} ${relSg.reldim}`,
                 fancyDesc: 
                   <span>
                     <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
@@ -814,14 +881,16 @@ export class ConceptSet {
                         aria-hidden="true" 
                         data-icon="&#xe90a;" 
                         className="icon-link"></span>
-                    {relSg.relationship}
+                    {relSg.reldim}
                   </span>,
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
   }
   role = r => r ? (this.prop('role') === r) : this.prop('role')
-  relationship = () => this.prop('relationship')
-  reverse_relationship = () => this.prop('reverse_relationship')
+  relationship = () => this.role('rel') ? this.prop('relationship') : 'not a rel'
+  reverse_relationship = () => this.role('rel') ? this.prop('reverse_relationship') : 'not a rel'
+  reldim = () => reldim(this)
+  rreldim = () => rreldim(this)
 
   loadConcepts = () => {
     if (this.loaded()) {
@@ -830,9 +899,6 @@ export class ConceptSet {
     this.wantConcepts(this.cids())
   }
 }
-
-
-
 class RelConceptSet extends ConceptSet {
   constructor(...rest) {
     //debugger
@@ -840,14 +906,15 @@ class RelConceptSet extends ConceptSet {
     super(...rest)
     this.relSg = this.prop('relSg')
   }
-  reverseRelConceptSet = (relationship, relcids) => {
+  reverseRelConceptSet = (reldim, relcids) => {
     return new RevRelConceptSet({
                 //...this.props(),
                 cids: relcids,
                 parent: this, 
                 relationship, 
-                desc: `revrel of ${this.shortDesc()} ${relationship}`,
-                longDesc: `${this.shortDesc()} ${relationship}`,
+                reldim, 
+                desc: `revrel of ${this.shortDesc()} ${reldim}`,
+                longDesc: `${this.shortDesc()} ${reldim}`,
                 fancyDesc: 
                   <span>
                     <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
@@ -858,7 +925,7 @@ class RelConceptSet extends ConceptSet {
                         aria-hidden="true" 
                         data-icon="&#xe90a;" 
                         className="icon-link"></span>
-                    {relationship}
+                    {reldim}
                   </span>,
                 role: 'rel',
               }, this.csetSelectors, this.wantConcepts)
@@ -881,12 +948,8 @@ class RelConceptSet extends ConceptSet {
   }
   longDesc = () => {
     let relSg = this.relSg
-    return [
-      _.supergroup(relSg.relgrps, 'standard_concept').map(o=>`${sgCidCnt(o)} ${o}`),
-      _.supergroup(relSg.relgrps, 'vocabulary_id').map(o=>`${sgCidCnt(o)} ${o}`),
-      _.supergroup(relSg.relgrps, 'domain_id').map(o=>`${sgCidCnt(o)} ${o}`),
-      _.supergroup(relSg.relgrps, 'concept_class_id').map(o=>`${sgCidCnt(o)} ${o}`),
-    ].join('\n')
+    //if (this.concepts().length) debugger
+    return 'not working'
   }
   fancyDesc = () => {
     return (
@@ -897,7 +960,7 @@ class RelConceptSet extends ConceptSet {
     )
   }
   reverseRelId = relId => this.csetSelectors.reverseRel(relId)
-  relName = () => this.prop('relationship')
+  relName = () => this.prop('reldim')
   revrel = false
 }
 class RevRelConceptSet extends RelConceptSet {
@@ -907,8 +970,6 @@ class RevRelConceptSet extends RelConceptSet {
     this.loadConcepts(props)
     this.parent
   }
-  revrel = true
-  byRelName = () => []
 }
 
 import {GridList, GridTile} from 'material-ui/GridList'
