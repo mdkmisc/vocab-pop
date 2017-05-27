@@ -472,12 +472,6 @@ export const scLongName =
 export const plural = (str, cnt) => {
   return cnt === 1 ? str : `${str}s`
 }
-const groupings = {
-  sc: 'standard_concept',
-  dom: 'domain_id',
-  voc: 'vocabulary_id',
-  cls: 'concept_class_id',
-}
 
 export const flatUniq = (arr, accessor=d=>d) => {
   return _.uniq(_.flatten(arr.map(accessor)))
@@ -529,12 +523,35 @@ export const toSg = props => {
   })
   return sg
 }
-export const subgrpCnts = ({concepts, cset}) => {
-  concepts = concepts || cset.concepts()
-
+const groupings = {
+  sc: 'standard_concept',
+  dom: 'domain_id',
+  voc: 'vocabulary_id',
+  cls: 'concept_class_id',
+}
+const groupMethods = {
+  withCdm: cval => _.supergroup(cval.records, c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',
+                          {dimName: 'inCdm'}).aggregates(_.sum,d=>1,'dict'),
+  sc: cval => _.supergroup(cval.records, 'standard_concept').aggregates(_.sum,d=>1,'dict'),
+  dom: cval => _.supergroup(cval.records, 'domain_id').aggregates(_.sum,d=>1,'dict'),
+  voc: cval => _.supergroup(cval.records, 'vocabulary_id').aggregates(_.sum,d=>1,'dict'),
+  cls: cval => _.supergroup(cval.records, 'concept_class_id').aggregates(_.sum,d=>1,'dict'),
+  rels: cval => byRelName(cval),
+}
+export const cdmCnts = cval => colCnts(_.flatten(cval.records.map(c=>c.cnts)))
+export const groups = (cval,fld) => _.supergroup(cval.records, groupings[fld])
+// these return simple value (not obj) for csets having only one
+// member in a group... meaning that all their subsets will also have only that member
+export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, voc, cls, wcdm
+  let grps = groups(cval.records,dimName)
+  if (grps.length === 1) {
+    return grps[0].valueOf()
+  }
+}
+export const subgrpCnts = (cval) => {
   let cnts = {}
 
-  let relSg = cset ? csetByRelName(cset) : byRelName(concepts)
+  let relSg = byRelName(cval)
   cnts.byRelName = relSg.aggregates(_.sum, d=>1, 'dict')
   cnts.withCdm = toSg({
     concepts:relSg.records, 
@@ -543,7 +560,7 @@ export const subgrpCnts = ({concepts, cset}) => {
   }).aggregates(_.sum,d=>1,'dict')
   _.values(groupings).forEach(
     fld => {
-      cnts[fld] = _.supergroup(concepts, fld).aggregates(_.sum,d=>1,'dict')
+      cnts[fld] = _.supergroup(cval.records, fld).aggregates(_.sum,d=>1,'dict')
     }
   )
   let msgs = _.map(cnts, (v,k) => _.keys(v).length === 1 && {[k]:_.keys(v)[0]})
@@ -575,10 +592,10 @@ const rreldim = r =>
     :  `${r.reverse_relationship} --> ${r.relationship}`
 
 
-export const byRelName = concepts => {
+export const byRelName = cval => {
   const dim = c=>c.relgrps.map(reldim)
   const opts = {multiValuedGroup:true,dimName:'reldim'}
-  let sg = _.supergroup(concepts, dim, opts)
+  let sg = _.supergroup(cval.records, dim, opts)
   sg.forEach(relSg => {
     let [r,rr] = relSg.split(/ --> /)
     relSg.relationship = r
@@ -588,49 +605,30 @@ export const byRelName = concepts => {
     relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
     relSg[relSg.relationship] = sgCidCnt(relSg)
     relSg[relSg.reverse_relationship] = relSg.relcids.length
-  })
-  return sg
-}
-export const csetByRelName = cset => {
-  //if (cset.role('rel') && cset.concepts().length) debugger
-  let sg = byRelName(cset.concepts())
-  let rd = reldim(cset)
-
-  sg.forEach(relSg => {
+    //debugger // figure out round trip stuff
+    /*
     if (cset.role('rel') && relSg==reldim(cset)) {
       relSg.showAsRoundTrip = true
     }
     if (cset.role('rel') && relSg==rreldim(cset)) {
       relSg.showAsRoundTrip = true
     }
+    */
   })
   return sg
 }
-/*
-export const byRelName = ({concepts, parentCset, cset}) => {
-  concepts = concepts || cset.concepts()
-  const postGroupFunc = 
-    sg => sg.forEach(relSg => {
-      relSg.relgrps = relgrps(relSg.records, relSg.toString())
-      if (parentCset) {
-        relSg.parentCset = parentCset
-      } else if (cset) {
-        relSg.parentCset = cset
-      }
-      relSg.relationship = relSg.toString()
-      relSg.reverse_relationship = relSg.relgrps[0].reverse_relationship
-      relSg.relcids = flatUniq(relSg.relgrps, d=>d.relcids)
-      relSg[relSg.relationship] = sgCidCnt(relSg)
-      relSg[relSg.reverse_relationship] = relSg.relcids.length
-    })
-
-  // group concepts, multivalued, by relationship names they contain to other concepts
-  const dim = c=>c.relgrps.map(r=>r.relationship) 
-  const opts = {multiValuedGroup:true,dimName:'relationship'}
-
-  return toSg({concepts, dim, opts, postGroupFunc})
+export const toClist = cholder => { 
+  // fix, but for now have ConceptSets and relSgs and other supergroup vals
+  // that i want to use the same functions with
+  let clist = (isConceptList(cholder) && cholder) ||  // already a clist
+              (isConceptList(cholder.records) && cholder.records) || // sgval or sglist with concepts
+              (_.isFunction(cholder.concepts) &&
+                isConceptList(cholder.concepts()) && cholder.concepts()) // sgval or sglist with concepts
+  if (!clist) {
+    throw new Error("can't find clist")
+  }
+  return clist
 }
-*/
 
 export class ConceptSet {
   /*  for use in Concept component for passing around concepts and
@@ -686,7 +684,20 @@ export class ConceptSet {
   concept_ids = (cids) => this.concepts(cids).map(d=>d.concept_id)
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
+
+  sgList = () => _.supergroup(this.concepts(), d=>this.shortDesc(), {dimName:'whole concept set'})
+  sgVal = () => this.sgList().asRootVal()
+
+
+
   loaded = () => this.cidCnt() === this.conCnt()
+  sc = () => singleMemberGroupLabel(this.sgVal(),'sc')
+  dom = () => singleMemberGroupLabel(this.sgVal(),'dom')
+  voc = () => singleMemberGroupLabel(this.sgVal(),'voc')
+  cls = () => singleMemberGroupLabel(this.sgVal(),'cls')
+  wcdm = () => singleMemberGroupLabel(this.sgVal(),'wcdm')
+  scName = () => scName(this.sc())
+  scLongName = () => scLongName(this.sc())
   loading = () => {throw new Error("not implemented")}
   status = () => {
     let {status:reqStatus, want, fetching, got, focal, requests, staleRequests} = this.conceptState.requests
@@ -751,49 +762,10 @@ export class ConceptSet {
     }
     return status
   }
-
-  groups = fld => _.supergroup(this.concepts(), groupings[fld])
-  /*
-  scs = () => this.groups('sc')
-  doms = createSelector(this.groups, groups => groups('dom'))
-  vocs = createSelector(this.groups, groups => groups('voc'))
-  clss = createSelector(this.groups, groups => groups('cls'))
-  wcdms = createSelector(
-    this.concepts, 
-    concepts => _.supergroup(c=>!!(c.cnts && c.cnts.length),{dimName:'wcdm'})
-  )
-  */
-
-  // these return simple value (not obj) for csets having only one
-  // member in a group... meaning that all their subsets will also have only that member
-  singleMemberGroupLabel = dimName => { // dimName = sc, dom, voc, cls, wcdm
-    let grps = this.groups(dimName)
-    if (grps.length === 1) {
-      return grps[0].valueOf()
-    }
-  }
-  sc = () => this.singleMemberGroupLabel('sc')
-  dom = () => this.singleMemberGroupLabel('dom')
-  voc = () => this.singleMemberGroupLabel('voc')
-  cls = () => this.singleMemberGroupLabel('cls')
-  wcdm = () => this.singleMemberGroupLabel('wcdm')
-
-  scName = () => scName(this.sc())
-  scLongName = () => scLongName(this.sc())
-
-  cdmCnts = () => colCnts(_.flatten(this.concepts().map(c=>c.cnts)))
-
-  scCsets = () => {
-    return this.groups('sc').map(
-            sc=>this.subset({
-              cids:sc.records.map(d=>d.concept_id),
-              sc:sc.toString(),
-              subtype: 'sc',
-            }))
-  }
+  cdmCnts = () => cdmCnts(this.sgVal())
   relgrps = (reldim) => relgrps(this.concepts(),reldim) // reldim optional
-  byRelName = () => csetByRelName(this)
-  subgrpCnts = () => subgrpCnts({cset:this})
+  byRelName = () => byRelName(this.sgVal())
+  subgrpCnts = () => subgrpCnts(this.sgVal())
 
   subset = (props, forceNew=false) => {
     // expects props with cids, subtype (sc,dom,voc,cls,wcdm)
@@ -834,9 +806,6 @@ export class ConceptSet {
       `I'm a ${this.role()}, what kind of shortDesc do you want?`
     )
   }
-  subgrgCnts = () => {
-    return subgrpCnts(this.concepts())
-  }
   longDesc = () => {
     //let {status, msg} = this.status()
     return (
@@ -849,18 +818,19 @@ export class ConceptSet {
   fancyDesc = () => {
     return (
       (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
-      (this.hasProp('longDesc') && this.prop('longDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
+      (this.hasProp('longDesc') && ('fancy->long: ' + this.prop('longDesc'))) ||
+      (this.hasProp('desc') && ('fancy->desc: ' + this.prop('desc'))) ||
       (this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
       `I'm a ${this.role()}, what kind of fancyDesc do you want?`
     )
   }
+  /*
   byTbl = () => _.supergroup(
                         relSg.records,
                         c=>c.cnts.map(r=>r.tbl),
                         {multiValuedGroup:true,dimName:'tbl'}
                       )
-
+  */
   csetFromRelSg = (relSg) => {
     return new RelConceptSet({
                 //...this.props(),
@@ -873,6 +843,7 @@ export class ConceptSet {
                 longDesc: `${this.shortDesc()} ${relSg.reldim}`,
                 fancyDesc: 
                   <span>
+                    (fancy prop from csetFromRelSg)
                     <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
                                     marginRight: 8,}}>
                       {this.fancyDesc()} 
@@ -887,7 +858,7 @@ export class ConceptSet {
               }, this.csetSelectors, this.wantConcepts)
   }
   role = r => r ? (this.prop('role') === r) : this.prop('role')
-  relationship = () => this.role('rel') ? this.prop('relationship') : 'not a rel'
+  relationship = () => this.role('rel') ? this.prop('relationship') : this.shortDesc()
   reverse_relationship = () => this.role('rel') ? this.prop('reverse_relationship') : 'not a rel'
   reldim = () => reldim(this)
   rreldim = () => rreldim(this)
@@ -904,7 +875,7 @@ class RelConceptSet extends ConceptSet {
     //debugger
     //console.log(new.target.name)
     super(...rest)
-    this.relSg = this.prop('relSg')
+    //this.relSg = this.prop('relSg')
   }
   reverseRelConceptSet = (reldim, relcids) => {
     return new RevRelConceptSet({
@@ -917,6 +888,7 @@ class RelConceptSet extends ConceptSet {
                 longDesc: `${this.shortDesc()} ${reldim}`,
                 fancyDesc: 
                   <span>
+                    <h4>reverseRelConceptSet!!!</h4>
                     <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
                                     marginRight: 8,}}>
                       {this.fancyDesc()} 
@@ -938,27 +910,6 @@ class RelConceptSet extends ConceptSet {
     return `${this.relSg[this.relSg.reverse_relationship]} ${this.relSg.reverse_relationship}`
   }
   */
-  shortDesc = () => {
-    //let {status, msg} = this.status()
-    return (
-      (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
-      `I'm a ${this.role()}, what kind of shortDesc do you want?`
-    )
-  }
-  longDesc = () => {
-    let relSg = this.relSg
-    //if (this.concepts().length) debugger
-    return 'not working'
-  }
-  fancyDesc = () => {
-    return (
-      (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
-      (this.hasProp('longDesc') && this.prop('longDesc')) ||
-      (this.hasProp('desc') && this.prop('desc')) ||
-      `I'm a ${this.role()}, what kind of fancyDesc do you want?`
-    )
-  }
   reverseRelId = relId => this.csetSelectors.reverseRel(relId)
   relName = () => this.prop('reldim')
   revrel = false

@@ -129,7 +129,7 @@ const groupLabel = props => {
             {
               cset.conCnt() + ' ' + 
               ['dom','voc','cls']
-                .map(fld => cset.singleMemberGroupLabel(fld))
+                .map(fld => cncpt.singleMemberGroupLabel(cset.sgVal(),fld))
                 .filter(d=>d)
                 .join(', ')
               + ' concepts'
@@ -256,7 +256,7 @@ export class RelButton extends Component {
     //let {relName, relcids} = rel
     //let href = '#' // should be link to concept focus
 
-    let relSg = cset.relSg
+    let relSg = cset.byRelName()
 
     let status = cset.status()
     let ttFancy= 
@@ -316,7 +316,10 @@ const RelsView = props => { // assuming I just have cids, no concepts
         <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
         { _.map(cset.byRelName(), (relSg,i) => {
             let shouldShow = isExpanded(relSg.reldim)
-            let special = `${cset.reldim()} != ${relSg} (${relSg.reldim})`
+            //let special = `${cset.reldim()} != ${relSg} (${relSg.reldim})`
+            let special = 'fix this special thing'
+
+            /*
             if (cset.role('rel')) {
               if (relSg==cset.reldim()) {
                 special = `${cset.reldim()} 
@@ -335,6 +338,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
                             `
               }
             }
+            */
             return <RelButton 
                       special={special}
                       cset={cset.csetFromRelSg(relSg)}
