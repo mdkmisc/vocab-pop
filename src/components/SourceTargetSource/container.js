@@ -106,8 +106,7 @@ SourceTargetSourceForm = connect(
           cids,
           maxDepth:2,
           role: 'focal',
-          desc: `${vocabulary_id} ${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '}
-                  ${matchStr}`,
+          desc: `${vocabulary_id} ${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '} ${matchStr}`,
         }, 
         { conceptState, relmetaState, reverseRel, },
         wantConcepts,

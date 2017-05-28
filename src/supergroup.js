@@ -43,6 +43,11 @@ var supergroup = (function() {
      */
     sg.supergroup = function(recs, dim, opts) {
         // if dim is an array, use multiDimList to create hierarchical grouping
+        recs = recs.map((rec,i)=> {
+          let clone = _.clone(rec)
+          clone._recIdx = i
+          return clone
+        })
         opts = opts || {};
         if (_(dim).isArray()) return sg.multiDimList(recs, dim, opts);
         recs = opts.preListRecsHook ? opts.preListRecsHook(recs) : recs;
@@ -78,8 +83,11 @@ var supergroup = (function() {
         var isNumeric = _(opts).has('isNumeric') ? 
                             opts.isNumeric :
                             wholeListNumeric(groups); // does every group Value look like a number or a missing value?
-        var groups = _.map(_.toPairs(groups), function(pair, i) { // setup Values for each group in List
-            var rawVal = pair[0];
+
+        //console.log(groups)
+        //debugger
+        var groups = _.map(groups, (records, rawVal) => { // setup Values for each group in List
+            // rawVal is the key in the groups map
             var val;
             if(isNumeric) {
                 val = makeNumberValue(rawVal); // either everything's a Number
@@ -89,7 +97,8 @@ var supergroup = (function() {
             /* The original records in this group are stored as an Array in 
              * the records property (should probably be a getter method).
              */
-            val.records = pair[1];
+            val.records = records
+
             /* val.records is enhanced with Underscore methods for
              * convenience, but also with the supergroup method that's
              * been mixed in to Underscore. So you can group this specific
@@ -257,11 +266,34 @@ var supergroup = (function() {
         this.map(d=>d.getChildren().nodesAtLevel(level, currentLevel + 1))));
     };
     List.prototype.addLevel = function(dim, opts) {
-        _.each(this, function(val) {
+        let clone = this.clone()
+        //if (clone[0] && clone[0].children) debugger
+        _.each(clone, function(val) {
             val.addLevel(dim, opts);
         });
-        return this;
+        return clone;
     };
+    List.prototype.clone = function() {
+      let clone = Object.assign([], this)
+      clone.records = _.cloneDeep(this.records)
+      _.addSupergroupMethods(clone)
+      let list = this
+      clone.splice(0, clone.length, ...clone.map(
+        val => {
+          let newVal = makeValue(val)
+          _.extend(newVal, _.cloneDeep(val))
+          newVal.records = val.records.map(rec=>clone.records[rec._recIdx])
+          newVal.parentList = clone
+          //if (val.children) debugger
+          // WRONG RECORDS!!!!
+          if (val.hasChildren()) {
+            newVal[childProp] = val.getChildren().clone()
+          }
+          return newVal
+        }
+      ))
+      return clone
+    }
     List.prototype.namePaths = function(opts) {
         return _.map(this, function(d) {
             return d.namePath(opts);

@@ -549,6 +549,40 @@ const groupMethods = {
   cls: cval => _.supergroup(cval.records, 'concept_class_id'),
   rels: cval => byRelName(cval),
 }
+const sgParams = {
+  sc:     {dim: 'standard_concept'},
+  dom:    {dim: 'domain_id'},
+  voc:    {dim: 'vocabulary_id'},
+  cls:    {dim: 'concept_class_id'},
+  withCdm:{dim: c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',opts:{dimName: 'inCdm'}},
+  rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
+}
+
+export const byRelName = cval => {
+  const dim = c=>c.relgrps.map(reldim)
+  const opts = {multiValuedGroup:true,dimName:'reldim'}
+  let sg = _.supergroup(cval.records, dim, opts)
+  sg.forEach(relSg => {
+    let [r,rr] = relSg.split(/ --> /)
+    relSg.relationship = r
+    relSg.reverse_relationship = rr
+    relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
+                    .filter(r=>reldim(r)==relSg)
+    relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
+    relSg[relSg.relationship] = sgCidCnt(relSg)
+    relSg[relSg.reverse_relationship] = relSg.relcids.length
+    //debugger // figure out round trip stuff
+    /*
+    if (cset.role('rel') && relSg==reldim(cset)) {
+      relSg.showAsRoundTrip = true
+    }
+    if (cset.role('rel') && relSg==rreldim(cset)) {
+      relSg.showAsRoundTrip = true
+    }
+    */
+  })
+  return sg
+}
 
 
 
@@ -569,125 +603,77 @@ export const grpsDesc = (grps, cval) => {
   return `${cval.records.length} ${cval} -- ${_.values(singleVals).join(', ')}
             ${grpsDesc(multiVals, cval)}`
 }
-export const reduceGroups = (cval, methods=groupMethods, grps={}) => {
-  // not sure if i should do methods in specific order
-  let all = doGroupings(cval,methods)
-  let singleVals = _.pickBy(all, (v,k) => v.length === 1)
-  let multiVals = _.pickBy(all, (v,k) => v.length !== 1)
-
-  if (_.isEmpty(singleVals) && _.isEmpty(multiVals)) {
-    //throw new Error("doesn't seem to happen") // i'm confused though
-    debugger
-  }
-  if (!_.isEmpty(singleVals) && !_.isEmpty(grps)) {
-    //debugger
-  }
-
-  singleVals = _.mapValues(singleVals, v => v[0])
-  if (_.intersection(_.keys(grps), _.keys(singleVals)).length) {
-    debugger
-  }
-  grps = {...grps, ...singleVals}
-
-  if (_.isEmpty(multiVals)) {
-    //debugger
-    if (_.intersection(_.keys(grps), _.keys(singleVals)).length) {
-      //debugger
-      // they're identical sometimes...might need to figure out what's happening
-    }
-    return {...grps, ...singleVals}
-  }
-  let remainingMethods = _.difference(_.keys(methods),_.keys(singleVals))
-  if (!remainingMethods.length) {
-    return grps
-  }
-  //debugger
-  /*
-  let test = reduceGroups(
-                _.entries(multiVals)[0][1],
-                _.pick(groupMethods,
-                        _.without(remainingMethods,_.entries(multiVals)[0][0])),
-                singleVals)
-  debugger
-  return test
-  */
-  let nextVals = _.mapValues(multiVals, (v,k) => {
-    let remMeth2 = _.pick(groupMethods, _.without(remainingMethods,k))
-    if (_.isEmpty(remMeth2)) {
-      return v.getLookupMap()
-    }
-    let mv = _.mapValues(
-              v.getLookupMap(),
-              (v2,k2) => {
-                let rg = reduceGroups(
-                  v2,
-                  _.pick(groupMethods, _.without(remainingMethods,k))
-                  ,{[k]:v2}
-                  //,{...grps, [k]:v2}
-                )
-                //console.log(rg)
-                return rg
-                /*
-                debugger
-                try {
-                  return _.mapValues(rg, (v3,k3)=> v3.getLookupMap())
-                } catch(e) {
-                  console.error(e)
-                  debugger
-                }
-                */
-              })
-    //debugger
-    return mv
+export const doGroupings = (cval,flds) => {
+  return flds.map(fld=>{
+    let params = sgParams[fld]
+    return _.supergroup(cval, params.dim, params.opts)
   })
-  //debugger
-  return {...grps, ...nextVals}
-  return {...grps, ...singleVals, ...nextVals}
+  //return _.mapValues(methods, (v,k) => v(cval))
+}
+export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
+  let fldSgs = flds.map(fld=>{
+    let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
+    return {fld,sg,title:sg.toString()}
+  })
+  fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
+  let outSg = fldSgs[0].sg
+  fldSgs.shift()
+  fldSgs.forEach(({fld,sg,title}) => {
+    outSg = outSg.addLevel(sgParams[fld].dim, sgParams[fld].opts)
+    //let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
+  })
+  debugger
+  return outSg
 /*
 
 
 
-
-    let nextGrps
-    if (remainingMethods.length) {
-      nextGrps = _.mapValues(v.getLookupMap(), 
-                    (v2,k2) => 
-                      reduceGroups(
-                        v2,
-                        _.pick(groupMethods,remainingMethods),
-                        singleVals))
-
-    } else {
-      nextGrps = v.getLookupMap()
-    }
-    if (_.intersection(_.keys(grps), _.keys(nextGrps)).length) {
-      debugger
-    }
-    //if (!_.isEmpty(grps)) debugger
-    return nextGrps
-    return {...grps, nextGrps}
-  })
-  */
-  if (_.isEmpty(singleVals)) {
-    //if (!_.isEmpty(grps)) debugger
-    return {...grps, ...multiVals}
-  }
-  if (_.union(_.keys(grps),_.keys(singleVals), _.keys(multiVals)).length !==
-      (_.keys(grps).length + _.keys(singleVals).length + _.keys(multiVals).length)) {
+  let nextTitle = `${cval.length} ${cval} (${singleVals.map(d=>d.title).join(', ')})`
+  let nextCval = _.supergroup(cval.records, d=>nextTitle, {dimName:cval.toString()})[0]
+  if (multiVals.length) {
+    debugger
+    let next = _.sortBy(multiVals, d=>d.sg.length)[0]
+    nextCval.addLevel(sgParams[next.fld].dim, sgParams[next.fld].opts)
+    let nextFlds = _.difference(flds, singleVals.map(d=>d.fld), [next.fld])
+    let rcalls = nextCval.leafNodes().map(cv=>reduceGroups(cv, nextFlds))
+    return rcalls
     debugger
   }
-  //if (!_.isEmpty(grps)) debugger
-  return {...grps, ...singleVals, ...multiVals}
-}
-export const doGroupings = (cval,methods) => {
-  return _.mapValues(methods, (v,k) => v(cval))
+  // not sure if i should do flds in specific order
+  let singleVals = []
+  let multiVals = []
+  let something = flds.map(fld=>{
+    let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
+    if (sg.length === 1) {
+      singleVals.push({fld,sg,title:sg.toString()})
+    } else if (sg.length > 1) {
+      multiVals.push({fld,sg,title:sg.toString()})
+    } else {
+      debugger
+      throw new Error("impossible")
+    }
+    return sg
+  })
+  let nextTitle = `${cval.length} ${cval} (${singleVals.map(d=>d.title).join(', ')})`
+  let nextCval = _.supergroup(cval.records, d=>nextTitle, {dimName:cval.toString()})[0]
+  if (multiVals.length) {
+    debugger
+    let next = _.sortBy(multiVals, d=>d.sg.length)[0]
+    nextCval.addLevel(sgParams[next.fld].dim, sgParams[next.fld].opts)
+    let nextFlds = _.difference(flds, singleVals.map(d=>d.fld), [next.fld])
+    let rcalls = nextCval.leafNodes().map(cv=>reduceGroups(cv, nextFlds))
+    return rcalls
+    debugger
+  }
+  return nextCval
+  */
 }
 
 
 // these return simple value (not obj) for csets having only one
 // member in a group... meaning that all their subsets will also have only that member
 export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, voc, cls, wcdm
-  let grps = groups(cval.records,dimName)
+  let grps = groups(cval,dimName)
   if (grps.length === 1) {
     return grps[0].valueOf()
   }
@@ -744,32 +730,6 @@ const rreldim = r =>
     ?  `${r.reverse_relationship()} --> ${r.relationship()}`
     :  `${r.reverse_relationship} --> ${r.relationship}`
 
-
-export const byRelName = cval => {
-  const dim = c=>c.relgrps.map(reldim)
-  const opts = {multiValuedGroup:true,dimName:'reldim'}
-  let sg = _.supergroup(cval.records, dim, opts)
-  sg.forEach(relSg => {
-    let [r,rr] = relSg.split(/ --> /)
-    relSg.relationship = r
-    relSg.reverse_relationship = rr
-    relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
-                    .filter(r=>reldim(r)==relSg)
-    relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
-    relSg[relSg.relationship] = sgCidCnt(relSg)
-    relSg[relSg.reverse_relationship] = relSg.relcids.length
-    //debugger // figure out round trip stuff
-    /*
-    if (cset.role('rel') && relSg==reldim(cset)) {
-      relSg.showAsRoundTrip = true
-    }
-    if (cset.role('rel') && relSg==rreldim(cset)) {
-      relSg.showAsRoundTrip = true
-    }
-    */
-  })
-  return sg
-}
 export const toClist = cholder => { 
   // fix, but for now have ConceptSets and relSgs and other supergroup vals
   // that i want to use the same functions with
