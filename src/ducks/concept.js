@@ -523,6 +523,7 @@ export const toSg = props => {
   })
   return sg
 }
+/*
 const groupings = {
   sc: 'standard_concept',
   dom: 'domain_id',
@@ -538,8 +539,151 @@ const groupMethods = {
   cls: cval => _.supergroup(cval.records, 'concept_class_id').aggregates(_.sum,d=>1,'dict'),
   rels: cval => byRelName(cval),
 }
-export const cdmCnts = cval => colCnts(_.flatten(cval.records.map(c=>c.cnts)))
-export const groups = (cval,fld) => _.supergroup(cval.records, groupings[fld])
+*/
+const groupMethods = {
+  withCdm: cval => _.supergroup(cval.records, c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',
+                          {dimName: 'inCdm'}),
+  sc: cval => _.supergroup(cval.records, 'standard_concept'),
+  dom: cval => _.supergroup(cval.records, 'domain_id'),
+  voc: cval => _.supergroup(cval.records, 'vocabulary_id'),
+  cls: cval => _.supergroup(cval.records, 'concept_class_id'),
+  rels: cval => byRelName(cval),
+}
+
+
+
+//export const groups = (cval,fld) => _.supergroup(cval.records, groupings[fld])
+export const groups = (cval,fld) => groupMethods[fld](cval)
+
+export const grpsDesc = (grps, cval) => {
+  let {singleVals,multiVals} = _.transform(
+    grps, (acc, v, k) => 
+      acc[v.parentList ? 'singleVals' 
+                       : 'multiVals'
+         ][k] = v, 
+    {singleVals:{},multiVals:{}}
+  )
+  if (_.keys(singleVals).length + _.keys(multiVals).length !== _.keys(grps).length) {
+    debugger
+  }
+  return `${cval.records.length} ${cval} -- ${_.values(singleVals).join(', ')}
+            ${grpsDesc(multiVals, cval)}`
+}
+export const reduceGroups = (cval, methods=groupMethods, grps={}) => {
+  // not sure if i should do methods in specific order
+  let all = doGroupings(cval,methods)
+  let singleVals = _.pickBy(all, (v,k) => v.length === 1)
+  let multiVals = _.pickBy(all, (v,k) => v.length !== 1)
+
+  if (_.isEmpty(singleVals) && _.isEmpty(multiVals)) {
+    //throw new Error("doesn't seem to happen") // i'm confused though
+    debugger
+  }
+  if (!_.isEmpty(singleVals) && !_.isEmpty(grps)) {
+    //debugger
+  }
+
+  singleVals = _.mapValues(singleVals, v => v[0])
+  if (_.intersection(_.keys(grps), _.keys(singleVals)).length) {
+    debugger
+  }
+  grps = {...grps, ...singleVals}
+
+  if (_.isEmpty(multiVals)) {
+    //debugger
+    if (_.intersection(_.keys(grps), _.keys(singleVals)).length) {
+      //debugger
+      // they're identical sometimes...might need to figure out what's happening
+    }
+    return {...grps, ...singleVals}
+  }
+  let remainingMethods = _.difference(_.keys(methods),_.keys(singleVals))
+  if (!remainingMethods.length) {
+    return grps
+  }
+  //debugger
+  /*
+  let test = reduceGroups(
+                _.entries(multiVals)[0][1],
+                _.pick(groupMethods,
+                        _.without(remainingMethods,_.entries(multiVals)[0][0])),
+                singleVals)
+  debugger
+  return test
+  */
+  let nextVals = _.mapValues(multiVals, (v,k) => {
+    let remMeth2 = _.pick(groupMethods, _.without(remainingMethods,k))
+    if (_.isEmpty(remMeth2)) {
+      return v.getLookupMap()
+    }
+    let mv = _.mapValues(
+              v.getLookupMap(),
+              (v2,k2) => {
+                let rg = reduceGroups(
+                  v2,
+                  _.pick(groupMethods, _.without(remainingMethods,k))
+                  ,{[k]:v2}
+                  //,{...grps, [k]:v2}
+                )
+                //console.log(rg)
+                return rg
+                /*
+                debugger
+                try {
+                  return _.mapValues(rg, (v3,k3)=> v3.getLookupMap())
+                } catch(e) {
+                  console.error(e)
+                  debugger
+                }
+                */
+              })
+    //debugger
+    return mv
+  })
+  //debugger
+  return {...grps, ...nextVals}
+  return {...grps, ...singleVals, ...nextVals}
+/*
+
+
+
+
+    let nextGrps
+    if (remainingMethods.length) {
+      nextGrps = _.mapValues(v.getLookupMap(), 
+                    (v2,k2) => 
+                      reduceGroups(
+                        v2,
+                        _.pick(groupMethods,remainingMethods),
+                        singleVals))
+
+    } else {
+      nextGrps = v.getLookupMap()
+    }
+    if (_.intersection(_.keys(grps), _.keys(nextGrps)).length) {
+      debugger
+    }
+    //if (!_.isEmpty(grps)) debugger
+    return nextGrps
+    return {...grps, nextGrps}
+  })
+  */
+  if (_.isEmpty(singleVals)) {
+    //if (!_.isEmpty(grps)) debugger
+    return {...grps, ...multiVals}
+  }
+  if (_.union(_.keys(grps),_.keys(singleVals), _.keys(multiVals)).length !==
+      (_.keys(grps).length + _.keys(singleVals).length + _.keys(multiVals).length)) {
+    debugger
+  }
+  //if (!_.isEmpty(grps)) debugger
+  return {...grps, ...singleVals, ...multiVals}
+}
+export const doGroupings = (cval,methods) => {
+  return _.mapValues(methods, (v,k) => v(cval))
+}
+
+
 // these return simple value (not obj) for csets having only one
 // member in a group... meaning that all their subsets will also have only that member
 export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, voc, cls, wcdm
@@ -549,7 +693,12 @@ export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, 
   }
 }
 export const subgrpCnts = (cval) => {
+  let grps = reduceGroups(cval)
+  let desc = grpsDesc(grps, cval)
+  return desc
+
   let cnts = {}
+  debugger
 
   let relSg = byRelName(cval)
   cnts.byRelName = relSg.aggregates(_.sum, d=>1, 'dict')
@@ -558,11 +707,14 @@ export const subgrpCnts = (cval) => {
     dim: d=>d.cnts.length ? 'CDM Recs' : 'Not in CDM',
     opts: {dimName: 'inCdm'},
   }).aggregates(_.sum,d=>1,'dict')
+
+  /*
   _.values(groupings).forEach(
     fld => {
       cnts[fld] = _.supergroup(cval.records, fld).aggregates(_.sum,d=>1,'dict')
     }
   )
+  */
   let msgs = _.map(cnts, (v,k) => _.keys(v).length === 1 && {[k]:_.keys(v)[0]})
                 .filter(d=>d)
 
@@ -572,6 +724,7 @@ export const subgrpCnts = (cval) => {
 
   return cnts
 }
+export const cdmCnts = cval => colCnts(_.flatten(cval.records.map(c=>c.cnts)))
 export const relgrps = 
   // flat list of all concept.relgrps records for concept list
   // optionally filtered by reldim
@@ -685,8 +838,8 @@ export class ConceptSet {
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
 
-  sgList = () => _.supergroup(this.concepts(), d=>this.shortDesc(), {dimName:'whole concept set'})
-  sgVal = () => this.sgList().asRootVal()
+  sgVal = () => _.supergroup(this.concepts(), d=>this.shortDesc(), {dimName:'whole concept set'})[0]
+  //sgVal = () => this.sgList().asRootVal(this.shortDesc())
 
 
 
