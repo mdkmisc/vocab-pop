@@ -265,13 +265,19 @@ var supergroup = (function() {
       return sg.addListMethods(_.flatten(
         this.map(d=>d.getChildren().nodesAtLevel(level, currentLevel + 1))));
     };
-    List.prototype.addLevel = function(dim, opts) {
+    List.prototype.addLevelPure = function(dim, opts) {
         let clone = this.clone()
         //if (clone[0] && clone[0].children) debugger
         _.each(clone, function(val) {
             val.addLevel(dim, opts);
         });
         return clone;
+    };
+    List.prototype.addLevel = function(dim, opts) {
+        _.each(this, function(val) {
+            val.addLevel(dim, opts);
+        });
+        return this;
     };
     List.prototype.clone = function() {
       let clone = Object.assign([], this)
@@ -405,6 +411,7 @@ var supergroup = (function() {
 
     Value.prototype.extendGroupBy = // backward compatibility
     Value.prototype.addLevel = function(dim, opts) {
+        // this should also be pure function!
         opts = opts || {};
         _.each(this.leafNodes() || [this], function(d) {
             opts.parent = d;

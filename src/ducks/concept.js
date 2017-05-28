@@ -619,7 +619,7 @@ export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
   let outSg = fldSgs[0].sg
   fldSgs.shift()
   fldSgs.forEach(({fld,sg,title}) => {
-    outSg = outSg.addLevel(sgParams[fld].dim, sgParams[fld].opts)
+    outSg = outSg.addLevelPure(sgParams[fld].dim, sgParams[fld].opts)
     //let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
   })
   debugger
