@@ -3,6 +3,10 @@
 // probably not a duck...just selectors?
 
 import _ from 'src/supergroup'; // in global space anyway...
+//const _ = lodash.supergroupOpts({allowCloning:true, childProp:'foo'})
+//console.log(lodash.supergroup([{a:2,b:2}],['a','b'])[0])
+//console.log(_.supergroup([{a:2,b:2}],['a','b'])[0])
+
 import * as api from 'src/api'
 import * as cids from 'src/ducks/cids'
 import * as util from 'src/utils';
@@ -622,7 +626,6 @@ export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
     outSg = outSg.addLevelPure(sgParams[fld].dim, sgParams[fld].opts)
     //let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
   })
-  debugger
   return outSg
 /*
 
@@ -680,6 +683,7 @@ export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, 
 }
 export const subgrpCnts = (cval) => {
   let grps = reduceGroups(cval)
+  debugger
   let desc = grpsDesc(grps, cval)
   return desc
 

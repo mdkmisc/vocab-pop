@@ -4,12 +4,16 @@ const DEBUG=true
 import Rx from 'rxjs/Rx'
 var d3 = require('d3');
 var $ = require('jquery');
-import _ from 'src/supergroup'
+//import _ from 'src/supergroup'
+//import lodash from 'src/supergroup'; // in global space anyway...
+//const lodash = require('src/supergroup')
+//const _ = lodash.supergroupOpts({allowCloning:true, childProp:'foo'})
+//console.log(_.supergroup([{a:2,b:2}],['a','b'])[0])
 if (DEBUG) {
   window.Rx = Rx
   window.d3 = d3
   window.$ = $
-  window._ = _
+  //window._ = _
 }
 import React, { Component } from 'react'
 import { render } from 'react-dom'

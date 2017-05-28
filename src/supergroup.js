@@ -18,7 +18,8 @@ if (typeof require !== "undefined") {
     var createAggregator = require('lodash/_createAggregator');
 }
 
-var supergroup = (function() {
+var supergroup = function(globalOpts={}) {
+    let opts = globalOpts
     // @description local reference to supergroup namespace 
     var sg = {};
 
@@ -37,18 +38,29 @@ var supergroup = (function() {
      * @param {function} [opts.truncateBranchOnEmptyVal] 
      * @param {boolean} [opts.multiValuedGroup=false]
      * @param {boolean} [opts.preventScalarInMultiValuedGroup=false] // setting globally
+     *
+     *
+     *
+     *
+     * @param {boolean} [opts.allowCloning=false]
+     *
+     *
+     *
+     *
      * @return {Array of Values} enhanced with all the List methods
      *
      * Avaailable as _.supergroup, Underscore mixin
      */
-    sg.supergroup = function(recs, dim, opts) {
+    sg.supergroup = function(recs, dim, _opts) {
         // if dim is an array, use multiDimList to create hierarchical grouping
-        recs = recs.map((rec,i)=> {
-          let clone = _.clone(rec)
-          clone._recIdx = i
-          return clone
-        })
-        opts = opts || {};
+        let opts = _.merge({}, _opts, globalOpts)
+        //if (opts.allowCloning) {
+          recs = recs.map((rec,i)=> {
+            let clone = _.clone(rec)
+            clone._recIdx = i
+            return clone
+          })
+        //}
         if (_(dim).isArray()) return sg.multiDimList(recs, dim, opts);
         recs = opts.preListRecsHook ? opts.preListRecsHook(recs) : recs;
         childProp = opts.childProp || childProp;
@@ -265,41 +277,47 @@ var supergroup = (function() {
       return sg.addListMethods(_.flatten(
         this.map(d=>d.getChildren().nodesAtLevel(level, currentLevel + 1))));
     };
-    List.prototype.addLevelPure = function(dim, opts) {
-        let clone = this.clone()
-        //if (clone[0] && clone[0].children) debugger
-        _.each(clone, function(val) {
-            val.addLevel(dim, opts);
-        });
-        return clone;
-    };
     List.prototype.addLevel = function(dim, opts) {
         _.each(this, function(val) {
             val.addLevel(dim, opts);
         });
         return this;
     };
-    List.prototype.clone = function() {
-      let clone = Object.assign([], this)
-      clone.records = _.cloneDeep(this.records)
-      _.addSupergroupMethods(clone)
-      let list = this
-      clone.splice(0, clone.length, ...clone.map(
-        val => {
-          let newVal = makeValue(val)
-          _.extend(newVal, _.cloneDeep(val))
-          newVal.records = val.records.map(rec=>clone.records[rec._recIdx])
-          newVal.parentList = clone
-          //if (val.children) debugger
-          // WRONG RECORDS!!!!
-          if (val.hasChildren()) {
-            newVal[childProp] = val.getChildren().clone()
+    //if (opts.allowCloning) {
+      List.prototype.addLevelPure = function(dim, opts) {
+          let clone = this.clone()
+          //if (clone[0] && clone[0].children) debugger
+          _.each(clone, function(val) {
+              //val.addLevelPure(dim, opts);
+              val.addLevel(dim, opts);
+          });
+          return clone;
+      };
+      List.prototype.clone = function() {
+        let clone = Object.assign([], this)
+        clone.records = _.cloneDeep(this.records)
+        _.addSupergroupMethods(clone)
+        let list = this
+        clone.splice(0, clone.length, ...clone.map(
+          val => {
+            let newVal = makeValue(val)
+            _.extend(newVal, _.cloneDeep(val))
+            newVal.records = val.records.map(rec=>clone.records[rec._recIdx])
+            newVal.parentList = clone
+            //if (val.children) debugger
+            // WRONG RECORDS!!!!
+            if (val.hasChildren()) {
+              newVal[childProp] = val.getChildren().clone()
+            }
+            return newVal
           }
-          return newVal
-        }
-      ))
-      return clone
-    }
+        ))
+        return clone
+      }
+      if (opts.forceCloning) {
+        List.prototype.addLevelPure = List.prototype.addLevel
+      }
+    //}
     List.prototype.namePaths = function(opts) {
         return _.map(this, function(d) {
             return d.namePath(opts);
@@ -431,6 +449,18 @@ var supergroup = (function() {
             d[childProp].parentVal = d; // NOT TESTED, NOT USED, PROBABLY WRONG!!!
         });
     };
+    /*
+    if (opts.allowCloning || opts.forceCloning) {
+      Value.prototype.addLevelPure = Value.prototype.addLevel
+      console.error("Value.addLevelPure does nothing special")
+      if (opts.forceCloning) {
+        Value.prototype.addLevel = Value.prototype.addLevelPure
+      } else {
+        //Value.prototype.addLevelPure = Value.prototype.addLevel
+      }
+    }
+    */
+
     Value.prototype.leafNodes = function(level) {
         // until commit 31278a35b91a8f4bd4ddc4376c840fb14d2723f9
         // supported level param, to only go down so many levels
@@ -786,7 +816,7 @@ var supergroup = (function() {
         recs = recs.filter(r => !_.isEmpty(func(r)) || (_.isNumber(func(r)) && isFinite(func(r)))); // _.isEmpty(0) === true
         return recs;
     }
-}());
+}
 
 
 // allows grouping by a field that contains an array of values rather than just a single value
@@ -812,16 +842,17 @@ if (createAggregator) {
     var multiValuedGroupBy = function() { throw new Error("couldn't install multiValuedGroupBy") };
 }
 
-_.mixin({
-    supergroup: supergroup.supergroup, 
-    addSupergroupMethods: supergroup.addSupergroupMethods,
+let sg = supergroup()
+let mixins = {
+    supergroup: sg.supergroup, 
+    addSupergroupMethods: sg.addSupergroupMethods,
     multiValuedGroupBy: multiValuedGroupBy,
-    sgDiffList: supergroup.diffList,
-    sgCompare: supergroup.compare,
-    sgCompareValue: supergroup.compareValue,
-    sgAggregate: supergroup.aggregate,
-    hierarchicalTableToTree: supergroup.hierarchicalTableToTree,
-    stateClass: supergroup.State,
+    sgDiffList: sg.diffList,
+    sgCompare: sg.compare,
+    sgCompareValue: sg.compareValue,
+    sgAggregate: sg.aggregate,
+    hierarchicalTableToTree: sg.hierarchicalTableToTree,
+    stateClass: sg.State,
 
     // FROM https://gist.github.com/AndreasBriese/1670507
     // Return aritmethic mean of the elements
@@ -867,7 +898,14 @@ _.mixin({
         };
         return tmpObj.length%2 ? tmpObj[Math.floor(tmpObj.length/2)] : (_.isNumber(tmpObj[tmpObj.length/2-1]) && _.isNumber(tmpObj[tmpObj.length/2])) ? (tmpObj[tmpObj.length/2-1]+tmpObj[tmpObj.length/2]) /2 : tmpObj[tmpObj.length/2-1];
     },
-});
+}
+mixins.supergroupOpts = opts => {
+  mixins.supergroup = supergroup(opts).supergroup
+  let lodash = _.runInContext()
+  lodash.mixin(mixins)
+  return lodash
+}
+_.mixin(mixins);
 
 if (typeof module !== "undefined")
     module.exports = _;
