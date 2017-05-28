@@ -18,7 +18,8 @@ if (typeof require !== "undefined") {
     var createAggregator = require('lodash/_createAggregator');
 }
 
-var supergroup = (function() {
+var supergroup = function(globalOpts={}) {
+    let opts = globalOpts
     // @description local reference to supergroup namespace 
     var sg = {};
 
@@ -37,14 +38,22 @@ var supergroup = (function() {
      * @param {function} [opts.truncateBranchOnEmptyVal] 
      * @param {boolean} [opts.multiValuedGroup=false]
      * @param {boolean} [opts.preventScalarInMultiValuedGroup=false] // setting globally
+     *
+     *
+     *
+     *
+     * @param {boolean} [opts.allowCloning=false]
+     *
+     *
+     *
+     *
      * @return {Array of Values} enhanced with all the List methods
      *
      * Avaailable as _.supergroup, Underscore mixin
      */
-    sg.supergroup = function(recs, dim, opts) {
+    sg.supergroup = function(recs, dim, _opts) {
         // if dim is an array, use multiDimList to create hierarchical grouping
-        opts = opts || {};
-
+        let opts = _.merge({}, _opts, globalOpts)
         //if (opts.allowCloning) {
           recs = recs.map((rec,i)=> {
             let clone = _.clone(rec)
@@ -86,8 +95,11 @@ var supergroup = (function() {
         var isNumeric = _(opts).has('isNumeric') ? 
                             opts.isNumeric :
                             wholeListNumeric(groups); // does every group Value look like a number or a missing value?
-        var groups = _.map(_.toPairs(groups), function(pair, i) { // setup Values for each group in List
-            var rawVal = pair[0];
+
+        //console.log(groups)
+        //debugger
+        var groups = _.map(groups, (records, rawVal) => { // setup Values for each group in List
+            // rawVal is the key in the groups map
             var val;
             if(isNumeric) {
                 val = makeNumberValue(rawVal); // either everything's a Number
@@ -97,7 +109,8 @@ var supergroup = (function() {
             /* The original records in this group are stored as an Array in 
              * the records property (should probably be a getter method).
              */
-            val.records = pair[1];
+            val.records = records
+
             /* val.records is enhanced with Underscore methods for
              * convenience, but also with the supergroup method that's
              * been mixed in to Underscore. So you can group this specific
@@ -301,7 +314,9 @@ var supergroup = (function() {
         ))
         return clone
       }
-      
+      if (opts.forceCloning) {
+        List.prototype.addLevelPure = List.prototype.addLevel
+      }
     //}
     List.prototype.namePaths = function(opts) {
         return _.map(this, function(d) {
@@ -414,6 +429,7 @@ var supergroup = (function() {
 
     Value.prototype.extendGroupBy = // backward compatibility
     Value.prototype.addLevel = function(dim, opts) {
+        // this should also be pure function!
         opts = opts || {};
         _.each(this.leafNodes() || [this], function(d) {
             opts.parent = d;
@@ -433,6 +449,18 @@ var supergroup = (function() {
             d[childProp].parentVal = d; // NOT TESTED, NOT USED, PROBABLY WRONG!!!
         });
     };
+    /*
+    if (opts.allowCloning || opts.forceCloning) {
+      Value.prototype.addLevelPure = Value.prototype.addLevel
+      console.error("Value.addLevelPure does nothing special")
+      if (opts.forceCloning) {
+        Value.prototype.addLevel = Value.prototype.addLevelPure
+      } else {
+        //Value.prototype.addLevelPure = Value.prototype.addLevel
+      }
+    }
+    */
+
     Value.prototype.leafNodes = function(level) {
         // until commit 31278a35b91a8f4bd4ddc4376c840fb14d2723f9
         // supported level param, to only go down so many levels
@@ -788,7 +816,7 @@ var supergroup = (function() {
         recs = recs.filter(r => !_.isEmpty(func(r)) || (_.isNumber(func(r)) && isFinite(func(r)))); // _.isEmpty(0) === true
         return recs;
     }
-}());
+}
 
 
 // allows grouping by a field that contains an array of values rather than just a single value
@@ -814,16 +842,17 @@ if (createAggregator) {
     var multiValuedGroupBy = function() { throw new Error("couldn't install multiValuedGroupBy") };
 }
 
-_.mixin({
-    supergroup: supergroup.supergroup, 
-    addSupergroupMethods: supergroup.addSupergroupMethods,
+let sg = supergroup()
+let mixins = {
+    supergroup: sg.supergroup, 
+    addSupergroupMethods: sg.addSupergroupMethods,
     multiValuedGroupBy: multiValuedGroupBy,
-    sgDiffList: supergroup.diffList,
-    sgCompare: supergroup.compare,
-    sgCompareValue: supergroup.compareValue,
-    sgAggregate: supergroup.aggregate,
-    hierarchicalTableToTree: supergroup.hierarchicalTableToTree,
-    stateClass: supergroup.State,
+    sgDiffList: sg.diffList,
+    sgCompare: sg.compare,
+    sgCompareValue: sg.compareValue,
+    sgAggregate: sg.aggregate,
+    hierarchicalTableToTree: sg.hierarchicalTableToTree,
+    stateClass: sg.State,
 
     // FROM https://gist.github.com/AndreasBriese/1670507
     // Return aritmethic mean of the elements
@@ -869,7 +898,14 @@ _.mixin({
         };
         return tmpObj.length%2 ? tmpObj[Math.floor(tmpObj.length/2)] : (_.isNumber(tmpObj[tmpObj.length/2-1]) && _.isNumber(tmpObj[tmpObj.length/2])) ? (tmpObj[tmpObj.length/2-1]+tmpObj[tmpObj.length/2]) /2 : tmpObj[tmpObj.length/2-1];
     },
-});
+}
+mixins.supergroupOpts = opts => {
+  mixins.supergroup = supergroup(opts).supergroup
+  let lodash = _.runInContext()
+  lodash.mixin(mixins)
+  return lodash
+}
+_.mixin(mixins);
 
 if (typeof module !== "undefined")
     module.exports = _;
