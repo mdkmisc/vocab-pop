@@ -362,6 +362,13 @@ var supergroup = (function() {
         }
       })
     }
+    List.prototype.summary = function() {
+      return this.leafNodes().length &&
+              //`${this.leafNodes()[0]} ` +
+              `${this.leafNodes()[0].dimPath()}:\n` +
+              this.leafNodes().map(
+                d=>`   ${d.records.length} ${d.namePath()}\n`).join('')
+    }
 
     function makeValue(v_arg) {
         if (isNaN(v_arg)) {

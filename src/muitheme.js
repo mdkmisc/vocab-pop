@@ -132,13 +132,14 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
   let styles = {
     tooltip: {
       pre: {
-        zoom:.3,
+        //zoom:3,
+        fontSize:'100px',
         border: `4px double ${pal.regular}`,
         backgroundColor: pal.lighter,
         color: pal.dark,
       },
       div: {
-        border: `4px inset ${pal.regular}`,
+        //border: `4px inset ${pal.regular}`,
         backgroundColor: pal.lighter,
         color: pal.dark,
       },

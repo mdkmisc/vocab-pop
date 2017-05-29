@@ -568,13 +568,13 @@ export const byRelName = cval => {
   let sg = _.supergroup(cval.records, dim, opts)
   sg.forEach(relSg => {
     let [r,rr] = relSg.split(/ --> /)
-    relSg.relationship = r
-    relSg.reverse_relationship = rr
+    //relSg.relationship = r
+    //relSg.reverse_relationship = rr
     relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
                     .filter(r=>reldim(r)==relSg)
     relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
-    relSg[relSg.relationship] = sgCidCnt(relSg)
-    relSg[relSg.reverse_relationship] = relSg.relcids.length
+    //relSg[relSg.relationship] = sgCidCnt(relSg)
+    //relSg[relSg.reverse_relationship] = relSg.relcids.length
     //debugger // figure out round trip stuff
     /*
     if (cset.role('rel') && relSg==reldim(cset)) {
@@ -585,6 +585,8 @@ export const byRelName = cval => {
     }
     */
   })
+  console.log(sg.summary())
+  debugger
   return sg
 }
 
@@ -593,27 +595,6 @@ export const byRelName = cval => {
 //export const groups = (cval,fld) => _.supergroup(cval.records, groupings[fld])
 export const groups = (cval,fld) => groupMethods[fld](cval)
 
-export const grpsDesc = (grps, cval) => {
-  let {singleVals,multiVals} = _.transform(
-    grps, (acc, v, k) => 
-      acc[v.parentList ? 'singleVals' 
-                       : 'multiVals'
-         ][k] = v, 
-    {singleVals:{},multiVals:{}}
-  )
-  if (_.keys(singleVals).length + _.keys(multiVals).length !== _.keys(grps).length) {
-    debugger
-  }
-  return `${cval.records.length} ${cval} -- ${_.values(singleVals).join(', ')}
-            ${grpsDesc(multiVals, cval)}`
-}
-export const doGroupings = (cval,flds) => {
-  return flds.map(fld=>{
-    let params = sgParams[fld]
-    return _.supergroup(cval, params.dim, params.opts)
-  })
-  //return _.mapValues(methods, (v,k) => v(cval))
-}
 export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
   let fldSgs = flds.map(fld=>{
     let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
@@ -711,8 +692,7 @@ export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, 
     return grps[0].valueOf()
   }
 }
-export const subgrpCnts = (cval) => {
-  let flds = _.keys(sgParams)
+export const subgrpCnts = (cval, flds=_.keys(sgParams)) => {
   let fldSgs = flds.map(fld=>{
     let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
     return {
@@ -722,38 +702,6 @@ export const subgrpCnts = (cval) => {
   })
   fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
   return fldSgs
-
-  let grps = reduceGroups(cval)
-  debugger
-  let desc = grpsDesc(grps, cval)
-  return desc
-
-  let cnts = {}
-  debugger
-
-  let relSg = byRelName(cval)
-  cnts.byRelName = relSg.aggregates(_.sum, d=>1, 'dict')
-  cnts.withCdm = toSg({
-    concepts:relSg.records, 
-    dim: d=>d.cnts.length ? 'CDM Recs' : 'Not in CDM',
-    opts: {dimName: 'inCdm'},
-  }).aggregates(_.sum,d=>1,'dict')
-
-  /*
-  _.values(groupings).forEach(
-    fld => {
-      cnts[fld] = _.supergroup(cval.records, fld).aggregates(_.sum,d=>1,'dict')
-    }
-  )
-  */
-  let msgs = _.map(cnts, (v,k) => _.keys(v).length === 1 && {[k]:_.keys(v)[0]})
-                .filter(d=>d)
-
-  return {msgs,cnts}
-  return <pre>{JSON.stringify({msgs,cnts},null,2)}</pre>
-
-
-  return cnts
 }
 export const cdmCnts = cval => colCnts(_.flatten(cval.records.map(c=>c.cnts)))
 export const relgrps = 
@@ -766,14 +714,8 @@ export const relgrps =
           .map(grp=>({...grp,concept_id:c.concept_id}))
 ))
 
-const reldim = r => 
-  typeof r.relationship === 'function'
-    ?  `${r.relationship()} --> ${r.reverse_relationship()}`
-    :  `${r.relationship} --> ${r.reverse_relationship}`
-const rreldim = r => 
-  typeof r.relationship === 'function'
-    ?  `${r.reverse_relationship()} --> ${r.relationship()}`
-    :  `${r.reverse_relationship} --> ${r.relationship}`
+const reldim = relgrp => `${relgrp.relationship} --> ${relgrp.reverse_relationship}`
+const rreldim = relgrp => `${relgrp.reverse_relationship} --> ${relgrp.relationship}`
 
 export const toClist = cholder => { 
   // fix, but for now have ConceptSets and relSgs and other supergroup vals
@@ -801,7 +743,6 @@ export class ConceptSet {
     //this._props = Immutable(props)
     this.csetSelectors = csetSelectors
     this.conceptState = csetSelectors.conceptState
-    //this.relmetaState = csetSelectors.relmetaState
     this.wantConcepts = wantConcepts
 
     /* expecting: props: {cids, desc
@@ -809,10 +750,9 @@ export class ConceptSet {
      * csetSelectors with conceptState
      *  for subsets: parent, cids, nature of subset (probably a group?), the group prop
      *  for rels (which are not subsets -- but the only kind of descendants that aren't):
-     *    parent (relFrom), relName, cids, any known props of parent
+     *    parent (relFrom), reldim, cids, any known props of parent
     * title, fancyTitle, ttText, ttFancy, } = props */
-    if (props.concepts || !props.cids || !this.conceptState 
-          || !this.csetSelectors.relmetaState || !wantConcepts) {
+    if (props.concepts || !props.cids || !this.conceptState || !wantConcepts) {
       throw new Error("just give me cids and current conceptState and live wantConcepts")
     }
     if (!props.role) {
@@ -995,8 +935,8 @@ export class ConceptSet {
                 cids: relSg.relcids,
                 relSg,
                 parent: this, 
-                relationship: relSg.reverse_relationship,
-                reverse_relationship: relSg.relationship,
+                //relationship: relSg.reverse_relationship,
+                //reverse_relationship: relSg.relationship,
                 shortDesc: relSg.reldim,
                 longDesc: `${this.shortDesc()} ${relSg.reldim}`,
                 fancyDesc: 
@@ -1016,8 +956,8 @@ export class ConceptSet {
               }, this.csetSelectors, this.wantConcepts)
   }
   role = r => r ? (this.prop('role') === r) : this.prop('role')
-  relationship = () => this.role('rel') ? this.prop('relationship') : this.shortDesc()
-  reverse_relationship = () => this.role('rel') ? this.prop('reverse_relationship') : 'not a rel'
+  //relationship = () => this.role('rel') ? this.prop('relationship') : this.shortDesc()
+  //reverse_relationship = () => this.role('rel') ? this.prop('reverse_relationship') : 'not a rel'
   reldim = () => reldim(this)
   rreldim = () => rreldim(this)
 
@@ -1040,7 +980,7 @@ class RelConceptSet extends ConceptSet {
                 //...this.props(),
                 cids: relcids,
                 parent: this, 
-                relationship, 
+                //relationship, 
                 reldim, 
                 desc: `revrel of ${this.shortDesc()} ${reldim}`,
                 longDesc: `${this.shortDesc()} ${reldim}`,
@@ -1068,9 +1008,6 @@ class RelConceptSet extends ConceptSet {
     return `${this.relSg[this.relSg.reverse_relationship]} ${this.relSg.reverse_relationship}`
   }
   */
-  reverseRelId = relId => this.csetSelectors.reverseRel(relId)
-  relName = () => this.prop('reldim')
-  revrel = false
 }
 class RevRelConceptSet extends RelConceptSet {
   constructor(...rest) {

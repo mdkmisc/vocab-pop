@@ -86,16 +86,12 @@ SourceTargetSourceForm = connect(
       conceptState: state.concepts,
       conceptStatus: state.concepts.requests.status,
       cids: cncpt.focal(state),
-      relmetaState: state.relationships,
-      reverseRel: relmeta.reverseRel(state),
-      
-
     }
   },
   dispatch=>bindActionCreators(_.pick(cncpt,['wantConcepts']), dispatch),
   (stateProps, dispatchProps, ownProps) => {
     const {vocabulary_id, conceptState, conceptStatus, 
-            cids, relmetaState, reverseRel, } = stateProps
+            cids, } = stateProps
     const {wantConcepts, } = dispatchProps
     const {matchBy, matchStr, } = myrouter.getQuery()
     return {
@@ -108,7 +104,7 @@ SourceTargetSourceForm = connect(
           role: 'focal',
           desc: `${vocabulary_id} ${matchBy === 'codes' ? ' codes matching ' : ' concepts containing '} ${matchStr}`,
         }, 
-        { conceptState, relmetaState, reverseRel, },
+        { conceptState, },
         wantConcepts,
       ),
     }

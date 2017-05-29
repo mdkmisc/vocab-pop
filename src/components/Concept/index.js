@@ -345,9 +345,9 @@ const RelsView = props => { // assuming I just have cids, no concepts
   return (
     <div>
     {/*
-      { cset.role('rel') && !cset.revrel
-        ?  _.map(cset.relCSets(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
-            return <ConceptViewContainer key={i} cset={rel} />
+//      { cset.role('rel') && !cset.revrel
+//        ?  _.map(cset.relCSets(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
+//            return <ConceptViewContainer key={i} cset={rel} />
           })
         : null
       }
