@@ -139,8 +139,46 @@ const groupLabel = props => {
             }} >
               <Counts cset={cset} M={M.props({cset})} ttid={ttid} />
               <br/>
-              <br/>
-              <pre>{JSON.stringify(cset.subgrpCnts(),null,2)}</pre>
+              {
+                cset.subgrpCnts().map((sgf,i)=> {
+                  //debugger
+                  return <TipButton {...{
+                                tipProps: {"data-type":'info',},
+                                key:i,
+                                ttid,
+                                ttText:
+                                  sgf.fld + ':\n' +
+                                  sgf.sg.leafNodes()
+                                    .map(d=>`${d.records.length} ${d.namePath()}`)
+                                    .join('\n'),
+                                ttFancy:
+                                  <div className="grouplabel-tip"
+                                            style={{
+                                              padding:0,margin:0,lineHeight:'.5em',
+                                              zoom:.4,
+                                            }}
+                                  >
+                                    <h4>{sgf.fld}</h4>
+                                    <List style={{
+                                        padding:0,margin:0,lineHeight:'.5em',
+                                    }}>
+                                      { sgf.sg.leafNodes().map((d,i)=>
+                                          <ListItem key={i}
+                                            style={{
+                                              padding:0,margin:0,lineHeight:'.5em',
+                                              zoom:.4,
+                                            }}
+                                            primaryText={
+                                              `${d.records.length} ${d.namePath()}`
+                                            }
+                                          />)
+                                      }
+                                    </List>
+                                  </div>,
+                                M, 
+                                buttonContent: sgf.title}} />
+                })
+              }
             </span>
           </span>
   )
@@ -234,9 +272,11 @@ export const Counts = props => {
   return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
 }
 export const TipButton = props => {
-  let {ttid, ttText, ttFancy, buttonContent, M, href, buttonProps} = props
+  let {ttid, ttText, ttFancy, buttonContent, M, href, buttonProps,
+        tipProps,
+        } = props
   if (!ttid) debugger
-  return  <TooltipWrapper {...{ttid,ttText,ttFancy, M}} >
+  return  <TooltipWrapper {...{ttid,ttText,ttFancy,M,tipProps,}} >
             <RaisedButton
               {...M('raisedButton.styleProps')}
               style={M('raisedButton.style')}

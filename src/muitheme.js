@@ -131,9 +131,16 @@ const getPalette =
 const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
   let styles = {
     tooltip: {
+      pre: {
+        zoom:.3,
+        border: `4px double ${pal.regular}`,
+        backgroundColor: pal.lighter,
+        color: pal.dark,
+      },
       div: {
-        backgroundColor: pal.dark,
-        color: pal.lighter,
+        border: `4px inset ${pal.regular}`,
+        backgroundColor: pal.lighter,
+        color: pal.dark,
       },
     },
     appBar: {

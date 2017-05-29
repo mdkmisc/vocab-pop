@@ -43,7 +43,7 @@ var supergroup = (function() {
      */
     sg.supergroup = function(recs, dim, opts) {
         // if dim is an array, use multiDimList to create hierarchical grouping
-        opts = opts || {};
+        opts = _.cloneDeep(opts || {})
 
         //if (opts.allowCloning) {
           recs = recs.map((rec,i)=> {

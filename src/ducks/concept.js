@@ -620,11 +620,40 @@ export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
     return {fld,sg,title:sg.toString()}
   })
   fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
-  let outSg = fldSgs[0].sg
-  fldSgs.shift()
+  let sg = fldSgs.shift()
+  let outSg = sg.sg
+  while(fldSgs.length) {
+    let {fld,sg,title} = fldSgs.shift()
+    let x = outSg.addLevelPure(sgParams[fld].dim, sgParams[fld].opts)
+    if (sg.length > 1 && fldSgs.length) {
+      debugger
+      let something = outSg.leafNodes().map(leaf => {
+        reduceGroups(leaf, fldSgs.map(fsg=>fsg.fld))
+      })
+      debugger
+    }
+    debugger
+  }
+
+
+
+  for(let i=1; i<fldSgs.length; i++) {
+  }
+  
+  fldSgs = fldSgs.slice(1)
+  flds = flds.slice(1)
   fldSgs.forEach(({fld,sg,title}) => {
-    outSg = outSg.addLevel(sgParams[fld].dim, sgParams[fld].opts)
-    //outSg = outSg.addLevelPure(sgParams[fld].dim, sgParams[fld].opts)
+    flds = flds.slice(1)
+    outSg = outSg.addLevelPure(sgParams[fld].dim, sgParams[fld].opts)
+    //outSg = outSg.addLevel(sgParams[fld].dim, sgParams[fld].opts)
+    if (sg.length > 1 && flds.length) {
+      debugger
+      let something = outSg.leafNodes().map(
+        leaf => reduceGroups(leaf, flds)
+      )
+      debugger
+    }
+    debugger
     //let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
   })
   return outSg
@@ -683,6 +712,17 @@ export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, 
   }
 }
 export const subgrpCnts = (cval) => {
+  let flds = _.keys(sgParams)
+  let fldSgs = flds.map(fld=>{
+    let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
+    return {
+              fld,sg,
+              title: sg.length > 1 ? `${sg.length} ${fld}` : sg.toString(),
+    }
+  })
+  fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
+  return fldSgs
+
   let grps = reduceGroups(cval)
   debugger
   let desc = grpsDesc(grps, cval)
@@ -803,10 +843,10 @@ export class ConceptSet {
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
 
-  sgVal = () => _.supergroup(this.concepts(), d=>this.shortDesc(), {dimName:'whole concept set'})[0]
-  //sgVal = () => this.sgList().asRootVal(this.shortDesc())
-
-
+  sgVal = () => _.supergroup(this.concepts(), 
+                             d=>null, 
+                            {dimName:'whole concept set'})
+                      .asRootVal(this.shortDesc())
 
   loaded = () => this.cidCnt() === this.conCnt()
   sc = () => singleMemberGroupLabel(this.sgVal(),'sc')

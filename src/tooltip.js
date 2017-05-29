@@ -1,6 +1,7 @@
 /* eslint-disable */
 import _ from 'src/supergroup'; // in global space anyway...
 import * as util from 'src/utils';
+import muit from 'src/muitheme'
 
 import React, { Component } from 'react'
 import { bindActionCreators } from 'redux'
@@ -13,19 +14,24 @@ window.globalTtStore = {}  // just for debugging
 
 class TooltipWrapper extends Component {
   componentDidMount() {
-    let {ttid, ttText, ttFancy, M=muit()} = this.props
-    ttFancy = ttFancy || ttText
-    this.props.makeTtContent({ttid, ttText, ttFancy})
+    this.makeContent(this.props)
   }
   componentDidUpdate() {
-    let {ttid, ttText, ttFancy, M=muit()} = this.props
-    ttFancy = ttFancy || ttText
-    this.props.makeTtContent({ttid, ttText, ttFancy})
+    this.makeContent(this.props)
+  }
+  makeContent(props) {
+    let {ttid, ttText, ttFancy, tipProps, M=muit()} = props
+    this.props.makeTtContent({ttid, ttText, ttFancy, M})
   }
   render() {
-    let {ttid, ttText, ttFancy, M=muit(), children} = this.props
-    return React.cloneElement(
-      children, {"data-tip":true,"data-for":ttid,"data-tttext":ttText})
+    let {ttid, ttText, ttFancy, tipProps, M=muit(), children} = this.props
+    tipProps = { 
+      "data-tip":true,
+      "data-for":ttid,
+      "data-tttext":ttText,
+      ...tipProps,
+    }
+    return React.cloneElement(children, tipProps)
   }
 }
 TooltipWrapper = connect(
@@ -53,9 +59,7 @@ class Tooltips extends Component {
                           getContent={x=>{
                             let ttText = event.target.getAttribute('data-tttext')
                             let id = storeId(ttid, ttText)
-                            let ttFancy = globalTtStore[id]
-                            //debugger
-                            //console.log({tooltips, tt,ttid, id, globalTtStore, ttFancy})
+                            let {ttFancy, M} = globalTtStore[id]
                             return ttFancy
                           }}
                           afterShow={x=>{
@@ -91,11 +95,11 @@ const reducer = (state={}, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case ttConsts.NEW_CONTENT:
-      var {ttText, ttFancy, ttid, } = payload
+      var {ttText, ttFancy, ttid, tipProps, M, } = payload
       let id = storeId(ttid,ttText)
       if (_.has(globalTtStore, id))
         return state
-      globalTtStore[id] = ttFancy
+      globalTtStore[id] = {ttFancy, tipProps, M}
       let ttState = [...(state[ttid]||[]), ttText]
       return {...state, [ttid]: ttState}
     /*
@@ -117,13 +121,17 @@ export default reducer
 export const registerTooltip = ttid => ({type: ttConsts.NEW_TT, payload:ttid})
 export const unregisterTooltip = ttid => ({type: ttConsts.TRASH_TT, payload:ttid})
 export const makeTtContent = props => {
-  let {ttid, ttText, ttFancy} = props
+  let {ttid, ttText, ttFancy, tipProps, M=muit()} = props
   if (!ttid) debugger
-  ttFancy = ttFancy || ttText
+  if (!ttFancy) {
+    ttFancy = <pre style={M('tooltip.pre')}>{ttText}</pre>
+  } else {
+    ttFancy = <div style={M('tooltip.div')}>{ttFancy}</div>
+  }
   if (!_.isString(ttText)) {
     throw new Error("ttText must be string. use ttFancy for react components")
   }
-  return {type: ttConsts.NEW_CONTENT, payload: {ttid, ttText, ttFancy}}
+  return {type: ttConsts.NEW_CONTENT, payload: {ttid, ttText, ttFancy, tipProps, M}}
 }
 export const ttActions = {
   ttContentConnected: ()=>{throw new Error("CONNECT THIS!")}, 
