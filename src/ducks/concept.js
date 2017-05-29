@@ -872,8 +872,11 @@ export class ConceptSet {
         return p
         return gp
       })
+    debugger
+    wgkids[0].leafNodes().filter(d=>d.reldim === d.parent.rreldim).map(d=>cncpt.subgrpCnts(d))
       return wgkids
     }
+    
     return wkids
     /*
       let grandkids = relSgs.map(relSg => {
