@@ -43,7 +43,10 @@ var supergroup = (function() {
      */
     sg.supergroup = function(recs, dim, opts) {
         // if dim is an array, use multiDimList to create hierarchical grouping
-        opts = _.cloneDeep(opts || {})
+
+        // wanted to keep opts clean, but it breaks the parent ref
+        //opts = _.cloneDeep(opts || {})
+        opts = opts || {}
 
         //if (opts.allowCloning) {
           recs = recs.map((rec,i)=> {
@@ -272,6 +275,7 @@ var supergroup = (function() {
     };
     //if (opts.allowCloning) {
       List.prototype.addLevelPure = function(dim, opts) {
+          // breaks prototype two levels up!!!!!!!!!!!!! no time to fix
           let clone = this.clone()
           //if (clone[0] && clone[0].children) debugger
           _.each(clone, function(val) {
@@ -368,6 +372,10 @@ var supergroup = (function() {
               `${this.leafNodes()[0].dimPath()}:\n` +
               this.leafNodes().map(
                 d=>`   ${d.records.length} ${d.namePath()}\n`).join('')
+    }
+    Value.prototype.summary = function() {
+      return `${this.dimPath()}: ${this.namePath()} (${this.records.length})\n` +
+                (this.hasChildren() ? this.getChildren().summary() : '')
     }
 
     function makeValue(v_arg) {
@@ -474,6 +482,9 @@ var supergroup = (function() {
     Value.prototype.hasChildren = function(emptyListOk = false) {
       return !!this.getChildren(emptyListOk);
     };
+    Value.prototype.hasSiblings = function() {
+      return this.parentList.getChildren().length > 1
+    }
     Value.prototype.addRecordsAsChildrenToLeafNodes = function(truncateEmpty) {
         // this method is to help with d3 layouts that expect the leaf level
         // to be an array of raw records
@@ -542,6 +553,15 @@ var supergroup = (function() {
         */
     };
     Value.prototype.path =  // better than 'pedigree', right?
+    Value.prototype.clone = function() {
+      // just throwing together quick...need to look at later
+      let newVal = makeValue(this)
+      _.extend(newVal, _.cloneDeep(this))
+      if (this.hasChildren()) {
+        newVal[childProp] = this.getChildren().clone()
+      }
+      return newVal
+    }
     Value.prototype.pedigree = function(opts) {
         opts = opts || {};
         var path = [];
@@ -552,11 +572,17 @@ var supergroup = (function() {
         }
         if (opts.noRoot) path.shift();
         if (opts.backwards || this.backwards) path.reverse(); //kludgy?
+        
+        //path = path.map(val=>val.clone())
+        //path = path.map(val=>makeValue(val))
+        _.addSupergroupMethods(path)
         return path;
+        /*
         // CHANGING -- HOPE THIS DOESN'T BREAK STUFF (pedigree isn't
         // documented yet)
         if (!opts.asValues) return _.chain(path).invokeMap('valueOf').value();
         return path;
+        */
     };
     Value.prototype.descendants = function(opts) {
         // these two lines fix a treelike bug, hope they don't do harm

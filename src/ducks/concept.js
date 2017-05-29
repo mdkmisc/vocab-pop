@@ -512,38 +512,6 @@ export const byTbl = (concepts) => {
                         {multiValuedGroup:true,dimName:'tbl'}
                       )
 }
-export const toSg = props => {
-  let { concepts=[],          // first arg to _.supergroup
-        dim, opts={},         // second and third args
-        postGroupFunc=d=>d,   // func to perform with result like:
-                              //    sg=>sg.forEach(val=>val.parentCset=this)
-        addLevelProps=[],     // array of {dim,opts,postGroupFunc} for sg.addLevel calls
-  } = props
-  let sg = _.supergroup(concepts, dim, opts)
-  postGroupFunc(sg)
-  addLevelProps.forEach(({dim, opts, postGroupFunc}) => {
-    sg.addLevel(dim, opts)
-    postGroupFunc(sg)
-  })
-  return sg
-}
-/*
-const groupings = {
-  sc: 'standard_concept',
-  dom: 'domain_id',
-  voc: 'vocabulary_id',
-  cls: 'concept_class_id',
-}
-const groupMethods = {
-  withCdm: cval => _.supergroup(cval.records, c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',
-                          {dimName: 'inCdm'}).aggregates(_.sum,d=>1,'dict'),
-  sc: cval => _.supergroup(cval.records, 'standard_concept').aggregates(_.sum,d=>1,'dict'),
-  dom: cval => _.supergroup(cval.records, 'domain_id').aggregates(_.sum,d=>1,'dict'),
-  voc: cval => _.supergroup(cval.records, 'vocabulary_id').aggregates(_.sum,d=>1,'dict'),
-  cls: cval => _.supergroup(cval.records, 'concept_class_id').aggregates(_.sum,d=>1,'dict'),
-  rels: cval => byRelName(cval),
-}
-*/
 const groupMethods = {
   withCdm: cval => _.supergroup(cval.records, c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',
                           {dimName: 'inCdm'}),
@@ -562,19 +530,35 @@ const sgParams = {
   rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
 }
 
+export const addRels = sg => {
+
+  // FIX!!!! should be pure, but can't get pure working right now
+  let sgWithRels = sg.addLevel(sgParams.rels.dim, sgParams.rels.opts)
+  //let sgWithRels = sg.addLevelPure(sgParams.rels.dim, sgParams.rels.opts)
+  sgWithRels.leafNodes().forEach(relSg => {
+    let [r,rr] = relSg.split(/ --> /)
+    relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
+                    .filter(r=>reldim(r)==relSg)
+    relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
+    relSg.reldim = relSg.toString()
+    relSg.rreldim = `${rr} --> ${r}`
+  })
+  return sgWithRels
+}
+export const reldim = relgrp => `${relgrp.relationship} --> ${relgrp.reverse_relationship}`
+export const rreldim = relgrp => `${relgrp.reverse_relationship} --> ${relgrp.relationship}`
+
 export const byRelName = cval => {
   const dim = c=>c.relgrps.map(reldim)
   const opts = {multiValuedGroup:true,dimName:'reldim'}
   let sg = _.supergroup(cval.records, dim, opts)
   sg.forEach(relSg => {
     let [r,rr] = relSg.split(/ --> /)
-    //relSg.relationship = r
-    //relSg.reverse_relationship = rr
     relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
                     .filter(r=>reldim(r)==relSg)
     relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
-    //relSg[relSg.relationship] = sgCidCnt(relSg)
-    //relSg[relSg.reverse_relationship] = relSg.relcids.length
+    relSg.reldim = relSg.toString()
+    relSg.rreldim = `${rr} --> ${r}`
     //debugger // figure out round trip stuff
     /*
     if (cset.role('rel') && relSg==reldim(cset)) {
@@ -585,8 +569,8 @@ export const byRelName = cval => {
     }
     */
   })
-  console.log(sg.summary())
-  debugger
+  //console.log(sg.summary(), cncpt)
+  //debugger
   return sg
 }
 
@@ -595,6 +579,7 @@ export const byRelName = cval => {
 //export const groups = (cval,fld) => _.supergroup(cval.records, groupings[fld])
 export const groups = (cval,fld) => groupMethods[fld](cval)
 
+/*
 export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
   let fldSgs = flds.map(fld=>{
     let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
@@ -680,8 +665,9 @@ export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
     debugger
   }
   return nextCval
-  */
+  * /
 }
+*/
 
 
 // these return simple value (not obj) for csets having only one
@@ -714,8 +700,6 @@ export const relgrps =
           .map(grp=>({...grp,concept_id:c.concept_id}))
 ))
 
-const reldim = relgrp => `${relgrp.relationship} --> ${relgrp.reverse_relationship}`
-const rreldim = relgrp => `${relgrp.reverse_relationship} --> ${relgrp.relationship}`
 
 export const toClist = cholder => { 
   // fix, but for now have ConceptSets and relSgs and other supergroup vals
@@ -759,7 +743,13 @@ export class ConceptSet {
       throw new Error("need a role")
     }
   }
-  props = () => this._props
+  props = (junk) => {
+    if (typeof junk !== 'undefined') {
+      // had a hard to find bug... hence:
+      throw new Error(`typo? maybe you wanted prop(${junk})`)
+    }
+    return this._props
+  }
   prop = prop => this.props()[prop]
   hasProp = prop => _.has(this.props(), prop)
   // maybe fancier?: // prop = prop => _.get(this.props(), prop)
@@ -782,11 +772,6 @@ export class ConceptSet {
   concept_ids = (cids) => this.concepts(cids).map(d=>d.concept_id)
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
-
-  sgVal = () => _.supergroup(this.concepts(), 
-                             d=>null, 
-                            {dimName:'whole concept set'})
-                      .asRootVal(this.shortDesc())
 
   loaded = () => this.cidCnt() === this.conCnt()
   sc = () => singleMemberGroupLabel(this.sgVal(),'sc')
@@ -862,7 +847,80 @@ export class ConceptSet {
   }
   cdmCnts = () => cdmCnts(this.sgVal())
   relgrps = (reldim) => relgrps(this.concepts(),reldim) // reldim optional
-  byRelName = () => byRelName(this.sgVal())
+
+  sgList = () => _.supergroup(this.concepts(), 
+                                d=>this.shortDesc(),
+                                {dimName:'whole concept set'})
+
+  sgVal = () => _.supergroup(this.concepts(), 
+                             d=>null, 
+                            {dimName:'whole concept set'})
+                      .asRootVal(this.shortDesc())
+
+  sgListWithRels = (depth=0) => {
+    if (!this.conCnt()) {
+      return this.sgList()
+    }
+    let wkids = addRels(this.sgList())
+    if (!depth) {
+      let wgkids = wkids.map(p => {
+        //debugger
+        let gp = addRels(p.getChildren())
+        let sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
+        let oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
+        console.log(sameRel[0].pedigree()[0].summary())
+        return p
+        return gp
+      })
+      return wgkids
+    }
+    return wkids
+    /*
+      let grandkids = relSgs.map(relSg => {
+        let relcidsVal = _.supergroup(this.concepts(relSg.relcids),
+                                  d=>null,{dimName:'nothin'})
+                            .asRootVal('mapped from focal')
+        let gkids = byRelName(relcidsVal)
+        let roundtrip = gkids.filter(gk=>relSg+'' === gk+'')
+        if (roundtrip.length > 1) {
+          debugger
+          throw new Error("weird")
+        } 
+        if (roundtrip.length === 1) {
+          relSg.roundtrip = roundtrip[0]
+          debugger
+          return relSg
+        }
+      })
+    if (relSgs.length !== 1) {
+      debugger
+    }
+    return relSgs[0].getChildren()
+    */
+  }
+  byRelName = (depth=0) => {
+    debugger // stop using this method
+    let relSgs = byRelName(this.sgVal())
+    if (!depth) {
+      let grandkids = relSgs.map(relSg => {
+        let relcidsVal = _.supergroup(this.concepts(relSg.relcids),
+                                  d=>null,{dimName:'nothin'})
+                            .asRootVal('mapped from focal')
+        let gkids = byRelName(relcidsVal)
+        let roundtrip = gkids.filter(gk=>relSg+'' === gk+'')
+        if (roundtrip.length > 1) {
+          debugger
+          throw new Error("weird")
+        } 
+        if (roundtrip.length === 1) {
+          relSg.roundtrip = roundtrip[0]
+          return relSg
+        }
+      })
+    }
+    //debugger
+    return relSgs
+  }
   subgrpCnts = () => subgrpCnts(this.sgVal())
 
   subset = (props, forceNew=false) => {
@@ -922,21 +980,13 @@ export class ConceptSet {
       `I'm a ${this.role()}, what kind of fancyDesc do you want?`
     )
   }
-  /*
-  byTbl = () => _.supergroup(
-                        relSg.records,
-                        c=>c.cnts.map(r=>r.tbl),
-                        {multiValuedGroup:true,dimName:'tbl'}
-                      )
-  */
   csetFromRelSg = (relSg) => {
+    if (!relSg.reldim) debugger
     return new RelConceptSet({
                 //...this.props(),
                 cids: relSg.relcids,
                 relSg,
                 parent: this, 
-                //relationship: relSg.reverse_relationship,
-                //reverse_relationship: relSg.relationship,
                 shortDesc: relSg.reldim,
                 longDesc: `${this.shortDesc()} ${relSg.reldim}`,
                 fancyDesc: 
@@ -956,8 +1006,6 @@ export class ConceptSet {
               }, this.csetSelectors, this.wantConcepts)
   }
   role = r => r ? (this.prop('role') === r) : this.prop('role')
-  //relationship = () => this.role('rel') ? this.prop('relationship') : this.shortDesc()
-  //reverse_relationship = () => this.role('rel') ? this.prop('reverse_relationship') : 'not a rel'
   reldim = () => reldim(this)
   rreldim = () => rreldim(this)
 
@@ -980,7 +1028,6 @@ class RelConceptSet extends ConceptSet {
                 //...this.props(),
                 cids: relcids,
                 parent: this, 
-                //relationship, 
                 reldim, 
                 desc: `revrel of ${this.shortDesc()} ${reldim}`,
                 longDesc: `${this.shortDesc()} ${reldim}`,
@@ -1053,4 +1100,6 @@ export const ConceptStatusReport = ({lines=[], M}) => {
           </div>
   )
 }
+
+var cncpt = module.exports
 

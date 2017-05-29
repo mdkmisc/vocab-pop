@@ -296,7 +296,11 @@ export class RelButton extends Component {
     //let {relName, relcids} = rel
     //let href = '#' // should be link to concept focus
 
-    let relSg = cset.byRelName()
+    let relSg = cset.prop('relSg')
+    if (!relSg || !relSg.records || !relSg.records.length) {
+      debugger
+    }
+    //let relSgs = cset.byRelName()
 
     let status = cset.status()
     let ttFancy= 
@@ -317,6 +321,7 @@ export class RelButton extends Component {
         : null
     let buttonProps = {
       onClick:() => {
+        debugger
         cset.loadConcepts()
         toggleRelExpanded(relSg.reldim)
       },
@@ -327,7 +332,6 @@ export class RelButton extends Component {
                 {relSg[relSg.reldim]} {relSg.reldim}
               </span>,
                 //<span aria-hidden="true" data-icon="&#e907;" className="icon-link"></span>
-                //{relSg[relSg.reverse_relationship]} {relSg.reverse_relationship}
       labelPosition: 'before',
       icon: (status.status === 'not requested' && <FileDownload/>) ||
             (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
@@ -342,6 +346,19 @@ const RelsView = props => { // assuming I just have cids, no concepts
     if (!ttid) debugger
   viewCounts.RelsView++
   let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
+  let sgList = cset.sgListWithRels()
+  if (sgList.length && sgList[0].depth === 0) {
+    if (sgList.length > 1) {
+      debugger
+    }
+    sgList = sgList[0].getChildren()
+  }
+  try {
+    sgList.map(relSg=>relSg.hasChildren())
+    console.log('made it through this time', sgList)
+  } catch(e) {
+    debugger
+  }
   return (
     <div>
     {/*
@@ -354,7 +371,13 @@ const RelsView = props => { // assuming I just have cids, no concepts
       */}
       <div style={M('raisedButton.parentDiv')} >
         <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
-        { _.map(cset.byRelName(), (relSg,i) => {
+        { _.map(sgList, (relSg,i) => {
+            //if (relSg.hasChildren()) debugger
+            //if (relSg.roundtrip) debugger
+            if (relSg.sameRels || relSg.oppositeRels) {
+              debugger
+            }
+            let ttText = relSg.summary()
             let shouldShow = isExpanded(relSg.reldim)
             //let special = `${cset.reldim()} != ${relSg} (${relSg.reldim})`
             let special = 'fix this special thing'
@@ -379,17 +402,19 @@ const RelsView = props => { // assuming I just have cids, no concepts
               }
             }
             */
+            let relCset = cset.csetFromRelSg(relSg)
             return <RelButton 
                       special={special}
-                      cset={cset.csetFromRelSg(relSg)}
+                      cset={relCset}
                       ttid={ttid}
+                      ttText={ttText}
                       M={M}
                       key={i} 
                       toggleRelExpanded={toggleRelExpanded}
                       shouldShow={shouldShow} />
         })}
       </div>
-      { _.map(cset.byRelName(), (relSg,i) => {
+      { _.map(sgList, (relSg,i) => {
         if (relSg.showAsRoundTrip) {
           //debugger
           
@@ -402,8 +427,9 @@ const RelsView = props => { // assuming I just have cids, no concepts
           return <ConceptViewContainer amRoundTrip={true} key={i} cset={rtCset} />
           */
         }
+        let relCset = cset.csetFromRelSg(relSg)
         return (isExpanded(relSg.reldim)
-          ? <ConceptViewContainer amRel={true} key={i} cset={cset.csetFromRelSg(relSg)} /> 
+          ? <ConceptViewContainer amRel={true} key={i} cset={relCset} /> 
           : null
         )
       })}
