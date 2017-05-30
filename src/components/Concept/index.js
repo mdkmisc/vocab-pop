@@ -402,7 +402,7 @@ export class RelButton extends Component {
       //label: cset.fancyDesc(),
       //label: `${cset.fromDesc()} ${cset.toDesc()}`,
       label:  <span>
-                {relSg[relSg.reldim]} {relSg.reldim}
+                {relSg.records.length} {relSg.reldim} {relSg.relcids.length}
               </span>,
                 //<span aria-hidden="true" data-icon="&#e907;" className="icon-link"></span>
       labelPosition: 'before',

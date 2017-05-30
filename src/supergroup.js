@@ -366,6 +366,8 @@ var supergroup = (function() {
         }
       })
     }
+    /*
+     * something broke when I added func option...will fix later
     List.prototype.summary = function(opts={}) {
       let {depth=0, funcs={}} = opts
       let out = []
@@ -405,6 +407,40 @@ var supergroup = (function() {
       if (this.hasChildren()) {
         //summary += (' has: ' + this.getChildren().summary(opts))
         out.push(`${indent}has:\n` + this.getChildren().summary(opts))
+      }
+      return summary
+    }
+    */
+    List.prototype.summary = function(depth=0) {
+      let out = []
+      //let indent = '    '.repeat(depth)
+      let indent = ''
+      let dim = `${this.dim}`
+      let vals = `${this.length} vals`
+      let recs = `${this.records.length} recs`
+      out.push(`${indent}${dim}, ${recs} (${depth}) ${vals}:`)
+      out.push(this.map(val=>val.summary(depth+1)).join('\n'))
+      return out.join('\n')
+    }
+    Value.prototype.hasSiblings = function() {
+      return this.parentList.length > 1
+    }
+    Value.prototype.summary = function(depth=0) {
+      let out = []
+      let indent = '    '.repeat(depth)
+      let recs = `${this.records.length} recs`
+      if (depth === 0) {
+        let dimPath = this.dimPath()
+        let namePath = this.namePath()
+        let valDepth = `lvl ${this.depth}`
+        let sibs = this.hasSiblings() ? `, ${this.parentList.length - 1} siblings` : ''
+        out.push(`${indent}${valDepth} ${namePath}(${dimPath}), ${recs}${sibs}`)
+      } else {
+        out.push(`${indent}${this}, ${recs}`)
+      }
+      let summary = out.join('\n')
+      if (this.hasChildren()) {
+        summary += (' has: ' + this.getChildren().summary(depth))
       }
       return summary
     }

@@ -806,10 +806,10 @@ export class ConceptSet {
         let gp = addRels(p.getChildren())
         // should only care about opposite
         //p.sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
+        /*
         p.oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
         p.oppositeRels.forEach(d=>d.isOpposite=true)
 
-        /*
         let test = explodeArrayFlds(gp.records,'relgrps','cncpt')
         let t2=explodeArrayFlds(test, 'relcids', 'relgrp')
         let tr=_.flatten(t2.map(d=>Object.assign({},d,{reverse:t2.filter(e=>e.relgrp_cncpt_concept_id === d.relcids)})))
