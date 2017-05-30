@@ -131,9 +131,9 @@ class App extends Component {
                     ? <Route {...route} component={route.sidebar} />
                     : null
     let main = <Route {...route} component={route.main} />;
+                //<cncpt.ConceptStatusReport lines={ this.props.conceptStatusReport } />
     return (
       <div>
-                <cncpt.ConceptStatusReport lines={ this.props.conceptStatusReport } />
 
         <AppBar
           iconElementLeft={ 

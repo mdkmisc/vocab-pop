@@ -905,12 +905,16 @@ export class ConceptSet {
   fancyDesc = () => {
     return (
       (this.hasProp('fancyDesc') && this.prop('fancyDesc')) ||
-      (this.hasProp('longDesc') && ('fancy->long: ' + this.prop('longDesc'))) ||
-      (this.hasProp('desc') && ('fancy->desc: ' + this.prop('desc'))) ||
-      (this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
+      (this.hasProp('longDesc') && (this.prop('longDesc'))) ||
+      (this.hasProp('desc') && (this.prop('desc'))) ||
+      (this.role('sub') && `${this.prop('subtype')}`) ||
+      //(this.hasProp('longDesc') && ('fancy->long: ' + this.prop('longDesc'))) ||
+      //(this.hasProp('desc') && ('fancy->desc: ' + this.prop('desc'))) ||
+      //(this.role('sub') && `fancyDesc for ${this.prop('subtype')}`) ||
       `I'm a ${this.role()}, what kind of fancyDesc do you want?`
     )
   }
+                    //(fancy prop from csetFromRelSg)
   csetFromRelSg = (relSg) => {
     if (!relSg.reldim) debugger
     return new RelConceptSet({
@@ -922,7 +926,6 @@ export class ConceptSet {
                 longDesc: `${this.shortDesc()} ${relSg.reldim}`,
                 fancyDesc: 
                   <span>
-                    (fancy prop from csetFromRelSg)
                     <span style={{fontSize: '.8em',opacity:.7, fontStyle:'italic',
                                     marginRight: 8,}}>
                       {this.fancyDesc()} 

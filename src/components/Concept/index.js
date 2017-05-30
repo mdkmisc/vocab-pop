@@ -150,7 +150,7 @@ const CdmCntsButtons = props => {
         })
       } else {
         let buttonContent = `${grp.records.length} ${grp}`
-        let ttText = 'concept list?'
+        let ttText = cnames(grp)
         if (!ttid) debugger
         return <TipButton {...{key:'nocnt',ttid,ttText,M, buttonContent}} />
       }
@@ -176,14 +176,14 @@ const CdmCntsButtons = props => {
   */
 }
 const groupLabel = props => {
-  let {cset, M, ttid} = props
+  let {cset, M, ttid,key='groupLabel'} = props
   let sgVal = cset.sgVal()
   let sc = cncpt.singleMemberGroupLabel(sgVal,'sc')
 
   if (sc) {
     M = M.props({sub:sc})
   }
-  return (<span>
+  return (<span key={key}>
             {
               cset.conCnt() + ' ' + 
               ['dom','voc','cls']
@@ -275,6 +275,12 @@ export class ConceptViewContainer extends Component {
     title = title || cset.fancyDesc()
     subtitle = groupLabel({cset, M, ttid})
           
+    /*
+            <RelButtons cset={cset} ttid={ttid} 
+                toggleRelExpanded={this.toggleRelExpanded}
+                isExpanded={this.isExpanded}
+            />
+    */
     return  (
       <Card
           {...M('card.styleProps')}
@@ -302,8 +308,8 @@ export class ConceptViewContainer extends Component {
 
             <div style={{zoom:.3, opacity: 0.4, backgroundColor:'orange'}}>
               <br/> <br/>
-              <ConceptsSummary M={M} cset={cset} ttid={ttid}/>
               {/* not going to use this now... maybe come back to it 
+              <ConceptsSummary M={M} cset={cset} ttid={ttid}/>
               <ConceptInfoGridList {...{ ...this.props, M, title:undefined, subtitle:undefined, ttid: this.ttid, }} /> */}
             </div>
 
@@ -333,6 +339,18 @@ export const TipButton = props => {
           </TooltipWrapper>
 
 }
+export const cnames = sgVal => {
+  let maxNames = 4
+  let maxChars = 50
+  let cnames = sgVal.records
+                  .slice(0,maxNames)
+                  .map(c=>c.concept_name)
+                  .map(n=>n.length > maxChars ? n.substr(0,maxChars) + '...' : n)
+  if (sgVal.records.length > maxNames) {
+    cnames.push(`...(${sgVal.records.length - maxNames} more)`)
+  }
+  return cnames.join('\n')
+}
 export class RelButton extends Component {
   render() {
     let {cset, ttid, M, toggleRelExpanded, shouldShow, special} = this.props
@@ -344,6 +362,7 @@ export class RelButton extends Component {
       debugger
     }
     let status = cset.status()
+    /*
     let ttFancy= 
       <pre>
         {
@@ -353,6 +372,8 @@ export class RelButton extends Component {
         }
       </pre>
     let ttText = cset.longDesc() + status.loadedMsg() // ttText needs be at least as unique as fancy
+    */
+   let ttText = cnames(relSg)
 
 
     let buttonContent = status.waiting()
@@ -360,6 +381,18 @@ export class RelButton extends Component {
             {...M('circularProgress.styleProps')}
           /> 
         : null
+    let icons = []
+    if (status.notRequested()) {
+      icons.push(<FileDownload key='fetch' />)
+    }
+    if (status.loaded()) {
+      if (shouldShow) {
+        icons.push(<ExpandLess key='expand'/>)
+      } else {
+        icons.push(<ExpandMore key='expand'/>)
+      }
+    }
+                //[{special}]
     let buttonProps = {
       onClick:() => {
         //debugger
@@ -369,19 +402,49 @@ export class RelButton extends Component {
       //label: cset.fancyDesc(),
       //label: `${cset.fromDesc()} ${cset.toDesc()}`,
       label:  <span>
-                [{special}]
                 {relSg[relSg.reldim]} {relSg.reldim}
               </span>,
                 //<span aria-hidden="true" data-icon="&#e907;" className="icon-link"></span>
       labelPosition: 'before',
+      //icon: <span>{icons}</span>,
       icon: (status.notRequested() && <FileDownload/>) ||
             (status.loaded() && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
       secondary: true,
     }
     if (!ttid) debugger
-    return <TipButton {...{ttid,ttText,ttFancy,M, buttonContent, buttonProps}} />
+    let mainButton = <TipButton {...{key:'main',ttid,ttText,
+                                          //ttFancy,
+                                          M, buttonContent, buttonProps}} />
+    return mainButton
+    let buttons = [mainButton]
+    return <div>{buttons}</div>
   }
 }
+/*
+const RelButtons = props => {
+  let {cset, ttid, } = props
+  let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
+
+  let sgList = cset.sgListWithRels()
+  let sgVal = sgList[0]
+  //let sgVal = cset.sgVal()
+  //let rels = cncpt.groups(sgVal, 'rels')
+  let buttons = _.flatten(
+    _.map(sgVal.getChildren(), (relSg,i) => {
+      let relCset = cset.csetFromRelSg(relSg)
+      /*
+      let buttonContent = `${rel.records.length} ${rel}`
+      let ttText = 'concept list?'
+      if (!ttid) debugger
+      debugger
+      * /
+      return groupLabel({key:i,cset:relCset, M, ttid})
+      return <TipButton {...{key:i,ttid,ttText,M, buttonContent}} />
+    })
+  )
+  return <span className="cdmcnts">{buttons}</span>
+}
+*/
 const RelsView = props => { // assuming I just have cids, no concepts
   let {cset,title='', ttid, toggleRelExpanded, isExpanded} = props
     if (!ttid) debugger
@@ -398,8 +461,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
     throw new Error("didn't expect")
   }
   let sgVal = sgList[0]
-  return (
-    <div>
+  /*    FINISH LATER
       <div style={M('raisedButton.parentDiv')} >
         <div style={{...M('headerLight'), zoom:.7}}>
           Opposite rels
@@ -422,21 +484,16 @@ const RelsView = props => { // assuming I just have cids, no concepts
           })
         }
       </div>
-    {/*
-//      { cset.role('rel') && !cset.revrel
-//        ?  _.map(cset.relCSets(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
-//            return <ConceptViewContainer key={i} cset={rel} />
-          })
-        : null
-      }
-      */}
+  */
+  return (
+    <div>
       <div style={M('raisedButton.parentDiv')} >
         <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
         { _.map(sgVal.getChildren(), (relSg,i) => {
-            let ttText = relSg.summary()
+            //let ttText = relSg.summary()
             let shouldShow = isExpanded(relSg.reldim)
             //let special = `${cset.reldim()} != ${relSg} (${relSg.reldim})`
-            let special = 'fix this special thing'
+            let special = ''
 
             /*
             if (cset.role('rel')) {
@@ -463,7 +520,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
                       special={special}
                       cset={relCset}
                       ttid={ttid}
-                      ttText={ttText}
+                      //ttText={ttText}  // being overridden
                       M={M}
                       key={i} 
                       toggleRelExpanded={toggleRelExpanded}
