@@ -123,13 +123,71 @@ class IndividualConceptViews extends Component {
             </div>
   }
 }
+const sFmt = d3.format('.2s')
+export const Counts = props => {
+}
+const CdmCntsButtons = props => {
+  let {cset, M, ttid, } = props
+
+  let sgVal = cset.sgVal()
+  let withCdm = cncpt.groups(sgVal, 'withCdm')
+  let cdmCnts = '0 in CDM'
+  let buttons = _.flatten(
+    withCdm.map((grp,i)=>{
+      let cnts = cncpt.cdmCnts(grp)
+      if (cnts.length) {
+        return cnts.map(cnt=>{
+          let buttonContent = `${grp.records.length} ${grp}: ` +
+                              cnts.map(fmtCdmCnt('short')).join(', ')
+          let ttText = cnts.map(fmtCdmCnt('long')).join(', ')
+          let ttFancy = <div>{
+                          cnts
+                            .map(fmtCdmCnt('long'))
+                            .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
+                        }</div>
+          if (!ttid) debugger
+          return <TipButton {...{key:i,ttid,ttText,ttFancy, M, buttonContent}} />
+        })
+      } else {
+        let buttonContent = `${grp.records.length} ${grp}`
+        let ttText = 'concept list?'
+        if (!ttid) debugger
+        return <TipButton {...{key:'nocnt',ttid,ttText,M, buttonContent}} />
+      }
+    })
+  )
+  return <span className="cdmcnts">{buttons}</span>
+  /*
+  if (withCdm.lookup('CDM Recs')) {
+    cdmCnts = <span>{ withCdm.lookup('CDM Recs').records.length } in CDM
+                <Counts cset={cset} M={M} ttid={ttid} />
+              </span>
+  }
+  let cnts = cset.cdmCnts()
+  let ttText = cnts.map(fmtCdmCnt('long')).join(', ')
+  let ttFancy = <div>{
+                  cnts
+                    .map(fmtCdmCnt('long'))
+                    .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
+                }</div>
+  let buttonContent = cnts.map(fmtCdmCnt('short')).join(', ')
+  if (!ttid) debugger
+  return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
+  */
+}
 const groupLabel = props => {
   let {cset, M, ttid} = props
+  let sgVal = cset.sgVal()
+  let sc = cncpt.singleMemberGroupLabel(sgVal,'sc')
+
+  if (sc) {
+    M = M.props({sub:sc})
+  }
   return (<span>
             {
               cset.conCnt() + ' ' + 
               ['dom','voc','cls']
-                .map(fld => cncpt.singleMemberGroupLabel(cset.sgVal(),fld))
+                .map(fld => cncpt.singleMemberGroupLabel(sgVal,fld))
                 .filter(d=>d)
                 .join(', ')
               + ' concepts'
@@ -137,10 +195,9 @@ const groupLabel = props => {
             <span style={{
               marginLeft: 20, zoom:.8,
             }} >
-              <Counts cset={cset} M={M.props({cset})} ttid={ttid} />
-              <br/>
+              <CdmCntsButtons cset={cset} M={M} ttid={ttid} />
               {
-                cset.subgrpCnts().map((sgf,i)=> {
+                cset.subgrpCnts(['dom','cls','rels']).map((sgf,i)=> {
                   //debugger
                   return <TipButton {...{
                                 tipProps: {"data-type":'info',},
@@ -257,20 +314,6 @@ export class ConceptViewContainer extends Component {
     )
   }
 }
-const sFmt = d3.format('.2s')
-export const Counts = props => {
-  let {cset, M, ttid, } = props
-  let cnts = cset.cdmCnts()
-  let ttText = cnts.map(fmtCdmCnt('long')).join(', ')
-  let ttFancy = <div>{
-                  cnts
-                    .map(fmtCdmCnt('long'))
-                    .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
-                }</div>
-  let buttonContent = cnts.map(fmtCdmCnt('short')).join(', ')
-  if (!ttid) debugger
-  return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
-}
 export const TipButton = props => {
   let {ttid, ttText, ttFancy, buttonContent, M, href, buttonProps,
         tipProps,
@@ -300,28 +343,26 @@ export class RelButton extends Component {
     if (!relSg || !relSg.records || !relSg.records.length) {
       debugger
     }
-    //let relSgs = cset.byRelName()
-
     let status = cset.status()
     let ttFancy= 
       <pre>
         {
           cset.longDesc()
           + '\n' +
-          status.loaded + ' loaded'
+          status.loadedMsg()
         }
       </pre>
-    let ttText = cset.longDesc() + status.loaded // ttText needs be at least as unique as fancy
+    let ttText = cset.longDesc() + status.loadedMsg() // ttText needs be at least as unique as fancy
 
 
-    let buttonContent = status.status === 'not determined' || status.status === 'loading'
+    let buttonContent = status.waiting()
         ? <CircularProgress size={20} 
             {...M('circularProgress.styleProps')}
           /> 
         : null
     let buttonProps = {
       onClick:() => {
-        debugger
+        //debugger
         cset.loadConcepts()
         toggleRelExpanded(relSg.reldim)
       },
@@ -333,8 +374,8 @@ export class RelButton extends Component {
               </span>,
                 //<span aria-hidden="true" data-icon="&#e907;" className="icon-link"></span>
       labelPosition: 'before',
-      icon: (status.status === 'not requested' && <FileDownload/>) ||
-            (status.status === 'loaded' && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
+      icon: (status.notRequested() && <FileDownload/>) ||
+            (status.loaded() && (shouldShow ? <ExpandLess/> : <ExpandMore/>)),
       secondary: true,
     }
     if (!ttid) debugger
@@ -346,21 +387,41 @@ const RelsView = props => { // assuming I just have cids, no concepts
     if (!ttid) debugger
   viewCounts.RelsView++
   let M = muit()  // shouldn't have same style as parent, right...don't know sc of rels
+  let status = cset.status()
+  if (status.waiting()) {
+    return  <CircularProgress size={20} 
+             {...M('circularProgress.styleProps')}
+            /> 
+  }
   let sgList = cset.sgListWithRels()
-  if (sgList.length && sgList[0].depth === 0) {
-    if (sgList.length > 1) {
-      debugger
-    }
-    sgList = sgList[0].getChildren()
+  if (sgList.length !== 1 || sgList[0].depth !== 0) {
+    throw new Error("didn't expect")
   }
-  try {
-    sgList.map(relSg=>relSg.hasChildren())
-    console.log('made it through this time', sgList)
-  } catch(e) {
-    debugger
-  }
+  let sgVal = sgList[0]
   return (
     <div>
+      <div style={M('raisedButton.parentDiv')} >
+        <div style={{...M('headerLight'), zoom:.7}}>
+          Opposite rels
+        </div>
+        {
+          sgVal.oppositeRels.map((opposite,i)=>{
+            let ttText = opposite.summary()
+            let shouldShow = true
+            let special = 'opposite rel!'
+            let relCset = cset.csetFromRelSg(opposite)
+            return <RelButton 
+                      special={special}
+                      cset={relCset}
+                      ttid={ttid}
+                      ttText={ttText}
+                      M={M}
+                      key={i} 
+                      toggleRelExpanded={toggleRelExpanded}
+                      shouldShow={shouldShow} />
+          })
+        }
+      </div>
     {/*
 //      { cset.role('rel') && !cset.revrel
 //        ?  _.map(cset.relCSets(relName=>relName===cset.reverseRelId(cset.relName())), (rel,i) => {
@@ -371,12 +432,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
       */}
       <div style={M('raisedButton.parentDiv')} >
         <div style={{...M('headerLight'), zoom:.7}}>Related Concepts</div>
-        { _.map(sgList, (relSg,i) => {
-            //if (relSg.hasChildren()) debugger
-            //if (relSg.roundtrip) debugger
-            if (relSg.sameRels || relSg.oppositeRels) {
-              debugger
-            }
+        { _.map(sgVal.getChildren(), (relSg,i) => {
             let ttText = relSg.summary()
             let shouldShow = isExpanded(relSg.reldim)
             //let special = `${cset.reldim()} != ${relSg} (${relSg.reldim})`
@@ -414,7 +470,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
                       shouldShow={shouldShow} />
         })}
       </div>
-      { _.map(sgList, (relSg,i) => {
+      { _.map(sgVal.getChildren(), (relSg,i) => {
         if (relSg.showAsRoundTrip) {
           //debugger
           
@@ -455,7 +511,7 @@ export const ConceptsSummary = props => {
             <pre style={M('randomDiv')}>
               {JSON.stringify(cnts)} {'\n\n'}
               {sg.leafNodes().namePaths().join('\n')}
-                      (<Counts cset={cset} M={M.props({cset})} ttid={ttid} />)
+                      (<CdmCntsButtons cset={cset} M={M.props({cset})} ttid={ttid} />)
             </pre>
           </div>
 }

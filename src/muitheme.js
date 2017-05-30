@@ -133,8 +133,8 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
     tooltip: {
       pre: {
         //zoom:3,
-        fontSize:'100px',
-        border: `4px double ${pal.regular}`,
+        //fontSize:'100px',
+        //border: `4px double ${pal.regular}`,
         backgroundColor: pal.lighter,
         color: pal.dark,
       },
@@ -510,11 +510,12 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
 export class Muit {
   constructor(props={}) {
     let { muiTheme,
-          sub, cset,
+          sub, // cset,
           getMuiThemeProps={}, // for sending to getMuiTheme
           override, global,
     } = props
-    sub = (cset && cset.sc()) || sub || 'main'
+    //sub = (cset && cset.sc()) || sub || 'main'
+    sub = sub || 'main'
     let theme = getMuiTheme( muiTheme, {palette: getColors(sub)})
     theme = getMuiTheme(
               theme,

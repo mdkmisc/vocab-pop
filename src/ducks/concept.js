@@ -495,16 +495,30 @@ export const colCnts = rcs => {
   return (byTblCol.leafNodes()
             .map(
               col => {
-                let cnt = {
-                  tbl: col.parent.toString(),
-                  col: col.toString(),
-                  cnt: col.aggregate(_.sum,'cnt'),
-                }
-                return cnt
+                col.tbl = col.parent.toString()
+                col.col = col.toString()
+                col.cnt = col.aggregate(_.sum,'cnt')
+                return col
               }
             )
          )
 }
+// belongs in supergroup when i have time:
+export const explodeArrayFld = (rec,fname,pname='p') => 
+  rec[fname].map(subrec=>({
+        ..._.mapKeys(rec, (v,k) => `${pname}_${k}`),
+        /*
+        ...{ // include rec props mingled with subrecs, but if subrec has same prop names, rec's will get clobbered
+          ...rec, [fname]:'exploded!' // don't include fname, the other subrecs don't belong with this one
+        },
+        */
+        ...(_.isObject(subrec) ? subrec : {[fname]:subrec}),
+        //explodedFrom:rec
+  }))
+// rename below, sounds like the fields is plural, not the recs
+export const explodeArrayFlds = (recs,fname,pname) => _.flatten(recs.map(rec=>explodeArrayFld(rec,fname,pname)))
+export const cdmCnts = cval => colCnts(explodeArrayFlds(cval.records,'cnts'))
+
 export const byTbl = (concepts) => {
   let byTbl = () => _.supergroup(
                         concepts,
@@ -512,25 +526,9 @@ export const byTbl = (concepts) => {
                         {multiValuedGroup:true,dimName:'tbl'}
                       )
 }
-const groupMethods = {
-  withCdm: cval => _.supergroup(cval.records, c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',
-                          {dimName: 'inCdm'}),
-  sc: cval => _.supergroup(cval.records, 'standard_concept'),
-  dom: cval => _.supergroup(cval.records, 'domain_id'),
-  voc: cval => _.supergroup(cval.records, 'vocabulary_id'),
-  cls: cval => _.supergroup(cval.records, 'concept_class_id'),
-  rels: cval => byRelName(cval),
-}
-const sgParams = {
-  sc:     {dim: 'standard_concept'},
-  dom:    {dim: 'domain_id'},
-  voc:    {dim: 'vocabulary_id'},
-  cls:    {dim: 'concept_class_id'},
-  withCdm:{dim: c=>c.cnts.length ? 'CDM Recs' : 'Not in CDM',opts:{dimName: 'inCdm'}},
-  rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
-}
 
 export const addRels = sg => {
+
 
   // FIX!!!! should be pure, but can't get pure working right now
   let sgWithRels = sg.addLevel(sgParams.rels.dim, sgParams.rels.opts)
@@ -540,6 +538,7 @@ export const addRels = sg => {
     relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
                     .filter(r=>reldim(r)==relSg)
     relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
+
     relSg.reldim = relSg.toString()
     relSg.rreldim = `${rr} --> ${r}`
   })
@@ -576,8 +575,6 @@ export const byRelName = cval => {
 
 
 
-//export const groups = (cval,fld) => _.supergroup(cval.records, groupings[fld])
-export const groups = (cval,fld) => groupMethods[fld](cval)
 
 /*
 export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
@@ -670,6 +667,15 @@ export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
 */
 
 
+const sgParams = {
+  sc:     {dim: 'standard_concept'},
+  dom:    {dim: 'domain_id'},
+  voc:    {dim: 'vocabulary_id'},
+  cls:    {dim: 'concept_class_id'},
+  withCdm:{dim: c=>c.cnts.length ? 'w/CDM Recs' : 'Not in CDM',opts:{dimName: 'inCdm'}},
+  rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
+}
+export const groups = (cval,fld) => _.supergroup(cval.records,sgParams[fld].dim,sgParams[fld].opts)
 // these return simple value (not obj) for csets having only one
 // member in a group... meaning that all their subsets will also have only that member
 export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, voc, cls, wcdm
@@ -678,7 +684,7 @@ export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, 
     return grps[0].valueOf()
   }
 }
-export const subgrpCnts = (cval, flds=_.keys(sgParams)) => {
+export const subgrpCnts = (cval, flds=_.keys(sgParams),noSingles=true) => {
   let fldSgs = flds.map(fld=>{
     let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
     return {
@@ -686,10 +692,12 @@ export const subgrpCnts = (cval, flds=_.keys(sgParams)) => {
               title: sg.length > 1 ? `${sg.length} ${fld}` : sg.toString(),
     }
   })
+  if (noSingles) {
+    fldSgs = fldSgs.filter(d=>d.sg.length > 1)
+  }
   fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
   return fldSgs
 }
-export const cdmCnts = cval => colCnts(_.flatten(cval.records.map(c=>c.cnts)))
 export const relgrps = 
   // flat list of all concept.relgrps records for concept list
   // optionally filtered by reldim
@@ -773,78 +781,7 @@ export class ConceptSet {
   cidCnt = () => this.cids().length
   conCnt = () => this.concepts().length
 
-  loaded = () => this.cidCnt() === this.conCnt()
-  sc = () => singleMemberGroupLabel(this.sgVal(),'sc')
-  dom = () => singleMemberGroupLabel(this.sgVal(),'dom')
-  voc = () => singleMemberGroupLabel(this.sgVal(),'voc')
-  cls = () => singleMemberGroupLabel(this.sgVal(),'cls')
-  wcdm = () => singleMemberGroupLabel(this.sgVal(),'wcdm')
-  scName = () => scName(this.sc())
-  scLongName = () => scLongName(this.sc())
-  loading = () => {throw new Error("not implemented")}
-  status = () => {
-    let {status:reqStatus, want, fetching, got, focal, requests, staleRequests} = this.conceptState.requests
-    let notLoaded = _.difference(this.cids(), this.concept_ids())
-    let status = {
-      loaded: this.conCnt(),
-      notLoaded: notLoaded.length,
-      loading: _.intersection(notLoaded, fetching).length,
-      requested: _.intersection(_.flatten(requests.map(r=>r.cids)),this.cids()).length,
-      cantLoad: 0,
-      status: 'not determined',
-      msg: '',
-    }
-    if (want.length && status === conceptActions.FULL) {
-      status.cantLoad = want.length // not sure about this
-    }
-    if (this.loaded()) {
-      // totally loaded
-      status.status = 'loaded'
-      status.msg = `${status.loaded} loaded`
-    } else {
-      if (status.loading) {
-        status.status = 'loading'
-        if (status.loading === status.notLoaded) {
-          status.msg = `loading ${status.loading}`
-        } else {
-          status.msg = `loaded ${status.loaded} of ${this.cidCnt()}`
-        }
-      } else {
-        // not fully loaded, not loading, why?
-        if (status.requested) {
-          if (status.requested > status.loaded) {
-            // requested some that aren't loaded or loading...presumably store is full
-            if (status.cantLoad) {
-              if (status.requested - status.loaded === status.cantLoad) {
-                status.status = "can't load"
-                status.msg = `can't load ${status.cantLoad} of ${this.cidCnt()}`
-              } else {
-                status.status = "weird"
-                debugger
-              }
-            }
-          } else {
-            // requested cids are loaded
-            // presumably some cids in this cset loaded by another cset's request
-            status.status = 'not requested'
-            status.msg = `loaded ${status.loaded} of ${this.cidCnt()}`
-          }
-        } else {
-          // none requested
-          status.status = 'not requested'
-          if (status.loaded) {
-            status.msg = `loaded ${status.loaded} of ${this.cidCnt()}`
-          } else {
-            status.msg = `${this.cidCnt()} concepts`
-          }
-        }
-      }
-    }
-    if (status.msg === 'not sure') {
-      debugger
-    }
-    return status
-  }
+  status = () => new CsStatus(this)
   cdmCnts = () => cdmCnts(this.sgVal())
   relgrps = (reldim) => relgrps(this.concepts(),reldim) // reldim optional
 
@@ -858,73 +795,64 @@ export class ConceptSet {
                       .asRootVal(this.shortDesc())
 
   sgListWithRels = (depth=0) => {
+    let sgList = this.sgList() // only one value, but want list to addRels
     if (!this.conCnt()) {
-      return this.sgList()
+      return this.sgList
     }
-    let wkids = addRels(this.sgList())
+    let wkids = addRels(sgList)
     if (!depth) {
       let wgkids = wkids.map(p => {
         //debugger
         let gp = addRels(p.getChildren())
-        let sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
-        let oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
-        console.log(sameRel[0].pedigree()[0].summary())
+        // should only care about opposite
+        //p.sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
+        p.oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
+        p.oppositeRels.forEach(d=>d.isOpposite=true)
+
+        /*
+        let test = explodeArrayFlds(gp.records,'relgrps','cncpt')
+        let t2=explodeArrayFlds(test, 'relcids', 'relgrp')
+        let tr=_.flatten(t2.map(d=>Object.assign({},d,{reverse:t2.filter(e=>e.relgrp_cncpt_concept_id === d.relcids)})))
+        let t3 = explodeArrayFlds(tr,'reverse','from')
+
+        let allkeys = _.keys(t3[3])
+        let idkeys = _.keys(t3[3]).filter(d=>d.match('id')).filter(d=>!d.match(/(cgid|domain|class|vocab|relgrp_relcids)/))
+
+        let goodidkeys = [ "from_relgrp_cncpt_concept_id", "relgrp_cncpt_concept_id", "relcids", ]
+
+
+        let classkeys = _.keys(t3[3]).filter(d=>d.match('class'))
+        let relkeys = _.keys(t3[3]).filter(d=>d.match('relation'))
+
+        let round=t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
+        let roundsg = _.supergroup(round, [
+          "from_relgrp_cncpt_vocabulary_id",
+          "from_relgrp_relationship",
+          "from_relgrp_cncpt_concept_class_id",
+        ])
+        roundsg.summary({funcs:_.fromPairs(goodidkeys.map(k=>[k, d=>_.uniq(_.flatten(d.records.map(rec=>rec[k]))).length]))})
+        t3.filter(d=>d.from_relcids !== d.relgrp_cncpt_concept_id)
+        t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
+        _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids", ]).summary()
+
+        // took long time:
+        _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids","from_relgrp_cncpt_concept_class_id", "from_relgrp_concept_class_id", "relgrp_cncpt_concept_class_id", "relgrp_concept_class_id" ]).summary()
+        debugger
+        */
+
         return p
-        return gp
+
+
+
       })
-    debugger
-    wgkids[0].leafNodes().filter(d=>d.reldim === d.parent.rreldim).map(d=>cncpt.subgrpCnts(d))
-      return wgkids
+      //debugger
+      //wgkids[0].leafNodes().filter(d=>d.reldim === d.parent.rreldim).map(d=>cncpt.subgrpCnts(d))
+      //return wgkids
     }
-    
-    return wkids
-    /*
-      let grandkids = relSgs.map(relSg => {
-        let relcidsVal = _.supergroup(this.concepts(relSg.relcids),
-                                  d=>null,{dimName:'nothin'})
-                            .asRootVal('mapped from focal')
-        let gkids = byRelName(relcidsVal)
-        let roundtrip = gkids.filter(gk=>relSg+'' === gk+'')
-        if (roundtrip.length > 1) {
-          debugger
-          throw new Error("weird")
-        } 
-        if (roundtrip.length === 1) {
-          relSg.roundtrip = roundtrip[0]
-          debugger
-          return relSg
-        }
-      })
-    if (relSgs.length !== 1) {
-      debugger
-    }
-    return relSgs[0].getChildren()
-    */
+    return sgList
+    //return wkids
   }
-  byRelName = (depth=0) => {
-    debugger // stop using this method
-    let relSgs = byRelName(this.sgVal())
-    if (!depth) {
-      let grandkids = relSgs.map(relSg => {
-        let relcidsVal = _.supergroup(this.concepts(relSg.relcids),
-                                  d=>null,{dimName:'nothin'})
-                            .asRootVal('mapped from focal')
-        let gkids = byRelName(relcidsVal)
-        let roundtrip = gkids.filter(gk=>relSg+'' === gk+'')
-        if (roundtrip.length > 1) {
-          debugger
-          throw new Error("weird")
-        } 
-        if (roundtrip.length === 1) {
-          relSg.roundtrip = roundtrip[0]
-          return relSg
-        }
-      })
-    }
-    //debugger
-    return relSgs
-  }
-  subgrpCnts = () => subgrpCnts(this.sgVal())
+  subgrpCnts = (...rest) => subgrpCnts(this.sgVal(), ...rest)
 
   subset = (props, forceNew=false) => {
     // expects props with cids, subtype (sc,dom,voc,cls,wcdm)
@@ -1013,10 +941,84 @@ export class ConceptSet {
   rreldim = () => rreldim(this)
 
   loadConcepts = () => {
-    if (this.loaded()) {
+    if (this.status().loaded()) {
       return
     }
     this.wantConcepts(this.cids())
+  }
+}
+class CsStatus {
+  constructor(cset) {
+    this.cset = cset
+  }
+  loadedMsg = () => this.status().loaded + ' loaded'
+  waiting = () => _.includes(['not determined','loading'], this.status().status)
+  notRequested = () => this.status().status === 'not requested' 
+  loaded = () => this.cset.cidCnt() === this.cset.conCnt()
+  //loading = () => {throw new Error("not implemented")}
+  status = () => {
+    let cset = this.cset
+    let {status:reqStatus, want, fetching, got, focal, requests, staleRequests} = cset.conceptState.requests
+    let notLoaded = _.difference(cset.cids(), cset.concept_ids())
+    let status = {
+      loaded: cset.conCnt(),
+      notLoaded: notLoaded.length,
+      loading: _.intersection(notLoaded, fetching).length,
+      requested: _.intersection(_.flatten(requests.map(r=>r.cids)),cset.cids()).length,
+      cantLoad: 0,
+      status: 'not determined',
+      msg: '',
+    }
+    if (want.length && status === conceptActions.FULL) {
+      status.cantLoad = want.length // not sure about this
+    }
+    if (this.loaded()) {
+      // totally loaded
+      status.status = 'loaded'
+      status.msg = `${status.loaded} loaded`
+    } else {
+      if (status.loading) {
+        status.status = 'loading'
+        if (status.loading === status.notLoaded) {
+          status.msg = `loading ${status.loading}`
+        } else {
+          status.msg = `loaded ${status.loaded} of ${cset.cidCnt()}`
+        }
+      } else {
+        // not fully loaded, not loading, why?
+        if (status.requested) {
+          if (status.requested > status.loaded) {
+            // requested some that aren't loaded or loading...presumably store is full
+            if (status.cantLoad) {
+              if (status.requested - status.loaded === status.cantLoad) {
+                status.status = "can't load"
+                status.msg = `can't load ${status.cantLoad} of ${cset.cidCnt()}`
+              } else {
+                status.status = "weird"
+                debugger
+              }
+            }
+          } else {
+            // requested cids are loaded
+            // presumably some cids in this cset loaded by another cset's request
+            status.status = 'not requested'
+            status.msg = `loaded ${status.loaded} of ${cset.cidCnt()}`
+          }
+        } else {
+          // none requested
+          status.status = 'not requested'
+          if (status.loaded) {
+            status.msg = `loaded ${status.loaded} of ${cset.cidCnt()}`
+          } else {
+            status.msg = `${cset.cidCnt()} concepts`
+          }
+        }
+      }
+    }
+    if (status.msg === 'not sure') {
+      debugger
+    }
+    return status
   }
 }
 class RelConceptSet extends ConceptSet {

@@ -366,16 +366,47 @@ var supergroup = (function() {
         }
       })
     }
-    List.prototype.summary = function() {
-      return this.leafNodes().length &&
-              //`${this.leafNodes()[0]} ` +
-              `${this.leafNodes()[0].dimPath()}:\n` +
-              this.leafNodes().map(
-                d=>`   ${d.records.length} ${d.namePath()}\n`).join('')
+    List.prototype.summary = function(opts={}) {
+      let {depth=0, funcs={}} = opts
+      let out = []
+      //let indent = '    '.repeat(depth)
+      let indent = ''
+      let dim = `${this.dim}`
+      let vals = `${this.length} vals`
+      let recs = `${this.records.length} recs`
+      out.push(`${indent}${dim}, ${recs} (${depth}) ${vals}:`)
+      out.push(this.map(val=>val.summary({...opts,depth:depth+1})).join('\n'))
+      return out.join('\n')
     }
-    Value.prototype.summary = function() {
-      return `${this.dimPath()}: ${this.namePath()} (${this.records.length})\n` +
-                (this.hasChildren() ? this.getChildren().summary() : '')
+    Value.prototype.hasSiblings = function() {
+      return this.parentList.length > 1
+    }
+    Value.prototype.summary = function(opts={}) {
+      let {depth=0, funcs={}} = opts
+      let out = []
+      let indent = '    '.repeat(depth)
+      let recs = `${this.records.length} recs`
+      if (depth === 0) {
+        let dimPath = this.dimPath()
+        let namePath = this.namePath()
+        let valDepth = `lvl ${this.depth}`
+        let sibs = this.hasSiblings() ? `, ${this.parentList.length - 1} siblings` : ''
+        out.push(`${indent}${valDepth} ${namePath}(${dimPath}), ${recs}${sibs}`)
+      } else {
+        out.push(`${indent}${this}, ${recs}`)
+      }
+      if (funcs) {
+        _.each(funcs, (f,k) => {
+          out.push(`${indent}  ${k}: ${f(this)}`)
+        })
+        out.push('')
+      }
+      let summary = out.join('\n')
+      if (this.hasChildren()) {
+        //summary += (' has: ' + this.getChildren().summary(opts))
+        out.push(`${indent}has:\n` + this.getChildren().summary(opts))
+      }
+      return summary
     }
 
     function makeValue(v_arg) {
@@ -482,9 +513,6 @@ var supergroup = (function() {
     Value.prototype.hasChildren = function(emptyListOk = false) {
       return !!this.getChildren(emptyListOk);
     };
-    Value.prototype.hasSiblings = function() {
-      return this.parentList.getChildren().length > 1
-    }
     Value.prototype.addRecordsAsChildrenToLeafNodes = function(truncateEmpty) {
         // this method is to help with d3 layouts that expect the leaf level
         // to be an array of raw records
