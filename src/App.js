@@ -78,6 +78,11 @@ const routes = [
   { path: '/lookup',
     main: () => <ConceptCodesLookupForm noDialog={true}/>
   },
+  { path: '/filters',
+    main: () => {
+      return <FilterForm />
+    }
+  },
 ]
 
 // from APPBAR EXAMPLE http://www.material-ui.com/#/components/app-bar
@@ -268,6 +273,13 @@ class AppTabs extends React.Component {
             data-route="/lookup"
             onActive={tab=>nav(tab.props['data-route'])} 
         >
+          {main}
+        </Tab>
+        <Tab  label="Filters" value="filters"
+            data-route="/filters"
+            onActive={tab=>nav(tab.props['data-route'])} 
+        >
+          filter thing
           {main}
         </Tab>
         {/*

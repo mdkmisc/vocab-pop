@@ -1,3 +1,14 @@
+import myrouter from 'src/myrouter'
+import _ from './supergroup';
+
+export const getSetting = path => {
+  let query = myrouter.getQuery(path)
+  let settings = {...config,...query}
+  if (path) 
+    return _.get(settings, path)
+  return settings
+}
+
 //var dotenv = require('dotenv'); // create-react-app loads from .env
 //console.log(dotenv);
 var config = {
@@ -6,20 +17,43 @@ var config = {
   "apiRoot": process.env.REACT_APP_API_ROOT,
   "apiModel": process.env.REACT_APP_API_MODEL,
   "rootPath": process.env.REACT_APP_ROOTPATH,
-
-};
-//console.log(config);
-export default config;
-
-export var notBeingUsedRightNow = {
-  // none of the rest being used, but may bring it back
-  defaultFilters: {
-    "excludeInvalidConcepts": true,
-    "excludeNoMatchingConcepts": true,
-    "excludeNonStandardConcepts": false
+  filters: {  // default settings:
+    include: {
+      vocabularies: [
+				"SNOMED", "ICD9CM", "CPT4", "HCPCS", "LOINC", "RXNORM",
+				"NDC", "GPI", "UCUM", "GENDER", "RACE", "PLACE OF SERVICE MEDDRA",
+				"INDICATION", "ICD10PCS", "DRG", "MDC", "APC",
+				"REVENUSE CODE", "ETHNICITY", "NUCC", "SPECIALTY",
+				"PCORNET", "ICD10CM", "ABMS", ],
+    },
   },
-  "filterFormSchema": {
-    "type": "object",
+  filterFormSchema: {
+    type: "object",
+    properties: {
+      exclude: {
+        title: "Exclude vocabularies",
+        type: "array",
+        items: {
+          type: "string",
+          description: "Vocabulary IDs to exclude",
+        },
+      },
+      include: {
+        title: "Include vocabularies",
+        type: "object",
+        properties: {
+          vocabularies: {
+            type: "string",
+            description: "Vocabulary IDs to include",
+            type: "array",
+            items: {
+              type: "string"
+            }
+          },
+        },
+      },
+    }
+    /*
     "properties": {
       "excludeInvalidConcepts": {
         "title": "Exclude Invalid Concepts",
@@ -34,7 +68,15 @@ export var notBeingUsedRightNow = {
         "type": "boolean"
       }
     }
+    */
   },
+
+};
+//console.log(config);
+export default config;
+
+export var notBeingUsedRightNow = {
+  // none of the rest being used, but may bring it back
   "menu items": [
     {
       "Home": [

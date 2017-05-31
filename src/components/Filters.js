@@ -15,21 +15,12 @@ Copyright 2016 Sigfried Gold
    limitations under the License.
 */
 
-import config, {notBeingUsedRightNow} from '../config'
+import * as config from '../config'
 import React, { Component } from 'react';
 
-import { //Nav, Navbar, Modal,
-         //NavItem, Button,
-         //Row, Col, 
-         // NavDropdown, MenuItem, Panel, Button, 
-          } from 'react-bootstrap';
-//import { LinkContainer } from 'react-router-bootstrap';
-//import Inspector from 'react-json-inspector';
-//import 'react-json-inspector/json-inspector.css';
 import _ from '../supergroup';
 import Form from "react-jsonschema-form";
 
-//const log = (type) => console.log.bind(console, type);
 export class FilterForm extends Component {
   constructor(props) {
     super(props);
@@ -37,29 +28,27 @@ export class FilterForm extends Component {
     };
   }
   componentDidMount() {
-    throw new Error("FIX")
-    /*
-    this.filtSub = AxxppState.subscribeState(
-      'filters', filters => {
-        this.setState({filters});
-      });
-    */
   }
   componentWillUnmount() {
     this.filtSub && this.filtSub.unsubscribe();
   }
   render() {
-    const {filterFormSchema, filterFormUISchema} = notBeingUsedRightNow;
-    const filterSettings = this.state.filters || {};
-    return <Form schema={filterFormSchema}
-                  uiSchema={filterFormUISchema}
+    return <h3>need to fix</h3>
+    const filterFormSchema = config.getSetting('filterFormSchema')
+    const filters = config.getSetting('filters')
+    debugger
+    return <div>
+            <h1>hello</h1>
+            <Form schema={filterFormSchema}
+                  //uiSchema={filterFormUISchema}
                   onChange={this.formChange.bind(this)}
                   onError={this.formError.bind(this)}
                   //onSubmit={log("submitted")}
-                  formData={filterSettings}
+                  formData={filters}
                   >
               <span/>
             </Form>
+          </div>
   }
   formChange({edit,errors,formData}) {
     throw new Error("FIX")
