@@ -135,11 +135,17 @@ export const cachedAjax = props => {
     return Rx.Observable.of(actionGenerators.cachedResults({apiPathname,params,url,results}))
     //return Rx.Observable.of(results)
   }
+  debugger
   let rxAjax = 
     Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
               .map(results => {
-                //debugger
+                console.log('some results', results)
+                debugger
                 return actionGenerators.newResults({apiPathname,params,url,results})
+              })
+              .catch((err,a,b,c) => {
+                debugger
+                throw err
               })
   rxAjax.subscribe(action => {
     util.storagePut(action.meta.url, action.payload)

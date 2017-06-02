@@ -3,11 +3,6 @@
 import Spinner from 'react-spinner'
 import _ from 'lodash';
 import React, { Component } from 'react';
-import {Glyphicon, Row, Col,
-          Nav, Navbar, NavItem, Label,
-          Form, FormGroup, FormControl, ControlLabel, HelpBlock,
-          Button, ButtonToolbar, ButtonGroup,
-          } from 'react-bootstrap';
 var $ = require('jquery');
 var d3 = require('d3');
 import LZString from 'lz-string';
@@ -350,6 +345,7 @@ export class ListenerWrapper extends Component {
             </Tag>;
   }
 }
+/*
 export class LoadingButton extends Component {
   // not using this yet
   constructor(props) {
@@ -383,6 +379,7 @@ export class LoadingButton extends Component {
     }, 2000);
   }
 }
+*/
 
 
 // convenience function to transform an existing redux action
