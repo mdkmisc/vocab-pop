@@ -14,8 +14,6 @@ import React, { Component } from 'react';
 import Rx from 'rxjs/Rx';
 //import { ajax } from 'rxjs/observable/dom/ajax';
 import _ from 'src/supergroup'; // lodash would be fine here
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
 var ALLOW_CACHING = [
   '.*',
   //'/WebAPI/[^/]+/person/',
@@ -135,12 +133,9 @@ export const cachedAjax = props => {
     return Rx.Observable.of(actionGenerators.cachedResults({apiPathname,params,url,results}))
     //return Rx.Observable.of(results)
   }
-  debugger
   let rxAjax = 
-    Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
+    Rx.Observable.ajax.getJSON(url) //(,{mode: 'no-cors'})
               .map(results => {
-                console.log('some results', results)
-                debugger
                 return actionGenerators.newResults({apiPathname,params,url,results})
               })
               .catch((err,a,b,c) => {

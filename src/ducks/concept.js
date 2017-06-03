@@ -54,7 +54,7 @@ const loadedReducer = (state={}, action) => {
       return ({ ...state, ...util.arr2map(payload, c=>c.concept_id)})
       //return Immutable({ ...state, ...util.arr2map(payload, c=>c.concept_id)})
     case cids.cidsActions.NEW_CIDS:
-      return (_.pick(state, payload)) // only keep the focal concepts, if there are any
+      return (_.pick(state, payload.map(c=>c.concept_id))) // only keep the focal concepts, if there are any
       //return Immutable(_.pick(state, payload)) // only keep the focal concepts, if there are any
   }
   return (state)

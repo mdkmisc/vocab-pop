@@ -39,8 +39,6 @@ import { Nav, Navbar, //Modal,
          // NavDropdown, MenuItem, Panel, Button, 
           } from 'react-bootstrap'
 //import { LinkContainer } from 'react-router-bootstrap'
-import Inspector from 'react-json-inspector'
-import 'react-json-inspector/json-inspector.css'
 import {FilterForm} from 'src/components/Filters'
 import Draggable from 'react-draggable'; // The default
 var $ = require('jquery')
@@ -63,10 +61,12 @@ import CircularProgress from 'material-ui/CircularProgress';
 
 
 const routes = [
+  /*
   { path: '/',
     exact: true,
     main: ()=><VocabPop/>,
   },
+  */
   { path: '/concepts',
     main: ()=><VocabPop/>,
   },

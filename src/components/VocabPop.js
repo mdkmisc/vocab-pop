@@ -18,8 +18,6 @@ Copyright 2016 Sigfried Gold
 // npm run-script flow
 const DEBUG = true;
 import React, { Component } from 'react';
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
 import SigmaReactGraph from 'src/components/SigmaReactGraph';
 import Spinner from 'react-spinner';
 //require('react-spinner/react-spinner.css');
@@ -463,8 +461,6 @@ export class ConceptView extends Component {
                 concept_id: {concept_id} {'\n'}
                 props: {_.keys(this.props).join(',')}
               </pre>
-              <Inspector search={false} 
-                data={ conceptInfo||{} } />
             </div>
     */
   }

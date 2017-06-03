@@ -17,9 +17,7 @@ Copyright 2016 Sigfried Gold
 // @flow
 // npm run-script flow
 import React, { Component } from 'react';
-import { Glyphicon, //Row, Col,
-          //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label
-       } from 'react-bootstrap';
+//import { Glyphicon, //Row, Col, //Button, Panel, Modal, Checkbox, OverlayTrigger, Tooltip, FormGroup, Radio Panel, Accordion, Label } from 'react-bootstrap';
 var d3 = require('d3');
 import _ from 'src/supergroup'; // in global space anyway
 var $ = require('jquery'); window.$ = $;
@@ -370,10 +368,11 @@ function Icons(props) {
                 //style={{display:hover ? 'inline' : 'none',}} >
                 // sigma chokes on events for elements without classes
   return <span className="icons"> 
-            <Glyphicon glyph="zoom-in" style={{pointerEvents:'auto'}}
+              FIX THESE ICONS
+            <span data-glyph="zoom-in" style={{pointerEvents:'auto'}}
               title="Drill down to concept classes"
             />
-            <Glyphicon glyph="list" style={{pointerEvents:'auto'}} 
+            <span data-glyph="list" style={{pointerEvents:'auto'}} 
               title="Show sample records"
             />
          </span>;

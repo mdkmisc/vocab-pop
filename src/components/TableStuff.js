@@ -15,8 +15,6 @@ import {commify, updateReason,
         ListenerWrapper, ListenerTargetWrapper} from 'src/utils';
 
 import Spinner from 'react-spinner';
-import Inspector from 'react-json-inspector';
-import 'react-json-inspector/json-inspector.css';
 //require('react-spinner/react-spinner.css');
 
 //require('sigma/plugins/sigma.layout.forceAtlas2/supervisor');
