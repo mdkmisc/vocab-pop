@@ -346,10 +346,10 @@ console.log('NOT SAVING TABLE CHANGES RIGHT NOW')
           _.keys(data[0])
            .filter(col => _.isNumber(data[0][col]) || _.isString(data[0][col]))
            .map(col=>{
-              return {  headerName: col,
-                      colId: col,
-                      valueGetter: ({data:d}={}) => d[col],
-            }});
+              return {headerName: col, colId: col, field: col,
+                      //valueGetter: ({data:d}={}) => d[col],
+              }
+           });
     return (
             <Panel>
               <Label>
@@ -371,9 +371,7 @@ console.log('NOT SAVING TABLE CHANGES RIGHT NOW')
                               : params.data.sc === 'C' ? {backgroundColor:'rgba(177, 224, 231, 0.51)'}
                               : {backgroundColor:'rgba(255, 160, 122, 0.41)'}
                   }
-                  headerCellRenderer={
-                    p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName
-                  }
+                  //headerCellRenderer={ p => p.colDef.headerRenderer ? p.colDef.headerRenderer(p) : p.colDef.headerName }
                   onColumnMoved={this.saveGridState}
                   onColumnVisible={this.saveGridState}
                   //onColumnEverythingChanged={this.saveGridState.bind(this)}

@@ -1,6 +1,6 @@
 # See http://help.github.com/ignore-files/ for more about ignoring files.
 junk
-
+old
 .env
 
 VOCAB/vocab_data_files
