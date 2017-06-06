@@ -1,14 +1,6 @@
 import myrouter from 'src/myrouter'
 import _ from './supergroup';
 
-export const getSetting = path => {
-  let query = myrouter.getQuery(path)
-  let settings = {...config,...query}
-  if (path) 
-    return _.get(settings, path)
-  return settings
-}
-
 //var dotenv = require('dotenv'); // create-react-app loads from .env
 //console.log(dotenv);
 var config = {
@@ -43,7 +35,6 @@ var config = {
         type: "object",
         properties: {
           vocabularies: {
-            type: "string",
             description: "Vocabulary IDs to include",
             type: "array",
             items: {
@@ -182,3 +173,11 @@ export var notBeingUsedRightNow = {
     "visit"
   ]
 }
+export const getSetting = path => {
+  let query = myrouter.getQuery(path)
+  let settings = {...config,...query}
+  if (path) 
+    return _.get(settings, path)
+  return settings
+}
+
