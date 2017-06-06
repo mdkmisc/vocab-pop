@@ -83,6 +83,19 @@ const routes = [
       return <FilterForm />
     }
   },
+  { path: '/ajax-error',
+    main: () => {
+      let weirdWayToSendProps = myrouter.getQuery()
+      let {mainMsg='Error', url, ...rest} = weirdWayToSendProps
+      return  <div style={{padding:'10%'}}>
+                <h4>{mainMsg}</h4>
+                <p>
+                  Failed to load: <a href={url}>{url}</a>
+                </p>
+                <pre>{JSON.stringify(rest, null, 2)}</pre>
+              </div>
+    }
+  },
 ]
 
 // from APPBAR EXAMPLE http://www.material-ui.com/#/components/app-bar

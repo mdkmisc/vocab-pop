@@ -136,7 +136,7 @@ const CdmCntsButtons = props => {
     withCdm.map((grp,i)=>{
       let cnts = cncpt.cdmCnts(grp)
       if (cnts.length) {
-        return cnts.map(cnt=>{
+        return cnts.map((cnt,j)=>{
           let buttonContent = `${grp.records.length} ${grp}: ` +
                               cnts.map(fmtCdmCnt('short')).join(', ')
           let ttText = cnts.map(fmtCdmCnt('long')).join(', ')
@@ -146,7 +146,7 @@ const CdmCntsButtons = props => {
                             .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
                         }</div>
           if (!ttid) debugger
-          return <TipButton {...{key:i,ttid,ttText,ttFancy, M, buttonContent}} />
+          return <TipButton {...{key:`${i}:${j}`,ttid,ttText,ttFancy, M, buttonContent}} />
         })
       } else {
         let buttonContent = `${grp.records.length} ${grp}`
@@ -195,7 +195,7 @@ const groupLabel = props => {
             <span style={{
               marginLeft: 20, zoom:.8,
             }} >
-              <CdmCntsButtons cset={cset} M={M} ttid={ttid} />
+              <CdmCntsButtons key={key} cset={cset} M={M} ttid={ttid} />
               {
                 cset.subgrpCnts(['dom','cls','rels']).map((sgf,i)=> {
                   //debugger

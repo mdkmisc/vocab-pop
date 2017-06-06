@@ -33,6 +33,7 @@ export default function configureStore(initialState = {}) {
   })
 
   const allEpics = [
+    ...api.epics,
     ...vocabs.epics,
     ...cids.epics,
     ...concept.epics,
@@ -50,7 +51,7 @@ export default function configureStore(initialState = {}) {
       applyMiddleware(...middleware)
     )
   )
-  myrouter.routeActionConnected = bindActionCreators(myrouter.routeAction, store.dispatch)
+  myrouter.routeActionConnected = bindActionCreators(myrouter._routeAction, store.dispatch)
 
   if (DEBUG) {
     window.store = store

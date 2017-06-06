@@ -54,26 +54,10 @@ const vocabCall = (action$, store) => (
 )
 epics.push(vocabCall)
 const loadVocabularies = (action$, store) => (
-  action$.ofType(api.apiActions.API_CALL)
-    .filter((action) => (action.payload||{}).apiPathname === apiPathname)
-    .mergeMap((action)=>{
-      let {type, payload, meta, error} = action
-      let {apiPathname, params, url} = payload
-      return api.apiCall({apiPathname, /*params,*/ url, }, store)
-    })
-    .catch(err => {
-      console.error('error in loadVocabularies', err)
-      return Rx.Observable.of({
-        type: 'vocab-pop/vocabularies/FAILURE',
-        meta: {apiPathname},
-        error: true
-      })
-    })
+  action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
+    .filter((action) => (action.meta||{}).apiPathname === apiPathname)
     .map(action=>{
       let {type, payload, meta} = action
-      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
-        throw new Error("did something go wrong?")
-      }
       return {type:vocabActions.GOT_DATA, payload} 
     })
 )
@@ -134,7 +118,8 @@ export const reverseRel = createSelector(
 
 /**** start epics ******************************************/
 const relationshipsCall = (action$, store) => (
-  action$.ofType('@@router/LOCATION_CHANGE') // happens on init
+  action$.ofType('@@router/LOCATION_CHANGE') // happens on init -- why not on @@INIT?
+  //action$.ofType('@@INIT') // DOESN'T WORK ... too early, not sure why
     .filter(() => _.isEmpty(store.getState().relationships))
     .take(1)
     .mergeMap(()=>{
@@ -151,26 +136,10 @@ const relationshipsCall = (action$, store) => (
 )
 epics.push(relationshipsCall)
 const loadRelationships = (action$, store) => (
-  action$.ofType(api.apiActions.API_CALL)
-    .filter((action) => (action.payload||{}).apiPathname === relApiPathname)
-    .mergeMap((action)=>{
-      let {type, payload, meta, error} = action
-      let {apiPathname:relApiPathname, params, url} = payload
-      return api.apiCall({apiPathname:relApiPathname, /*params,*/ url, }, store)
-    })
-    .catch(err => {
-      console.error('error in loadRelationships', err)
-      return Rx.Observable.of({
-        type: 'vocab-pop/vocabularies-rel/FAILURE',
-        meta: {apiPathname:relApiPathname},
-        error: true
-      })
-    })
+  action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
+    .filter((action) => (action.meta||{}).apiPathname === relApiPathname)
     .map(action=>{
       let {type, payload, meta} = action
-      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
-        throw new Error("did something go wrong?")
-      }
       return {type:relActions.GOT_DATA, payload} 
     })
 )

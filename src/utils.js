@@ -21,7 +21,11 @@ export function storageExists(key, store = _store) {
   return _.has(store, key);
 }
 export function storageGet(key, store = _store) {
-  return JSON.parse(LZString.decompressFromBase64(store[key]));
+  let json = LZString.decompressFromBase64(store[key])
+  if (typeof json === 'undefined' || json === '') {
+    json = 'null'
+  }
+  return JSON.parse(json)
 }
 window.storageGet = storageGet
 

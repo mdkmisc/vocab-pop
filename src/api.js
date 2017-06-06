@@ -6,6 +6,7 @@ import myrouter from 'src/myrouter'
 import { createSelector } from 'reselect'
 import { combineReducers, } from 'redux'
 import { connect } from 'react-redux'
+import { combineEpics } from 'redux-observable'
 
 import config from 'src/config'
 import * as util from 'src/utils';
@@ -14,6 +15,40 @@ import React, { Component } from 'react';
 import Rx from 'rxjs/Rx';
 //import { ajax } from 'rxjs/observable/dom/ajax';
 import _ from 'src/supergroup'; // lodash would be fine here
+
+const getToken = () => {
+  let authToken = myrouter.getQuery('token') || util.storageGet('authToken')
+  if (!authToken) {
+    util.storagePut('returnToUrl', window.location.href)
+    let authUrl = process.env.REACT_APP_API_AUTH
+    window.location.replace(authUrl)
+  }
+  if (util.storageGet('authToken') !== authToken) {
+    util.storagePut('authToken', authToken)
+  }
+  return authToken
+}
+const getUser = () => {
+  let user = util.storageGet('user')
+  if (!user) {
+    getToken()
+    return {}
+  }
+  return user
+}
+if (window.location.pathname === '/token') {
+  let query = myrouter.getQuery()
+  util.storagePut('authToken', query.token)
+  util.storagePut('user', JSON.parse(query.user))
+  let url = util.storageGet('returnToUrl')
+  if (!url) {
+    debugger
+  }
+  window.location.replace(url)
+}
+
+
+
 var ALLOW_CACHING = [
   '.*',
   //'/WebAPI/[^/]+/person/',
@@ -45,35 +80,53 @@ export const isCached = (url='') => {
 }
 
 const apiActions = {
-  API_CALL: 'vocab-pop/api/API_CALL',
   CACHED_RESULTS: 'vocab-pop/api/CACHED_RESULTS',
   NEW_RESULTS: 'vocab-pop/api/NEW_RESULTS',
   REJECTED: 'vocab-pop/api/REJECTED',
+  UNAUTHORIZED: 'vocab-pop/api/UNAUTHORIZED',
+
+  ADD_TO_QUEUE: 'vocab-pop/api/ADD_TO_QUEUE',
+  NEXT_IN_QUEUE: 'vocab-pop/api/NEXT_IN_QUEUE',
+  CHECKING_QUEUE: 'vocab-pop/api/CHECKING_QUEUE',
 
   CACHE_DIRTY: 'vocab-pop/api/CACHE_DIRTY',
 }
 export {apiActions}
 export const reducer = (
-  state={ active:{},
+  state={ 
+          events: [],
+          queue:{},
+          active:{},
           complete:{},
           failed:{}
         }, action) => {
-  let {status,active,complete,failed} = state
+  let {events,queue,active,complete,failed} = state
   let {type, payload, meta, error} = action
   let apiPathname, params, url, results, msg
   switch (type) {
-    case apiActions.CACHE_DIRTY:
-      // check this
-      return {...state, cacheDirty: (state.cachDirty||[]).push(payload)}
-    case apiActions.API_CALL:
+    case apiActions.CHECKING_QUEUE:
+      console.log('reducer queue check', action)
+      events = [...events, 'checked queue']
+      break
+    case apiActions.ADD_TO_QUEUE:
       ({apiPathname, params, url} = payload)
-      if (_.has(active, url)) {
-        if (_.isEqual(active[url].params,params)) {
+      if (_.has(queue, url)) { // don't add same if it's already queued
+        if (_.isEqual(queue[url].params,params)) {
           return state
         }
-        throw new Error("do something")
+        throw new Error("do something -- in queue already, but not same")
       }
-      active = {...active, [url]: {params,msg,apiPathname}}
+      queue = {...queue, [url]: {params,msg,apiPathname, status:'queued'}}
+      break
+    case apiActions.NEXT_IN_QUEUE:
+      ({apiPathname, params, url} = payload)
+      let nextCall = {...payload, status: 'active', url:undefined}
+      queue = {...queue, [url]: nextCall}
+      active = {...active, [url]: nextCall}
+      break
+    case apiActions.CACHE_DIRTY:
+      // check this
+      //return {...state, cacheDirty: (state.cachDirty||[]).push(payload)}
       break
     case apiActions.CACHED_RESULTS:
     case apiActions.NEW_RESULTS:
@@ -81,25 +134,31 @@ export const reducer = (
       ({apiPathname, params, url, msg='no message'} = meta)
       results = payload
       if (!_.has(active, url)) {
-        throw new Error("do something")
+        throw new Error("do something -- got results, but not active")
       }
       if (_.has(complete, url)) {
         console.log('loading for a second time. not sure handling this correctly', url)
         //throw new Error("do something")
       }
       active = _.pickBy(active, (v,k) => k !== url)
+      queue = {...queue, [url]: {...queue[url], status:'complete'}}
       complete = {...complete, [url]: {params,msg,apiPathname}}
+      break
+    case apiActions.UNAUTHORIZED:
+      ({apiPathname, url, results} = meta)
+      active = _.pickBy(active, (v,k) => k !== url)
+      failed = {...failed, [url]: action}
       break
     case apiActions.REJECTED:
       ({apiPathname, url, results} = meta)
       if (!_.has(active, url)) {
-        throw new Error("do something")
+        throw new Error("do something -- rejected but not active")
       }
       if (_.has(complete, url)) {
-        throw new Error("do something")
+        throw new Error("do something -- complete but not active")
       }
       if (_.has(failed, url)) {
-        throw new Error("do something")
+        throw new Error("do something -- failed but not active")
       }
       active = _.pickBy(active, (v,k) => k !== url)
       failed = {...failed, [url]: action}
@@ -107,22 +166,90 @@ export const reducer = (
     default:
       return state
   }
-  let newState = {status,active,complete,failed}
-  return _.isEqual(state, newState) ? state : newState
+  let newState = {events,queue,active,complete,failed}
+  if (_.isEqual(state, newState)) {
+    console.log("no change in api reducer", {action, state})
+    return state
+  } else {
+    console.log("yes change in api reducer", {action, state, newState})
+    return newState
+  }
 }
 export default reducer
+
+
+/**** start epics ******************************************/
+let epics = []
+
+const watchTheQueue = (action$, store) => (
+  action$
+    .debounceTime(3000)
+    .switchMap(action=>{
+      console.log("making timer(s)", action)
+      let timer = Rx.Observable.timer(100, 400)
+      return timer
+      return Rx.Observable.of(timer)
+    })
+    //.map((i,a,b,c)=>{i,a,b,c})
+    //.switch()
+    .mergeMap(timer=>{
+      let queue = _.get(store.getState(),'api.queue')
+      let queuedCalls = Object.entries(queue).filter(([k,v],i) => v.status === 'queued')
+      if (!queuedCalls.length) {
+        return Rx.Observable.empty()
+      }
+      let queuedCall = {...queuedCalls[0][1], url:queuedCalls[0][0]}
+      let user = getUser()
+      if (user.tester) {
+        return Rx.Observable.of(actionGenerators.nextInQueue(queuedCall))
+      }
+      return Rx.Observable.of({
+        type: apiActions.UNAUTHORIZED,
+        payload: {msg:'User not authorized', user},
+        meta: queuedCall,
+        error: true
+      })
+    })
+)
+epics.push(watchTheQueue)
+const processActive = (action$, store) => (
+  action$.ofType(apiActions.NEXT_IN_QUEUE)
+    .mergeMap((action)=>{
+      let {type, payload, meta, error} = action
+      let {apiPathname, params, url} = payload
+      return apiCall({apiPathname, params, url, }, store)
+    })
+)
+epics.push(processActive)
+const unauthorized = (action$, store) => (
+  action$.ofType(apiActions.UNAUTHORIZED)
+    .mergeMap((action)=>{
+      let {type, payload, meta, error} = action
+      let {msg, user} = payload
+      let {apiPathname, params, url} = meta
+      let err = {...user, ...meta}
+      myrouter.routeError(url, err, msg)
+      return Rx.Observable.empty()
+    })
+)
+epics.push(unauthorized)
+export {epics}
+/**** end epics ******************************************/
+
+
 export const actionGenerators = {
   apiCall: props => {
     let { apiPathname, params, } = props
     let url = apiGetUrl(apiPathname, params)
-    return {type: apiActions.API_CALL, payload: {apiPathname,params,url}}
+    let token = getToken()
+    url += (url.match(/\?/) ? '&' : '?') + `token=${token}`
+    return {type: apiActions.ADD_TO_QUEUE, payload: {apiPathname,params,url}}
   },
+  nextInQueue: nextCall => ({type: apiActions.NEXT_IN_QUEUE, payload: nextCall}),
   cachedResults: ({apiPathname,params,url,results}) => 
-      ({type: apiActions.CACHED_RESULTS, 
-        payload: results, 
-        meta:{apiPathname,params,url}}),
+      ({type: apiActions.CACHED_RESULTS, payload: results, meta:{apiPathname,params,url}}),
   newResults: ({apiPathname,params,url,results}) => 
-      ({type: apiActions.NEW_RESULTS, payload: results, meta:{apiPathname,params,url}}),
+      ({type: apiActions.NEW_RESULTS,    payload: results, meta:{apiPathname,params,url}}),
 }
 export const cachedAjax = props => {
   //debugger
@@ -138,8 +265,8 @@ export const cachedAjax = props => {
               .map(results => {
                 return actionGenerators.newResults({apiPathname,params,url,results})
               })
-              .catch((err,a,b,c) => {
-                debugger
+              .catch((err) => {
+                return Rx.Observable.empty()
                 throw err
               })
   rxAjax.subscribe(action => {
@@ -166,14 +293,18 @@ export const apiCall = (props, store) => {
           })
         },
   } = props
+  //console.log('apiCall doing nothing')
+  //return Rx.Observable.empty()
 
   //console.log(apiPathname, JSON.stringify(params))
   return cachedAjax({apiPathname, params, url})
               //.do(action=>{debugger})
+              /*
               .do(action=>{
                 action = {...action, meta:{...action.meta,msg:msgFunc(action.payload)}}
                 store.dispatch(action)
               })
+              */
               //.map(successMap)
               .catch(catchFunc)
 }

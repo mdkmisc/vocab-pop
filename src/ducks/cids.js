@@ -93,33 +93,18 @@ const cidsCall = (action$, store) => (
 epics.push(cidsCall)
 
 const loadCids = (action$, store) => (
-  action$.ofType(api.apiActions.API_CALL)
+  action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
     .filter(
       (action) => 
-        (action.payload||{}).apiPathname === 'codeSearchToCids' ||
-        (action.payload||{}).apiPathname === 'conceptNameSearch'
+        (action.meta||{}).apiPathname === 'codeSearchToCids' ||
+        (action.meta||{}).apiPathname === 'conceptNameSearch'
     )
-    .mergeMap((action)=>{
-      let {type, payload, meta, error} = action
-      let {apiPathname, params, url} = payload
-      return api.apiCall({apiPathname, params, url, }, store)
-    })
-    .catch(err => {
-      console.error('error in loadCids', err)
-      return Rx.Observable.of({
-        type: 'vocab-pop/cids/FAILURE',
-        //meta: {apiPathname:'codeSearchToCids'},
-        error: true
-      })
-    })
     .map(action=>{
       let {type, payload, meta, error} = action
       if (error) {
         console.error(error)
+        debugger
         return action
-      }
-      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
-        throw new Error("did something go wrong?")
       }
       return {type:cidsActions.NEW_CIDS, payload}
     })

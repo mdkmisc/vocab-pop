@@ -285,27 +285,11 @@ const conceptsCall = (action$, store) => (
 epics.push(conceptsCall)
 
 const loadConcepts = (action$, store) => (
-  action$.ofType(api.apiActions.API_CALL)
-    .filter((action) => (action.payload||{}).apiPathname === apiPathname)
+  action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
+    .filter((action) => (action.meta||{}).apiPathname === apiPathname)
     .delay(200)
-    .mergeMap((action)=>{
-      let {type, payload, meta, error} = action
-      let {apiPathname, params, url} = payload
-      return api.apiCall({apiPathname, params, url, }, store)
-    })
-    .catch(err => {
-      console.error('error in loadConcepts', err)
-      return Rx.Observable.of({
-        type: 'vocab-pop/vocabularies/FAILURE',
-        meta: {apiPathname},
-        error: true
-      })
-    })
     .map(action=>{
       let {type, payload, meta} = action
-      if (!_.includes([api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS], type)) {
-        throw new Error("did something go wrong?")
-      }
       return newConcepts(payload, store.getState().concepts.loaded)
     })
 )

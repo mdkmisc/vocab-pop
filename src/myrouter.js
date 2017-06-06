@@ -1,5 +1,6 @@
 /* eslint-disable */
 import _ from 'src/supergroup'
+import muit from 'src/muitheme'
 import React, { Component, PropTypes } from 'react'
 import {  ConnectedRouter, 
           push as reduxPush,
@@ -50,7 +51,35 @@ const getQuery = (path) => {
   //console.log({query, test})
   //debugger
 }
-const routeAction = o => {
+const routeAjaxError = (ajaxUrl, err) => {
+  //if (err.xhr.responseURL !== ajaxUrl) { debugger }
+  let msgs = [err.message, err.xhr.statusText, err.xhr.response].filter(d=>d)
+  return routeError(ajaxUrl, msgs)
+}
+const routeError = (url, msgs, mainMsg='Error') => {
+  let gotoUrl = new URL(window.location.href)
+  if (window.location.pathname === '/ajax-error') {
+    console.log("already at ajax-error")
+    return
+  }
+  gotoUrl.pathname = 'ajax-error'
+  let query = myqs.parse((gotoUrl.search||'?').slice(1))
+  query.targetUrl = url
+  if (Array.isArray(msgs)) {
+    query.errMsgs = msgs.join(', ')
+  } else if (typeof msgs === 'string') {
+    query.errMsg = msgs
+  } else {
+    query = {...query, ...msgs}
+  }
+  query.mainMsg = mainMsg
+
+  gotoUrl.search = myqs.stringify(query)
+  // not working, no time to fix
+  //return myrouter.routeActionConnected(gotoUrl)
+  window.location.replace(gotoUrl.href)
+}
+const _routeAction = o => {
   //console.log('routeAction', reduxPush(o), 'only works if you dispatch it!')
   let action = reduxPush(o)
   //console.log('routeAction', {action, o})
@@ -107,8 +136,10 @@ var myrouter = {
   middleware,     // redux
   ConnectedRouter,// redux
   history,// history/createBrowserHistory
+  routeAjaxError,
+  routeError,
 
-  routeAction,
+  _routeAction,
   // routeActionConnected needs to be connected to routeAction and dispatcher
   // which is happening in configureStore
   routeActionConnected: ()=>{throw new Error("CONNECT THIS!")}, 
