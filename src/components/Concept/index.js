@@ -44,10 +44,12 @@ import {GridList, GridTile} from 'material-ui/GridList'
 import IconButton from 'material-ui/IconButton'
 import Subheader from 'material-ui/Subheader'
 import CircularProgress from 'material-ui/CircularProgress'
+import LinearProgress from 'material-ui/LinearProgress';
 import StarBorder from 'material-ui/svg-icons/toggle/star-border'
 import ExpandMore from 'material-ui/svg-icons/navigation/expand-more'
 import ExpandLess from 'material-ui/svg-icons/navigation/expand-less'
 import FileDownload from 'material-ui/svg-icons/file/file-download'
+import ZoomIn from 'material-ui/svg-icons/action/zoom-in'
 
 
 import Chip from 'material-ui/Chip'
@@ -380,7 +382,9 @@ export class RelButton extends Component {
         ? <CircularProgress size={20} 
             {...M('circularProgress.styleProps')}
           /> 
-        : null
+        : <div>
+            <ZoomIn color="white"/>
+          </div>
     let icons = []
     if (status.notRequested()) {
       icons.push(<FileDownload key='fetch' />)
@@ -420,6 +424,55 @@ export class RelButton extends Component {
     return <div>{buttons}</div>
   }
 }
+export class RelWidget extends Component {
+  render() {
+    let {cset, ttid, M, toggleRelExpanded, shouldShow, special} = this.props
+    let relSg = cset.prop('relSg')
+    if (!relSg || !relSg.records || !relSg.records.length) {
+      debugger
+    }
+    let status = cset.status()
+    let ttText = cnames(relSg)
+    if (status.waiting()) {
+      return  <LinearProgress mode="indeterminate" 
+                style={{margin:'10%', width:'80%', height: 4, }} />
+    }
+    let icons = [ <ZoomIn key="zoom" onClick={()=>alert('zoom!')} color="white"/> ]
+    if (status.notRequested()) {
+      icons.push(<FileDownload color="white" key='fetch' />)
+    }
+    if (status.loaded()) {
+      if (shouldShow) {
+        icons.push(<ExpandLess color="white" key='expand'/>)
+      } else {
+        icons.push(<ExpandMore color="white" key='expand'/>)
+      }
+    }
+    return  <TooltipWrapper {...{ttid,ttText,M,}} >
+              <RaisedButton 
+                    containerElement="pre"
+                    {...M('raisedButton.styleProps')}
+                    style={M('raisedButton.style')}
+                    //label={ <span> {relSg.records.length} {relSg.reldim} {relSg.relcids.length} </span>}
+                    labelPosition='before'
+              >
+                <FlatButton 
+                      {...M('raisedButton.styleProps')}
+                      style={M('raisedButton.style')}
+                      onClick={() => {
+                        //debugger
+                        cset.loadConcepts()
+                        toggleRelExpanded(relSg.reldim)
+                      }}
+                >
+                  {relSg.records.length} {relSg.reldim} {relSg.relcids.length}
+                </FlatButton>
+                {icons}
+              </RaisedButton>
+            </TooltipWrapper>
+  }
+}
+
 /*
 const RelButtons = props => {
   let {cset, ttid, } = props
@@ -516,7 +569,7 @@ const RelsView = props => { // assuming I just have cids, no concepts
             }
             */
             let relCset = cset.csetFromRelSg(relSg)
-            return <RelButton 
+            return <RelWidget 
                       special={special}
                       cset={relCset}
                       ttid={ttid}
