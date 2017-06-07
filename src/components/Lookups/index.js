@@ -13,7 +13,7 @@ import { bindActionCreators, } from 'redux'
 import React, { Component } from 'react'
 
 import { get } from 'lodash'
-import { Field, reduxForm, formValueSelector } from 'redux-form'
+import { Field, Form, reduxForm, formValueSelector } from 'redux-form'
 import Spinner from 'react-spinner'
 
 import MenuItem from 'material-ui/MenuItem';
@@ -135,7 +135,7 @@ class ConceptCodesLookupForm extends Component {
             open={this.state.open}
             onRequestClose={close}
           >
-            <form style={{marginLeft:20}}>
+            <Form style={{marginLeft:20}} onSubmit={e=>e.preventDefault()}>
               <Field name="vocabulary_id" 
                     //value={vocabulary_id}
                     style={{padding:'0px 8px 0px 8px'}}
@@ -195,7 +195,7 @@ class ConceptCodesLookupForm extends Component {
               <AgTable data={cset.concepts()||[]}
                     width={"100%"} height={250}
                     id="src_target_recs" />
-            </form>
+            </Form>
           </Dialog>
         </div>
     )
