@@ -6,6 +6,7 @@
 import _ from 'src/supergroup'; // in global space anyway...
 import * as util from 'src/utils';
 import * as api from 'src/api'
+import * as config from 'src/config'
 
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
@@ -13,6 +14,7 @@ import { combineEpics } from 'redux-observable'
 
 export const vocabActions = {
   GOT_DATA: 'vocab-pop/vocabularies/GOT_DATA',
+  //FILTER: 'vocab-pop/vocabularies/FILTER',
 }
 const apiPathname = 'vocabularies'
 
@@ -22,6 +24,11 @@ const reducer = (state=[], action) => {
   switch (type) {
     case vocabActions.GOT_DATA:
       return _.sortBy(payload, d=>d.vocabulary_id)
+    /*
+    case vocabActions.FILTER:
+      // payload should be a func that returns whether vocab is in(true) or out(false)
+      return state.map(vocab=>({...vocab, include: payload(vocab.vocabulary_id)}))
+    */
   }
   return state
 }
@@ -57,8 +64,11 @@ const loadVocabularies = (action$, store) => (
   action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
     .filter((action) => (action.meta||{}).apiPathname === apiPathname)
     .map(action=>{
-      let {type, payload, meta} = action
-      return {type:vocabActions.GOT_DATA, payload} 
+      const {type, payload, meta} = action
+      const include = config.getSetting('filters.include.vocabularies')
+      const vocabs = payload.map(
+        vocab=>({...vocab, include: _.includes(include,(vocab.vocabulary_id))}))
+      return {type:vocabActions.GOT_DATA, payload:vocabs} 
     })
 )
 epics.push(loadVocabularies)

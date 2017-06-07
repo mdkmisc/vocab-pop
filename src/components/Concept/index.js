@@ -197,7 +197,7 @@ const groupLabel = props => {
             }} >
               <CdmCntsButtons key={key} cset={cset} M={M} ttid={ttid} />
               {
-                cset.subgrpCnts(['dom','cls','rels']).map((sgf,i)=> {
+                cset.subgrpCnts(['voc','dom','cls','rels']).map((sgf,i)=> {
                   //debugger
                   return <TipButton {...{
                                 tipProps: {"data-type":'info',},

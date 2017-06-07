@@ -24,6 +24,8 @@ import LinkIcon from 'material-ui/svg-icons/content/link';
 import {Card, CardActions, CardHeader, CardMedia, CardTitle, CardText} from 'material-ui/Card';
 import Dialog from 'material-ui/Dialog';
 import {RadioButton, } from 'material-ui/RadioButton'
+import LinearProgress from 'material-ui/LinearProgress';
+
 import {
   Checkbox,
   DatePicker,
@@ -78,6 +80,11 @@ class ConceptCodesLookupForm extends Component {
               matchBy, matchStr, vocabulary_id,
               cset,
           } = this.props
+    if (!vocabularies.length) {
+      return <LinearProgress mode="indeterminate" 
+                style={{margin:'10%', width:'80%', height: 4, }}
+                  />
+    }
     let open = this.open.bind(this)
     let close = this.close.bind(this)
     let vocabulary = vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
@@ -138,18 +145,37 @@ class ConceptCodesLookupForm extends Component {
             <Form style={{marginLeft:20}} onSubmit={e=>e.preventDefault()}>
               <Field name="vocabulary_id" 
                     //value={vocabulary_id}
-                    style={{padding:'0px 8px 0px 8px'}}
+                    style={{padding:'0px 8px 0px 8px',width:'60%'}}
                     component={SelectField}
-                    fullWidth={true}
-                    floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
+                    //fullWidth={true}
+                    floatingLabelText={vocabulary ? vocabulary.vocabulary_version : 'Choose Vocabulary'}
+                    /*
+                    //floatingLabelText={`vocabulary_id (${this.props.initialValues.vocabulary_id})`}
+                    style={{padding:'0px 8px 0px 8px',width:'60%',height:120}}
+                    floatingLabelStyle={{top:25}}
+                    floatingLabelText={
+                      vocabulary ?
+                        <RaisedButton
+                          primary={true}
+                          style={{padding:0, margin:'0px 0px 15px 0px', }}
+                          href={vocabulary.vocabulary_reference}
+                          target="_blank"
+                          label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
+                          icon={<LinkIcon />}
+                        /> : 'Choose Vocabulary'
+                    }
+                    */
               >
                 {
                   (vocabularies||[]).map(
                     d=>{
                         return <MenuItem 
+                          disabled={!d.include}
+                          desktop={true}
                           className="vocab-item"
                           key={d.vocabulary_id}
                           checked={d.vocabulary_id === vocabulary_id}
+                          //focusState={d.vocabulary_id === vocabulary_id ? 'focused' : 'none'}
                           value={d.vocabulary_id}
                           primaryText={d.vocabulary_id}
                           secondaryText={d.vocabulary_name}
@@ -157,17 +183,21 @@ class ConceptCodesLookupForm extends Component {
                     })
                 }
               </Field>
-              {
-                vocabulary ?
-                  <FlatButton
+              <br/>
+              { vocabulary 
+                ?  <FlatButton
                     primary={true}
-                    style={{padding:'0px', }}
+                    style={{padding:'0px', margin:'0px 0px 8px 0px',}}
                     href={vocabulary.vocabulary_reference}
                     target="_blank"
-                    label={<span>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</span>}
+                    //label={<div>{vocabulary.vocabulary_name}<br/> {vocabulary.vocabulary_version}</div>}
                     icon={<LinkIcon />}
-                  /> : undefined
+                  >
+                    {vocabulary.vocabulary_name}
+                  </FlatButton> 
+                : undefined
               }
+              <br/>
               <Field  name="matchBy" component={RadioButtonGroup}>
                 <RadioButton value="codes" label="Concept Codes" />
                 <RadioButton value="text" label="Concept Name" />

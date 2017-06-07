@@ -15,7 +15,7 @@ Copyright 2016 Sigfried Gold
    limitations under the License.
 */
 
-import * as config from '../config'
+import * as config from 'src/config'
 import React, { Component } from 'react';
 
 import _ from '../supergroup';
@@ -33,9 +33,10 @@ export class FilterForm extends Component {
     this.filtSub && this.filtSub.unsubscribe();
   }
   render() {
+    const filters = config.getSetting('filters')
+    return <pre>{JSON.stringify(filters,null,2)}</pre>
     return <h3>need to fix</h3>
     const filterFormSchema = config.getSetting('filterFormSchema')
-    const filters = config.getSetting('filters')
     debugger
     return <div>
             <h1>hello</h1>

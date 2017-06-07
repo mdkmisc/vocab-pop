@@ -288,6 +288,7 @@ class AppTabs extends React.Component {
         >
           {main}
         </Tab>
+        {/*
         <Tab  label="Filters" value="filters"
             data-route="/filters"
             onActive={tab=>nav(tab.props['data-route'])} 
@@ -295,7 +296,6 @@ class AppTabs extends React.Component {
           filter thing
           {main}
         </Tab>
-        {/*
         <Tab label="nothing" value="nothing">
           <CircularProgress />
           <CircularProgress color={palette.accent1Color} size={60} thickness={7} />
