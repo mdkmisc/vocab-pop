@@ -10,6 +10,7 @@ import _ from 'src/supergroup'; // in global space anyway...
 import * as api from 'src/api'
 import * as cids from 'src/ducks/cids'
 import * as util from 'src/utils';
+import * as config from 'src/config'
 import React, { Component } from 'react'
 
 /*
@@ -511,6 +512,10 @@ export const byTbl = (concepts) => {
                       )
 }
 
+export const relgrpsFilter = relgrps => {
+  let okVocs = config.getSetting('filters.include.vocabularies')
+  return relgrps.filter(grp => _.includes(okVocs, grp.vocabulary_id))
+}
 export const addRels = sg => {
 
 
@@ -519,8 +524,8 @@ export const addRels = sg => {
   //let sgWithRels = sg.addLevelPure(sgParams.rels.dim, sgParams.rels.opts)
   sgWithRels.leafNodes().forEach(relSg => {
     let [r,rr] = relSg.split(/ --> /)
-    relSg.relgrps = _.uniq(_.flatten(relSg.records.map(r=>r.relgrps)))
-                    .filter(r=>reldim(r)==relSg)
+    relSg.relgrps = relgrpsFilter(_.uniq(_.flatten(relSg.records.map(r=>r.relgrps))))
+                      .filter(r=>reldim(r)==relSg)
     relSg.relcids = _.uniq(_.flatten(relSg.relgrps.map(r=>r.relcids)))
 
     relSg.reldim = relSg.toString()
