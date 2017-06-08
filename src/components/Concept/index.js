@@ -457,7 +457,7 @@ export class RelWidget extends Component {
                     labelPosition='before'
               >
                 <FlatButton 
-                      {...M('raisedButton.styleProps')}
+                      //{...M('raisedButton.styleProps')}
                       style={M('raisedButton.style')}
                       onClick={() => {
                         //debugger
