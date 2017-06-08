@@ -14,16 +14,29 @@ export function storage(store = _store) {
 export function storageClear(store = _store) {
   store.clear()
 }
-export function storagePut(key, val, store = _store) {
-  store[key] = LZString.compressToBase64(JSON.stringify(val));
+export function storagePut(key, val='', store = _store, plain=false) {
+  val = JSON.stringify(val)
+  store[key] = plain 
+                  ? ('plain_' + val) 
+                  : ('compressed_' + LZString.compressToBase64(val))
 }
 export function storageExists(key, store = _store) {
   return _.has(store, key);
 }
 export function storageGet(key, store = _store) {
-  let json = LZString.decompressFromBase64(store[key])
-  if (typeof json === 'undefined' || json === '') {
-    json = 'null'
+  let storedVal = store[key] || ''
+  let matched = storedVal.match(/(.*?)_(.*)/)
+  let [,storedAs,val] = matched ? matched : [null,'plain',JSON.stringify('')]
+  let json
+  switch(storedAs) {
+    case 'plain':
+      json = val
+      break
+    case 'compressed':
+      json = LZString.decompressFromBase64(val)
+      break
+    default:
+      throw new Error("corrupt storage")
   }
   return JSON.parse(json)
 }

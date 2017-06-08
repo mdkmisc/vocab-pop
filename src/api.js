@@ -38,13 +38,12 @@ const getUser = () => {
 }
 if (window.location.pathname === '/token') {
   let query = myrouter.getQuery()
-  util.storagePut('authToken', query.token)
-  util.storagePut('user', JSON.parse(query.user))
+  util.storagePut('authToken', query.token, undefined, true)
+  util.storagePut('user', JSON.parse(query.user), undefined, true)
   let url = util.storageGet('returnToUrl')
-  if (!url) {
-    debugger
+  if (url ) {
+    window.location.replace(url)
   }
-  window.location.replace(url)
 }
 
 

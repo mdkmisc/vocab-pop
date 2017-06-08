@@ -6,6 +6,7 @@ import {ApiSnackbar} from 'src/api'
 import myrouter from 'src/myrouter'
 import 'src/sass/Vocab.css'
 import * as cncpt from 'src/ducks/concept'
+import * as cset from 'src/ducks/conceptSet'
 import muit from 'src/muitheme'
 
 import { connect } from 'react-redux'
@@ -266,7 +267,7 @@ ConceptCodesLookupForm = connect(
       ...ownProps,
       ...stateProps,
       ...dispatchProps,
-      cset: new cncpt.ConceptSet({
+      cset: new cset.ConceptSet({
               cids,
               desc: `Lookup ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
               maxDepth:2,

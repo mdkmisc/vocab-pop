@@ -130,6 +130,14 @@ const getPalette =
 
 const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
   let styles = {
+    paper: {
+      height: '90%%',
+      width: '90%',
+      margin: '5%',
+      padding: '10px',
+      //textAlign: 'center',
+      display: 'inline-block',
+    },
     tooltip: {
       pre: {
         //zoom:3,

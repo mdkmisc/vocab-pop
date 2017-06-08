@@ -5,6 +5,7 @@ import _ from 'src/supergroup'; // in global space anyway...
 import {commify} from 'src/utils'
 import * as C from 'src/components/Concept'
 import * as cncpt from 'src/ducks/concept'
+import * as cset from 'src/ducks/conceptSet'
 import * as relmeta from 'src/ducks/vocabularies' // the rel reducer is in there right now
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 import {ApiWatch, ApiSnackbar} from 'src/api'
@@ -97,7 +98,7 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id,
       conceptStatus,
-      cset: new cncpt.ConceptSet(
+      cset: new cset.ConceptSet(
         {
           cids,
           maxDepth:2,
