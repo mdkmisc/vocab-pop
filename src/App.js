@@ -21,6 +21,7 @@ import config from 'src/config'
 import 'src/sass/Vocab.css'
 import {ConceptCodesLookupForm} from 'src/components/Lookups'
 import SourceTargetSource from 'src/components/SourceTargetSource'
+import * as csets from 'src/components/ConceptSets'
 import _ from 'src/supergroup'
 import {Tooltips, } from 'src/tooltip'
 import {commify, updateReason, setToAncestorSize, getAncestorHeight, } from 'src/utils'
@@ -69,6 +70,11 @@ const routes = [
   */
   { path: '/concepts',
     main: ()=><VocabPop/>,
+  },
+  { path: '/csets',
+    main: () => {
+      return <csets.ConceptSets/>
+    },
   },
   { path: '/sourcetargetsource',
     main: () => {
@@ -276,6 +282,12 @@ class AppTabs extends React.Component {
         value={this.state.value}
         onChange={this.handleChange}
       >
+        <Tab  label="ConceptSets" value="csets"
+            data-route="/csets"
+            onActive={tab=>nav(tab.props['data-route'])} 
+        >
+          {main}
+        </Tab>
         <Tab  label="STS Report" value="ststreport"
             data-route="/sourcetargetsource"
             onActive={tab=>nav(tab.props['data-route'])} 
