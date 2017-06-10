@@ -2,6 +2,7 @@
 import _ from 'src/supergroup'; // in global space anyway...
 import * as api from 'src/api'
 import myrouter from 'src/myrouter'
+import * as cset$ from 'src/ducks/conceptSet'
 
 import { bindActionCreators, createStore, compose, combineReducers, applyMiddleware } from 'redux'
 import { createSelector } from 'reselect'
@@ -64,7 +65,27 @@ const getCidsTrigger = (action$, store) => (
       return Rx.Observable.empty()
     })
 )
+/*
 epics.push(getCidsTrigger)
+const getCidsTriggerFromConceptSetBuilder = (action$, store) => (
+  action$.ofType(cset$.csetActions.SAVE)
+    .debounceTime(500)
+    .mergeMap(action=>{
+      let {payload, meta} = action
+      const cset = new cset$.Cset(payload)
+      let theJunk = cset.getTheJunk()
+      let {vocabulary_id, matchBy, matchStr} = theJunk
+      if (vocabulary_id && matchBy && matchStr) {
+        return Rx.Observable.of(getNewCids(theJunk))
+      }
+      return Rx.Observable.empty()
+    })
+)
+epics.push(getCidsTriggerFromConceptSetBuilder)
+*/
+
+
+
 const cidsCall = (action$, store) => (
   action$.ofType(cidsActions.GET_NEW_CIDS)
     .switchMap(action=>{

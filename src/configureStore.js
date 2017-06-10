@@ -7,7 +7,7 @@ import _ from 'src/supergroup'
 import cidsReducer, * as cids from 'src/ducks/cids'
 import vocabularies, * as vocabs from 'src/ducks/vocabularies'
 import conceptReducer, * as cncpt from 'src/ducks/concept'
-import csetReducer, * as cset from 'src/ducks/conceptSet'
+import csetReducer, * as cset$ from 'src/ducks/conceptSet'
 import apiReducer, * as api from 'src/api'
 import tooltipReducer, * as tooltip from 'src/tooltip'
 import myrouter from 'src/myrouter'
@@ -39,6 +39,7 @@ export default function configureStore(initialState = {}) {
     ...vocabs.epics,
     ...cids.epics,
     ...cncpt.epics,
+    ...cset$.epics,
   ]
   const rootEpic = combineEpics(...allEpics)
   const epicMiddleware = createEpicMiddleware(rootEpic)

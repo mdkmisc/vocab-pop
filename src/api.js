@@ -19,7 +19,7 @@ import _ from 'src/supergroup'; // lodash would be fine here
 const getToken = () => {
   let authToken = myrouter.getQuery('token') || util.storageGet('authToken')
   if (!authToken) {
-    util.storagePut('returnToUrl', window.location.href)
+    util.storagePut('returnToUrl', window.location.href,undefined,true)
     let authUrl = process.env.REACT_APP_API_AUTH
     window.location.replace(authUrl)
   }
@@ -36,11 +36,19 @@ const getUser = () => {
   }
   return user
 }
+// HANDLE TOKEN PATH
 if (window.location.pathname === '/token') {
   let query = myrouter.getQuery()
+  let url = util.storageGet('returnToUrl')
+
+
+
+  sessionStorage.clear() // cachedirty not working.... temp measure
+
+
+
   util.storagePut('authToken', query.token, undefined, true)
   util.storagePut('user', JSON.parse(query.user), undefined, true)
-  let url = util.storageGet('returnToUrl')
   if (url ) {
     window.location.replace(url)
   }
@@ -125,13 +133,14 @@ export const reducer = (
       break
     case apiActions.CACHE_DIRTY:
       // check this
-      //return {...state, cacheDirty: (state.cachDirty||[]).push(payload)}
+      return {...state, cacheDirty: (state.cachDirty||[]).push(payload)}
       break
     case apiActions.CACHED_RESULTS:
     case apiActions.NEW_RESULTS:
       //debugger
       ({apiPathname, params, url, msg='no message'} = meta)
       results = payload
+      console.log('RESULTS', action)
       if (!_.has(active, url)) {
         throw new Error("do something -- got results, but not active")
       }
@@ -167,10 +176,10 @@ export const reducer = (
   }
   let newState = {events,queue,active,complete,failed}
   if (_.isEqual(state, newState)) {
-    console.log("no change in api reducer", {action, state})
+    //console.log("no change in api reducer", {action, state})
     return state
   } else {
-    console.log("yes change in api reducer", {action, state, newState})
+    //console.log("yes change in api reducer", {action, state, newState})
     return newState
   }
 }
@@ -180,11 +189,30 @@ export default reducer
 /**** start epics ******************************************/
 let epics = []
 
+/* not working ... almost... for now just clear cache on HANDLE TOKEN PATH
+const checkCacheEpic = (action$, store) => (
+  action$.ofType('@@router/LOCATION_CHANGE') // happens on init -- why not on @@INIT?
+  //action$.ofType('@@INIT') // DOESN'T WORK ... too early, not sure why
+    .take(1)
+    .mergeMap(()=>{
+      if (window.location.pathname === '/token') {
+        return Rx.Observable.empty()
+      }
+      return checkCacheDirty()
+    })
+    .catch(err => {
+      console.error('error in checkCacheEpic', err)
+      return Rx.Observable.empty()
+    })
+)
+epics.push(checkCacheEpic)
+*/
+
 const watchTheQueue = (action$, store) => (
   action$
     .debounceTime(3000)
     .switchMap(action=>{
-      console.log("making timer(s)", action)
+      //console.log("making timer(s)", action)
       let timer = Rx.Observable.timer(100, 400)
       return timer
       return Rx.Observable.of(timer)
@@ -253,21 +281,16 @@ export const actionGenerators = {
 export const cachedAjax = props => {
   //debugger
   let {apiPathname, params, url} = props
-  console.log(url.slice(0,90))
+  //console.log(url.slice(0,90))
   if (isCached(url)) {
     let results = util.storageGet(url)
     return Rx.Observable.of(actionGenerators.cachedResults({apiPathname,params,url,results}))
     //return Rx.Observable.of(results)
   }
-  let rxAjax = 
-    Rx.Observable.ajax.getJSON(url) //(,{mode: 'no-cors'})
-              .map(results => {
-                return actionGenerators.newResults({apiPathname,params,url,results})
-              })
-              .catch((err) => {
-                return Rx.Observable.empty()
-                throw err
-              })
+  let rxAjax = Rx.Observable.ajax.getJSON(url) //(,{mode: 'no-cors'})
+                  .map(results => {
+                    return actionGenerators.newResults({apiPathname,params,url,results})
+                  })
   rxAjax.subscribe(action => {
     util.storagePut(action.meta.url, action.payload)
   })
@@ -282,6 +305,7 @@ export const apiCall = (props, store) => {
         paramsValidation=d=>d,
         resultsTransform=d=>d,
         //successMap=results=>{console.error("do something with results!",results)},
+// IGNORE catchFunc FOR NOW!!!!!
         catchFunc=err => {
           console.log('error with some apiCall', err)
           return Rx.Observable.of({
@@ -297,28 +321,15 @@ export const apiCall = (props, store) => {
 
   //console.log(apiPathname, JSON.stringify(params))
   return cachedAjax({apiPathname, params, url})
-              //.do(action=>{debugger})
-              /*
-              .do(action=>{
-                action = {...action, meta:{...action.meta,msg:msgFunc(action.payload)}}
-                store.dispatch(action)
-              })
-              */
-              //.map(successMap)
               .catch(catchFunc)
 }
-function handleErrors(p) {
-    let {jsonPromise,response} = p
-    if (!response.ok) {
-      //console.error('got error with', response)
-      throw p
-    }
-    return p
-}
 
-const checkCacheDirty = (store) => { // make sure to use this
+const checkCacheDirty = () => { // make sure to use this
+  let url = apiGetUrl('cacheDirty')
+  let token = getToken()
+  url += (url.match(/\?/) ? '&' : '?') + `token=${token}`
   let ajax =
-    Rx.Observable.ajax.getJSON(apiGetUrl('cacheDirty'),{mode: 'no-cors'})
+    Rx.Observable.ajax.getJSON(url,{mode: 'no-cors'})
       .map(results => {
         if (results) {
           DEBUG && console.warn(`cache dirty. removing ${_.keys(util.storage()).length} items in util.storage()`);

@@ -30,8 +30,6 @@ import 'src/sass/style.css'
 
 import React, { Component } from 'react'
 
-
-import { connect } from 'react-redux'
 import { Field, reduxForm, formValueSelector } from 'redux-form'
 import { bindActionCreators } from 'redux'
 
@@ -268,7 +266,7 @@ export class ConceptViewContainer extends Component {
   }
   render() {
     let {cset, title, subtitle,
-            wantConcepts, initiallyExpanded=true,
+            initiallyExpanded=true,
             muitParams={}, M=muit(),
         } = this.props
     let {ttid} = this.state

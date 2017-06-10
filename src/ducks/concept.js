@@ -178,7 +178,7 @@ export default combineReducers({
 /**** end reducers *********************************************************/
 
 /**** start action creators *********************************************************/
-const newConcepts = (payload=[],loadedAlready={}) => {  
+const newConcepts = (payload=[],loadedAlready={}) => {
   // does this need to be pure function(no side effects)? probably not
   // it's the only entry point for concept records
   let concepts = payload.map(c => {

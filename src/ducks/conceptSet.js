@@ -2,33 +2,26 @@
 import _ from 'src/supergroup'; // in global space anyway...
 import * as util from 'src/utils';
 import * as config from 'src/config'
+import * as Cset from 'sharedSrc/Cset'
+export * from 'sharedSrc/Cset'
 import muit from 'src/muitheme'
 import {isConceptList, concepts, cdmCnts, relgrps,
         addRels, subgrpCnts, subtype, reldim, rreldim,
         conceptActions, viewCounts,}
           from 'src/ducks/concept'
+import * as api from 'src/api'
 import * as cncpt from 'src/ducks/concept'
 import React, { Component } from 'react'
+import { createSelector } from 'reselect'
 
-const csetTemplate = () => ({
-  name: 'needs a name',
-  defType: 'textMatch', 
-  // enum: textMatch, codeMatch, codeList, cidList ,
-  //        csetList, composite
-  def: 'acne',
-  vocabulary_id: 'ICD9CM', // only allow one per cset!
-  includeDescendants: false,
-  includeMapped: false,
-  isExcluded: false,
-  isSaved: false,
-})
 
 export const csetActions = {
   LOAD: 'vocab-pop/conceptSet/LOAD', // whole set
-  SAVE: 'vocab-pop/conceptSet/SAVE', // whole set where isSaved===true
   NEW: 'vocab-pop/conceptSet/NEW',   // save 1 cset
   TRASH: 'vocab-pop/conceptSet/TRASH',   // remove UNSAVED cset
-  UPDATE: 'vocab-pop/conceptSet/UPDATE',   // overwrite 1 cset
+  SAVE: 'vocab-pop/conceptSet/SAVE',   // overwrite 1 cset (in reducer)
+            // and (in epic) save all to storage where isSaved===true
+  API_CALL: 'vocab-pop/conceptSet/API_CALL',
 }
 
 /**** start reducers *********************************************************/
@@ -39,8 +32,8 @@ const csetReducer = (state=[], action) => {
       return payload
     case csetActions.NEW:
       return [...state, payload]
-    case csetActions.UPDATE:
-      return [...state.filter(cset=>cset.name !== payload.name), payload]
+    case csetActions.SAVE:
+      return [...state.filter(cset=>cset.id !== payload.id), payload]
     case csetActions.TRASH:
       debugger
       if (payload.isSaved) {
@@ -56,9 +49,10 @@ export default csetReducer
 /**** end reducers *********************************************************/
 
 /**** start selectors *****************************************************************/
-export const csets = state => state.csets /* including not saved */
-export const cset = createSelector( csets,
-  csets => name => _.find(csets, cs=>cs.name===name))
+export const _csets = state => state.csets /* including not saved */
+export const _getCset = createSelector( _csets, _csets => id => _.find(_csets, cs=>cs.id===id))
+export const csets = createSelector(_csets, _csets=>_csets.map(cset=>new Cset.Cset(cset)))
+export const getCset = createSelector( _getCset, _getCset => id => new Cset.Cset(_getCset(id)))
 /**** end selectors *****************************************************************/
 
 /**** start action creators *********************************************************/
@@ -74,7 +68,12 @@ export const trashCset = (cset) => ({
   type: csetActions.TRASH, 
   payload: cset
 })
-export const saveCsets = () => ({ type: csetActions.SAVE, })
+export const saveCset = (cset) => ({ type: csetActions.SAVE, payload:cset, })
+export const apiCall = (cset) => ({ type: csetActions.API_CALL, payload:cset.obj()})
+export const gotCsetData = (payload, loadedConcepts) => ({ 
+  type: csetActions.NEW, 
+  payload: csetTemplate(),
+})
 /**** end action creators *********************************************************/
 
 /**** start epics ******************************************/
@@ -82,15 +81,88 @@ let epics = []
 const saveCsetsEpic = (action$, store) => (
   action$.ofType(csetActions.SAVE)
     .switchMap(action=>{
-      let {type, payload, meta} = action
-      const csets = store.getState().csets.filter(cset=>cset.isSaved)
-      util.storagePut('csets', csets, localStorage, true)
+      const {type, payload, meta} = action
+      const cset = new Cset.Cset(payload)
+      if (cset.isSaved()) {
+        const csets = store.getState().csets.filter(cset=>cset.isSaved)
+        util.storagePut('csets', csets, localStorage, true)
+      }
+      if (cset.valid()) {
+        const actn = api.actionGenerators.apiCall({
+          apiPathname:'cset', params:{cset:cset.obj()}})
+        return Rx.Observable.of(actn)
+      }
       return Rx.Observable.empty()
     })
 )
 epics.push(saveCsetsEpic)
+
+const loadCset = (action$, store) => (
+  action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
+    .filter((action) => (action.meta||{}).apiPathname === 'cset')
+    .delay(200)
+    .map(action=>{
+      let {type, payload, meta} = action
+      console.log("loadCset", action)
+      return gotCsetData(payload, store.getState().concepts.loaded)
+    })
+)
+epics.push(loadCset)
+
+
+
 export {epics}
 /**** end epics ******************************************/
+
+
+const csetTemplate = () => ({ // plain js obj for store
+  id: _.uniqueId(),
+  name: null, //'needs a name',
+  selectMethodName: null, // from selectMethods above
+  selectMethodParams: null,
+  // make sure param names don't clash with other field names
+  //vocabulary_id: 'ICD9CM',
+  //matchStr: 'acne',
+  includeDescendants: false,
+  includeMapped: false,
+  isExcluded: false, // only for children of other csets
+  isSaved: false,
+  // other?
+})
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

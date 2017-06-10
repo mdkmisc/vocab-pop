@@ -57,6 +57,7 @@ const routeAjaxError = (ajaxUrl, err) => {
   return routeError(ajaxUrl, msgs)
 }
 const routeError = (url, msgs, mainMsg='Error') => {
+  debugger
   let gotoUrl = new URL(window.location.href)
   if (window.location.pathname === '/ajax-error') {
     console.log("already at ajax-error")
