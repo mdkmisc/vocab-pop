@@ -208,7 +208,7 @@ export const ConnectedCset = stampit()
                               d=>null, 
                               {dimName:'whole concept set'})
                         .asRootVal(this.shortDesc()) },
-    sgListWithRels: function(depth=0) {
+    XXsgListWithRels: function(depth=0) {
       let sgList = this.sgList() // only one value, but want list to addRels
       if (!this.conCnt()) {
         return this.sgList
@@ -404,7 +404,7 @@ export class ConceptSet {
   sgListWithRels = (depth=0) => {
     let sgList = this.sgList() // only one value, but want list to addRels
     if (!this.conCnt()) {
-      return this.sgList
+      return sgList
     }
     let wkids = addRels(sgList)
     if (!depth) {
@@ -554,7 +554,7 @@ export class ConceptSet {
     if (this.status().loaded()) {
       return
     }
-    this.wantConcepts(this.cids())
+    this.wantConcepts(this.cids(),{requestId:this.longDesc()})
   }
 }
 class CsStatus {

@@ -175,20 +175,8 @@ export const NameLink = csetConnect(props => {
               {name}
             </Link>
             <ConceptCount cnt={cset.cidCnt()} />
+            {oldConceptComp.groupLabel({cset,ttid:'nameLink'})}
           </span>
-  /*
-            <span style={{zoom:.2}}>{JSON.stringify(cset.obj())}</span>
-  <OldSchoolMenuLink 
-          to={{pathname:'csets',search:`?csetId=${cset.id()}`}}
-          label={cset.name()}
-        />
-  return <Route path={to} exact={activeOnlyWhenExact} children={({ match }) => (
-            <div className={match ? 'active' : ''}>
-              {match ? '> ' : ''}<Link to={to}>{label}</Link>
-            </div>
-          )}/>
-  */
-  return  <a href="#">{cset.name()}</a>
 })
 
 export const CsetView = csetConnect(props => {

@@ -65,6 +65,7 @@ const getCidsTrigger = (action$, store) => (
       return Rx.Observable.empty()
     })
 )
+epics.push(getCidsTrigger)
 
 const cidsCall = (action$, store) => (
   action$.ofType(cidsActions.GET_NEW_CIDS)
