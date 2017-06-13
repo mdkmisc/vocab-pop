@@ -47,6 +47,15 @@ export { TooltipWrapper }
 
 
 class Tooltips extends Component {
+  componentDidMount() {
+    ReactTooltip.rebuild()
+  }
+  componentDidUnmount() {
+    debugger
+  }
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
+  }
   render() {
     let {tooltips} = this.props
     return  <div className="ttdiv" >

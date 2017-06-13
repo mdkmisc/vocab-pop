@@ -39,7 +39,6 @@ import ReactTooltip from 'react-tooltip'
 
 class SourceTargetSourceForm extends Component {
   componentDidMount() {
-    //this.ttid = _.uniqueId('stsTtId-')
     ReactTooltip.rebuild()
   }
   componentDidUpdate() {

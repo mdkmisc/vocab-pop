@@ -258,11 +258,11 @@ export class ConceptViewContainer extends Component {
     //debugger
     this.setState({...this.state, relsExpanded: {...this.state.relsExpanded, [reldim]: !this.state.relsExpanded[reldim]}})
   }
-  
-
-
   componentDidMount() {
-    //this.setState({ ttid: 'cvc', })
+    ReactTooltip.rebuild()
+  }
+  componentDidUpdate() {
+    ReactTooltip.rebuild()
   }
   render() {
     let {cset, title, subtitle,

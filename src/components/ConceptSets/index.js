@@ -10,6 +10,7 @@ import { bindActionCreators, } from 'redux'
 import React, { Component } from 'react'
 import Paper from 'material-ui/Paper';
 import RaisedButton from 'material-ui/RaisedButton';
+import ReactTooltip from 'react-tooltip'
 
 import {
   BrowserRouter as Router,
@@ -18,8 +19,10 @@ import {
 } from 'react-router-dom'
 class ConceptSets extends Component {
   componentDidMount() {
+    ReactTooltip.rebuild()
   }
   componentDidUpdate() {
+    ReactTooltip.rebuild()
   }
   makeNewCset = () => {
     const {newCset, csets} = this.props
