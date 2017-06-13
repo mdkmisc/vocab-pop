@@ -65,9 +65,52 @@ class ConceptSetBuilder extends Component {
     let vocabulary = cset.needsParam('vocabulary_id')
           && this.props.vocabulary_id
           && vocabularies.find(d=>d.vocabulary_id===this.props.vocabulary_id)
+
+    if (cset.selectMethodName() === 'fromAtlas') {
+      return (
+        <Paper style={M('paper')} zDepth={2} >
+          <h4>Definition downloaded from {' '}
+            <a href={`http://www.ohdsi.org/web/atlas/#/conceptset/${cset.id()}/details`}>
+              public Atlas concept sets
+            </a>
+          </h4>
+          <C.CsetView M={M} csetId={cset.id()} load={true}/>
+        </Paper>
+      )
+    }
+    let selectMethodField = 
+                <Field name="selectMethodName" 
+                      style={{padding:'0px 8px 0px 8px',width:'80%'}}
+                      component={SelectField}
+                      floatingLabelText={'Select concepts by'}
+                      onChange={
+                        (evt, selectMethodName, prevValue) => {
+                          saveCset(
+                            {...cset.obj(),
+                            selectMethodName})
+                        }
+                      }
+                >
+                  {
+                    Object
+                      .entries(cset$.selectMethods||[])
+                      .map(([k,v]) => {
+                          return <MenuItem 
+                              disabled={v.disabled}
+                              desktop={true}
+                              className="select-method"
+                              key={k}
+                              checked={k === cset.selectMethodName()}
+                              //value={cset.selectMethodName()}
+                              value={k}
+                              primaryText={k}
+                            />
+                      })
+                  }
+                </Field>
     return  <Paper style={M('paper')} zDepth={2} >
               <h3>
-                ConceptSet {cset.id()}, {' '}
+                <C.CsetView M={M} csetId={cset.id()} load={true}/>
                 {cset.cidCnt() 
                   ? <SaveButton 
                         buttonProps={{
@@ -112,34 +155,6 @@ class ConceptSetBuilder extends Component {
                       />
                     : null
                 }
-                <Field name="selectMethodName" 
-                      style={{padding:'0px 8px 0px 8px',width:'80%'}}
-                      component={SelectField}
-                      floatingLabelText={'Select concepts by'}
-                      onChange={
-                        (evt, selectMethodName, prevValue) => {
-                          saveCset(
-                            {...cset.obj(),
-                            selectMethodName})
-                        }
-                      }
-                >
-                  {
-                    (cset$.selectMethods||[]).map(
-                      d=>{
-                          return <MenuItem 
-                              disabled={d.disabled}
-                              desktop={true}
-                              className="select-method"
-                              key={d.name}
-                              checked={d.name === cset.selectMethodName()}
-                              //value={cset.selectMethodName()}
-                              value={d.name}
-                              primaryText={d.name}
-                            />
-                      })
-                  }
-                </Field>
                 {
                   cset.needsParam('vocabulary_id')
                     ?  <Field name="vocabulary_id" 
@@ -223,9 +238,6 @@ class ConceptSetBuilder extends Component {
                 */
                 }
               </form>
-              <Paper >
-              </Paper >
-              <C.CsetView M={M} csetId={cset.id()} load={true}/>
             </Paper>
   }
 }

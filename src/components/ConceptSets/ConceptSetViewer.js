@@ -43,6 +43,7 @@ import SortableTree from 'react-sortable-tree'
 import Badge from 'material-ui/Badge'
 import {GridList, GridTile} from 'material-ui/GridList'
 import IconButton from 'material-ui/IconButton'
+import SvgIcon from 'material-ui/SvgIcon'
 import Subheader from 'material-ui/Subheader'
 import CircularProgress from 'material-ui/CircularProgress'
 import LinearProgress from 'material-ui/LinearProgress';
@@ -51,6 +52,7 @@ import ExpandMore from 'material-ui/svg-icons/navigation/expand-more'
 import ExpandLess from 'material-ui/svg-icons/navigation/expand-less'
 import FileDownload from 'material-ui/svg-icons/file/file-download'
 import ZoomIn from 'material-ui/svg-icons/action/zoom-in'
+import CloudQueue from 'material-ui/svg-icons/file/cloud-queue'
 
 
 import Chip from 'material-ui/Chip'
@@ -117,20 +119,65 @@ const csetConnect = Component => connect(
   }
 )(Component)
 
+export const ConceptCount = props => {
+  const {cnt, ttText, url, M=muit()} = props
+  return  <SvgIcon  
+              color='white'
+              hoverColor='green'
+              viewBox="0 0 24 24" 
+              style={{
+                //border: '1px solid purple',
+                paddingTop: 5,
+                //marginTop: 30,
+                //marginRight: 30,
+                //marginLeft: 30,
+              }}
+          >
+            <path style={{
+                    //color: 'rgb(0, 0, 0)',
+                    //fillOpacity: 0,
+                    //fill: 'white',
+                  }}
+                  d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h.71C7.37 7.69 9.48 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H19c1.66 0 3 1.34 3 3s-1.34 3-3 3z" />
+            <text x="8px" y="16px"
+                  style={{
+                    //fill: 'black',
+                    fontSize: '.7em',
+                  }}
+            >{cnt}</text>
+          </SvgIcon>
+}
 
 export const NameLink = csetConnect(props => {
   const {cset, conceptState, conceptStatus, } = props
   const all = cncpt.concepts(conceptState)
   const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
-  debugger
-  return  <Link to={{
-              pathname: '/csets',
-              search:`?csetId=${cset.id()}`,
-              //state: { fromDashboard: true }
-          }}>
-            {cset.name()}
-          </Link>
+  let name = ''
+  switch (cset.selectMethodName()) {
+    case 'fromAtlas':
+      name = cset.name()
+      break
+    case 'matchText':
+      name =  <span>
+                <span style={{fontFamily:'monospace'}}>{cset.param('matchStr')}</span>
+                {' '}in {cset.param('vocabulary_id')}
+              </span>
+      break
+    default:
+      name = cset.name()
+  }
+  return  <span>
+            <Link to={{
+                pathname: '/csets',
+                search:`?csetId=${cset.id()}`,
+                //state: { fromDashboard: true }
+            }}>
+              {name}
+            </Link>
+            <ConceptCount cnt={cset.cidCnt()} />
+          </span>
   /*
+            <span style={{zoom:.2}}>{JSON.stringify(cset.obj())}</span>
   <OldSchoolMenuLink 
           to={{pathname:'csets',search:`?csetId=${cset.id()}`}}
           label={cset.name()}

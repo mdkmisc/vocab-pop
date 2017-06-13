@@ -31,7 +31,10 @@ class ConceptSets extends Component {
     const {csetId} = myrouter.getQuery()
     let content
     if (csetId) {
-      content = <ConceptSetBuilder {...{csetId, M, csets}} />
+      content = <div>
+                  <h3>ConceptSetBuilder ({csetId})</h3>
+                  <ConceptSetBuilder {...{csetId, M, csets}} />
+                </div>
     } else {
       content = <div>
                   <h3>
@@ -48,17 +51,15 @@ class ConceptSets extends Component {
                       >New</RaisedButton>
                     </span>
                   </h3>
-                  <br/>
+                  <ul>
                   {
                     csets.map((cset,i) => {
-                      return  <div key={i}>
-                                <C.NameLink 
-                                    cset={cset} key={i} M={M}
-                                    //link={<Link component={ConceptSetBuilder}
-                                />
-                              </div>
+                      return  <li key={i}>
+                                <C.NameLink M={M} csetId={cset.id()}/>
+                              </li>
                     })
                   }
+                  </ul>
                 </div>
     }
 

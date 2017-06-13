@@ -70,11 +70,11 @@ export const getCset = createSelector( _getCset, _getCset => (id,conceptState) =
   let stamp
   switch (_cset.selectMethodName) {
     case 'fromAtlas':
-      stamp = Cset.CsetFromAtlas
+      stamp = Cset.CsetFromAtlas.compose(Cset.selectMethodsShared.fromAtlas)
       break
     case 'matchText':
     default:
-      stamp = Cset.Cset
+      stamp = Cset.Cset.compose(Cset.selectMethodsShared.matchText)
       break
   }
   if (conceptState) {
@@ -144,6 +144,49 @@ export {epics}
 /**** end epics ******************************************/
 
 
+/*
+export const selectMethods = {
+  matchText: stampit(Cset.selectMethodsShared.matchText)
+              .methods({
+                name: function() {
+                  return this.param('matchStr')
+                },
+                name2: function() {
+                  return this._cset.name || this.param('vocabulary_id')
+                }
+              }),
+  fromAtlas: stampit(Cset.selectMethodsShared.fromAtlas)
+              .methods({
+                name: function() {
+                  return this._cset.name
+                },
+                name2: function() {
+                  return `(from www.ohdsi.org/web/atlas/#/conceptsets)`
+                }
+              }),
+    /*
+    {
+      name: 'matchCodes',
+      dispName: 'Match concept codes',
+      matchBy: 'codes',
+      //params: {vocabulary_id:'ICD9CM', matchStr: '702%, 700%'},
+      params: {vocabulary_id:'string', matchStr: 'string'},
+    },
+    {
+      name: 'codeList',
+      dispName: 'Concept code list',
+      //params: {vocabulary_id:'ICD9CM', codes: ['702', '702.0', '702.01']}
+      params: {vocabulary_id:'string', codes: 'string[]' }
+    },
+    {
+      name: 'cidList',
+      dispName: 'Concept ID list',
+      //params: {cids: [8504,8505,44833364,44820047]},
+      params: {cids: 'number[]'},
+    },
+    * /
+}
+*/
 
 
 export const ConnectedCset = stampit()
