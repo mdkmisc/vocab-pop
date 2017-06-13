@@ -13,6 +13,9 @@ import * as api from 'src/api'
 import * as cncpt from 'src/ducks/concept'
 import React, { Component } from 'react'
 import { createSelector } from 'reselect'
+import stampit from 'stampit'
+import * as stampitStuff from 'stampit'
+window.stampitStuff = stampitStuff
 
 
 export const csetActions = {
@@ -58,20 +61,26 @@ export default csetReducer
 /**** start selectors *****************************************************************/
 export const _csets = state => state.csets /* including not saved */
 export const _getCset = createSelector( _csets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
-export const csets = createSelector(_csets, _csets=>_csets.map(cset=>new Cset.Cset(cset)))
+export const csets = createSelector(_csets, _csets=>_csets.map(_cset=>Cset.Cset({_cset})))
 export const getCset = createSelector( _getCset, _getCset => (id,conceptState) => {
   const _cset = _getCset(id)
   if (!_cset) {
     return
   }
+  let stamp
   switch (_cset.selectMethodName) {
     case 'fromAtlas':
-      return new Cset.CsetFromAtlas(_cset,conceptState)
+      stamp = Cset.CsetFromAtlas
+      break
     case 'matchText':
-      return new Cset.Cset(_cset,conceptState)
     default:
-      return new Cset.Cset(_cset,conceptState)
+      stamp = Cset.Cset
+      break
   }
+  if (conceptState) {
+    stamp = stamp.compose(ConnectedCset)
+  }
+  return stamp({_cset,conceptState})
 })
 /**** end selectors *****************************************************************/
 
@@ -137,6 +146,96 @@ export {epics}
 
 
 
+export const ConnectedCset = stampit()
+  .init(function({conceptState, csetSelectors, }) {
+    this.conceptState = conceptState
+    this.csetSelectors = csetSelectors
+  })
+  .methods({
+    concepts: function(cids=this.cids()) { return concepts(this.conceptState.loaded).filter(c=>_.includes(cids,c.concept_id)) },
+    concept_ids: function(cids) { return this.concepts(cids).map(d=>d.concept_id) },
+    conCnt: function() { return this.concepts().length },
+    status: function() { return new CsStatus(this) },
+    cdmCnts: function() { return cdmCnts(this.sgVal()) },
+    relgrps: function(reldim) { return relgrps(this.concepts(),reldim) }, // reldim optional
+    sgList: function() { return _.supergroup(this.concepts(), 
+                                  d=>this.shortDesc(),
+                                  {dimName:'whole concept set'}) },
+    sgVal: function() { return _.supergroup(this.concepts(), 
+                              d=>null, 
+                              {dimName:'whole concept set'})
+                        .asRootVal(this.shortDesc()) },
+    sgListWithRels: function(depth=0) {
+      let sgList = this.sgList() // only one value, but want list to addRels
+      if (!this.conCnt()) {
+        return this.sgList
+      }
+      let wkids = addRels(sgList)
+      if (!depth) {
+        let wgkids = wkids.map(p => {
+          //debugger
+          let gp = addRels(p.getChildren())
+          // should only care about opposite
+          //p.sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
+          /*
+          p.oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
+          p.oppositeRels.forEach(d=>d.isOpposite=true)
+
+          let test = explodeArrayFlds(gp.records,'relgrps','cncpt')
+          let t2=explodeArrayFlds(test, 'relcids', 'relgrp')
+          let tr=_.flatten(t2.map(d=>Object.assign({},d,{reverse:t2.filter(e=>e.relgrp_cncpt_concept_id === d.relcids)})))
+          let t3 = explodeArrayFlds(tr,'reverse','from')
+
+          let allkeys = _.keys(t3[3])
+          let idkeys = _.keys(t3[3]).filter(d=>d.match('id')).filter(d=>!d.match(/(cgid|domain|class|vocab|relgrp_relcids)/))
+
+          let goodidkeys = [ "from_relgrp_cncpt_concept_id", "relgrp_cncpt_concept_id", "relcids", ]
+
+
+          let classkeys = _.keys(t3[3]).filter(d=>d.match('class'))
+          let relkeys = _.keys(t3[3]).filter(d=>d.match('relation'))
+
+          let round=t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
+          let roundsg = _.supergroup(round, [
+            "from_relgrp_cncpt_vocabulary_id",
+            "from_relgrp_relationship",
+            "from_relgrp_cncpt_concept_class_id",
+          ])
+          roundsg.summary({funcs:_.fromPairs(goodidkeys.map(k=>[k, d=>_.uniq(_.flatten(d.records.map(rec=>rec[k]))).length]))})
+          t3.filter(d=>d.from_relcids !== d.relgrp_cncpt_concept_id)
+          t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
+          _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids", ]).summary()
+
+          // took long time:
+          _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids","from_relgrp_cncpt_concept_class_id", "from_relgrp_concept_class_id", "relgrp_cncpt_concept_class_id", "relgrp_concept_class_id" ]).summary()
+          debugger
+          */
+          return p
+        })
+        //debugger
+        //wgkids[0].leafNodes().filter(d=>d.reldim === d.parent.rreldim).map(d=>cncpt.subgrpCnts(d))
+        //return wgkids
+      }
+      return sgList
+    },
+    subgrpCnts: function(...rest) {return subgrpCnts(this.sgVal(), ...rest)},
+    shortDesc: function() {
+      //let {status, msg} = this.status()
+      return (
+        this.name()
+      )
+    },
+    longDesc: function() {
+      return (
+        this.shortDesc()
+      )
+    },
+    fancyDesc: function() {
+      return (
+        <div style={{border:'4px solid pink'}}>{`${this.longDesc()}`}</div>
+      )
+    },
+  })
 
 
 

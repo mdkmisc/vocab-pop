@@ -175,8 +175,8 @@ const CdmCntsButtons = props => {
   return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
   */
 }
-const groupLabel = props => {
-  let {cset, M, ttid,key='groupLabel'} = props
+export const groupLabel = props => {
+  let {cset, M=muit(), ttid,key='groupLabel'} = props
   let sgVal = cset.sgVal()
   let sc = cncpt.singleMemberGroupLabel(sgVal,'sc')
 

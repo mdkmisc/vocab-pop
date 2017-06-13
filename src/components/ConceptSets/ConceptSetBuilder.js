@@ -225,7 +225,7 @@ class ConceptSetBuilder extends Component {
               </form>
               <Paper >
               </Paper >
-              <C.CsetView M={M} cset={cset} load={true}/>
+              <C.CsetView M={M} csetId={cset.id()} load={true}/>
             </Paper>
   }
 }

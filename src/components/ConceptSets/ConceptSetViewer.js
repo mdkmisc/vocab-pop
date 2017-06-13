@@ -19,7 +19,8 @@ var d3 = require('d3')
 var $ = require('jquery')
 import _ from 'src/supergroup' // in global space anyway...
 import * as cncpt from 'src/ducks/concept'
-import * as cset from 'src/ducks/conceptSet'
+import * as cset$ from 'src/ducks/conceptSet'
+import * as oldConceptComp from 'src/components/Concept'
 import {TooltipWrapper} from 'src/tooltip'
 import {AgTable, ConceptTree, } from 'src/components/TableStuff'
 import {commify, updateReason,
@@ -97,14 +98,13 @@ const csetConnect = Component => connect(
     return {
       conceptState: state.concepts,
       conceptStatus: state.concepts.requests.status,
+      cset: cset$.getCset(state)(props.csetId,state.concepts)
     }
   }
   ,dispatch=>bindActionCreators(_.pick(cncpt, ['wantConcepts',]), dispatch)
   ,(stateProps, dispatchProps, ownProps) => {
-    const { conceptState, conceptStatus, } = stateProps
+    const { conceptState, conceptStatus, cset, } = stateProps
     const {wantConcepts, } = dispatchProps
-    let cset = //ownProps.cset ||
-                cset$.getCset(state)(ownProps.csetId,conceptState)
     if (cset && ownProps.load) {
       wantConcepts(cset.cids(),{requestId:cset.id()})
     }
@@ -122,6 +122,7 @@ export const NameLink = csetConnect(props => {
   const {cset, conceptState, conceptStatus, } = props
   const all = cncpt.concepts(conceptState)
   const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
+  debugger
   return  <Link to={{
               pathname: '/csets',
               search:`?csetId=${cset.id()}`,
@@ -147,72 +148,9 @@ export const CsetView = csetConnect(props => {
   const {cset, conceptState, conceptStatus, } = props
   const all = cncpt.concepts(conceptState)
   const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
-  return  <a href="#">{cset.name()}</a>
+  return  <div>
+            {cset.name()}: {' '}
+            {oldConceptComp.groupLabel({cset,ttid:'csetViewer'})}
+          </div>
 })
 
-const groupLabel = props => {
-  let {cset, M, ttid,key='groupLabel'} = props
-  let sgVal = cset.sgVal()
-  let sc = cncpt.singleMemberGroupLabel(sgVal,'sc')
-
-  if (sc) {
-    M = M.props({sub:sc})
-  }
-  return (<span key={key}>
-            {
-              cset.conCnt() + ' ' + 
-              ['dom','voc','cls']
-                .map(fld => cncpt.singleMemberGroupLabel(sgVal,fld))
-                .filter(d=>d)
-                .join(', ')
-              + ' concepts'
-            }
-            <span style={{
-              marginLeft: 20, zoom:.8,
-            }} >
-              <CdmCntsButtons key={key} cset={cset} M={M} ttid={ttid} />
-              {
-                cset.subgrpCnts(['voc','dom','cls','rels']).map((sgf,i)=> {
-                  //debugger
-                  return <TipButton {...{
-                                tipProps: {"data-type":'info',},
-                                key:i,
-                                ttid,
-                                ttText:
-                                  sgf.fld + ':\n' +
-                                  sgf.sg.leafNodes()
-                                    .map(d=>`${d.records.length} ${d.namePath()}`)
-                                    .join('\n'),
-                                ttFancy:
-                                  <div className="grouplabel-tip"
-                                            style={{
-                                              padding:0,margin:0,lineHeight:'.5em',
-                                              zoom:.4,
-                                            }}
-                                  >
-                                    <h4>{sgf.fld}</h4>
-                                    <List style={{
-                                        padding:0,margin:0,lineHeight:'.5em',
-                                    }}>
-                                      { sgf.sg.leafNodes().map((d,i)=>
-                                          <ListItem key={i}
-                                            style={{
-                                              padding:0,margin:0,lineHeight:'.5em',
-                                              zoom:.4,
-                                            }}
-                                            primaryText={
-                                              `${d.records.length} ${d.namePath()}`
-                                            }
-                                          />)
-                                      }
-                                    </List>
-                                  </div>,
-                                M, 
-                                buttonContent: sgf.title}} />
-                })
-              }
-            </span>
-          </span>
-  )
-  //,global:{zoom:.6}, override:{raisedButton:{style:{marginLeft:30}}}
-}
