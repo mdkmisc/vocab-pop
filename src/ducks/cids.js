@@ -65,26 +65,6 @@ const getCidsTrigger = (action$, store) => (
       return Rx.Observable.empty()
     })
 )
-/*
-epics.push(getCidsTrigger)
-const getCidsTriggerFromConceptSetBuilder = (action$, store) => (
-  action$.ofType(cset$.csetActions.SAVE)
-    .debounceTime(500)
-    .mergeMap(action=>{
-      let {payload, meta} = action
-      const cset = new cset$.Cset(payload)
-      let theJunk = cset.getTheJunk()
-      let {vocabulary_id, matchBy, matchStr} = theJunk
-      if (vocabulary_id && matchBy && matchStr) {
-        return Rx.Observable.of(getNewCids(theJunk))
-      }
-      return Rx.Observable.empty()
-    })
-)
-epics.push(getCidsTriggerFromConceptSetBuilder)
-*/
-
-
 
 const cidsCall = (action$, store) => (
   action$.ofType(cidsActions.GET_NEW_CIDS)

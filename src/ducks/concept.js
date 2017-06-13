@@ -97,6 +97,11 @@ const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
       requests = [...requests, {...action, cids:new_cids, focal: true}]
       break
     case conceptActions.WANT_CONCEPTS: // only occurs for non-focal
+      // or ConceptSetViewer, now
+      if (_.some(_.get(state,'requests'),
+                 r=>_.get(r,'meta.requestId') === _.get(action,'meta.requestId'))) {
+        return state
+      }
       want = _.union(want, payload)    // this only adds cids to want list, nothing else
       requests = [...requests, {...action, cids:payload, }]
       break
@@ -153,8 +158,10 @@ const checkCorrupted = props => {
   if (  _.intersection(got,want).length         || // shouldn't want gotten concepts
         _.intersection(got,fetching).length     || // shouldn't fetch gotten concepts
         _.intersection(want,fetching).length    || // shouldn't leave fetching in want list
+        /*
         (want.length && !focal.length &&           // shouldn't want (only related are in want list)
           status !== conceptActions.FULL)       || //    before focal are gotten
+        */
         (state.status === conceptActions.FULL &&   // shouldn't stop being full
          status !== conceptActions.FULL)        || //    (at least for now)
 
@@ -293,6 +300,12 @@ epics.push(loadConcepts)
 const wantConceptsEpic = (action$, store) => (
   action$
     .ofType(conceptActions.WANT_CONCEPTS)
+    .filter(action=>{
+      let requestState = _.get(store.getState(),'concepts.requests')
+      return (!_.some(requestState.requests,
+                     r=>_.get(r,'meta.requestId') === _.get(action,'meta.requestId'))
+              || _.get(requestState, 'want.length'))
+    })
     .mergeMap(action=>{
       return Rx.Observable.of(fetchConcepts())
     })

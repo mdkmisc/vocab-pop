@@ -2,6 +2,7 @@
 import myrouter from 'src/myrouter'
 import muit from 'src/muitheme'
 import * as cset$ from 'src/ducks/conceptSet'
+import * as C from 'src/components/ConceptSets/ConceptSetViewer'
 import ConceptSetBuilder from './ConceptSetBuilder'
 
 import { connect } from 'react-redux'
@@ -10,6 +11,11 @@ import React, { Component } from 'react'
 import Paper from 'material-ui/Paper';
 import RaisedButton from 'material-ui/RaisedButton';
 
+import {
+  BrowserRouter as Router,
+  Route,
+  Link
+} from 'react-router-dom'
 class ConceptSets extends Component {
   componentDidMount() {
   }
@@ -17,12 +23,12 @@ class ConceptSets extends Component {
   }
   makeNewCset = () => {
     const {newCset, csets} = this.props
-    const cset = new cset$.Cset(newCset().payload)
-    this.setState({csetId: cset.id()})
+    const cset = cset$.getCset(newCset().payload,state.concepts)
+    return cset.id()
   }
   render() {
     const { csets, M=muit(), } = this.props
-    const {csetId} = (this.state||{})
+    const {csetId} = myrouter.getQuery()
     let content
     if (csetId) {
       content = <ConceptSetBuilder {...{csetId, M, csets}} />
@@ -32,14 +38,25 @@ class ConceptSets extends Component {
                   {csets.length} Concept Sets 
                     <span style={{float:'right'}}>
                       <RaisedButton 
-                          onClick={this.makeNewCset}
-                          primary={true}
+                        //onClick={this.makeNewCset}
+                        //onClick={()=>myrouter.addParam('newCset',true)}
+                        onClick={()=>{
+                          let id = this.makeNewCset()
+                          myrouter.addParam('csetId',id)
+                        }}
+                        primary={true}
                       >New</RaisedButton>
                     </span>
                   </h3>
+                  <br/>
                   {
                     csets.map((cset,i) => {
-                      return <pre key={i}>{JSON.stringify(cset,null,2)}</pre>
+                      return  <div key={i}>
+                                <C.NameLink 
+                                    cset={cset} key={i} M={M}
+                                    //link={<Link component={ConceptSetBuilder}
+                                />
+                              </div>
                     })
                   }
                 </div>
@@ -53,9 +70,17 @@ class ConceptSets extends Component {
 
 ConceptSets = connect(
   (state, props) => {
-    const { builder, isNew, } = myrouter.getQuery()
+    const { builder, isNew, csetId, } = myrouter.getQuery()
+    const csets = cset$.csets(state)
+    if (csetId) {
+      let cset = cset$.getCset(state)(csetId,state.concepts)
+      if (!cset) {
+        console.error(`invalid csetId: ${JSON.stringify(csetId)}`, csets)
+        myrouter.deleteParams('csetId')
+      }
+    }
     return {
-      csets: cset$.csets(state),
+      csets, csetId
     }
   }
   , dispatch=>bindActionCreators(_.pick(cset$,['newCset','trashCset']), dispatch)

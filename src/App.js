@@ -282,8 +282,14 @@ class AppTabs extends React.Component {
         value={this.state.value}
         onChange={this.handleChange}
       >
-        <Tab  label="ConceptSets" value="csets"
+        <Tab  label="Concept Sets" value="csets"
             data-route="/csets"
+            onClick={()=>{
+              let {csetId} = myrouter.getQuery()
+              if (csetId) {
+                myrouter.deleteParam('csetId')
+              }
+            }}
             onActive={tab=>nav(tab.props['data-route'])} 
         >
           {main}

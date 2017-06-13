@@ -98,7 +98,7 @@ SourceTargetSourceForm = connect(
     return {
       vocabulary_id,
       conceptStatus,
-      cset: new cset.ConceptSet(
+      cset: new cncpt.ConceptSet(
         {
           cids,
           maxDepth:2,

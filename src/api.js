@@ -44,6 +44,7 @@ if (window.location.pathname === '/token') {
 
 
   sessionStorage.clear() // cachedirty not working.... temp measure
+          // this isn't working either, just do it by hand for now
 
 
 

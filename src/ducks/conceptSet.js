@@ -25,12 +25,19 @@ export const csetActions = {
 }
 
 /**** start reducers *********************************************************/
-const csetReducer = (state=[], action) => {
+const storedCsets = util.storageGet('csets',localStorage)||[]
+_.range(_.max(storedCsets.map(d=>d.id))).forEach(()=>_.uniqueId()) // start ids after highest
+
+const csetReducer = (state=storedCsets, action) => {
   let {type, payload, meta, error} = action
   switch (type) {
     case csetActions.LOAD:
       return payload
     case csetActions.NEW:
+      let _cset = payload
+      if (_.some(state,cs=>cs.id===_cset.id)) {
+        throw new Error("duplicate cset id")
+      }
       return [...state, payload]
     case csetActions.SAVE:
       return [...state.filter(cset=>cset.id !== payload.id), payload]
@@ -50,19 +57,34 @@ export default csetReducer
 
 /**** start selectors *****************************************************************/
 export const _csets = state => state.csets /* including not saved */
-export const _getCset = createSelector( _csets, _csets => id => _.find(_csets, cs=>cs.id===id))
+export const _getCset = createSelector( _csets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
 export const csets = createSelector(_csets, _csets=>_csets.map(cset=>new Cset.Cset(cset)))
-export const getCset = createSelector( _getCset, _getCset => id => new Cset.Cset(_getCset(id)))
+export const getCset = createSelector( _getCset, _getCset => (id,conceptState) => {
+  const _cset = _getCset(id)
+  if (!_cset) {
+    return
+  }
+  switch (_cset.selectMethodName) {
+    case 'fromAtlas':
+      return new Cset.CsetFromAtlas(_cset,conceptState)
+    case 'matchText':
+      return new Cset.Cset(_cset,conceptState)
+    default:
+      return new Cset.Cset(_cset,conceptState)
+  }
+})
 /**** end selectors *****************************************************************/
 
 /**** start action creators *********************************************************/
-export const load = () => ({ 
+/*
+export const loadCsets = () => ({ 
   type: csetActions.LOAD, 
   payload: util.storageGet('csets',localStorage)||[]
 })
+*/
 export const newCset = () => ({ 
   type: csetActions.NEW, 
-  payload: csetTemplate(),
+  payload: Cset.csetTemplate(_.uniqueId()),
 })
 export const trashCset = (cset) => ({ 
   type: csetActions.TRASH, 
@@ -70,10 +92,6 @@ export const trashCset = (cset) => ({
 })
 export const saveCset = (cset) => ({ type: csetActions.SAVE, payload:cset, })
 export const apiCall = (cset) => ({ type: csetActions.API_CALL, payload:cset.obj()})
-export const gotCsetData = (payload, loadedConcepts) => ({ 
-  type: csetActions.NEW, 
-  payload: csetTemplate(),
-})
 /**** end action creators *********************************************************/
 
 /**** start epics ******************************************/
@@ -85,6 +103,8 @@ const saveCsetsEpic = (action$, store) => (
       const cset = new Cset.Cset(payload)
       if (cset.isSaved()) {
         const csets = store.getState().csets.filter(cset=>cset.isSaved)
+        //csets = csets.concat(window.publicCsets)
+        //debugger
         util.storagePut('csets', csets, localStorage, true)
       }
       if (cset.valid()) {
@@ -104,7 +124,7 @@ const loadCset = (action$, store) => (
     .map(action=>{
       let {type, payload, meta} = action
       console.log("loadCset", action)
-      return gotCsetData(payload, store.getState().concepts.loaded)
+      return saveCset(payload)
     })
 )
 epics.push(loadCset)
@@ -113,22 +133,6 @@ epics.push(loadCset)
 
 export {epics}
 /**** end epics ******************************************/
-
-
-const csetTemplate = () => ({ // plain js obj for store
-  id: _.uniqueId(),
-  name: null, //'needs a name',
-  selectMethodName: null, // from selectMethods above
-  selectMethodParams: null,
-  // make sure param names don't clash with other field names
-  //vocabulary_id: 'ICD9CM',
-  //matchStr: 'acne',
-  includeDescendants: false,
-  includeMapped: false,
-  isExcluded: false, // only for children of other csets
-  isSaved: false,
-  // other?
-})
 
 
 

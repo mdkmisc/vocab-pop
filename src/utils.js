@@ -7,7 +7,7 @@ var $ = require('jquery');
 var d3 = require('d3');
 import LZString from 'lz-string';
 
-let _store = sessionStorage
+let _store = sessionStorage // not a great idea, especially now that I'm using local and session
 export function storage(store = _store) {
   return store
 }
@@ -41,6 +41,7 @@ export function storageGet(key, store = _store) {
   return JSON.parse(json)
 }
 window.storageGet = storageGet
+window.storagePut = storagePut
 
 /* SvgLayout class
   * manages layout of subcomponents in zones of an svg

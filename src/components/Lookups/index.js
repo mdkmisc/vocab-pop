@@ -267,7 +267,7 @@ ConceptCodesLookupForm = connect(
       ...ownProps,
       ...stateProps,
       ...dispatchProps,
-      cset: new cset.ConceptSet({
+      cset: new cncpt.ConceptSet({
               cids,
               desc: `Lookup ${matchBy} ${matchStr} in vocabulary ${vocabulary_id}`,
               maxDepth:2,

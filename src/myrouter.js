@@ -131,6 +131,7 @@ var myrouter = {
   setPathname,
   fromqs: myqs.parse,
   toqs: myqs.stringify,
+  deleteParam: deleteParams,
   deleteParams,
   //routeState,
   routerReducer,  // redux
