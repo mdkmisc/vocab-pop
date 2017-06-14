@@ -43,6 +43,10 @@ const csetReducer = (state=storedCsets, action) => {
       }
       return [...state, payload]
     case csetActions.SAVE:
+      let cs = state.find(cset=>cset.id === payload.id)
+      if (_.isEqual(cs,payload)) {
+        return state
+      }
       return [...state.filter(cset=>cset.id !== payload.id), payload]
     case csetActions.TRASH:
       debugger
@@ -62,6 +66,7 @@ export default csetReducer
 export const _csets = state => state.csets /* including not saved */
 export const _getCset = createSelector( _csets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
 export const csets = createSelector(_csets, _csets=>_csets.map(_cset=>Cset.Cset({_cset})))
+export const selectMethods = _.mapValues(Cset.selectMethodsShared,m=>m())
 export const getCset = createSelector( _getCset, _getCset => (id,conceptState) => {
   const _cset = _getCset(id)
   if (!_cset) {
@@ -70,13 +75,20 @@ export const getCset = createSelector( _getCset, _getCset => (id,conceptState) =
   let stamp
   switch (_cset.selectMethodName) {
     case 'fromAtlas':
-      stamp = Cset.CsetFromAtlas.compose(Cset.selectMethodsShared.fromAtlas)
+      stamp = Cset.CsetFromAtlas
       break
     case 'matchText':
-    default:
-      stamp = Cset.Cset.compose(Cset.selectMethodsShared.matchText)
+    case null:
+      stamp = Cset.Cset
       break
+    default:
+      throw new Error("don't know that method")
   }
+  /*
+  if (_cset.selectMethodName) {
+    stamp = stamp.compose(Cset.selectMethodsShared[_cset.selectMethodName])
+  }
+  */
   if (conceptState) {
     stamp = stamp.compose(ConnectedCset)
   }
@@ -99,7 +111,14 @@ export const trashCset = (cset) => ({
   type: csetActions.TRASH, 
   payload: cset
 })
-export const saveCset = (cset) => ({ type: csetActions.SAVE, payload:cset, })
+export const saveCset = (cset,newProps) => {
+  let _cset = cset.obj()
+  if (newProps) {
+    //_cset = {..._cset, ...newProps, lastUpdate: Date.now()}
+    _cset = {..._cset, ...newProps}
+  }
+  return ({ type: csetActions.SAVE, payload:_cset, })
+}
 export const apiCall = (cset) => ({ type: csetActions.API_CALL, payload:cset.obj()})
 /**** end action creators *********************************************************/
 
@@ -109,16 +128,17 @@ const saveCsetsEpic = (action$, store) => (
   action$.ofType(csetActions.SAVE)
     .switchMap(action=>{
       const {type, payload, meta} = action
-      const cset = new Cset.Cset(payload)
+      const cset = getCset(store.getState())(payload.id,store.getState().concepts)
       if (cset.isSaved()) {
         const csets = store.getState().csets.filter(cset=>cset.isSaved)
         //csets = csets.concat(window.publicCsets)
         //debugger
+        //_cset = {..._cset, ...newProps, lastUpdate: Date.now()}
         util.storagePut('csets', csets, localStorage, true)
       }
-      if (cset.valid()) {
+      if (cset.valid() && !cset.requested()) {
         const actn = api.actionGenerators.apiCall({
-          apiPathname:'cset', params:{cset:cset.obj()}})
+          apiPathname:'cset', params:{cset:cset.obj()}, meta:{requestId:cset.id()}})
         return Rx.Observable.of(actn)
       }
       return Rx.Observable.empty()
@@ -132,8 +152,9 @@ const loadCset = (action$, store) => (
     .delay(200)
     .map(action=>{
       let {type, payload, meta} = action
-      console.log("loadCset", action)
-      return saveCset(payload)
+      //console.log("loadCset", action)
+      const cset = getCset(store.getState())(payload.id)
+      return saveCset(cset, payload)
     })
 )
 epics.push(loadCset)
@@ -277,6 +298,63 @@ export const ConnectedCset = stampit()
       return (
         <div style={{border:'4px solid pink'}}>{`${this.longDesc()}`}</div>
       )
+    },
+
+    requestState: function() {
+      return this.conceptState.requests
+    },
+    allRequests: function() {
+      return this.requestState().requests
+    },
+    myRequest: function() {
+      return _.find(this.allRequests(),req=>req.meta.requestId == this.id())
+    },
+    requested: function() {
+      return !!this.myRequest()
+    },
+    doneFetching: function() {
+      return (this.myRequest()||{meta:{}}).meta.status === 'done'
+    },
+    conceptBaskets: function(countsOnly) {
+      const baskets = ['want','fetching','cantFetch','got']
+      let ret = {}
+      let reqState = this.requestState()
+      baskets.forEach(basket => {
+        let inBasket = _.intersection(reqState[basket], this.cids())
+        if (inBasket.length) {
+          ret[basket] = inBasket
+        }
+      })
+      if (!this.requested()) {
+        ret.unRequested = _.difference(this.cids(), ..._.values(ret))
+      }
+      if (_.sum(_.values(ret).map(d=>d.length)) !== this.cidCnt()) {
+        throw new Error("that's not right")
+      }
+      return ret
+    },
+    basketCounts: function() {
+      return _.mapValues(this.conceptBaskets(), d=>d.length)
+    },
+    conceptsNotLoaded: function() {
+      let {want,fetching,cantFetch,got} = this.conceptBaskets()
+      return _.union(want,fetching,cantFetch)
+    },
+    conceptsLoaded: function() {
+      let {want,fetching,cantFetch,got} = this.conceptBaskets()
+      return got
+    },
+    conceptsLoading: function() {
+      let {want,fetching,cantFetch,got} = this.conceptBaskets()
+      return fetching
+    },
+    cantFetch: function() {
+      let {want,fetching,cantFetch,got} = this.conceptBaskets()
+      return cantFetch
+    },
+    waiting: function() {
+      let {want,fetching,cantFetch,got} = this.conceptBaskets()
+      return this.cidCnt() > got.length + cantFetch.length
     },
   })
 

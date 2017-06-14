@@ -58,6 +58,7 @@ const emptyRequestStore = () => (
     status: conceptActions.IDLE,
     want: [],
     fetching: [],
+    cantFetch: [],
     got: [],
     focal: [],
     //stale: [],
@@ -65,10 +66,10 @@ const emptyRequestStore = () => (
     staleRequests: [],
   })
 const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
-  let {status, want, fetching, got, focal, requests, staleRequests} = state
+  let {status, want, fetching, got, focal, requests, staleRequests, cantFetch} = state
   let {type, payload, meta, error} = action
   let new_cids
-  checkCorrupted({status, want, fetching, got, focal, requests, staleRequests, action, state})
+  checkCorrupted({status, want, fetching, cantFetch, got, focal, requests, staleRequests, action, state})
   switch (type) {
     case conceptActions.IDLE:
     case conceptActions.BUSY:
@@ -115,6 +116,17 @@ const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
     case conceptActions.NEW_CONCEPTS:
       new_cids = payload.map(c=>c.concept_id)
       got = _.union(got, new_cids)
+      requests = requests.map(r => {
+        if (_.includes(meta.requestIds, r.meta.requestId)) {
+          fetching = _.difference(fetching, got)
+          let couldntFetch = _.intersection(fetching, r.payload)
+          if (couldntFetch.length) {
+            fetching = _.difference(fetching, couldntFetch)
+            cantFetch = _.union(cantFetch, couldntFetch)
+          }
+          return {...r, type:conceptActions.IDLE, meta: {...r.meta,status:'done'}}
+        }
+      })
       break
     default:
       return state
@@ -140,7 +152,35 @@ const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
   want = _.chain(want).difference(got)
                       .difference(fetching)
                       .value()
-  checkCorrupted({status, want, fetching, got, focal, requests, staleRequests, action, state})
+  if (want.length === 0) {
+    requests = requests.map(r => {
+      if (r.type === conceptActions.WANT_CONCEPTS) {
+        return {...r, type:conceptActions.FETCH_CONCEPTS}
+      }
+      if (r.type === conceptActions.FETCH_CONCEPTS) {
+        return r
+      }
+      if (r.type === conceptActions.IDLE) {
+        return r
+      }
+      debugger
+    })
+  }
+  if (fetching.length === 0) {
+    requests = requests.map(r => {
+      if (r.type === conceptActions.FETCH_CONCEPTS) {
+        return {...r, type:conceptActions.IDLE}
+      }
+      if (r.type === conceptActions.WANT_CONCEPTS) {
+        return r
+      }
+      if (r.type === conceptActions.IDLE) {
+        return r
+      }
+      debugger
+    })
+  }
+  checkCorrupted({status, want, fetching, cantFetch, got, focal, requests, staleRequests, action, state})
   if (status === conceptActions.PAUSE) {
     //status = status
   } else if (status === conceptActions.FULL) {
@@ -150,11 +190,11 @@ const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
   } else {
     status = conceptActions.BUSY
   }
-  let newState = {status, want, fetching, got, focal, staleRequests, requests}
+  let newState = {status, want, fetching, cantFetch, got, focal, staleRequests, requests}
   return _.isEqual(state, newState) ? state : newState
 }
 const checkCorrupted = props => {
-  let {status, want, fetching, got, focal, requests, staleRequests, action, state} = props
+  let {status, want, fetching, cantFetch, got, focal, requests, staleRequests, action, state} = props
   if (  _.intersection(got,want).length         || // shouldn't want gotten concepts
         _.intersection(got,fetching).length     || // shouldn't fetch gotten concepts
         _.intersection(want,fetching).length    || // shouldn't leave fetching in want list
@@ -169,7 +209,7 @@ const checkCorrupted = props => {
           .map(d=>d.cids)                          //     appear somewhere (got,fetch,want)
           .flatten()
           .uniq()
-          .difference(_.union(got,fetching,want))
+          .difference(_.union(got,fetching,cantFetch,want))
           .value().length
   ){
     //debugger
@@ -185,7 +225,7 @@ export default combineReducers({
 /**** end reducers *********************************************************/
 
 /**** start action creators *********************************************************/
-const newConcepts = (payload=[],loadedAlready={}) => {
+const newConcepts = (payload=[],meta, loadedAlready={}) => {
   // does this need to be pure function(no side effects)? probably not
   // it's the only entry point for concept records
   let concepts = payload.map(c => {
@@ -217,7 +257,7 @@ const newConcepts = (payload=[],loadedAlready={}) => {
     }
     return c
   })
-  return {type: conceptActions.NEW_CONCEPTS, payload: (concepts)}
+  return {type: conceptActions.NEW_CONCEPTS, payload: (concepts), meta}
   //return {type: conceptActions.NEW_CONCEPTS, payload: Immutable(concepts)}
 }
 export const wantConcepts = (concept_ids,meta) => ({
@@ -267,9 +307,16 @@ const conceptsCall = (action$, store) => (
       let {type, payload=[], meta, error} = action
       //let concept_ids = payload
       let concept_ids = _.get(store.getState(), 'concepts.requests.fetching') || []
+      let not_fetching = _.get(store.getState(), 'concepts.requests.want') || []
+      if (not_fetching.length) {
+        debugger
+      }
+
       if (concept_ids.length) {
+        let requestIds = store.getState().concepts.requests.requests.map(d=>d.meta.requestId)
+        meta = {...meta, requestIds}
         let params = {concept_ids}
-        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname,params}))
+        return Rx.Observable.of(api.actionGenerators.apiCall({apiPathname,params,meta}))
       }
       return Rx.Observable.empty()
     })
@@ -290,7 +337,7 @@ const loadConcepts = (action$, store) => (
     .delay(200)
     .map(action=>{
       let {type, payload, meta} = action
-      return newConcepts(payload, store.getState().concepts.loaded)
+      return newConcepts(payload, meta, store.getState().concepts.loaded)
     })
 )
 epics.push(loadConcepts)
@@ -393,6 +440,7 @@ export const fetching = createSelector(requests, r => r.fetching)
 export const focal = createSelector(requests, r => r.focal)
 export const got = createSelector(requests, r => r.got)
 export const focalConcepts = createSelector( conceptsFromCids, focal, (cfc,f) => cfc(f))
+export const getRequest = createSelector( requests, reqs=> id=>_.find(reqs.requests,req=>req.meta.requestId == id))
 
 export const conceptStatusReport = createSelector(
   concepts,

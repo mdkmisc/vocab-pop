@@ -382,9 +382,12 @@ console.log('NOT SAVING TABLE CHANGES RIGHT NOW')
             </Panel>);
   }
 }
-AgTable.propTypes = {
+/*
+AgTable.propTypes = { 
+fix: Warning: Accessing PropTypes via the main React package is deprecated. Use the prop-types package from npm instead.
   id: React.PropTypes.string.isRequired,
 }
+*/
 AgTable.instances = {};
 
 export class ConceptTree extends Component {

@@ -19,19 +19,34 @@ import {
 } from 'react-router-dom'
 class ConceptSets extends Component {
   componentDidMount() {
+    if (this.props.invalidCsetId) {
+      console.error(`invalid csetId: ${JSON.stringify(this.props.csetId)}`)
+      myrouter.deleteParams('csetId')
+      return
+    }
     ReactTooltip.rebuild()
   }
   componentDidUpdate() {
+    if (this.props.invalidCsetId) {
+      console.error(`invalid csetId: ${JSON.stringify(this.props.csetId)}`)
+      myrouter.deleteParams('csetId')
+      return
+    }
     ReactTooltip.rebuild()
   }
   makeNewCset = () => {
     const {newCset, csets} = this.props
-    const cset = cset$.getCset(newCset().payload,state.concepts)
-    return cset.id()
+    const _cset = newCset().payload
+    return _cset.id
+    //const cset = cset$.getCset(_cset.id,state.concepts)
+    //return cset.id()
   }
   render() {
-    const { csets, M=muit(), } = this.props
+    const { csets, M=muit(), invalidCsetId} = this.props
     const {csetId} = myrouter.getQuery()
+    if (invalidCsetId) {
+      return <h3>Can't find csetId {csetId}</h3>
+    }
     let content
     if (csetId) {
       content = <div>
@@ -71,21 +86,22 @@ class ConceptSets extends Component {
             </Paper>
   }
 }
-
 ConceptSets = connect(
   (state, props) => {
     const { builder, isNew, csetId, } = myrouter.getQuery()
     const csets = cset$.csets(state)
-    if (csetId) {
+    let moreProps = { csets }
+    if (typeof csetId !== 'undefined') {
       let cset = cset$.getCset(state)(csetId,state.concepts)
       if (!cset) {
-        console.error(`invalid csetId: ${JSON.stringify(csetId)}`, csets)
-        myrouter.deleteParams('csetId')
+        console.error(`invalid csetId: ${JSON.stringify(csetId)}`)
+        moreProps.invalidCsetId = true
+      } else {
+        moreProps.csetId = csetId
+        moreProps.cset = cset
       }
     }
-    return {
-      csets, csetId
-    }
+    return moreProps
   }
   , dispatch=>bindActionCreators(_.pick(cset$,['newCset','trashCset']), dispatch)
 )(ConceptSets)

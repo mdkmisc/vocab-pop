@@ -218,9 +218,12 @@ export default class SigmaReactGraph extends Component {
             </ListenerNode>;
   }
 }
+/*
 SigmaReactGraph.propTypes = {
+fix: Warning: Accessing PropTypes via the main React package is deprecated. Use the prop-types package from npm instead.
   nodes: React.PropTypes.array.isRequired,
 };
+*/
 class SrgSvg extends Component {
   constructor(props) {
     super(props);

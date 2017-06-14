@@ -50,7 +50,7 @@ class Tooltips extends Component {
   componentDidMount() {
     ReactTooltip.rebuild()
   }
-  componentDidUnmount() {
+  componentWillUnmount() {
     debugger
   }
   componentDidUpdate() {

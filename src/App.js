@@ -186,59 +186,6 @@ class App extends Component {
         <Tooltips />
       </div>
     )
-    /*
-    return (
-              <div className="vocab-app flex-box" style={{backgroundColor: brown50}}>
-                <div className="flex-content-height container" style={{width:'100%'}} >
-                  <Navbar fluid={true} fixedTop={false} collapseOnSelect={true} >
-                    <Navbar.Header>
-                      <Navbar.Brand>
-                        <NavLink to={locPath(location, '/',{clear:['domain_id']})} /*onlyActiveOnIndex* / >
-                          Vocab Viz
-                        </NavLink>
-                      </Navbar.Brand>
-                      <Navbar.Toggle />
-                    </Navbar.Header>
-                    <Navbar.Collapse>
-                        {/*
-                        <NavLink to={locPath(location, '/concepts',{params:{domain_id:'Drug'}})}>
-                          <Button >Drug</Button>
-                        </NavLink>
-                        <NavLink to={locPath(location, '/concepts',{params:{domain_id:'Condition'}})}>
-                          <Button >Condition</Button>
-                        </NavLink>
-                        <NavLink to={locPath(location, '/concepts',{clear:['domain_id']})}>
-                          <Button >All Domains</Button>
-                        </NavLink>
-                        * /}
-                        <NavLink to='/sourcetargetsource'>
-                          <Button >Source-&gt;Target-&gt;Source</Button>
-                        </NavLink>
-                    </Navbar.Collapse>
-                  </Navbar>
-                </div>
-                <div className="flex-remaining-height container" style={{width:'100%'}}>
-                  {sidebar
-                    ? <Row>
-                        <h4>should have a sidebar</h4>
-                        <Col xs={2} md={2} className="sidebar">
-                          {sidebar}
-                        </Col>
-                        <Col xs={10} md={10} >
-                          {main}
-                        </Col>
-                      </Row>
-                    : <Row>
-                        <h3>main stuff</h3>
-                        <Col xs={12} md={12} className="should-be-12">
-                          {main}
-                        </Col>
-                      </Row>
-                  }
-                </div>
-              </div>
-    )
-    */
   }
 }
 App = connect(

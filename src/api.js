@@ -124,7 +124,7 @@ export const reducer = (
         }
         throw new Error("do something -- in queue already, but not same")
       }
-      queue = {...queue, [url]: {params,msg,apiPathname, status:'queued'}}
+      queue = {...queue, [url]: {params,msg,apiPathname, meta, status:'queued'}}
       break
     case apiActions.NEXT_IN_QUEUE:
       ({apiPathname, params, url} = payload)
@@ -243,9 +243,9 @@ epics.push(watchTheQueue)
 const processActive = (action$, store) => (
   action$.ofType(apiActions.NEXT_IN_QUEUE)
     .mergeMap((action)=>{
-      let {type, payload, meta, error} = action
-      let {apiPathname, params, url} = payload
-      return apiCall({apiPathname, params, url, }, store)
+      let {type, payload, error} = action
+      let {apiPathname, params, url,meta} = payload
+      return apiCall({apiPathname, params, url, meta }, store)
     })
 )
 epics.push(processActive)
@@ -267,30 +267,30 @@ export {epics}
 
 export const actionGenerators = {
   apiCall: props => {
-    let { apiPathname, params, } = props
+    let { apiPathname, params, meta } = props
     let url = apiGetUrl(apiPathname, params)
     let token = getToken()
     url += (url.match(/\?/) ? '&' : '?') + `token=${token}`
-    return {type: apiActions.ADD_TO_QUEUE, payload: {apiPathname,params,url}}
+    return {type: apiActions.ADD_TO_QUEUE, payload: {apiPathname,params,url},meta}
   },
   nextInQueue: nextCall => ({type: apiActions.NEXT_IN_QUEUE, payload: nextCall}),
-  cachedResults: ({apiPathname,params,url,results}) => 
-      ({type: apiActions.CACHED_RESULTS, payload: results, meta:{apiPathname,params,url}}),
-  newResults: ({apiPathname,params,url,results}) => 
-      ({type: apiActions.NEW_RESULTS,    payload: results, meta:{apiPathname,params,url}}),
+  cachedResults: ({apiPathname,params,url,results,meta}) => 
+      ({type: apiActions.CACHED_RESULTS, payload: results, meta:{...meta, apiPathname,params,url}}),
+  newResults: ({apiPathname,params,url,results,meta}) => 
+      ({type: apiActions.NEW_RESULTS,    payload: results, meta:{...meta, apiPathname,params,url}}),
 }
 export const cachedAjax = props => {
   //debugger
-  let {apiPathname, params, url} = props
+  let {apiPathname, params, url, meta} = props
   //console.log(url.slice(0,90))
   if (isCached(url)) {
     let results = util.storageGet(url)
-    return Rx.Observable.of(actionGenerators.cachedResults({apiPathname,params,url,results}))
+    return Rx.Observable.of(actionGenerators.cachedResults({apiPathname,params,url,results, meta}))
     //return Rx.Observable.of(results)
   }
   let rxAjax = Rx.Observable.ajax.getJSON(url) //(,{mode: 'no-cors'})
                   .map(results => {
-                    return actionGenerators.newResults({apiPathname,params,url,results})
+                    return actionGenerators.newResults({apiPathname,params,url,results, meta})
                   })
   rxAjax.subscribe(action => {
     util.storagePut(action.meta.url, action.payload)
@@ -301,6 +301,7 @@ export const apiCall = (props, store) => {
   let { apiPathname, 
         params, 
         url,
+        meta,
 
         msgFunc= r => Array.isArray(r) ? `${r.length} records` :'got something...',
         paramsValidation=d=>d,
@@ -321,7 +322,7 @@ export const apiCall = (props, store) => {
   //return Rx.Observable.empty()
 
   //console.log(apiPathname, JSON.stringify(params))
-  return cachedAjax({apiPathname, params, url})
+  return cachedAjax({apiPathname, params, url, meta})
               .catch(catchFunc)
 }
 

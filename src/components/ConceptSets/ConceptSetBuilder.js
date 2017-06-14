@@ -33,7 +33,7 @@ import {
   Toggle
 } from 'redux-form-material-ui'
 
-class ConceptSetBuilder extends Component {
+let ConceptSetBuilder = C.csetWrap(class extends Component {
   componentDidMount() {
     let { csets, M=muit(), builder, isNew, newCset} = this.props
   }
@@ -85,9 +85,7 @@ class ConceptSetBuilder extends Component {
                       floatingLabelText={'Select concepts by'}
                       onChange={
                         (evt, selectMethodName, prevValue) => {
-                          saveCset(
-                            {...cset.obj(),
-                            selectMethodName})
+                          saveCset(cset,{selectMethodName})
                         }
                       }
                 >
@@ -114,9 +112,7 @@ class ConceptSetBuilder extends Component {
                 {cset.cidCnt() 
                   ? <SaveButton 
                         buttonProps={{
-                          onClick:()=>saveCset(
-                              {...cset.obj(),
-                                isSaved:true}),
+                          onClick:()=>saveCset(cset,{isSaved:true})
                         }}
                         //buttonProps={{label:'what?'}}
                       />
@@ -135,6 +131,7 @@ class ConceptSetBuilder extends Component {
                 */}
               </h3>
               <form style={{marginLeft:20}} onSubmit={e=>e.preventDefault()}>
+                {selectMethodField}
                 {
                   cset.cidCnt()
                     ?  <Field name="name" 
@@ -144,7 +141,8 @@ class ConceptSetBuilder extends Component {
                           onChange={
                             (evt, name, prevValue) => {
                               saveCset(
-                                {...cset.obj(),
+                                cset,
+                                { name,
                                   selectMethodParams: {
                                     ...cset.selectMethodParams(),
                                     name,
@@ -165,8 +163,8 @@ class ConceptSetBuilder extends Component {
                           onChange={
                             (evt, vocabulary_id, prevValue) => {
                               saveCset(
-                                {...cset.obj(),
-                                  selectMethodParams: {
+                                cset,
+                                { selectMethodParams: {
                                     ...cset.selectMethodParams(),
                                     vocabulary_id,
                                   }
@@ -217,8 +215,8 @@ class ConceptSetBuilder extends Component {
                           onChange={
                             (evt, matchStr, prevValue) => {
                               saveCset(
-                                {...cset.obj(),
-                                  selectMethodParams: {
+                                cset,
+                                { selectMethodParams: {
                                     ...cset.selectMethodParams(),
                                     matchStr,
                                   }
@@ -240,7 +238,7 @@ class ConceptSetBuilder extends Component {
               </form>
             </Paper>
   }
-}
+})
 ConceptSetBuilder = reduxForm({
   form: 'concept_builder',  // a unique identifier for this form
   /*
@@ -253,6 +251,9 @@ ConceptSetBuilder = reduxForm({
 ConceptSetBuilder = connect(
   (state, props) => {
     let cset = cset$.getCset(state)(props.csetId,state.concepts)
+    if (!cset) {
+      throw new Error("shouldn't be here")
+    }
     return {
       csets: cset$.csets(state),
       cset,

@@ -50,9 +50,12 @@ import LinearProgress from 'material-ui/LinearProgress';
 import StarBorder from 'material-ui/svg-icons/toggle/star-border'
 import ExpandMore from 'material-ui/svg-icons/navigation/expand-more'
 import ExpandLess from 'material-ui/svg-icons/navigation/expand-less'
+import CloudQueue from 'material-ui/svg-icons/file/cloud-queue'
+import CloudDownload from 'material-ui/svg-icons/file/cloud-download'
+import CloudDone from 'material-ui/svg-icons/file/cloud-done'
 import FileDownload from 'material-ui/svg-icons/file/file-download'
 import ZoomIn from 'material-ui/svg-icons/action/zoom-in'
-import CloudQueue from 'material-ui/svg-icons/file/cloud-queue'
+import ConceptIcon from 'material-ui/svg-icons/action/lightbulb-outline'
 
 
 import Chip from 'material-ui/Chip'
@@ -107,9 +110,6 @@ const csetConnect = Component => connect(
   ,(stateProps, dispatchProps, ownProps) => {
     const { conceptState, conceptStatus, cset, } = stateProps
     const {wantConcepts, } = dispatchProps
-    if (cset && ownProps.load) {
-      wantConcepts(cset.cids(),{requestId:cset.id()})
-    }
     return {
       ...ownProps,
       ...stateProps,
@@ -119,37 +119,68 @@ const csetConnect = Component => connect(
   }
 )(Component)
 
+export const CsetWrapper = csetConnect(class extends Component {
+  componentDidMount() {
+    const {cset, load, wantConcepts} = this.props
+    if (load && cset && cset.valid()) {
+      wantConcepts(cset.cids(),{requestId:cset.id()})
+    }
+  }
+  render() {
+    const {Component} = this.props
+    return <Component {...this.props} />
+  }
+})
+export const csetWrap = Component => 
+  props => <CsetWrapper Component={Component} {...props} />
+
 export const ConceptCount = props => {
-  const {cnt, ttText, url, M=muit()} = props
-  return  <SvgIcon  
-              color='white'
-              hoverColor='green'
-              viewBox="0 0 24 24" 
-              style={{
-                //border: '1px solid purple',
-                paddingTop: 5,
-                //marginTop: 30,
-                //marginRight: 30,
-                //marginLeft: 30,
+  const {cset, ttText, url, M=muit(), wantConcepts,} = props
+  return  <span style={{
+                  zoom: .7,
+              }}> 
+            <Badge
+              badgeContent={cset.cidCnt()}
+              primary={true}
+              badgeStyle={{
+                //top: 18, right: 18,
               }}
-          >
-            <path style={{
-                    //color: 'rgb(0, 0, 0)',
-                    //fillOpacity: 0,
-                    //fill: 'white',
-                  }}
-                  d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4s1.79-4 4-4h.71C7.37 7.69 9.48 6 12 6c3.04 0 5.5 2.46 5.5 5.5v.5H19c1.66 0 3 1.34 3 3s-1.34 3-3 3z" />
-            <text x="8px" y="16px"
-                  style={{
-                    //fill: 'black',
-                    fontSize: '.7em',
-                  }}
-            >{cnt}</text>
-          </SvgIcon>
+            >
+                    <ConceptIcon />
+            </Badge>
+          </span>
+}
+export const FetchButton = props => {
+  const {cset, ttText, url, M=muit(), wantConcepts,} = props
+  return  <span style={{
+                  zoom: .7,
+              }}> 
+              {
+                cset.status().notRequested() ?
+                  <IconButton tooltip={`Fetch concepts`}
+                    onClick={
+                      ()=>wantConcepts(
+                        cset.cids(),
+                        {requestId:cset.id()})}
+                  >
+                    <CloudDownload />
+                  </IconButton> : null
+              }
+              {
+                cset.status().waiting() &&
+                !cset.doneFetching() ?
+                    <CircularProgress size={20} 
+                        {...M('circularProgress.styleProps')}
+                    /> : null
+              }
+              {
+                cset.doneFetching() ? <CloudDone color='green' /> : null
+              }
+          </span>
 }
 
-export const NameLink = csetConnect(props => {
-  const {cset, conceptState, conceptStatus, } = props
+export const NameLink = csetWrap(props => {
+  const {cset, conceptState, conceptStatus, wantConcepts } = props
   const all = cncpt.concepts(conceptState)
   const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
   let name = ''
@@ -174,17 +205,22 @@ export const NameLink = csetConnect(props => {
             }}>
               {name}
             </Link>
-            <ConceptCount cnt={cset.cidCnt()} />
-            {oldConceptComp.groupLabel({cset,ttid:'nameLink'})}
+            <ConceptCount cset={cset} wantConcepts={wantConcepts} />
+            <FetchButton cset={cset} wantConcepts={wantConcepts} />
+            {' '}{JSON.stringify(cset.basketCounts())}
+            {' '}{oldConceptComp.groupLabel({cset,ttid:'nameLink'})}
           </span>
 })
 
-export const CsetView = csetConnect(props => {
-  const {cset, conceptState, conceptStatus, } = props
+export const CsetView = csetWrap(props => {
+  const {cset, conceptState, conceptStatus, wantConcepts, } = props
   const all = cncpt.concepts(conceptState)
   const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
   return  <div>
+            <h3>CsetView</h3>
             {cset.name()}: {' '}
+            <ConceptCount cset={cset} wantConcepts={wantConcepts} />
+            <FetchButton cset={cset} wantConcepts={wantConcepts} />
             {oldConceptComp.groupLabel({cset,ttid:'csetViewer'})}
           </div>
 })
