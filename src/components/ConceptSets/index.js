@@ -35,14 +35,14 @@ class ConceptSets extends Component {
     ReactTooltip.rebuild()
   }
   makeNewCset = () => {
-    const {newCset, csets} = this.props
+    const {newCset, storedCsets} = this.props
     const _cset = newCset().payload
     return _cset.id
     //const cset = cset$.getCset(_cset.id,state.concepts)
     //return cset.id()
   }
   render() {
-    const { csets, M=muit(), invalidCsetId} = this.props
+    const { storedCsets, M=muit(), invalidCsetId} = this.props
     const {csetId} = myrouter.getQuery()
     if (invalidCsetId) {
       return <h3>Can't find csetId {csetId}</h3>
@@ -51,12 +51,12 @@ class ConceptSets extends Component {
     if (csetId) {
       content = <div>
                   <h3>ConceptSetBuilder ({csetId})</h3>
-                  <ConceptSetBuilder {...{csetId, M, csets}} />
+                  <ConceptSetBuilder {...{csetId, M, }} />
                 </div>
     } else {
       content = <div>
                   <h3>
-                  {csets.length} Concept Sets 
+                  {storedCsets.length} Concept Sets 
                     <span style={{float:'right'}}>
                       <RaisedButton 
                         //onClick={this.makeNewCset}
@@ -71,7 +71,7 @@ class ConceptSets extends Component {
                   </h3>
                   <ul>
                   {
-                    csets.map((cset,i) => {
+                    storedCsets.map((cset,i) => {
                       return  <li key={i}>
                                 <C.NameLink M={M} csetId={cset.id()}/>
                               </li>
@@ -89,10 +89,11 @@ class ConceptSets extends Component {
 ConceptSets = connect(
   (state, props) => {
     const { builder, isNew, csetId, } = myrouter.getQuery()
-    const csets = cset$.csets(state)
-    let moreProps = { csets }
+    const storedCsets = cset$.storedCsets(state)
+    let moreProps = { storedCsets }
     if (typeof csetId !== 'undefined') {
-      let cset = cset$.getCset(state)(csetId,state.concepts)
+      //let cset = cset$.getCset(state)(csetId)
+      let cset = cset$.getCset(csetId)
       if (!cset) {
         console.error(`invalid csetId: ${JSON.stringify(csetId)}`)
         moreProps.invalidCsetId = true

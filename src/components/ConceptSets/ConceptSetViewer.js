@@ -101,29 +101,18 @@ import {
 const csetConnect = Component => connect(
   (state, props) => {
     return {
-      conceptState: state.concepts,
-      conceptStatus: state.concepts.requests.status,
-      cset: cset$.getCset(state)(props.csetId,state.concepts)
-    }
-  }
-  ,dispatch=>bindActionCreators(_.pick(cncpt, ['wantConcepts',]), dispatch)
-  ,(stateProps, dispatchProps, ownProps) => {
-    const { conceptState, conceptStatus, cset, } = stateProps
-    const {wantConcepts, } = dispatchProps
-    return {
-      ...ownProps,
-      ...stateProps,
-      ...dispatchProps,
-      cset, 
+      //cset: cset$.getCset(state)(props.csetId)
+      cset: cset$.getCset(props.csetId)
     }
   }
 )(Component)
 
 export const CsetWrapper = csetConnect(class extends Component {
   componentDidMount() {
-    const {cset, load, wantConcepts} = this.props
+    const {cset, load, } = this.props
     if (load && cset && cset.valid()) {
-      wantConcepts(cset.cids(),{requestId:cset.id()})
+      cset.fetchConcepts()
+      //wantConcepts(cset.cids(),{requestId:cset.id()})
     }
   }
   render() {
@@ -135,7 +124,7 @@ export const csetWrap = Component =>
   props => <CsetWrapper Component={Component} {...props} />
 
 export const ConceptCount = props => {
-  const {cset, ttText, url, M=muit(), wantConcepts,} = props
+  const {cset, ttText, url, M=muit(), } = props
   return  <span style={{
                   zoom: .7,
               }}> 
@@ -151,23 +140,23 @@ export const ConceptCount = props => {
           </span>
 }
 export const FetchButton = props => {
-  const {cset, ttText, url, M=muit(), wantConcepts,} = props
+  const {cset, ttText, url, M=muit(), } = props
   return  <span style={{
                   zoom: .7,
               }}> 
               {
-                cset.status().notRequested() ?
+                cset.requested() ? null :
                   <IconButton tooltip={`Fetch concepts`}
                     onClick={
-                      ()=>wantConcepts(
-                        cset.cids(),
-                        {requestId:cset.id()})}
+                      ()=>cset.fetchConcepts()
+                      //wantConcepts( cset.cids(), {requestId:cset.id()})
+                    }
                   >
                     <CloudDownload />
-                  </IconButton> : null
+                  </IconButton>
               }
               {
-                cset.status().waiting() &&
+                cset.waiting() &&
                 !cset.doneFetching() ?
                     <CircularProgress size={20} 
                         {...M('circularProgress.styleProps')}
@@ -180,9 +169,7 @@ export const FetchButton = props => {
 }
 
 export const NameLink = csetWrap(props => {
-  const {cset, conceptState, conceptStatus, wantConcepts } = props
-  const all = cncpt.concepts(conceptState)
-  const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
+  const {cset, } = props
   let name = ''
   switch (cset.selectMethodName()) {
     case 'fromAtlas':
@@ -205,22 +192,21 @@ export const NameLink = csetWrap(props => {
             }}>
               {name}
             </Link>
-            <ConceptCount cset={cset} wantConcepts={wantConcepts} />
-            <FetchButton cset={cset} wantConcepts={wantConcepts} />
+            <ConceptCount cset={cset} />
+            <FetchButton cset={cset} />
+            { cset.includeMapped() ? ' Include Mapped ' : '' }
             {' '}{JSON.stringify(cset.basketCounts())}
             {' '}{oldConceptComp.groupLabel({cset,ttid:'nameLink'})}
           </span>
 })
 
 export const CsetView = csetWrap(props => {
-  const {cset, conceptState, conceptStatus, wantConcepts, } = props
-  const all = cncpt.concepts(conceptState)
-  const concepts = cncpt.conceptsFromCids(conceptState)(cset.cids())
+  const {cset, } = props
   return  <div>
             <h3>CsetView</h3>
             {cset.name()}: {' '}
-            <ConceptCount cset={cset} wantConcepts={wantConcepts} />
-            <FetchButton cset={cset} wantConcepts={wantConcepts} />
+            <ConceptCount cset={cset} />
+            <FetchButton cset={cset} />
             {oldConceptComp.groupLabel({cset,ttid:'csetViewer'})}
           </div>
 })

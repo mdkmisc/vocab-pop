@@ -23,6 +23,7 @@ if (DEBUG) {
 import React, { Component } from 'react'
 import { render } from 'react-dom'
 import { connect, Provider, } from 'react-redux'
+import { bindActionCreators as _bindActionCreators} from 'redux'
 import 'bootstrap/dist/css/bootstrap.css'
 import 'bootstrap/dist/css/bootstrap-theme.css'
 import { BrowserRouter as Router, Route, IndexRoute, Link, NavLink, } from 'react-router-dom'
@@ -31,6 +32,9 @@ import injectTapEventPlugin from 'react-tap-event-plugin';
 injectTapEventPlugin();
 
 const {store, myrouter} = configureStore()
+export const getStore = () => store
+export const bindActionCreators = acs => _bindActionCreators(acs, getStore().dispatch)
+//console.log(store, getStore, getStore())
 let theme = muit()()
 
 render (

@@ -1,4 +1,9 @@
 /* eslint-disable */
+
+import {getStore, bindActionCreators} from 'src/index'
+
+const conceptState = () => getStore().getState().concepts
+
 import _ from 'src/supergroup'; // in global space anyway...
 import * as util from 'src/utils';
 import * as config from 'src/config'
@@ -19,38 +24,39 @@ window.stampitStuff = stampitStuff
 
 
 export const csetActions = {
-  LOAD: 'vocab-pop/conceptSet/LOAD', // whole set
   NEW: 'vocab-pop/conceptSet/NEW',   // save 1 cset
   TRASH: 'vocab-pop/conceptSet/TRASH',   // remove UNSAVED cset
-  SAVE: 'vocab-pop/conceptSet/SAVE',   // overwrite 1 cset (in reducer)
-            // and (in epic) save all to storage where isSaved===true
+  UPDATE: 'vocab-pop/conceptSet/UPDATE',
+  API_DATA: 'vocab-pop/conceptSet/API_DATA',
   API_CALL: 'vocab-pop/conceptSet/API_CALL',
 }
 
 /**** start reducers *********************************************************/
-const storedCsets = util.storageGet('csets',localStorage)||[]
-_.range(_.max(storedCsets.map(d=>d.id))).forEach(()=>_.uniqueId()) // start ids after highest
+const _persistedCsets = () => (util.storageGet('csets',localStorage)||[]).map(d=>Object.assign(d,{justUnpickled:true}))
+_.range(_.max(_persistedCsets().map(d=>d.id))).forEach(()=>_.uniqueId()) // start ids after highest
 
-const csetReducer = (state=storedCsets, action) => {
+const csetReducer = (state=_persistedCsets(), action) => {
+  console.log('csetState', state)
+  //debugger
   let {type, payload, meta, error} = action
   switch (type) {
-    case csetActions.LOAD:
-      return payload
     case csetActions.NEW:
       let _cset = payload
       if (_.some(state,cs=>cs.id===_cset.id)) {
         throw new Error("duplicate cset id")
       }
       return [...state, payload]
-    case csetActions.SAVE:
+    case csetActions.UPDATE:
       let cs = state.find(cset=>cset.id === payload.id)
       if (_.isEqual(cs,payload)) {
+        throw new Error("should have checked already")
         return state
       }
+    case csetActions.API_DATA:
       return [...state.filter(cset=>cset.id !== payload.id), payload]
     case csetActions.TRASH:
       debugger
-      if (payload.isSaved) {
+      if (payload.persistent) {
         throw new Error("not allowed")
       }
       return _.without(state, payload) // might not work!!
@@ -63,15 +69,11 @@ export default csetReducer
 /**** end reducers *********************************************************/
 
 /**** start selectors *****************************************************************/
-export const _csets = state => state.csets /* including not saved */
-export const _getCset = createSelector( _csets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
-export const csets = createSelector(_csets, _csets=>_csets.map(_cset=>Cset.Cset({_cset})))
+export const _storedCsets = (state=getStore().getState()) => state.csets /* including not saved */
+export const _getCset = createSelector( _storedCsets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
+export const storedCsets = createSelector(_storedCsets, _csets=>_csets.map(makeCset))
 export const selectMethods = _.mapValues(Cset.selectMethodsShared,m=>m())
-export const getCset = createSelector( _getCset, _getCset => (id,conceptState) => {
-  const _cset = _getCset(id)
-  if (!_cset) {
-    return
-  }
+export const makeCset = (_cset, from) => {
   let stamp
   switch (_cset.selectMethodName) {
     case 'fromAtlas':
@@ -82,27 +84,49 @@ export const getCset = createSelector( _getCset, _getCset => (id,conceptState) =
       stamp = Cset.Cset
       break
     default:
+      debugger
       throw new Error("don't know that method")
   }
-  /*
-  if (_cset.selectMethodName) {
-    stamp = stamp.compose(Cset.selectMethodsShared[_cset.selectMethodName])
+  stamp = stamp.compose(ConnectedCset)
+  switch (from) {
+    case 'fromPersistentStore':
+      _cset.persistent = true
+      _cset.needsCidsFetching = true
+      _cset.needsPersisting = false
+      debugger
+      getStore().dispatch({ type: csetActions.UPDATE, payload:_cset})
   }
-  */
-  if (conceptState) {
-    stamp = stamp.compose(ConnectedCset)
+  let cset = stamp({_cset})
+  return cset
+}
+export const unpickleCset = _cset => makeCset(_cset,'fromPersistentStore')
+export const getCset = id => {
+  const _cset = _getCset(getStore().getState())(id)
+  if (_cset) {
+    return makeCset(_cset)
   }
-  return stamp({_cset,conceptState})
-})
+}
+export const persistedCsets = () => _persistedCsets().map(unpickleCset)
+export const persistCsets = () => {
+  let _csets = _storedCsets().map(
+    _cset => {
+      //let upProps = _.pick(_cset, csetUnpersistedProps)
+      let saveProps =  _.pickBy(_cset, (v,k)=>!_.includes(csetUnpersistedProps, k))
+      return saveProps
+    }
+  )
+  util.storagePut('csets', _csets, localStorage, true)
+}
+export const _getPersistedCset = createSelector( _persistedCsets, _csets => id => _.find(_csets, cs=>cs.id==id))
+export const getPersistedCset = id => {
+  const _cset = _getPersistedCset(_persistedCsets)(id)
+  if (_cset) {
+    return unpickleCset(_cset)
+  }
+}
 /**** end selectors *****************************************************************/
 
 /**** start action creators *********************************************************/
-/*
-export const loadCsets = () => ({ 
-  type: csetActions.LOAD, 
-  payload: util.storageGet('csets',localStorage)||[]
-})
-*/
 export const newCset = () => ({ 
   type: csetActions.NEW, 
   payload: Cset.csetTemplate(_.uniqueId()),
@@ -111,54 +135,37 @@ export const trashCset = (cset) => ({
   type: csetActions.TRASH, 
   payload: cset
 })
-export const saveCset = (cset,newProps) => {
-  let _cset = cset.obj()
-  if (newProps) {
-    //_cset = {..._cset, ...newProps, lastUpdate: Date.now()}
-    _cset = {..._cset, ...newProps}
-  }
-  return ({ type: csetActions.SAVE, payload:_cset, })
-}
 export const apiCall = (cset) => ({ type: csetActions.API_CALL, payload:cset.obj()})
 /**** end action creators *********************************************************/
 
 /**** start epics ******************************************/
 let epics = []
-const saveCsetsEpic = (action$, store) => (
-  action$.ofType(csetActions.SAVE)
+const fetchCidsEpic = (action$, store) => (
+  action$.ofType(csetActions.UPDATE)
     .switchMap(action=>{
+      debugger
       const {type, payload, meta} = action
-      const cset = getCset(store.getState())(payload.id,store.getState().concepts)
-      if (cset.isSaved()) {
-        const csets = store.getState().csets.filter(cset=>cset.isSaved)
-        //csets = csets.concat(window.publicCsets)
-        //debugger
-        //_cset = {..._cset, ...newProps, lastUpdate: Date.now()}
-        util.storagePut('csets', csets, localStorage, true)
-      }
-      if (cset.valid() && !cset.requested()) {
+      const cset = makeCset(payload)
+      if (cset.valid() && cset.needsCidsFetching()) {
         const actn = api.actionGenerators.apiCall({
-          apiPathname:'cset', params:{cset:cset.obj()}, meta:{requestId:cset.id()}})
+          apiPathname:'cset', params:{cset:cset.obj()}, meta:{requestId:cset.requestId()}})
         return Rx.Observable.of(actn)
       }
       return Rx.Observable.empty()
     })
 )
-epics.push(saveCsetsEpic)
+epics.push(fetchCidsEpic)
 
-const loadCset = (action$, store) => (
+const apiDataToStore = (action$, store) => (
   action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
     .filter((action) => (action.meta||{}).apiPathname === 'cset')
-    .delay(200)
+    .delay(200) // what's this for?
     .map(action=>{
       let {type, payload, meta} = action
-      //console.log("loadCset", action)
-      const cset = getCset(store.getState())(payload.id)
-      return saveCset(cset, payload)
+      return { type: csetActions.API_DATA, payload }
     })
 )
-epics.push(loadCset)
-
+epics.push(apiDataToStore)
 
 
 export {epics}
@@ -209,14 +216,74 @@ export const selectMethods = {
 }
 */
 
+const csetQueryProps = ['selectMethodName', 'selectMethodParams',
+  'includeDescendants', 'includeMapped', 'isExcluded']
+const csetResultProps = ['cids']
+const csetMetaProps = ['name',]
+const csetUnpersistedProps = ['persistent','needsCidsFetching','needsPersisting']
 
 export const ConnectedCset = stampit()
-  .init(function({conceptState, csetSelectors, }) {
-    this.conceptState = conceptState
-    this.csetSelectors = csetSelectors
-  })
   .methods({
-    concepts: function(cids=this.cids()) { return concepts(this.conceptState.loaded).filter(c=>_.includes(cids,c.concept_id)) },
+    sameAsStore: function() {
+      let storedCset = getCset(this.id())
+      return this.sameAsObj(storedCset.obj())
+    },
+    persistObj: function() {
+      return _.pickBy(this.obj(), (v,k)=>!_.includes(csetUnpersistedProps, k))
+    },
+    sameAsPersisted: function() {
+      let _cset = _persistedCsets().find(_cset=>_cset.id === this.id())
+      return _.isEqual(this.persistObj(), _cset)
+    },
+    serialize: function(indent) { 
+      /*
+      if (this.sameAsPersisted()) {
+        let pcset = getPersistedCset(this.id()) // might have lost the fields that get added during unpickling
+        let obj = Object.assign({},pcset.obj(), {
+          justUnpickled: true
+        })
+        return JSON.stringify(obj, null, indent)
+      }
+      */
+      let obj = Object.assign({},this.obj(), {
+        persistent: this.persistent() ? 'true' : 'false',
+        needsCidsFetching: this.needsCidsFetching() ? 'true' : 'false',
+        needsPersisting: this.needsPersisting() ? 'true' : 'false',
+      })
+      return JSON.stringify(obj, null, indent)
+    },
+    persistent: function() { return this._cset.persistent },
+    needsCidsFetching: function() { return this._cset.needsCidsFetching },
+    needsPersisting: function() { return this._cset.needsPersisting },
+    update: function(newProps) { // user updates only...i'm pretty sure
+      if (!this.sameAsStore()) {
+        //throw new Error("havent even updated yet -- why out of sync with store?")
+      }
+      let newCset
+      if (this.arePropsDifferent(newProps)) {
+        const _cset = this.mergeProps(newProps)
+        let queryProps = _.pick(newProps, csetQueryProps)
+        if (this.arePropsDifferent(queryProps)) {
+          _cset.cids = []
+          _cset.needsCidsFetching = true
+          newCset = makeCset(_cset)
+          //newCset.fetchCids()
+        } else {
+          newCset = makeCset(_cset)
+        }
+        getStore().dispatch({ type: csetActions.UPDATE, payload:newCset.obj(), })
+      }
+    },
+    persist: function() {
+      //debugger
+      this.update({persistent: true, needsPersisting: true})
+      persistCsets()
+      this.update({needsPersisting: false})
+    },
+    updateSelectParams: function(newProps) {
+      this.update({selectMethodParams: newProps})
+    },
+    concepts: function(cids=this.cids()) { return concepts(conceptState().loaded).filter(c=>_.includes(cids,c.concept_id)) },
     concept_ids: function(cids) { return this.concepts(cids).map(d=>d.concept_id) },
     conCnt: function() { return this.concepts().length },
     status: function() { return new CsStatus(this) },
@@ -300,14 +367,21 @@ export const ConnectedCset = stampit()
       )
     },
 
+    requestId: function() {
+      return [this.id(), ..._.values(this.selectMethodParams())].join(':')
+    },
+    fetchConcepts: function() {
+      let requestAction = bindActionCreators(cncpt.wantConcepts)(this.cids(),{requestId:this.requestId()})
+      return requestAction
+    },
     requestState: function() {
-      return this.conceptState.requests
+      return conceptState().requests
     },
     allRequests: function() {
       return this.requestState().requests
     },
     myRequest: function() {
-      return _.find(this.allRequests(),req=>req.meta.requestId == this.id())
+      return _.find(this.allRequests(),req=>req.meta.requestId == this.requestId())
     },
     requested: function() {
       return !!this.myRequest()
@@ -326,10 +400,12 @@ export const ConnectedCset = stampit()
         }
       })
       if (!this.requested()) {
-        ret.unRequested = _.difference(this.cids(), ..._.values(ret))
+        ret.unrequested = _.difference(this.cids(), ..._.values(ret))
       }
       if (_.sum(_.values(ret).map(d=>d.length)) !== this.cidCnt()) {
-        throw new Error("that's not right")
+        if (!this.needsCidsFetching()) {
+          throw new Error("that's not right")
+        }
       }
       return ret
     },
@@ -353,8 +429,7 @@ export const ConnectedCset = stampit()
       return cantFetch
     },
     waiting: function() {
-      let {want,fetching,cantFetch,got} = this.conceptBaskets()
-      return this.cidCnt() > got.length + cantFetch.length
+      return this.cidCnt() > _.pick(this.basketCounts(), ['got','cantFetch'])
     },
   })
 
@@ -632,6 +707,7 @@ export class ConceptSet {
     if (this.status().loaded()) {
       return
     }
+    debugger
     this.wantConcepts(this.cids(),{requestId:this.longDesc()})
   }
 }
@@ -645,6 +721,7 @@ class CsStatus {
   loaded = () => this.cset.cidCnt() === this.cset.conCnt()
   //loading = () => {throw new Error("not implemented")}
   status = () => {
+    throw new Error('fix')
     let cset = this.cset
     let {status:reqStatus, want, fetching, got, focal, requests, staleRequests} = cset.conceptState.requests
     let notLoaded = _.difference(cset.cids(), cset.concept_ids())

@@ -35,20 +35,37 @@ import {
 
 let ConceptSetBuilder = C.csetWrap(class extends Component {
   componentDidMount() {
-    let { csets, M=muit(), builder, isNew, newCset} = this.props
+    let { M=muit(), builder, isNew, newCset} = this.props
+    /* can't deal with this now
+    this.unregisterLeaveHook = this.props.router.setRouteLeaveHook(props.route, this.routerWillLeave.bind(this));
+    this.handler = window.addEventListener("beforeunload", (ev) => {  
+      debugger
+        ev.preventDefault();
+        return ev.returnValue = 'Are you sure you want to close?';
+    })
+    */
+  }
+  routerWillLeave(nextLocation) {
+    return false;        
   }
   componentWillUnmount() {
     let { trashCset, cset } = this.props
-    if (!cset.isSaved) {
-      trashCset(cset)
+    /*
+    this.unregisterLeaveHook()
+    if (!cset.sameAsPersisted()) {
+      window.confirm("hi")
     }
+    debugger
+    if (!cset.persistent()) {
+      //trashCset(cset)
+    }
+    */
   }
   componentDidUpdate() {
   }
   render() {
-    const { csets, cset, M=muit(), builder, isNew, 
-              vocabularies, saveCset,
-    } = this.props
+    const { cset, M=muit(), builder, isNew, 
+              vocabularies, } = this.props
     // redux-form stuff:
     const {handleSubmit, pristine, reset, submitting} = this.props
     let matchBy = 'text'
@@ -83,11 +100,8 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                       style={{padding:'0px 8px 0px 8px',width:'80%'}}
                       component={SelectField}
                       floatingLabelText={'Select concepts by'}
-                      onChange={
-                        (evt, selectMethodName, prevValue) => {
-                          saveCset(cset,{selectMethodName})
-                        }
-                      }
+                      onChange={(evt,selectMethodName,prev)=>
+                        cset.update({selectMethodName})}
                 >
                   {
                     Object
@@ -109,16 +123,33 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
     return  <Paper style={M('paper')} zDepth={2} >
               <h3>
                 <C.CsetView M={M} csetId={cset.id()} load={true}/>
-                {cset.cidCnt() 
+                { (!cset.persistent() && !cset.cidCnt()) ||
+                  (cset.persistent() && !cset.sameAsPersisted())
+
                   ? <SaveButton 
                         buttonProps={{
-                          onClick:()=>saveCset(cset,{isSaved:true})
+                          onClick:()=>cset.persist()
                         }}
-                        //buttonProps={{label:'what?'}}
                       />
                   : null
                 }
-                {cset.isSaved() 
+                <Field name="includeMapped" 
+                  style={{padding:'0px 8px 0px 8px',width:'60%'}}
+                  component={Toggle}
+                  label='Include mapped'
+                  onChange={(evt,includeMapped,prev)=>
+                    cset.update({includeMapped})}
+                  normalize={val=>!!val}
+                />
+
+                <pre>
+                  {cset.serialize(2)}
+                  {'\n'}
+                  sameAsPersisted: {cset.sameAsPersisted() ? 'true' : 'false'}
+                  {'\n'}
+                  sameAsStore: {cset.sameAsStore() ? 'true' : 'false'}
+                </pre>
+                {cset.persistent() 
                   ? <DeleteIcon />
                   : null
                 }
@@ -138,18 +169,8 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                           style={{padding:'0px 8px 0px 8px',width:'60%'}}
                           component={TextField}
                           floatingLabelText='ConceptSet Name'
-                          onChange={
-                            (evt, name, prevValue) => {
-                              saveCset(
-                                cset,
-                                { name,
-                                  selectMethodParams: {
-                                    ...cset.selectMethodParams(),
-                                    name,
-                                  }
-                                })
-                            }
-                          }
+                          onChange={(evt,name,prev)=>
+                            cset.update({name})}
                       />
                     : null
                 }
@@ -160,17 +181,8 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                           component={SelectField}
                           //floatingLabelText={vocabulary ? vocabulary.vocabulary_version : 'Choose Vocabulary'}
                           floatingLabelText='Vocabulary'
-                          onChange={
-                            (evt, vocabulary_id, prevValue) => {
-                              saveCset(
-                                cset,
-                                { selectMethodParams: {
-                                    ...cset.selectMethodParams(),
-                                    vocabulary_id,
-                                  }
-                                })
-                            }
-                          }
+                          onChange={(evt,vocabulary_id,prev)=>
+                            cset.updateSelectParams({vocabulary_id})}
                       >
                         {
                           (vocabularies||[]).map(
@@ -212,21 +224,11 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                           style={{padding:'0px 8px 0px 8px',width:'60%'}}
                           component={TextField}
                           floatingLabelText='Text (% for wildcard)'
-                          onChange={
-                            (evt, matchStr, prevValue) => {
-                              saveCset(
-                                cset,
-                                { selectMethodParams: {
-                                    ...cset.selectMethodParams(),
-                                    matchStr,
-                                  }
-                                })
-                            }
-                          }
+                          onChange={(evt,matchStr,prev)=>
+                            cset.updateSelectParams({matchStr})}
                       />
                     : null
                 }
-
                 <hr/>
                 {
                 /*
@@ -241,21 +243,16 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
 })
 ConceptSetBuilder = reduxForm({
   form: 'concept_builder',  // a unique identifier for this form
-  /*
-  onChange: (values, dispatch, props) => {
-    props.saveCset(props.cset.obj())
-  },
-  */
 })(ConceptSetBuilder)
  
 ConceptSetBuilder = connect(
   (state, props) => {
-    let cset = cset$.getCset(state)(props.csetId,state.concepts)
+    //let cset = cset$.getCset(state)(props.csetId)
+    let cset = cset$.getCset(props.csetId)
     if (!cset) {
       throw new Error("shouldn't be here")
     }
     return {
-      csets: cset$.csets(state),
       cset,
       initialValues: {...cset.obj(),...cset.selectMethodParams()},
       ...cset.selectMethodParams(),
@@ -263,6 +260,6 @@ ConceptSetBuilder = connect(
     }
   }
   , dispatch=>bindActionCreators(_.pick(cset$,[
-      'newCset','trashCset','saveCset']), dispatch)
+      'newCset','trashCset',]), dispatch)
 )(ConceptSetBuilder)
 export default ConceptSetBuilder

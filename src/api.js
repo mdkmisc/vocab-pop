@@ -122,6 +122,7 @@ export const reducer = (
         if (_.isEqual(queue[url].params,params)) {
           return state
         }
+        debugger
         throw new Error("do something -- in queue already, but not same")
       }
       queue = {...queue, [url]: {params,msg,apiPathname, meta, status:'queued'}}
@@ -229,7 +230,11 @@ const watchTheQueue = (action$, store) => (
       let queuedCall = {...queuedCalls[0][1], url:queuedCalls[0][0]}
       let user = getUser()
       if (user.tester) {
-        return Rx.Observable.of(actionGenerators.nextInQueue(queuedCall))
+        let action = actionGenerators.nextInQueue(queuedCall)
+        if (!action.type) {
+          debugger
+        }
+        return Rx.Observable.of(action)
       }
       return Rx.Observable.of({
         type: apiActions.UNAUTHORIZED,
