@@ -124,9 +124,12 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
     return  <Paper style={M('paper')} zDepth={2} >
               <h3>
                 <C.CsetView M={M} csetId={cset.id()} load={true}/>
-                { (!cset.persistent() && cset.cidCnt()) ||
+                { 
+                  /*
+                  (!cset.persistent() && cset.cidCnt()) ||
                   (cset.persistent() && !cset.sameAsPersisted())
-
+                  */
+                  cset.needsPersisting()
                   ? <SaveButton 
                         buttonProps={{
                           onClick:()=>cset.persist()
