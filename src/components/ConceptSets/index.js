@@ -82,11 +82,10 @@ class ConceptSets extends Component {
     }
 
     return  <Paper style={M('paper')} zDepth={2} >
+              <pre>{JSON.stringify(this.props.csetsStatus,null,2)}</pre>
               {content}
             </Paper>
   }
-  // good information, but causes infinite loop
-  // <pre>{JSON.stringify(this.props.csetsStatus,null,2)}</pre>
 }
 ConceptSets = connect(
   (state, props) => {

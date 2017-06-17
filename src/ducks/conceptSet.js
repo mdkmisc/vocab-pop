@@ -31,8 +31,10 @@ import * as stampitStuff from 'stampit'
 window.stampitStuff = stampitStuff
 
 
-export const UNPICKLE_RAW = 'vocab-pop/conceptSet/UNPICKLE_RAW'
 export const UNPICKLE = 'vocab-pop/conceptSet/UNPICKLE'
+export const FRESH_UNPICKLE = 'vocab-pop/conceptSet/FRESH_UNPICKLE'
+export const UNPICKLE_DONE= 'vocab-pop/conceptSet/UNPICKLE_DONE'
+export const PICKLED = 'vocab-pop/conceptSet/PICKLED'
 export const NEW = 'vocab-pop/conceptSet/NEW'   // save 1 cset
 export const TRASH = 'vocab-pop/conceptSet/TRASH'   // remove UNSAVED cset
 export const UPDATE = 'vocab-pop/conceptSet/UPDATE'
@@ -41,66 +43,59 @@ export const API_DATA = 'vocab-pop/conceptSet/API_DATA'
 export const API_CALL = 'vocab-pop/conceptSet/API_CALL'
 
 /**** start reducers *********************************************************/
-/*
-const initialCsetLoad = () => {
-  console.log(`initialCsetLoad, ids at: ${_.uniqueId()}`)
-  let _csets = _persistedCsets().map(unpickleCset)
-  _.range(_.max(_csets.map(d=>parseInt(d.id,10)))).forEach(()=>_.uniqueId()) // start ids after highest
-  getStore().dispatch({ type: UNPICKLE, payload:_csets})
-  return []
-}
-*/
-let initStatus = {turnedOff: true, actions:[]}
+//let initStatus = {turnedOff: true, actions:[]}
 //let initStatus = {uninitialized:true, actions:[]}
+let initStatus = {uninitialized:true}
 const statusReducer = (state=initStatus, action) => {
-  return status
   let {type, payload, meta, error} = action
-  let newProps = {}
+  let newProps
   switch (type) {
-    case UNPICKLE_RAW:
-      newProps = { uninitialized:undefined, pickling: true }
+    case UNPICKLE:
+      if (state.uninitialized) {
+        newProps = { uninitialized:undefined, unpickling: 'started', }
+      }
+      if (meta.force) {
+        throw new Error("not for now")
+        newProps = { unpickling: 'started', }
+      }
+      break
+    case FRESH_UNPICKLE:
+      if (state.uninitialized) {
+        newProps = { unpickling: 'fresh', }
+      }
+      break
+    case UNPICKLE_DONE:
+      if (state.unpickling !== 'done') {
+        newProps = { unpickling: 'done', }
+      }
+      break
+    case PICKLED:
+      newProps = {pickled: [...state.pickled, action], unpickling:'hopeNot'}
       break
     case NEW:
     case UPDATE:
     case JUST_UNPICKLED:
     case API_DATA:
     case TRASH:
-      break
-    default: return state
+    default: 
+      return state
   }
-  return {...state, actions: [...state.actions, action], ...newProps}
-}
-const pickledReducer = (state=unpickle(), action) => {
-  let {type, payload, meta, error} = action
-  switch (type) {
-    case UNPICKLE:
-      return payload
+  if (newProps) {
+    return {...state, ...newProps}
   }
   return state
 }
-const _persistedCsets = () => getStore().getState().csets.pickled
-export const persistCsets = () => {
-  let _csets = _storedCsets().map(
-    _cset => {
-      //let upProps = _.pick(_cset, csetUnpersistedProps)
-      let saveProps =  _.pickBy(_cset, (v,k)=>!_.includes(csetUnpersistedProps, k))
-      return saveProps
-    }
-  )
-  util.storagePut('csets', _csets, localStorage, true)
-  unpickle({saveToStore:false, dispatch:true}) // update pickleReducer
-}
-export const _getPersistedCset = createSelector( _persistedCsets, _csets => id => _.find(_csets, cs=>cs.id==id))
-const unpickle = (meta={}) => { // this is an action generator!
-  let _csets = util.storageGet('csets',localStorage)||[]
-  kludgyDispatch({ type: UNPICKLE_RAW, payload:_csets, meta})
-  if (meta.dispatch) {
-    //meta = {...meta, unpickling:true, dispatch:undefined}
-    meta = {...meta, unpickling:true}
-    kludgyDispatch({ type: UNPICKLE_RAW, payload:_csets, meta})
-    return []
+const pickledReducer = (state=0, action) => {
+  let {type, payload, meta, error} = action
+  switch (type) {
+    case UNPICKLE:
+    case PICKLED:
+      if (_.isEqual(payload, state)) {
+        return state
+      }
+      return payload
   }
-  return _csets
+  return state
 }
 const csetsReducer = (state=0, action) => {
   //state = state || initialCsetLoad(action)
@@ -108,7 +103,7 @@ const csetsReducer = (state=0, action) => {
   //debugger
   let {type, payload, meta, error} = action
   switch (type) {
-    case UNPICKLE:
+    case FRESH_UNPICKLE:
       return (
         payload.map(_cset => {
           _cset = Object.assign({}, _cset, justUnpickledProps)
@@ -168,14 +163,20 @@ epics.push((action$, store) => (
     .mergeMap(action=>{
       const {type, payload, meta} = action
       const _csets = payload
-      return _csets.map(
-        _cset => ({type: JUST_UNPICKLED, payload:_cset})
-      )
-      return Rx.Observable.concat( _csets.map(
-        _cset => (Rx.Observable.of({type: JUST_UNPICKLED, payload:_cset}))
-      ))
+      return [
+        {type: FRESH_UNPICKLE, payload},
+        ..._csets.map(
+          _cset => ({type: JUST_UNPICKLED, payload:_cset})
+        )
+      ]
     })
-
+))
+epics.push((action$, store) => (
+  action$.ofType(FRESH_UNPICKLE)
+    .mergeMap(action=>{
+      const {type, payload, meta} = action
+      return Rx.Observable.of({type: UNPICKLE_DONE, payload})
+    })
 ))
 epics.push((action$, store) => (
   action$.ofType(UPDATE, JUST_UNPICKLED)
@@ -200,9 +201,27 @@ epics.push((action$, store) => (
       return { type: API_DATA, payload }
     })
 ))
-
 export {epics}
 /**** end epics ******************************************/
+
+/**** ACTION GENERATORS THAT ALSO READ/WRITE STORAGE: ********************/
+const unpickle = (meta={}) => {
+  let _csets = util.storageGet('csets',localStorage)||[]
+  return { type: UNPICKLE, payload:_csets, meta}
+}
+const persistCsets = (meta={}) => {
+  let _csets = (getStore().getState().csets.csets || []).map(
+    _cset => {
+      //let upProps = _.pick(_cset, csetUnpersistedProps)
+      let saveProps =  _.pickBy(_cset, (v,k)=>!_.includes(csetUnpersistedProps, k))
+      return saveProps
+    }
+  )
+  util.storagePut('csets', _csets, localStorage, true)
+  return { type: PICKLED, payload:_csets, meta}
+}
+const _persistedCsets = () => getStore().getState().csets.pickled
+export const _getPersistedCset = createSelector( _persistedCsets, _csets => id => _.find(_csets, cs=>cs.id==id))
 
 
 /*
@@ -265,10 +284,11 @@ export const _storedCsets = (state=getStore().getState()) => {
   if (state.csets.csets) {
     return state.csets.csets
   }
-  if (typeof getStore === 'function') {
-    return unpickle({dispatch:true, })
+  if (state.csets.pickled) {
+    return state.csets.pickled
   }
-  return state.csets.csets
+  kludgyDispatch(unpickle())
+  return []
 }
 export const _getCset = createSelector( _storedCsets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
 export const storedCsets = createSelector(_storedCsets, _csets=>_csets.map(makeCset))
