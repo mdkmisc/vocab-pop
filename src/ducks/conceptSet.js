@@ -154,7 +154,6 @@ const unpickle = (meta={}) => {
   return { type: UNPICKLE, payload:_csets, meta}
 }
 const persistCsets = (meta={}) => {
-  debugger
   let _csets = (getStore().getState().csets.csets || []).map(prepareForPickling)
   util.storagePut('csets', _csets, localStorage, true)
   return { type: PICKLED, payload:_csets, meta}
@@ -193,6 +192,21 @@ epics.push((action$, store) => (
           })
         }
       }).filter(d=>d)
+    })
+))
+epics.push((action$, store) => (
+  action$.ofType(UPDATE)
+    .mergeMap(action=>{
+      const {type, payload, meta} = action
+      const cset = getCset(payload.id)
+      if (cset.needsCidsFetching()) {
+        return Rx.Observable.of(api.actionGenerators.apiCall({
+          apiPathname:'cset', 
+          params:{cset:cset.obj()}, 
+          meta:{requestId:cset.requestId()}
+        }))
+      }
+      return Rx.Observable.empty()
     })
 ))
 
@@ -317,7 +331,7 @@ export const ConnectedCset = stampit()
         conceptsLoaded: this.conceptsLoaded() ? 'true' : 'false',
         doneFetching: this.doneFetching() ? 'true' : 'false',
         requested: this.requested() ? 'true' : 'false',
-        //myRequest: this.myRequest(),
+        myRequest: this.myRequest(),
       })
       return JSON.stringify(obj, null, indent)
     },
@@ -413,8 +427,9 @@ export const ConnectedCset = stampit()
     },
 
     requestId: function() {
+      return localId(this.obj())
       let queryProps = JSON.stringify(_.values(_.pick(this.obj(), csetQueryProps)))
-      return [this.id(), ..._.values(queryProps)].join(':')
+      return [this.id(), queryProps].join(',')
     },
     fetchConcepts: function() {
       if (this.needsCidsFetching()) {
