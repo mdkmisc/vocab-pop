@@ -43,13 +43,13 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
         ev.preventDefault();
         return ev.returnValue = 'Are you sure you want to close?';
     })
-    */
-  }
   routerWillLeave(nextLocation) {
     return false;        
   }
+    */
+  }
   componentWillUnmount() {
-    let { trashCset, cset } = this.props
+    let { trashCset, csetId } = this.props
     /*
     this.unregisterLeaveHook()
     if (!cset.sameAsPersisted()) {
@@ -64,10 +64,11 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
   componentDidUpdate() {
   }
   render() {
-    const { cset, M=muit(), builder, isNew, 
+    const { csetId, M=muit(), builder, isNew, 
               vocabularies, } = this.props
     // redux-form stuff:
     const {handleSubmit, pristine, reset, submitting} = this.props
+    let cset = cset$.getCset(csetId)
     let matchBy = 'text'
     let matchStr = 'acne'
     if (!vocabularies.length) {
@@ -123,7 +124,7 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
     return  <Paper style={M('paper')} zDepth={2} >
               <h3>
                 <C.CsetView M={M} csetId={cset.id()} load={true}/>
-                { (!cset.persistent() && !cset.cidCnt()) ||
+                { (!cset.persistent() && cset.cidCnt()) ||
                   (cset.persistent() && !cset.sameAsPersisted())
 
                   ? <SaveButton 
@@ -148,6 +149,12 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                   sameAsPersisted: {cset.sameAsPersisted() ? 'true' : 'false'}
                   {'\n'}
                   sameAsStore: {cset.sameAsStore() ? 'true' : 'false'}
+                  {'\n'}
+                  persistent: {cset.persistent() ? 'true' : 'false'}
+                  {'\n'}
+                  needsCidsFetching: {cset.needsCidsFetching() ? 'true' : 'false'}
+                  {'\n'}
+                  needsPersisting: {cset.needsPersisting() ? 'true' : 'false'}
                 </pre>
                 {cset.persistent() 
                   ? <DeleteIcon />
@@ -253,7 +260,7 @@ ConceptSetBuilder = connect(
       throw new Error("shouldn't be here")
     }
     return {
-      cset,
+      //cset,
       initialValues: {...cset.obj(),...cset.selectMethodParams()},
       ...cset.selectMethodParams(),
       vocabularies: state.vocabularies||[],

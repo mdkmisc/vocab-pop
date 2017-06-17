@@ -85,12 +85,17 @@ class ConceptSets extends Component {
               {content}
             </Paper>
   }
+  // good information, but causes infinite loop
+  // <pre>{JSON.stringify(this.props.csetsStatus,null,2)}</pre>
 }
 ConceptSets = connect(
   (state, props) => {
     const { builder, isNew, csetId, } = myrouter.getQuery()
     const storedCsets = cset$.storedCsets(state)
-    let moreProps = { storedCsets }
+    let moreProps = { 
+      storedCsets,
+      csetsStatus: state.csets.status,
+    }
     if (typeof csetId !== 'undefined') {
       //let cset = cset$.getCset(state)(csetId)
       let cset = cset$.getCset(csetId)
