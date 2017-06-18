@@ -108,9 +108,11 @@ const csetConnect = Component => connect(
 )(Component)
 
 export const CsetWrapper = csetConnect(class extends Component {
-  componentDidMount() {
+  componentDidUpdate() {
     const {cset, load, } = this.props
-    if (load && cset && cset.valid()) {
+    if (load && cset && 
+          cset.doneFetchingCids() &&
+          !cset.doneFetchingConcepts()) {
       cset.fetchConcepts()
       //wantConcepts(cset.cids(),{requestId:cset.id()})
     }
@@ -125,15 +127,32 @@ export const csetWrap = Component =>
 
 export const ConceptCount = props => {
   const {cset, ttText, url, M=muit(), } = props
+  let cnt = cset.cidCnt()
+  let badgeContent, badgeStyle
+  if (cset.doneFetchingCids() && cnt) {
+    badgeStyle = {
+      backgroundColor: 'green',
+    }
+    badgeContent = <span>{cnt}</span>
+  } else if (cset.doneFetchingCids()) {
+    badgeStyle = {
+      backgroundColor: 'red',
+    }
+    badgeContent = <span>{cnt}</span>
+  } else {
+    badgeContent =  <CircularProgress size={20} 
+                      {...M('circularProgress.styleProps')}
+                    />
+  }
+  
   return  <span style={{
                   zoom: .7,
               }}> 
             <Badge
-              badgeContent={cset.cidCnt()}
+              badgeContent={badgeContent}
               primary={true}
-              badgeStyle={{
+              badgeStyle={badgeStyle}
                 //top: 18, right: 18,
-              }}
             >
                     <ConceptIcon />
             </Badge>
@@ -141,37 +160,29 @@ export const ConceptCount = props => {
 }
 export const FetchButton = props => {
   const {cset, ttText, url, M=muit(), } = props
-  return  <span style={{
-                  zoom: .7,
-              }}> 
-              {
-                cset.requested() ? null :
-                  <IconButton tooltip={`Fetch concepts`}
-                    onClick={
-                      ()=>cset.fetchConcepts()
-                      //wantConcepts( cset.cids(), {requestId:cset.id()})
-                    }
-                  >
-                    <CloudDownload />
-                  </IconButton>
-              }
-              {
-                cset.waiting() &&
-                !cset.doneFetching() ?
-                    <CircularProgress size={20} 
-                        {...M('circularProgress.styleProps')}
-                    /> : null
-              }
-              {
-                cset.doneFetching() ? <CloudDone color='green' /> : null
-              }
+  let button = null
+  if (cset.waiting()) {
+    button =  <CircularProgress size={20} 
+                {...M('circularProgress.styleProps')}
+              />
+  } else if (!cset.cidCnt()) {
+  } else if (cset.doneFetchingConcepts()) {
+    button =  <CloudDone color='green' />
+  } else {
+    button =  <IconButton tooltip={`Fetch concepts`}
+                onClick={()=>cset.fetchConcepts() } >
+                <CloudDownload />
+              </IconButton>
+  }
+  return  <span style={{ zoom: .7, }}> 
+              { button }
           </span>
 }
 
 export const InfoDump = ({cset}) => {
   return (
         <pre>
-          {cset.serialize(2)}
+          {cset.serialize()}
           {'\n'}
           sameAsPersisted: {cset.sameAsPersisted() ? 'true' : 'false'}
           {'\n'}

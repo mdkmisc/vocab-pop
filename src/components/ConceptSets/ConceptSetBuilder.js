@@ -224,10 +224,6 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
               <h3>
                 <C.CsetView M={M} csetId={cset.id()} load={true}/>
                 { 
-                  /*
-                  (!cset.persistent() && cset.cidCnt()) ||
-                  (cset.persistent() && !cset.sameAsPersisted())
-                  */
                   cset.needsPersisting()
                   ? <SaveButton 
                         buttonProps={{
@@ -293,6 +289,8 @@ ConceptSetBuilder = connect(
       vocabularies: state.vocabularies||[],
       showInfoDumpValue: formSelector(state,'showInfoDump'),
       showSelectFormValue: formSelector(state,'showSelectForm'),
+      csetsStatus: state.csets.status,
+      load:true,
     }
   }
   , dispatch=>bindActionCreators(_.pick(cset$,[

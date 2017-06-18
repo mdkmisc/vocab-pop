@@ -15,7 +15,7 @@ import { bindActionCreators, createStore, compose, combineReducers, applyMiddlew
 import { createSelector } from 'reselect'
 import { combineEpics } from 'redux-observable'
 
-const apiPathname = 'conceptInfo'
+export const apiPathname = 'conceptInfo'
 const MAX_CONCEPTS_TO_LOAD = 500
 
 export const conceptActions = {

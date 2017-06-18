@@ -30,7 +30,7 @@ import stampit from 'stampit'
 import * as stampitStuff from 'stampit'
 window.stampitStuff = stampitStuff
 
-
+export const CSET_APIPATH = 'cset'
 export const UNPICKLE = 'vocab-pop/conceptSet/UNPICKLE'
 export const FRESH_UNPICKLE = 'vocab-pop/conceptSet/FRESH_UNPICKLE'
 export const UNPICKLE_DONE= 'vocab-pop/conceptSet/UNPICKLE_DONE'
@@ -116,8 +116,9 @@ const csetsReducer = (state=0, action) => {
         throw new Error("should have checked already")
         return state
       }
-      // intentionally dropping to next case to just save update to store
+      return [...state.filter(cset=>cset.id !== payload.id), payload]
     case API_DATA:
+      payload = incarnateToLocal(payload)
       return [...state.filter(cset=>cset.id !== payload.id), payload]
     case TRASH:
       debugger
@@ -186,9 +187,9 @@ epics.push((action$, store) => (
         const cset = getCset(_cset.id)
         if (cset.needsCidsFetching()) {
           return api.actionGenerators.apiCall({
-            apiPathname:'cset', 
-            params:{cset:cset.obj()}, 
-            meta:{requestId:cset.requestId()}
+            apiPathname:CSET_APIPATH, 
+            params:{cset:prepareForPickling(cset.obj())}, 
+            meta:{requestId:cset.requestId(CSET_APIPATH)}
           })
         }
       }).filter(d=>d)
@@ -201,9 +202,9 @@ epics.push((action$, store) => (
       const cset = getCset(payload.id)
       if (cset.needsCidsFetching()) {
         return Rx.Observable.of(api.actionGenerators.apiCall({
-          apiPathname:'cset', 
-          params:{cset:cset.obj()}, 
-          meta:{requestId:cset.requestId()}
+          apiPathname:CSET_APIPATH, 
+          params:{cset:prepareForPickling(cset.obj())}, 
+          meta:{requestId:cset.requestId(CSET_APIPATH)}
         }))
       }
       return Rx.Observable.empty()
@@ -212,7 +213,7 @@ epics.push((action$, store) => (
 
 epics.push((action$, store) => (
   action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
-    .filter((action) => (action.meta||{}).apiPathname === 'cset')
+    .filter((action) => (action.meta||{}).apiPathname === CSET_APIPATH)
     .delay(200) // what's this for?
     .map(action=>{
       let {type, payload, meta} = action
@@ -231,13 +232,18 @@ const csetPersistProps = csetMetaProps.concat(csetQueryProps, csetResultProps)
 const csetPersistPropsNR = csetMetaProps.concat(csetQueryProps)
 
 const localId = (_cset, forceNew=false) => {
+  let uniqueByQuery = _cset.id + '-' + 
+    util.serialize(_.values(_.pick(_cset, csetQueryProps)),{}).replace(/\"/g,'')
+  return uniqueByQuery
+  /*
   if (!forceNew && _cset.localId) {
     return _cset.localId
   }
   return _.uniqueId(`${_cset.id}-local-`)
+  */
 }
 const prepareForPickling = (_cset,includeResults=true) => 
-  _.pick(_cset, includeResults ? csetPersistProps : csetPersistPropsNR)
+  _.cloneDeep(_.pick(_cset, includeResults ? csetPersistProps : csetPersistPropsNR))
 const incarnateToLocal = _cset => { // from persistent
   return {..._cset, 
             persistent: true, 
@@ -293,7 +299,8 @@ export const _getPersistedCset = id => _persistedCsets().find(cs=>cs.id==id)
 
 export const CsetPickler = stampit()
   .init(function() {
-    this.localId = () => this._cset.localId
+    this.localId = () => this._cset.localId || localId(this._cset)
+    this.persistent = () => this._cset.persistent
   })
   .methods({
     sameAsStore: function() {
@@ -328,30 +335,49 @@ export const CsetPickler = stampit()
       this.update({persistent: true, })
       kludgyDispatch(persistCsets())
     },
-    serialize: function(indent) { 
-      //return JSON.stringify(this.obj(), null, indent)
+    serialize: function(opts) { 
       let obj = Object.assign({},this.obj(), {
         persistent: this.persistent() ? 'true' : 'false',
         needsCidsFetching: this.needsCidsFetching() ? 'true' : 'false',
         needsPersisting: this.needsPersisting() ? 'true' : 'false',
         isValid: this.valid() ? 'true' : 'false',
-        cantFetch: this.cantFetch() ? 'true' : 'false',
+        cantFetch: this.cantFetch().length,
         // FIX!! split this stuff into different class
         waiting: this.waiting() ? 'true' : 'false',
         conceptsLoading: this.conceptsLoading() ? 'true' : 'false',
-        conceptsLoaded: this.conceptsLoaded() ? 'true' : 'false',
-        doneFetching: this.doneFetching() ? 'true' : 'false',
-        requested: this.requested() ? 'true' : 'false',
-        myRequest: this.myRequest() || 'no request found',
+        someConceptsLoaded: this.conceptsLoaded().length ? 'true' : 'false',
+        doneFetchingCids: this.doneFetchingCids() ? 'true' : 'false',
+        doneFetchingConcepts: this.doneFetchingConcepts() ? 'true' : 'false',
+        wereCidsRequested: this.wereCidsRequested() ? 'true' : 'false',
+        wereConceptsRequested: this.wereConceptsRequested() ? 'true' : 'false',
+        cidsRequestId: this.requestId(CSET_APIPATH),
+        conceptsRequestId: this.requestId(cncpt.apiPathname),
+        basketCounts: this.basketCounts(),
+        //myRequest: this.myRequest() || 'no request found',
+        //allRequests: this.allRequests(),
       })
-      return JSON.stringify(obj, null, indent)
+      return util.serialize(obj, opts)
     },
     //persistent: function() { if (!this._cset){debugger}return this._cset.persistent || !!_getPersistedCset(this.id()) },
     needsCidsFetching: function() { 
-      return this.valid() && !this.cidCnt() && !this.doneFetching()
+      return this.valid() && !this.doneFetchingCids()
     },
     updateSelectParams: function(newProps) {
       this.update({selectMethodParams: newProps})
+    },
+    myCidsRequest: function() {
+      let apiState = getStore().getState().api
+      let allRequests = apiState.queue
+      let myRequest = _.values(allRequests).find(
+        req=>(req.meta||{}).requestId === this.requestId(CSET_APIPATH))
+      return myRequest
+    },
+    wereCidsRequested: function() {
+      return !!this.myCidsRequest()
+    },
+    doneFetchingCids: function() {
+      return this.cidCnt() || // if any at all, should have all
+              (this.myCidsRequest()||{meta:{}}).meta.status === 'complete'
     },
   })
 export const ConceptRequester = stampit()
@@ -359,8 +385,11 @@ export const ConceptRequester = stampit()
     concepts: function(cids=this.cids()) { return concepts(conceptState().loaded).filter(c=>_.includes(cids,c.concept_id)) },
     concept_ids: function(cids) { return this.concepts(cids).map(d=>d.concept_id) },
     conCnt: function() { return this.concepts().length },
-    requestId: function() {
-      return this.localId()
+    requestId: function(apiPathname) {
+      if (!apiPathname) {
+        throw new Error("need an api name")
+      }
+      return this.localId() + '-' + apiPathname
       /*
       return localId(this.obj())
       let queryProps = JSON.stringify(_.values(_.pick(this.obj(), csetQueryProps)))
@@ -371,7 +400,7 @@ export const ConceptRequester = stampit()
       if (this.needsCidsFetching()) { // can't fetch concepts if don't know cids yet
         return
       }
-      let requestAction = bindActionCreators(cncpt.wantConcepts)(this.cids(),{requestId:this.requestId()})
+      let requestAction = bindActionCreators(cncpt.wantConcepts)(this.cids(),{requestId:this.requestId(cncpt.apiPathname)})
       return requestAction
     },
     requestState: function() {
@@ -380,14 +409,11 @@ export const ConceptRequester = stampit()
     allRequests: function() {
       return this.requestState().requests
     },
-    myRequest: function() {
-      return _.find(this.allRequests(),req=>req.meta.requestId == this.requestId())
+    myConceptRequest: function() {
+      return _.find(this.allRequests(),req=>req.meta.requestId == this.requestId(cncpt.apiPathname))
     },
-    requested: function() {
-      return !!this.myRequest()
-    },
-    doneFetching: function() {
-      return (this.myRequest()||{meta:{}}).meta.status === 'done'
+    wereConceptsRequested: function() {
+      return !!this.myConceptRequest()
     },
     conceptBaskets: function(opts={}) {
       const baskets = opts.basketList || ['want','fetching','cantFetch','got']
@@ -399,7 +425,7 @@ export const ConceptRequester = stampit()
           ret[basket] = inBasket
         }
       })
-      if (!this.requested()) {
+      if (!this.wereConceptsRequested()) {
         ret.unrequested = _.difference(this.cids(), ..._.values(ret))
       }
       if (!opts.basketList &&
@@ -413,7 +439,7 @@ export const ConceptRequester = stampit()
     basketCounts: function(opts={}) {
       let counts = _.mapValues(this.conceptBaskets(opts), d=>d.length)
       if (opts.action) { // assume action want array of vals, not obj
-        return _.values(counts).map(opts.action)
+        return opts.action(_.values(counts))
       }
       return counts
     },
@@ -423,20 +449,24 @@ export const ConceptRequester = stampit()
     },
     conceptsLoaded: function() {
       let {want,fetching,cantFetch,got} = this.conceptBaskets()
-      return got
+      return got || []
     },
     conceptsLoading: function() {
       let {want,fetching,cantFetch,got} = this.conceptBaskets()
-      return fetching
+      return fetching || []
     },
     cantFetch: function() {
       let {want,fetching,cantFetch,got} = this.conceptBaskets()
-      return cantFetch
+      return cantFetch || []
     },
     waiting: function() {
-      return this.cidCnt() > this.basketCounts({
-        basketList:['got','cantFetch'], action:_.sum,
+      return this.wereConceptsRequested() && this.cidCnt() > this.basketCounts({
+          basketList:['got','cantFetch'], action:_.sum,
       })
+    },
+    doneFetchingConcepts: function() {
+      return this.wereConceptsRequested() && !this.waiting()
+      //return this.allConceptsLoaded() || (this.myConceptRequest()||{meta:{}}).meta.status === 'done'
     },
   })
 export const CsetAnalyzer = stampit()

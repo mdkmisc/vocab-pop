@@ -6,6 +6,10 @@ import React, { Component } from 'react';
 var $ = require('jquery');
 var d3 = require('d3');
 import LZString from 'lz-string';
+var stableStringify = require('json-stable-stringify');
+
+export const serialize = (obj, opts={space:'  '}) =>
+  stableStringify(obj,opts)
 
 let _store = sessionStorage // not a great idea, especially now that I'm using local and session
 export function storage(store = _store) {
