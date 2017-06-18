@@ -228,17 +228,18 @@ export const NameLink = csetWrap(props => {
             {' '}{oldConceptComp.groupLabel({cset,ttid:'nameLink'})}
           </span>
 })
-
+const ttid = 'csetViewer'
 export const CsetView = csetWrap(props => {
   const {cset, } = props
   return (
     <div>
-      <ConceptCount cset={cset} />
       <FetchButton cset={cset} />
+      <ConceptCount cset={cset} />
+      <oldConceptComp.CdmCntsButtons cset={cset} ttid={ttid} />
 
       <div style={{fontFamily:'monospace',zoom:.3,}}>
         <hr/>
-        {oldConceptComp.groupLabel({cset,ttid:'csetViewer'})}
+        {oldConceptComp.groupLabel({cset,ttid})}
         <hr/>
       </div>
     </div>

@@ -126,8 +126,8 @@ class IndividualConceptViews extends Component {
 const sFmt = d3.format('.2s')
 export const Counts = props => {
 }
-const CdmCntsButtons = props => {
-  let {cset, M, ttid, } = props
+export const CdmCntsButtons = props => {
+  let {cset, M=muit(), ttid, } = props
 
   let sgVal = cset.sgVal()
   let withCdm = cncpt.groups(sgVal, 'withCdm')

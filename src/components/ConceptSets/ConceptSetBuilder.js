@@ -196,33 +196,9 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
             : null
         }
         <hr/>
-        {
-        /*
-        <AgTable data={cset.concepts()||[]}
-              width={"100%"} height={250}
-              id="src_target_recs" />
-        */
-        }
       </form>
     return  (<Paper style={M('paper')} zDepth={2} >
-              <Field name="showInfoDump" 
-                  component={Toggle} 
-                  label={showInfoDumpValue 
-                          ? `Don't show info dump`
-                          : `Show info dump`}
-              />
-              { showInfoDumpValue ? <C.InfoDump cset={cset} /> : null }
-              
-              <Field name="showSelectForm" 
-                  component={Toggle} 
-                  label={showSelectFormValue 
-                          ? `Don't show select form`
-                          : `Show select form`}
-              />
-              { showSelectFormValue ? selectForm : null }
-              
               <h3>
-                <C.CsetView M={M} csetId={cset.id()} load={true}/>
                 { 
                   cset.needsPersisting()
                   ? <SaveButton 
@@ -261,6 +237,30 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                       />
                 */}
               </h3>
+              <Field name="showInfoDump" 
+                  component={Toggle} 
+                  label={showInfoDumpValue 
+                          ? `Don't show info dump`
+                          : `Show info dump`}
+              />
+              { showInfoDumpValue ? <C.InfoDump cset={cset} /> : null }
+              
+              <Field name="showSelectForm" 
+                  component={Toggle} 
+                  label={showSelectFormValue 
+                          ? `Don't show select form`
+                          : `Show select form`}
+              />
+              { showSelectFormValue ? selectForm : null }
+              <hr/>
+              
+              <C.CsetView M={M} csetId={cset.id()} load={true}/>
+              { cset.conCnt()
+                ? <AgTable data={cset.concepts()||[]}
+                    width={"100%"} height={250}
+                    id="src_target_recs" />
+                : null
+              }
             </Paper>
     )
   }
