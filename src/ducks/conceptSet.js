@@ -224,13 +224,18 @@ export {epics}
 
 /**** start selectors *****************************************************************/
 const csetQueryProps = ['selectMethodName', 'selectMethodParams',
-  'includeDescendants', 'includeMapped', 'isExcluded']
+  'includeDescendants', 'includeMapped', 'includeDescendants', 'isExcluded']
 const csetResultProps = ['cids']
 const csetMetaProps = ['id', 'name',]
 const csetPersistProps = csetMetaProps.concat(csetQueryProps, csetResultProps)
 const csetPersistPropsNR = csetMetaProps.concat(csetQueryProps)
 
-const localId = _cset => _.uniqueId(`${_cset.id}-local-`)
+const localId = (_cset, forceNew=false) => {
+  if (!forceNew && _cset.localId) {
+    return _cset.localId
+  }
+  return _.uniqueId(`${_cset.id}-local-`)
+}
 const prepareForPickling = (_cset,includeResults=true) => 
   _.pick(_cset, includeResults ? csetPersistProps : csetPersistPropsNR)
 const incarnateToLocal = _cset => { // from persistent
@@ -268,7 +273,9 @@ export const blessCset = (_cset) => {
       debugger
       throw new Error("don't know that method")
   }
-  stamp = stamp.compose(ConnectedCset)
+  stamp = stamp.compose(CsetPickler)
+               .compose(ConceptRequester)
+               .compose(CsetAnalyzer)
   let cset = stamp(_cset)
   return cset
 }
@@ -284,7 +291,10 @@ export const _getPersistedCset = id => _persistedCsets().find(cs=>cs.id==id)
 
 /**** end selectors *****************************************************************/
 
-export const ConnectedCset = stampit()
+export const CsetPickler = stampit()
+  .init(function() {
+    this.localId = () => this._cset.localId
+  })
   .methods({
     sameAsStore: function() {
       let storedCset = getCset(this.id())
@@ -306,7 +316,7 @@ export const ConnectedCset = stampit()
         let queryProps = _.pick(newProps, csetQueryProps)
         if (this.arePropsDifferent(queryProps)) {
           _cset.cids = []
-          _cset.localId = localId(_cset)
+          _cset.localId = localId(_cset,true)
           newCset = blessCset(_cset)
         } else {
           newCset = blessCset(_cset)
@@ -326,12 +336,13 @@ export const ConnectedCset = stampit()
         needsPersisting: this.needsPersisting() ? 'true' : 'false',
         isValid: this.valid() ? 'true' : 'false',
         cantFetch: this.cantFetch() ? 'true' : 'false',
+        // FIX!! split this stuff into different class
         waiting: this.waiting() ? 'true' : 'false',
         conceptsLoading: this.conceptsLoading() ? 'true' : 'false',
         conceptsLoaded: this.conceptsLoaded() ? 'true' : 'false',
         doneFetching: this.doneFetching() ? 'true' : 'false',
         requested: this.requested() ? 'true' : 'false',
-        myRequest: this.myRequest(),
+        myRequest: this.myRequest() || 'no request found',
       })
       return JSON.stringify(obj, null, indent)
     },
@@ -342,97 +353,22 @@ export const ConnectedCset = stampit()
     updateSelectParams: function(newProps) {
       this.update({selectMethodParams: newProps})
     },
+  })
+export const ConceptRequester = stampit()
+  .methods({ // assumes CsetPickler
     concepts: function(cids=this.cids()) { return concepts(conceptState().loaded).filter(c=>_.includes(cids,c.concept_id)) },
     concept_ids: function(cids) { return this.concepts(cids).map(d=>d.concept_id) },
     conCnt: function() { return this.concepts().length },
-    status: function() { return new CsStatus(this) },
-    cdmCnts: function() { return cdmCnts(this.sgVal()) },
-    relgrps: function(reldim) { return relgrps(this.concepts(),reldim) }, // reldim optional
-    sgList: function() { return _.supergroup(this.concepts(), 
-                                  d=>this.shortDesc(),
-                                  {dimName:'whole concept set'}) },
-    sgVal: function() { return _.supergroup(this.concepts(), 
-                              d=>null, 
-                              {dimName:'whole concept set'})
-                        .asRootVal(this.shortDesc()) },
-    XXsgListWithRels: function(depth=0) {
-      let sgList = this.sgList() // only one value, but want list to addRels
-      if (!this.conCnt()) {
-        return this.sgList
-      }
-      let wkids = addRels(sgList)
-      if (!depth) {
-        let wgkids = wkids.map(p => {
-          //debugger
-          let gp = addRels(p.getChildren())
-          // should only care about opposite
-          //p.sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
-          /*
-          p.oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
-          p.oppositeRels.forEach(d=>d.isOpposite=true)
-
-          let test = explodeArrayFlds(gp.records,'relgrps','cncpt')
-          let t2=explodeArrayFlds(test, 'relcids', 'relgrp')
-          let tr=_.flatten(t2.map(d=>Object.assign({},d,{reverse:t2.filter(e=>e.relgrp_cncpt_concept_id === d.relcids)})))
-          let t3 = explodeArrayFlds(tr,'reverse','from')
-
-          let allkeys = _.keys(t3[3])
-          let idkeys = _.keys(t3[3]).filter(d=>d.match('id')).filter(d=>!d.match(/(cgid|domain|class|vocab|relgrp_relcids)/))
-
-          let goodidkeys = [ "from_relgrp_cncpt_concept_id", "relgrp_cncpt_concept_id", "relcids", ]
-
-
-          let classkeys = _.keys(t3[3]).filter(d=>d.match('class'))
-          let relkeys = _.keys(t3[3]).filter(d=>d.match('relation'))
-
-          let round=t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
-          let roundsg = _.supergroup(round, [
-            "from_relgrp_cncpt_vocabulary_id",
-            "from_relgrp_relationship",
-            "from_relgrp_cncpt_concept_class_id",
-          ])
-          roundsg.summary({funcs:_.fromPairs(goodidkeys.map(k=>[k, d=>_.uniq(_.flatten(d.records.map(rec=>rec[k]))).length]))})
-          t3.filter(d=>d.from_relcids !== d.relgrp_cncpt_concept_id)
-          t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
-          _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids", ]).summary()
-
-          // took long time:
-          _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids","from_relgrp_cncpt_concept_class_id", "from_relgrp_concept_class_id", "relgrp_cncpt_concept_class_id", "relgrp_concept_class_id" ]).summary()
-          debugger
-          */
-          return p
-        })
-        //debugger
-        //wgkids[0].leafNodes().filter(d=>d.reldim === d.parent.rreldim).map(d=>cncpt.subgrpCnts(d))
-        //return wgkids
-      }
-      return sgList
-    },
-    subgrpCnts: function(...rest) {return subgrpCnts(this.sgVal(), ...rest)},
-    shortDesc: function() {
-      //let {status, msg} = this.status()
-      return (
-        this.name()
-      )
-    },
-    longDesc: function() {
-      return (
-        this.shortDesc()
-      )
-    },
-    fancyDesc: function() {
-      return (
-        <div style={{border:'4px solid pink'}}>{`${this.longDesc()}`}</div>
-      )
-    },
-
     requestId: function() {
+      return this.localId()
+      /*
       return localId(this.obj())
       let queryProps = JSON.stringify(_.values(_.pick(this.obj(), csetQueryProps)))
       return [this.id(), queryProps].join(',')
+      */
     },
     fetchConcepts: function() {
-      if (this.needsCidsFetching()) {
+      if (this.needsCidsFetching()) { // can't fetch concepts if don't know cids yet
         return
       }
       let requestAction = bindActionCreators(cncpt.wantConcepts)(this.cids(),{requestId:this.requestId()})
@@ -453,8 +389,8 @@ export const ConnectedCset = stampit()
     doneFetching: function() {
       return (this.myRequest()||{meta:{}}).meta.status === 'done'
     },
-    conceptBaskets: function(countsOnly) {
-      const baskets = ['want','fetching','cantFetch','got']
+    conceptBaskets: function(opts={}) {
+      const baskets = opts.basketList || ['want','fetching','cantFetch','got']
       let ret = {}
       let reqState = this.requestState()
       baskets.forEach(basket => {
@@ -466,15 +402,20 @@ export const ConnectedCset = stampit()
       if (!this.requested()) {
         ret.unrequested = _.difference(this.cids(), ..._.values(ret))
       }
-      if (_.sum(_.values(ret).map(d=>d.length)) !== this.cidCnt()) {
+      if (!opts.basketList &&
+          _.sum(_.values(ret).map(d=>d.length)) !== this.cidCnt()) {
         if (!this.needsCidsFetching()) {
           throw new Error("that's not right")
         }
       }
       return ret
     },
-    basketCounts: function() {
-      return _.mapValues(this.conceptBaskets(), d=>d.length)
+    basketCounts: function(opts={}) {
+      let counts = _.mapValues(this.conceptBaskets(opts), d=>d.length)
+      if (opts.action) { // assume action want array of vals, not obj
+        return _.values(counts).map(opts.action)
+      }
+      return counts
     },
     conceptsNotLoaded: function() {
       let {want,fetching,cantFetch,got} = this.conceptBaskets()
@@ -493,7 +434,41 @@ export const ConnectedCset = stampit()
       return cantFetch
     },
     waiting: function() {
-      return this.cidCnt() > _.pick(this.basketCounts(), ['got','cantFetch'])
+      return this.cidCnt() > this.basketCounts({
+        basketList:['got','cantFetch'], action:_.sum,
+      })
+    },
+  })
+export const CsetAnalyzer = stampit()
+  .methods({ // assumes ConceptRequester
+
+    subThemeName: function() {
+      return cncpt.singleMemberGroupLabel(this.sgVal(), 'sc')
+    },
+    cdmCnts: function() { return cdmCnts(this.sgVal()) },
+    relgrps: function(reldim) { return relgrps(this.concepts(),reldim) }, // reldim optional
+    sgList: function() { return _.supergroup(this.concepts(), 
+                                  d=>this.shortDesc(),
+                                  {dimName:'whole concept set'}) },
+    sgVal: function() { return _.supergroup(this.concepts(), 
+                              d=>null, 
+                              {dimName:'whole concept set'})
+                        .asRootVal(this.shortDesc()) },
+    subgrpCnts: function(...rest) {return subgrpCnts(this.sgVal(), ...rest)},
+    shortDesc: function() {
+      return (
+        this.name()
+      )
+    },
+    longDesc: function() {
+      return (
+        this.shortDesc()
+      )
+    },
+    fancyDesc: function() {
+      return (
+        <div style={{border:'4px solid pink'}}>{`${this.longDesc()}`}</div>
+      )
     },
   })
 
@@ -754,7 +729,6 @@ export class ConceptSet {
   maxDepth = () => this.prop('maxDepth')
 
   shortDesc = () => {
-    //let {status, msg} = this.status()
     return (
       (this.hasProp('shortDesc') && this.prop('shortDesc')) ||
       (this.hasProp('desc') && this.prop('desc')) ||
@@ -763,7 +737,6 @@ export class ConceptSet {
     )
   }
   longDesc = () => {
-    //let {status, msg} = this.status()
     return (
       (this.hasProp('longDesc') && this.prop('longDesc')) ||
       (this.hasProp('desc') && this.prop('desc')) ||

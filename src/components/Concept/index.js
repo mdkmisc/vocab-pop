@@ -361,7 +361,9 @@ export class RelButton extends Component {
     if (!relSg || !relSg.records || !relSg.records.length) {
       debugger
     }
-    let status = cset.status()
+    let status = cset.status() // probably breaking this after 20d9807bf4141064760c493d6e2eba6a18cec304
+    // maybe not... still have old ConceptSet class in ducks/conceptSet, but
+    //  everything new happening in stampit classes
     /*
     let ttFancy= 
       <pre>

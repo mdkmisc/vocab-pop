@@ -137,6 +137,7 @@ const getStyles = (pal, override, global) => {   //subThemeStyles[subTheme]
       padding: '10px',
       //textAlign: 'center',
       display: 'inline-block',
+      backgroundColor: pal.lighter,
     },
     tooltip: {
       pre: {

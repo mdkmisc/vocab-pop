@@ -42,15 +42,22 @@ class ConceptSets extends Component {
     //return cset.id()
   }
   render() {
-    const { storedCsets, M=muit(), invalidCsetId} = this.props
+    const { storedCsets, M=muit(), invalidCsetId, cset} = this.props
     const {csetId} = myrouter.getQuery()
     if (invalidCsetId) {
       return <h3>Can't find csetId {csetId}</h3>
     }
     let content
     if (csetId) {
+      let fontStyle = cset._cset.name
+        ? {}
+        : {fontFamily:'monospace'}
       content = <div>
-                  <h3>ConceptSetBuilder ({csetId})</h3>
+                  <h3>Modifying CSet {' '}
+                    <span style={fontStyle}>
+                      {cset.name()}
+                    </span>
+                  </h3>
                   <ConceptSetBuilder {...{csetId, M, }} />
                 </div>
     } else {
@@ -82,10 +89,10 @@ class ConceptSets extends Component {
     }
 
     return  <Paper style={M('paper')} zDepth={2} >
-              <pre>{JSON.stringify(this.props.csetsStatus,null,2)}</pre>
               {content}
             </Paper>
   }
+              //<pre>{JSON.stringify(this.props.csetsStatus,null,2)}</pre>
 }
 ConceptSets = connect(
   (state, props) => {
@@ -93,7 +100,7 @@ ConceptSets = connect(
     const storedCsets = cset$.storedCsets(state)
     let moreProps = { 
       storedCsets,
-      csetsStatus: state.csets.status,
+      //csetsStatus: state.csets.status,
     }
     if (typeof csetId !== 'undefined') {
       //let cset = cset$.getCset(state)(csetId)

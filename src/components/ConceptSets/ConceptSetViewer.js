@@ -168,6 +168,23 @@ export const FetchButton = props => {
           </span>
 }
 
+export const InfoDump = ({cset}) => {
+  return (
+        <pre>
+          {cset.serialize(2)}
+          {'\n'}
+          sameAsPersisted: {cset.sameAsPersisted() ? 'true' : 'false'}
+          {'\n'}
+          sameAsStore: {cset.sameAsStore() ? 'true' : 'false'}
+          {'\n'}
+          persistent: {cset.persistent() ? 'true' : 'false'}
+          {'\n'}
+          needsCidsFetching: {cset.needsCidsFetching() ? 'true' : 'false'}
+          {'\n'}
+          needsPersisting: {cset.needsPersisting() ? 'true' : 'false'}
+        </pre>
+  )
+}
 export const NameLink = csetWrap(props => {
   const {cset, } = props
   let name = ''
@@ -195,6 +212,7 @@ export const NameLink = csetWrap(props => {
             <ConceptCount cset={cset} />
             <FetchButton cset={cset} />
             { cset.includeMapped() ? ' Include Mapped ' : '' }
+            { cset.includeDescendants() ? ' Include Descendants ' : '' }
             {' '}{JSON.stringify(cset.basketCounts())}
             {' '}{oldConceptComp.groupLabel({cset,ttid:'nameLink'})}
           </span>
@@ -202,12 +220,17 @@ export const NameLink = csetWrap(props => {
 
 export const CsetView = csetWrap(props => {
   const {cset, } = props
-  return  <div>
-            <h3>CsetView</h3>
-            {cset.name()}: {' '}
-            <ConceptCount cset={cset} />
-            <FetchButton cset={cset} />
-            {oldConceptComp.groupLabel({cset,ttid:'csetViewer'})}
-          </div>
+  return (
+    <div>
+      <ConceptCount cset={cset} />
+      <FetchButton cset={cset} />
+
+      <div style={{fontFamily:'monospace',zoom:.3,}}>
+        <hr/>
+        {oldConceptComp.groupLabel({cset,ttid:'csetViewer'})}
+        <hr/>
+      </div>
+    </div>
+  )
 })
 
