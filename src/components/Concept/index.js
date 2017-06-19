@@ -157,23 +157,6 @@ export const CdmCntsButtons = props => {
     })
   )
   return <span className="cdmcnts">{buttons}</span>
-  /*
-  if (withCdm.lookup('CDM Recs')) {
-    cdmCnts = <span>{ withCdm.lookup('CDM Recs').records.length } in CDM
-                <Counts cset={cset} M={M} ttid={ttid} />
-              </span>
-  }
-  let cnts = cset.cdmCnts()
-  let ttText = cnts.map(fmtCdmCnt('long')).join(', ')
-  let ttFancy = <div>{
-                  cnts
-                    .map(fmtCdmCnt('long'))
-                    .map((c,i) => <div style={M('tooltip.div')} key={i}>{c}</div>)
-                }</div>
-  let buttonContent = cnts.map(fmtCdmCnt('short')).join(', ')
-  if (!ttid) debugger
-  return <TipButton {...{ttid,ttText,ttFancy, M, buttonContent}} />
-  */
 }
 export const groupLabel = props => {
   let {cset, M=muit(), ttid,key='groupLabel'} = props

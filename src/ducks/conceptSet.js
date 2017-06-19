@@ -17,9 +17,9 @@ import * as config from 'src/config'
 import * as Cset from 'sharedSrc/Cset'
 export * from 'sharedSrc/Cset'
 import muit from 'src/muitheme'
-import {isConceptList, concepts, cdmCnts, relgrps,
-        addRels, subgrpCnts, subtype, reldim, rreldim,
-        conceptActions, viewCounts,}
+import {isConceptList, concepts, cdmCnts, flattenRelgrps,
+        addRels, subgrpCnts, subtype,
+        conceptActions, viewCounts, }
           from 'src/ducks/concept'
 import * as api from 'src/api'
 import * as cncpt from 'src/ducks/concept'
@@ -139,9 +139,9 @@ export default combineReducers({
 /**** end reducers *********************************************************/
 
 /**** start action creators *********************************************************/
-export const newCset = () => ({ 
+export const newCset = (csetId) => ({ 
   type: NEW, 
-  payload: Cset.csetTemplate(_.uniqueId()),
+  payload: Cset.csetTemplate(csetId || _.uniqueId()),
 })
 export const trashCset = (cset) => ({ 
   type: TRASH, 
@@ -281,7 +281,7 @@ export const blessCset = (_cset) => {
   }
   stamp = stamp.compose(CsetPickler)
                .compose(ConceptRequester)
-               .compose(CsetAnalyzer)
+               //.compose(CsetAnalyzer)
   let cset = stamp(_cset)
   return cset
 }
@@ -468,22 +468,13 @@ export const ConceptRequester = stampit()
       return this.wereConceptsRequested() && !this.waiting()
       //return this.allConceptsLoaded() || (this.myConceptRequest()||{meta:{}}).meta.status === 'done'
     },
-  })
-export const CsetAnalyzer = stampit()
-  .methods({ // assumes ConceptRequester
 
+
+    // these were in analyzer but need to be fixed or put somewhere else:
     subThemeName: function() {
       return cncpt.singleMemberGroupLabel(this.sgVal(), 'sc')
     },
     cdmCnts: function() { return cdmCnts(this.sgVal()) },
-    relgrps: function(reldim) { return relgrps(this.concepts(),reldim) }, // reldim optional
-    sgList: function() { return _.supergroup(this.concepts(), 
-                                  d=>this.shortDesc(),
-                                  {dimName:'whole concept set'}) },
-    sgVal: function() { return _.supergroup(this.concepts(), 
-                              d=>null, 
-                              {dimName:'whole concept set'})
-                        .asRootVal(this.shortDesc()) },
     subgrpCnts: function(...rest) {return subgrpCnts(this.sgVal(), ...rest)},
     shortDesc: function() {
       return (
@@ -500,6 +491,153 @@ export const CsetAnalyzer = stampit()
         <div style={{border:'4px solid pink'}}>{`${this.longDesc()}`}</div>
       )
     },
+
+  })
+  .init(function(_cset) {
+    // these too:
+    this.sgList = () => _.supergroup(this.concepts(), 
+                                  d=>this.shortDesc(),
+                                  {dimName:'whole concept set'})
+    this.sgVal = () => _.supergroup(this.concepts(), 
+                              d=>null, 
+                              {dimName:'whole concept set'})
+                        .asRootVal(this.shortDesc())
+
+
+    this.analyzer = ClistAnalyzer(()=>this.concepts())
+
+  })
+const okVocs = config.getSetting('filters.include.vocabularies')
+export const relgrpFilter = grp => {
+  //return relgrps.filter(grp => _.includes(okVocs, grp.vocabulary_id))
+  return _.includes(okVocs, grp.vocabulary_id)
+}
+export const ClistAnalyzer = stampit()
+  .init(function(clistGetter=()=>[], opts={}) { // also accepts a clist
+
+    if (typeof clistGetter !== 'function') {
+      if (cncpt.isConceptList(clistGetter)) {
+        this.concepts = () => clistGetter
+      } else {
+        throw new Error("what'choo tryin to do?")
+      }
+    } else {
+      //this.concepts = () => clistGetter(...rest)
+      this.concepts = clistGetter
+    }
+    if (!cncpt.isConceptList(this.concepts())) {
+      throw new Error("what'choo tryin to do?")
+    }
+
+    this.rgfilt = opts.rgfilt || relgrpFilter  // FOR NOW -- FIX LATER!!!!
+    this.expandedRgfilt = filt => 
+      (el, idx, arr) => this.rgfilt(el,idx,arr) && filt(el,idx,arr)
+
+    this.clist = (opts={}) => { // accepts opts.cfilt
+      return opts.cfilt ? this.concepts().filter(opts.cfilt) : this.concepts()
+    }
+    this.flattenRelgrps = (opts={}) => { // accepts opts.rgfilt
+      let rgfilt = opts.rgfilt || this.rgfilt
+      return _.flatten(
+        this.clist(opts)
+            .map(c => {
+              return c.relgrps
+                      .filter(rgfilt)
+                      .map(grp => Object.assign({},grp,{
+                                    concept_id: c.concept_id,
+                                  })
+                          )
+            })
+      )
+    }
+    this.rels = (opts={}) => {
+      let rgfilt = opts.rgfilt || this.rgfilt
+      let relgrps = this.flattenRelgrps(opts)
+      let relsSg = _.supergroup(relgrps,cncpt.reldim, {multiValuedGroup:true,dimName:'reldim'})
+
+      relsSg.leafNodes().forEach(relSg => {
+        let [r,rr] = relSg.split(/ --> /)
+
+        if (relSg.records.filter(rg=>!rgfilt(rg)).length) {
+          throw new Error("i thought it might already be filtered. maybe not")
+        }
+        if (relSg.records.filter(r=>cncpt.reldim(r)!=relSg).length) {
+          throw new Error("i thought it might already be filtered. maybe not")
+        }
+        relSg.relcids = _.uniq(_.flatten(relSg.records.map(r=>r.relcids)))
+
+        relSg.reldim = relSg.toString()
+        relSg.rreldim = `${rr} --> ${r}`
+      })
+      return relsSg
+    }
+    this.mapsTo = () => {
+      let mto = this.rels({rgfilt: this.expandedRgfilt(rg=>rg.relationship==='Maps to')})
+      console.log(mto.summary())
+      return mto
+    }
+    this.sgListWithRels = (depth=0) => {
+      if (this.conCnt()) debugger
+      let sgList = this.sgList() // only one value, but want list to addRels
+      if (!this.conCnt()) {
+        return sgList
+      }
+      let wkids = addRels(sgList)
+      if (!depth) {
+        let wgkids = wkids.map(p => {
+          //debugger
+          let gp = addRels(p.getChildren())
+          // should only care about opposite
+          //p.sameRel = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.reldim)
+          /*
+          p.oppositeRels = gp.leafNodes().filter(gk=>gk.reldim===gk.parent.rreldim)
+          p.oppositeRels.forEach(d=>d.isOpposite=true)
+
+          let test = explodeArrayFlds(gp.records,'relgrps','cncpt')
+          let t2=explodeArrayFlds(test, 'relcids', 'relgrp')
+          let tr=_.flatten(t2.map(d=>Object.assign({},d,{reverse:t2.filter(e=>e.relgrp_cncpt_concept_id === d.relcids)})))
+          let t3 = explodeArrayFlds(tr,'reverse','from')
+
+          let allkeys = _.keys(t3[3])
+          let idkeys = _.keys(t3[3]).filter(d=>d.match('id')).filter(d=>!d.match(/(cgid|domain|class|vocab|relgrp_relcids)/))
+
+          let goodidkeys = [ "from_relgrp_cncpt_concept_id", "relgrp_cncpt_concept_id", "relcids", ]
+
+
+          let classkeys = _.keys(t3[3]).filter(d=>d.match('class'))
+          let relkeys = _.keys(t3[3]).filter(d=>d.match('relation'))
+
+          let round=t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
+          let roundsg = _.supergroup(round, [
+            "from_relgrp_cncpt_vocabulary_id",
+            "from_relgrp_relationship",
+            "from_relgrp_cncpt_concept_class_id",
+          ])
+          roundsg.summary({funcs:_.fromPairs(goodidkeys.map(k=>[k, d=>_.uniq(_.flatten(d.records.map(rec=>rec[k]))).length]))})
+          t3.filter(d=>d.from_relcids !== d.relgrp_cncpt_concept_id)
+          t3.filter(d=>d.from_relgrp_cncpt_concept_id === d.relcids)
+          _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids", ]).summary()
+
+          // took long time:
+          _.supergroup(t3, ["from_relgrp_cncpt_concept_id","relgrp_cncpt_concept_id", "relcids","from_relgrp_cncpt_concept_class_id", "from_relgrp_concept_class_id", "relgrp_cncpt_concept_class_id", "relgrp_concept_class_id" ]).summary()
+          debugger
+          */
+
+          return p
+
+
+
+        })
+        //debugger
+        //wgkids[0].leafNodes().filter(d=>d.reldim === d.parent.rreldim).map(d=>cncpt.subgrpCnts(d))
+        //return wgkids
+      }
+      return sgList
+      //return wkids
+    }
+  })
+  .methods({ // assumes ConceptRequester
+
   })
 
 
@@ -669,6 +807,7 @@ export class ConceptSet {
                       .asRootVal(this.shortDesc())
 
   sgListWithRels = (depth=0) => {
+    debugger
     let sgList = this.sgList() // only one value, but want list to addRels
     if (!this.conCnt()) {
       return sgList

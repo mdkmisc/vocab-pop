@@ -569,11 +569,12 @@ export const relgrpsFilter = relgrps => {
   let okVocs = config.getSetting('filters.include.vocabularies')
   return relgrps.filter(grp => _.includes(okVocs, grp.vocabulary_id))
 }
+
 export const addRels = sg => {
-
-
   // FIX!!!! should be pure, but can't get pure working right now
+  debugger
   let sgWithRels = sg.addLevel(sgParams.rels.dim, sgParams.rels.opts)
+  console.log(sgWithRels.summary())
   //let sgWithRels = sg.addLevelPure(sgParams.rels.dim, sgParams.rels.opts)
   sgWithRels.leafNodes().forEach(relSg => {
     let [r,rr] = relSg.split(/ --> /)
@@ -614,6 +615,41 @@ export const byRelName = cval => {
   //debugger
   return sg
 }
+
+export const sgParams = {
+  sc:     {dim: 'standard_concept'},
+  dom:    {dim: 'domain_id'},
+  voc:    {dim: 'vocabulary_id'},
+  cls:    {dim: 'concept_class_id'},
+  withCdm:{dim: c=>c.cnts.length ? 'w/CDM Recs' : 'Not in CDM',opts:{dimName: 'inCdm'}},
+  rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
+}
+export const groups = (cval,fld) => _.supergroup(cval.records,sgParams[fld].dim,sgParams[fld].opts)
+// these return simple value (not obj) for csets having only one
+// member in a group... meaning that all their subsets will also have only that member
+export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, voc, cls, wcdm
+  let grps = groups(cval,dimName)
+  if (grps.length === 1) {
+    return grps[0].valueOf()
+  }
+}
+export const subgrpCnts = (cval, flds=_.keys(sgParams),noSingles=true) => {
+  let fldSgs = flds.map(fld=>{
+    let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
+    return {
+              fld,sg,
+              title: sg.length > 1 ? `${sg.length} ${fld}` : sg.toString(),
+    }
+  })
+  if (noSingles) {
+    fldSgs = fldSgs.filter(d=>d.sg.length > 1)
+  }
+  fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
+  return fldSgs
+}
+
+//var cncpt = module.exports
+
 
 
 
@@ -707,49 +743,4 @@ export const reduceGroups = (cval, flds=_.keys(sgParams), grps={}) => {
   * /
 }
 */
-
-
-const sgParams = {
-  sc:     {dim: 'standard_concept'},
-  dom:    {dim: 'domain_id'},
-  voc:    {dim: 'vocabulary_id'},
-  cls:    {dim: 'concept_class_id'},
-  withCdm:{dim: c=>c.cnts.length ? 'w/CDM Recs' : 'Not in CDM',opts:{dimName: 'inCdm'}},
-  rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
-}
-export const groups = (cval,fld) => _.supergroup(cval.records,sgParams[fld].dim,sgParams[fld].opts)
-// these return simple value (not obj) for csets having only one
-// member in a group... meaning that all their subsets will also have only that member
-export const singleMemberGroupLabel = (cval,dimName) => { // dimName = sc, dom, voc, cls, wcdm
-  let grps = groups(cval,dimName)
-  if (grps.length === 1) {
-    return grps[0].valueOf()
-  }
-}
-export const subgrpCnts = (cval, flds=_.keys(sgParams),noSingles=true) => {
-  let fldSgs = flds.map(fld=>{
-    let sg = _.supergroup(cval.records, sgParams[fld].dim, sgParams[fld].opts)
-    return {
-              fld,sg,
-              title: sg.length > 1 ? `${sg.length} ${fld}` : sg.toString(),
-    }
-  })
-  if (noSingles) {
-    fldSgs = fldSgs.filter(d=>d.sg.length > 1)
-  }
-  fldSgs = _.sortBy(fldSgs, d=>d.sg.length)
-  return fldSgs
-}
-export const relgrps = 
-  // flat list of all concept.relgrps records for concept list
-  // optionally filtered by reldim
-  (concepts,reldim) => 
-    _.flatten(concepts.map(
-      c=>c.relgrps
-          .filter(grp=>reldim ? grp.reldim===reldim : true)
-          .map(grp=>({...grp,concept_id:c.concept_id}))
-))
-
-
-//var cncpt = module.exports
 

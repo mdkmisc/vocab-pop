@@ -16,10 +16,12 @@ import FlatButton from 'material-ui/FlatButton';
 import LinearProgress from 'material-ui/LinearProgress';
 import MenuItem from 'material-ui/MenuItem';
 import {RadioButton, } from 'material-ui/RadioButton'
+import IconButton from 'material-ui/IconButton'
 
 import DeleteIcon from 'material-ui/svg-icons/action/delete'
 import DoneIcon from 'material-ui/svg-icons/action/done'
 import LinkIcon from 'material-ui/svg-icons/content/link';
+import ConceptBreakdownIcon from 'material-ui/svg-icons/action/zoom-in'
 
 import { Field, /*Form,*/ reduxForm, formValueSelector } from 'redux-form'
 import {
@@ -197,6 +199,11 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
         }
         <hr/>
       </form>
+    if (cset.conCnt()) {
+      let mto = cset.analyzer.mapsTo()
+      debugger
+      let sgwr = cset.sgListWithRels()
+    }
     return  (<Paper style={M('paper')} zDepth={2} >
               <h3>
                 { 
@@ -219,7 +226,21 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
                 <Field name="includeMapped" 
                   style={{padding:'0px 8px 0px 8px',width:'60%'}}
                   component={Checkbox}
-                  label='Include mapped'
+                  //label='Include mapped'
+                  label={
+                    <div>
+                      Include mapped
+                      <IconButton tooltip={`Concept breakdown`}
+                        //onClick={()=>cset.fetchConcepts() } 
+                      >
+                        <ConceptBreakdownIcon />
+                      </IconButton>
+                      <pre>
+                        {JSON.stringify(cset.subgrpCnts(['rels']),null,2)}
+
+                      </pre>
+                    </div>
+                  }
                   onChange={(evt,includeMapped,prev)=>
                     cset.update({includeMapped})}
                   normalize={val=>!!val}

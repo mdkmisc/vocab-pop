@@ -18,7 +18,7 @@ if (DEBUG) {
   window.Rx = Rx
   window.d3 = d3
   window.$ = $
-  //window._ = _
+  window._ = require('src/supergroup')
 }
 import React, { Component } from 'react'
 import { render } from 'react-dom'
