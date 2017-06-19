@@ -36,6 +36,7 @@ export const FRESH_UNPICKLE = 'vocab-pop/conceptSet/FRESH_UNPICKLE'
 export const UNPICKLE_DONE= 'vocab-pop/conceptSet/UNPICKLE_DONE'
 export const PICKLED = 'vocab-pop/conceptSet/PICKLED'
 export const NEW = 'vocab-pop/conceptSet/NEW'   // save 1 cset
+export const NEW_RELCSET = 'vocab-pop/conceptSet/NEW_RELCSET'   // save 1 cset
 export const TRASH = 'vocab-pop/conceptSet/TRASH'   // remove UNSAVED cset
 export const UPDATE = 'vocab-pop/conceptSet/UPDATE'
 export const API_DATA = 'vocab-pop/conceptSet/API_DATA'
@@ -73,6 +74,7 @@ const statusReducer = (state=initStatus, action) => {
       newProps = {pickled: [...(state.pickled||[]), action], unpickling:'hopeNot'}
       break
     case NEW:
+    case NEW_RELCSET:
     case UPDATE:
     case API_DATA:
     case TRASH:
@@ -105,6 +107,7 @@ const csetsReducer = (state=0, action) => {
     case FRESH_UNPICKLE:
       return payload
     case NEW:
+    case NEW_RELCSET:
       let _cset = payload
       if (_.some(state,cs=>cs.id===_cset.id)) {
         throw new Error("duplicate cset id")
@@ -198,6 +201,8 @@ epics.push((action$, store) => (
       const cset = getCset(payload.id)
       if (cset.includeMapped()) {
         debugger
+        actions.push(newMapsTo({mappedFromName:cset.name(),
+            csetId: `mappedFrom-${cset.id()}`}))
         //const mapsTo = getCset()
                 //{ type: API_DATA, payload },
       }
@@ -291,6 +296,11 @@ export const newCset = (csetId) => ({
   type: NEW, 
   payload: Object.assign(
     Cset.csetTemplate(csetId || nextCsetId()), {name: 'new'})
+})
+export const newMapsTo = (props={name:'new mapsTo'}) => ({ 
+  type: NEW_RELCSET,
+  payload: Object.assign(
+    Cset.csetTemplate(csetId || nextCsetId(), props))
 })
 export const trashCset = (cset) => ({ 
   type: TRASH, 
@@ -557,12 +567,12 @@ export const ClistAnalyzer = stampit()
       return _.flatten(
         this.clist(opts)
             .map(c => {
-              return c.relgrps || []
+              return ((c.relgrps || [])
                       .filter(rgfilt)
                       .map(grp => Object.assign({},grp,{
                                     concept_id: c.concept_id,
                                   })
-                          )
+                          ))
             })
       )
     }
@@ -575,10 +585,12 @@ export const ClistAnalyzer = stampit()
         let [r,rr] = relSg.split(/ --> /)
 
         if (relSg.records.filter(rg=>!rgfilt(rg)).length) {
-          throw new Error("i thought it might already be filtered. maybe not")
+          debugger
+          //throw new Error("i thought it might already be filtered. maybe not")
         }
         if (relSg.records.filter(r=>cncpt.reldim(r)!=relSg).length) {
-          throw new Error("i thought it might already be filtered. maybe not")
+          debugger
+          //throw new Error("i thought it might already be filtered. maybe not")
         }
         relSg.relcids = _.uniq(_.flatten(relSg.records.map(r=>r.relcids)))
 

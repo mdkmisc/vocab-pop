@@ -201,8 +201,8 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
         <hr/>
       </form>
     if (cset.conCnt()) {
-      let mto = cset.analyzer.mapsTo()
-      debugger
+      //let mto = cset.analyzer.mapsTo()
+      //debugger
     }
     return  (<Paper style={M('paper')} zDepth={2} >
               <h3>
