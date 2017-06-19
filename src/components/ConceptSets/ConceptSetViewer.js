@@ -54,7 +54,8 @@ import CloudQueue from 'material-ui/svg-icons/file/cloud-queue'
 import CloudDownload from 'material-ui/svg-icons/file/cloud-download'
 import CloudDone from 'material-ui/svg-icons/file/cloud-done'
 import FileDownload from 'material-ui/svg-icons/file/file-download'
-import ZoomIn from 'material-ui/svg-icons/action/zoom-in'
+import ConceptBreakdownIcon from 'material-ui/svg-icons/action/zoom-in'
+import RelatedConceptIcon from 'material-ui/svg-icons/social/share'
 import ConceptIcon from 'material-ui/svg-icons/action/lightbulb-outline'
 
 
@@ -125,39 +126,6 @@ export const CsetWrapper = csetConnect(class extends Component {
 export const csetWrap = Component => 
   props => <CsetWrapper Component={Component} {...props} />
 
-export const ConceptCount = props => {
-  const {cset, ttText, url, M=muit(), } = props
-  let cnt = cset.cidCnt()
-  let badgeContent, badgeStyle
-  if (cset.doneFetchingCids() && cnt) {
-    badgeStyle = {
-      backgroundColor: 'green',
-    }
-    badgeContent = <span>{cnt}</span>
-  } else if (cset.doneFetchingCids()) {
-    badgeStyle = {
-      backgroundColor: 'red',
-    }
-    badgeContent = <span>{cnt}</span>
-  } else {
-    badgeContent =  <CircularProgress size={20} 
-                      {...M('circularProgress.styleProps')}
-                    />
-  }
-  
-  return  <span style={{
-                  zoom: .7,
-              }}> 
-            <Badge
-              badgeContent={badgeContent}
-              primary={true}
-              badgeStyle={badgeStyle}
-                //top: 18, right: 18,
-            >
-                    <ConceptIcon />
-            </Badge>
-          </span>
-}
 export const FetchButton = props => {
   const {cset, ttText, url, M=muit(), } = props
   let button = null
@@ -235,6 +203,23 @@ export const CsetView = csetWrap(props => {
     <div>
       <FetchButton cset={cset} />
       <ConceptCount cset={cset} />
+      <IconButton tooltip={`Concept breakdown`}
+        //onClick={()=>cset.fetchConcepts() } 
+      >
+        <ConceptBreakdownIcon />
+      </IconButton>
+      <IconButton tooltip={`Related concepts`}
+        //onClick={()=>cset.fetchConcepts() } 
+      >
+        <RelatedConceptIcon />
+      </IconButton>
+
+      <svg className="icon icon-database"
+        style={{width:24,height:24,fill:'blue'}}
+      >
+        <use xlinkHref="/symbol-defs.svg#icon-database"></use>
+      </svg>
+
       <oldConceptComp.CdmCntsButtons cset={cset} ttid={ttid} />
 
       <div style={{fontFamily:'monospace',zoom:.3,}}>
@@ -246,3 +231,36 @@ export const CsetView = csetWrap(props => {
   )
 })
 
+export const ConceptCount = props => {
+  const {cset, ttText, url, M=muit(), } = props
+  let cnt = cset.cidCnt()
+  let badgeContent, badgeStyle
+  if (cset.doneFetchingCids() && cnt) {
+    badgeStyle = {
+      backgroundColor: 'green',
+    }
+    badgeContent = <span>{cnt}</span>
+  } else if (cset.doneFetchingCids()) {
+    badgeStyle = {
+      backgroundColor: 'red',
+    }
+    badgeContent = <span>{cnt}</span>
+  } else {
+    badgeContent =  <CircularProgress size={20} 
+                      {...M('circularProgress.styleProps')}
+                    />
+  }
+  
+  return  <span style={{
+                  zoom: .7,
+              }}> 
+            <Badge
+              badgeContent={badgeContent}
+              primary={true}
+              badgeStyle={badgeStyle}
+                //top: 18, right: 18,
+            >
+                    <ConceptIcon />
+            </Badge>
+          </span>
+}
