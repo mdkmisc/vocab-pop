@@ -103,31 +103,32 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
         </Paper>
       )
     }
-    let selectMethodField = 
-                <Field name="selectMethodName" 
-                      style={{padding:'0px 8px 0px 8px',width:'80%'}}
-                      component={SelectField}
-                      floatingLabelText={'Select concepts by'}
-                      onChange={(evt,selectMethodName,prev)=>
-                        cset.update({selectMethodName})}
-                >
-                  {
-                    Object
-                      .entries(cset$.selectMethods||[])
-                      .map(([k,v]) => {
-                          return <MenuItem 
-                              disabled={v.disabled}
-                              desktop={true}
-                              className="select-method"
-                              key={k}
-                              checked={k === cset.selectMethodName()}
-                              //value={cset.selectMethodName()}
-                              value={k}
-                              primaryText={k}
-                            />
-                      })
-                  }
-                </Field>
+    let selectMethodField = cset$.selectMethods().length > 1
+      ? <Field name="selectMethodName" 
+              style={{padding:'0px 8px 0px 8px',width:'80%'}}
+              component={SelectField}
+              floatingLabelText={'Select concepts by'}
+              onChange={(evt,selectMethodName,prev)=>
+                cset.update({selectMethodName})}
+        >
+          {
+            Object
+              .entries(cset$.selectMethods())
+              .map(([k,v]) => {
+                  return <MenuItem 
+                      disabled={v.disabled}
+                      desktop={true}
+                      className="select-method"
+                      key={k}
+                      checked={k === cset.selectMethodName()}
+                      //value={cset.selectMethodName()}
+                      value={k}
+                      primaryText={k}
+                    />
+              })
+          }
+        </Field>
+      : null
     let selectForm =
       <form style={{marginLeft:20}} onSubmit={e=>e.preventDefault()}>
         {selectMethodField}
@@ -202,7 +203,6 @@ let ConceptSetBuilder = C.csetWrap(class extends Component {
     if (cset.conCnt()) {
       let mto = cset.analyzer.mapsTo()
       debugger
-      let sgwr = cset.sgListWithRels()
     }
     return  (<Paper style={M('paper')} zDepth={2} >
               <h3>
@@ -304,7 +304,7 @@ ConceptSetBuilder = connect(
         ...cset.obj(),
         ...cset.selectMethodParams(),
         showInfoDump: false,
-        showSelectForm: !cset.valid(),
+        showSelectForm: cset.selectMethodName() === 'default' || !cset.valid(),
       },
       ...cset.selectMethodParams(),
       vocabularies: state.vocabularies||[],

@@ -126,7 +126,7 @@ const requestsReducer = (state=_.cloneDeep(emptyRequestStore()), action) => {
           }
           return {...r, type:conceptActions.IDLE, meta: {...r.meta,status:'done'}}
         }
-      })
+      }).filter(d=>d)
       break
     default:
       return state
@@ -622,7 +622,7 @@ export const sgParams = {
   voc:    {dim: 'vocabulary_id'},
   cls:    {dim: 'concept_class_id'},
   withCdm:{dim: c=>c.cnts.length ? 'w/CDM Recs' : 'Not in CDM',opts:{dimName: 'inCdm'}},
-  rels:   {dim: c=>c.relgrps.map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
+  rels:   {dim: c=>(c.relgrps||[]).map(reldim), opts: {multiValuedGroup:true,dimName:'reldim'}},
 }
 export const groups = (cval,fld) => _.supergroup(cval.records,sgParams[fld].dim,sgParams[fld].opts)
 // these return simple value (not obj) for csets having only one

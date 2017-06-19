@@ -138,29 +138,6 @@ export default combineReducers({
 })
 /**** end reducers *********************************************************/
 
-/**** start action creators *********************************************************/
-export const newCset = (csetId) => ({ 
-  type: NEW, 
-  payload: Cset.csetTemplate(csetId || _.uniqueId()),
-})
-export const trashCset = (cset) => ({ 
-  type: TRASH, 
-  payload: cset
-})
-export const apiCall = (cset) => ({ type: API_CALL, payload:cset.obj()})
-
-const unpickle = (meta={}) => {
-  let _csets = util.storageGet('csets',localStorage)||[]
-  _csets = _csets.map(prepareForPickling) // just in case extra junk got saved before pickling
-  return { type: UNPICKLE, payload:_csets, meta}
-}
-const persistCsets = (meta={}) => {
-  let _csets = (getStore().getState().csets.csets || []).map(prepareForPickling)
-  util.storagePut('csets', _csets, localStorage, true)
-  return { type: PICKLED, payload:_csets, meta}
-}
-/**** end action creators *********************************************************/
-
 /**** start epics ******************************************/
 let epics = []
 epics.push((action$, store) => (
@@ -215,21 +192,40 @@ epics.push((action$, store) => (
   action$.ofType(api.apiActions.NEW_RESULTS,api.apiActions.CACHED_RESULTS)
     .filter((action) => (action.meta||{}).apiPathname === CSET_APIPATH)
     .delay(200) // what's this for?
-    .map(action=>{
+    .mergeMap(action=>{
       let {type, payload, meta} = action
-      return { type: API_DATA, payload }
+      let actions = [ { type: API_DATA, payload } ]
+      const cset = getCset(payload.id)
+      if (cset.includeMapped()) {
+        debugger
+        //const mapsTo = getCset()
+                //{ type: API_DATA, payload },
+      }
+      return Rx.Observable.concat(actions)
     })
 ))
 export {epics}
 /**** end epics ******************************************/
 
 /**** start selectors *****************************************************************/
+export const _storedCsets = (state=getStore().getState()) => {
+  if (state.csets.csets) {
+    return state.csets.csets
+  }
+  if (state.csets.pickled) {
+    return state.csets.pickled
+  }
+  kludgyDispatch(unpickle())
+  return []
+}
 const csetQueryProps = ['selectMethodName', 'selectMethodParams',
   'includeDescendants', 'includeMapped', 'includeDescendants', 'isExcluded']
 const csetResultProps = ['cids']
 const csetMetaProps = ['id', 'name',]
 const csetPersistProps = csetMetaProps.concat(csetQueryProps, csetResultProps)
 const csetPersistPropsNR = csetMetaProps.concat(csetQueryProps)
+
+export const nextCsetId = () => parseInt(_.max(_storedCsets().map(cs=>cs.id)),10) + 1
 
 const localId = (_cset, forceNew=false) => {
   let uniqueByQuery = _cset.id + '-' + 
@@ -250,19 +246,12 @@ const incarnateToLocal = _cset => { // from persistent
             localId: localId(_cset),
   }
 }
-export const _storedCsets = (state=getStore().getState()) => {
-  if (state.csets.csets) {
-    return state.csets.csets
-  }
-  if (state.csets.pickled) {
-    return state.csets.pickled
-  }
-  kludgyDispatch(unpickle())
-  return []
-}
 export const _getCset = createSelector( _storedCsets, _csets => id => _.find(_csets, cs=>cs.id==id)) // two = for loose type checking, "5"==5
 export const storedCsets = createSelector(_storedCsets, _csets=>_csets.map(blessCset))
-export const selectMethods = _.mapValues(Cset.selectMethodsShared,m=>m())
+export const selectMethods = (showInSelectList=true) => 
+    _.filter(
+      _.mapValues(Cset.selectMethodsShared, m=>m()
+      ), m=>showInSelectList ? m.showInSelectList: true)
 export const blessCset = (_cset) => {
   let stamp
   switch (_cset.selectMethodName) {
@@ -272,7 +261,9 @@ export const blessCset = (_cset) => {
       break
     */
     case 'matchText':
+    case 'mapsTo':
     case null:
+    case 'default':
       stamp = Cset.Cset
       break
     default:
@@ -293,12 +284,37 @@ export const getCset = id => {
 }
 const _persistedCsets = () => getStore().getState().csets.pickled
 export const _getPersistedCset = id => _persistedCsets().find(cs=>cs.id==id)
-
-
 /**** end selectors *****************************************************************/
 
-export const CsetPickler = stampit()
+/**** start action creators *********************************************************/
+export const newCset = (csetId) => ({ 
+  type: NEW, 
+  payload: Object.assign(
+    Cset.csetTemplate(csetId || nextCsetId()), {name: 'new'})
+})
+export const trashCset = (cset) => ({ 
+  type: TRASH, 
+  payload: cset
+})
+export const apiCall = (cset) => ({ type: API_CALL, payload:cset.obj()})
+
+const unpickle = (meta={}) => {
+  let _csets = util.storageGet('csets',localStorage)||[]
+  _csets = _csets.map(prepareForPickling) // just in case extra junk got saved before pickling
+  return { type: UNPICKLE, payload:_csets, meta}
+}
+const persistCsets = (meta={}) => {
+  let _csets = (getStore().getState().csets.csets || []).map(prepareForPickling)
+  util.storagePut('csets', _csets, localStorage, true)
+  return { type: PICKLED, payload:_csets, meta}
+}
+/**** end action creators *********************************************************/
+
+export const CsetPickler = stampit() 
+// this connects basic (shared w/ server) Csets with a persistent store
+// should be database but for now it's localStorage
   .init(function() {
+    this.id = (id) => id || this._cset.id || nextCsetId()
     this.localId = () => this._cset.localId || localId(this._cset)
     this.persistent = () => this._cset.persistent
   })
@@ -510,7 +526,7 @@ export const ConceptRequester = stampit()
 const okVocs = config.getSetting('filters.include.vocabularies')
 export const relgrpFilter = grp => {
   //return relgrps.filter(grp => _.includes(okVocs, grp.vocabulary_id))
-  return _.includes(okVocs, grp.vocabulary_id)
+  return _.includes(okVocs, grp.vocabulary_id.toUpperCase())
 }
 export const ClistAnalyzer = stampit()
   .init(function(clistGetter=()=>[], opts={}) { // also accepts a clist
@@ -541,7 +557,7 @@ export const ClistAnalyzer = stampit()
       return _.flatten(
         this.clist(opts)
             .map(c => {
-              return c.relgrps
+              return c.relgrps || []
                       .filter(rgfilt)
                       .map(grp => Object.assign({},grp,{
                                     concept_id: c.concept_id,
@@ -640,79 +656,6 @@ export const ClistAnalyzer = stampit()
 
   })
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-/*
-export const selectMethods = {
-  matchText: stampit(Cset.selectMethodsShared.matchText)
-              .methods({
-                name: function() {
-                  return this.param('matchStr')
-                },
-                name2: function() {
-                  return this._cset.name || this.param('vocabulary_id')
-                }
-              }),
-  fromAtlas: stampit(Cset.selectMethodsShared.fromAtlas)
-              .methods({
-                name: function() {
-                  return this._cset.name
-                },
-                name2: function() {
-                  return `(from www.ohdsi.org/web/atlas/#/conceptsets)`
-                }
-              }),
-    /*
-    {
-      name: 'matchCodes',
-      dispName: 'Match concept codes',
-      matchBy: 'codes',
-      //params: {vocabulary_id:'ICD9CM', matchStr: '702%, 700%'},
-      params: {vocabulary_id:'string', matchStr: 'string'},
-    },
-    {
-      name: 'codeList',
-      dispName: 'Concept code list',
-      //params: {vocabulary_id:'ICD9CM', codes: ['702', '702.0', '702.01']}
-      params: {vocabulary_id:'string', codes: 'string[]' }
-    },
-    {
-      name: 'cidList',
-      dispName: 'Concept ID list',
-      //params: {cids: [8504,8505,44833364,44820047]},
-      params: {cids: 'number[]'},
-    },
-    * /
-}
-*/
 
 
 
